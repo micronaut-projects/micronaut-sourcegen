@@ -1,0 +1,21 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+plugins {
+    id 'io.micronaut.build.shared.settings' version '6.5.3'
+}
+
+rootProject.name = 'project-template-parent'
+
+include 'project-template'
+include 'project-template-bom'
+
+enableFeaturePreview 'TYPESAFE_PROJECT_ACCESSORS'
+
+micronautBuild {
+    importMicronautCatalog()
+}
