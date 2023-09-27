@@ -1,0 +1,8 @@
+plugins {
+    id("io.micronaut.build.internal.sourcegen-base")
+    id("io.micronaut.build.internal.base-module")
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}

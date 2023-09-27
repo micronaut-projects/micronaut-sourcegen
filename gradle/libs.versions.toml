@@ -16,11 +16,13 @@
 # a managed version (a version which alias starts with "managed-"
 
 [versions]
-micronaut = "4.0.0"
+micronaut = "4.0.3-SNAPSHOT"
 micronaut-docs = "2.0.0"
 micronaut-test = "3.9.1"
-groovy = "3.0.13"
-spock = "2.3-groovy-3.0"
+groovy = "4.0.12"
+spock = "2.3-groovy-4.0"
+javapoet = "1.13.0"
+kotlinpoet = "1.14.2"
 
 # Managed versions appear in the BOM
 # managed-somelib = "1.0"
@@ -29,6 +31,9 @@ spock = "2.3-groovy-3.0"
 [libraries]
 # Core
 micronaut-core = { module = 'io.micronaut:micronaut-core-bom', version.ref = 'micronaut' }
+javapoet = { module = "com.squareup:javapoet", version.ref = "javapoet" }
+kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
+kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", version.ref = "kotlinpoet" }
 
 #
 # Managed dependencies appear in the BOM
