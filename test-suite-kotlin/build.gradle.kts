@@ -7,7 +7,7 @@ plugins {
 
 dependencies {
     ksp(mn.micronaut.inject.kotlin)
-    ksp(projects.sourcegenCore)
+    ksp(projects.sourcegenGeneratorKotlin)
     implementation(mn.micronaut.inject.kotlin)
     implementation(projects.sourcegenAnnotations)
     testImplementation(mnTest.micronaut.test.kotest5)

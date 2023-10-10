@@ -3,10 +3,10 @@ plugins {
 }
 
 dependencies {
-    compileOnly(mn.micronaut.inject.java)
-    implementation(projects.sourcegenAnnotations)
-    implementation(libs.javapoet)
-    implementation(libs.kotlinpoet)
-    implementation(libs.kotlinpoet.javapoet)
-    testAnnotationProcessor(project)
+//    compileOnly(mn.micronaut.inject.java)
+//    implementation(projects.sourcegenAnnotations)
+//    implementation(libs.managed.javapoet)
+//    implementation(libs.managed.kotlinpoet)
+//    implementation(libs.managed.kotlinpoet.javapoet)
+//    testAnnotationProcessor(project)
 }

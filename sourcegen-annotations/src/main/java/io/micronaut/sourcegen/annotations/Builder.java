@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 original authors
+ * Copyright 2017-2021 original authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.visitors;
+package io.micronaut.sourcegen.annotations;
 
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-import io.micronaut.sourcegen.annotations.Builder;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-@Builder
-public record Person(Long id, String name) {
+/**
+ * The builder annotation on a bean should create a builder.
+ *
+ * @author Denis Stepanov
+ * @since 1.0
+ */
+@Documented
+@Retention(RUNTIME)
+@Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
+public @interface Builder {
 }

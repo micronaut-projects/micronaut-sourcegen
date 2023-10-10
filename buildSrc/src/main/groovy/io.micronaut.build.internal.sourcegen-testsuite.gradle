@@ -6,3 +6,7 @@ plugins {
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
 }
+
+tasks.withType(Checkstyle).configureEach {
+    enabled = false
+}

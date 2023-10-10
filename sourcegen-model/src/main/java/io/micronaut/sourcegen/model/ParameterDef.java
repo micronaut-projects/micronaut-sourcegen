@@ -13,11 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.visitors;
+package io.micronaut.sourcegen.model;
 
+import io.micronaut.core.annotation.Experimental;
 
-import io.micronaut.sourcegen.annotations.Builder;
+/**
+ * The parameter definition.
+ *
+ * @author Denis Stepanov
+ * @since 1.0
+ */
+@Experimental
+public final class ParameterDef extends AbstractAnnotatedElement {
 
-@Builder
-public record Person(Long id, String name) {
+    private final String name;
+    private final TypeDef type;
+
+    ParameterDef(String name, TypeDef type) {
+        this.name = name;
+        this.type = type;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public TypeDef getType() {
+        return type;
+    }
 }

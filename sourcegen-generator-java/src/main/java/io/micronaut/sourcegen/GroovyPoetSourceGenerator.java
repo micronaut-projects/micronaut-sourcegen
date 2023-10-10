@@ -13,11 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.visitors;
+package io.micronaut.sourcegen;
 
+import io.micronaut.core.annotation.Internal;
+import io.micronaut.inject.visitor.VisitorContext;
 
-import io.micronaut.sourcegen.annotations.Builder;
+/**
+ * Reuse the Java source generator for Groovy.
+ *
+ * @author Denis Stepanov
+ * @since 1.0
+ */
+@Internal
+public final class GroovyPoetSourceGenerator extends JavaPoetSourceGenerator {
 
-@Builder
-public record Person(Long id, String name) {
+    @Override
+    public VisitorContext.Language getLanguage() {
+        return VisitorContext.Language.GROOVY;
+    }
 }

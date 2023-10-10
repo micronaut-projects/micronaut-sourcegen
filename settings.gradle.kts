@@ -12,9 +12,14 @@ plugins {
 rootProject.name = "sourcegen-parent"
 
 include("sourcegen-annotations")
-include("sourcegen-core")
+include("sourcegen-model")
+include("sourcegen-generator")
+include("sourcegen-generator-java")
+include("sourcegen-generator-kotlin")
 include("sourcegen-bom")
+
 include("test-suite-java")
+//include("test-suite-groovy") TODO
 include("test-suite-kotlin")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

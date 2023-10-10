@@ -13,11 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.visitors;
+package io.micronaut.sourcegen.model;
 
+import io.micronaut.core.annotation.Experimental;
 
-import io.micronaut.sourcegen.annotations.Builder;
-
-@Builder
-public record Person(Long id, String name) {
+/**
+ * The abstract annotated element.
+ *
+ * @author Denis Stepanov
+ * @since 1.0
+ */
+@Experimental
+abstract sealed class AbstractAnnotatedElement permits AbstractElement, ParameterDef {
 }

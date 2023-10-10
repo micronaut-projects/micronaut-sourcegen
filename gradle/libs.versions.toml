@@ -1,28 +1,11 @@
-#
-# This file is used to declare the list of libraries
-# which are used as dependencies in the project.
-# See https://docs.gradle.org/7.4.2/userguide/platforms.html#sub:central-declaration-of-dependencies
-#
-# For Micronaut, we have 3 kinds of dependencies:
-#   - managed dependencies, which are exposed to consumers via a BOM (or version catalog)
-#   - managed BOMs, which are imported into the BOM that we generate
-#   - all other dependencies, which are implementation details
-#
-# If a library needs to appear in the BOM of the project, then it must be
-# declared with the "managed-" prefix.
-# If a BOM needs to be imported in the BOM of the project, then it must be
-# declared with the "boms-" prefix.
-# Both managed dependencies and BOMs need to have their version declared via
-# a managed version (a version which alias starts with "managed-"
-
 [versions]
-micronaut = "4.0.3-SNAPSHOT"
+micronaut = "4.2.0-SNAPSHOT"
 micronaut-docs = "2.0.0"
 micronaut-test = "3.9.1"
 groovy = "4.0.12"
 spock = "2.3-groovy-4.0"
-javapoet = "1.13.0"
-kotlinpoet = "1.14.2"
+managed-javapoet = "1.13.0"
+managed-kotlinpoet = "1.14.2"
 
 # Managed versions appear in the BOM
 # managed-somelib = "1.0"
@@ -31,24 +14,9 @@ kotlinpoet = "1.14.2"
 [libraries]
 # Core
 micronaut-core = { module = 'io.micronaut:micronaut-core-bom', version.ref = 'micronaut' }
-javapoet = { module = "com.squareup:javapoet", version.ref = "javapoet" }
-kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", version.ref = "kotlinpoet" }
-
-#
-# Managed dependencies appear in the BOM
-#
-# managed-somelib = { module = "group:artifact", version.ref = "managed-somelib" }
-
-#
-# Imported BOMs, also appearing in the generated BOM
-#
-# boms-somebom = { module = "com.foo:somebom", version.ref = "managed-somebom" }
-
-# Other libraries used by the project but non managed
-
-# micronaut-bom = { module = "io.micronaut:micronaut-bom", version.ref = "micronaut" }
-# jdoctor = { module = "me.champeau.jdoctor:jdoctor-core", version.ref="jdoctor" }
+managed-javapoet = { module = "com.squareup:javapoet", version.ref = "managed-javapoet" }
+managed-kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "managed-kotlinpoet" }
+managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", version.ref = "managed-kotlinpoet" }
 
 [bundles]
 
