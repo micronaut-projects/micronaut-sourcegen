@@ -43,8 +43,9 @@ public final class MethodDef extends AbstractElement {
               EnumSet<Modifier> modifiers,
               TypeDef returnType,
               List<ParameterDef> parameters,
-              List<StatementDef> statements) {
-        super(name, modifiers);
+              List<StatementDef> statements,
+              List<AnnotationDef> annotations) {
+        super(name, modifiers, annotations);
         this.returnType = returnType;
         this.parameters = Collections.unmodifiableList(parameters);
         this.statements = statements;
@@ -108,7 +109,7 @@ public final class MethodDef extends AbstractElement {
         }
 
         public MethodDefBuilder addParameter(String name, TypeDef type) {
-            parameters.add(new ParameterDef(name, type));
+            parameters.add(ParameterDef.builder(name, type).build());
             return this;
         }
 
@@ -126,7 +127,7 @@ public final class MethodDef extends AbstractElement {
             if (returnType == null) {
                 throw new IllegalStateException("Return type of method: " + name + " not specified!");
             }
-            return new MethodDef(name, modifiers, returnType, parameters, statements);
+            return new MethodDef(name, modifiers, returnType, parameters, statements, annotations);
         }
 
     }

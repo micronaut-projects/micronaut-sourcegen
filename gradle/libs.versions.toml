@@ -7,13 +7,10 @@ spock = "2.3-groovy-4.0"
 managed-javapoet = "1.13.0"
 managed-kotlinpoet = "1.14.2"
 
-# Managed versions appear in the BOM
-# managed-somelib = "1.0"
-# managed-somebom = "1.1"
-
 [libraries]
 # Core
 micronaut-core = { module = 'io.micronaut:micronaut-core-bom', version.ref = 'micronaut' }
+
 managed-javapoet = { module = "com.squareup:javapoet", version.ref = "managed-javapoet" }
 managed-kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "managed-kotlinpoet" }
 managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", version.ref = "managed-kotlinpoet" }

@@ -1,2 +1,2 @@
-io.micronaut.sourcegen.visitors.JavaBuilderTypeElementVisitor
-io.micronaut.sourcegen.visitors.KotlinBuilderTypeElementVisitor
+io.micronaut.sourcegen.example.JavaBuilderTypeElementVisitor
+io.micronaut.sourcegen.example.KotlinBuilderTypeElementVisitor

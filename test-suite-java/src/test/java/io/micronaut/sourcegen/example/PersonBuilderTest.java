@@ -13,20 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.visitors
+package io.micronaut.sourcegen.example;
 
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class PersonBuilderTest {
     @Test
-    void buildsPerson() {
+    public void buildsPerson() {
         var person = PersonBuilder.builder()
             .id(123L)
             .name("Cédric")
-            .build()
-        assertEquals("Cédric", person.name())
-        assertEquals(123L, person.id())
+            .build();
+        assertEquals("Cédric", person.name());
+        assertEquals(123L, person.id());
     }
 }

@@ -19,6 +19,7 @@ import io.micronaut.core.annotation.Experimental;
 
 import javax.lang.model.element.Modifier;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -28,14 +29,16 @@ import java.util.Set;
  * @since 1.0
  */
 @Experimental
-abstract sealed class AbstractElement extends AbstractAnnotatedElement permits ClassDef, FieldDef, MethodDef {
+abstract sealed class AbstractElement permits ClassDef, FieldDef, MethodDef, ParameterDef, PropertyDef {
 
     protected final String name;
     protected final Set<Modifier> modifiers;
+    private final List<AnnotationDef> annotations;
 
-    AbstractElement(String name, Set<Modifier> modifiers) {
+    AbstractElement(String name, Set<Modifier> modifiers, List<AnnotationDef> annotations) {
         this.name = name;
         this.modifiers = Collections.unmodifiableSet(modifiers);
+        this.annotations = annotations;
     }
 
     public final String getName() {
@@ -48,5 +51,9 @@ abstract sealed class AbstractElement extends AbstractAnnotatedElement permits C
 
     public final Modifier[] getModifiersArray() {
         return modifiers.toArray(Modifier[]::new);
+    }
+
+    public final List<AnnotationDef> getAnnotations() {
+        return annotations;
     }
 }

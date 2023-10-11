@@ -5,7 +5,9 @@ plugins {
 dependencies {
     annotationProcessor(mn.micronaut.inject.java)
     annotationProcessor(projects.sourcegenGeneratorJava)
+    annotationProcessor(projects.testSuiteCustomGenerators)
     implementation(projects.sourcegenAnnotations)
+    implementation(projects.testSuiteCustomAnnotations)
     testImplementation(mnTest.micronaut.test.junit5)
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.2")
 }

@@ -36,14 +36,18 @@ public final class ClassDef extends AbstractElement {
 
     private final List<FieldDef> fields;
     private final List<MethodDef> methods;
+    private final List<PropertyDef> properties;
 
     private ClassDef(String name,
                      EnumSet<Modifier> modifiers,
                      List<FieldDef> fields,
-                     List<MethodDef> methods) {
-        super(name, modifiers);
+                     List<MethodDef> methods,
+                     List<PropertyDef> properties,
+                     List<AnnotationDef> annotations) {
+        super(name, modifiers, annotations);
         this.fields = fields;
         this.methods = methods;
+        this.properties = properties;
     }
 
     public static ClassDefBuilder builder(String name) {
@@ -68,6 +72,10 @@ public final class ClassDef extends AbstractElement {
 
     public List<MethodDef> getMethods() {
         return methods;
+    }
+
+    public List<PropertyDef> getProperties() {
+        return properties;
     }
 
     @Nullable
@@ -100,21 +108,26 @@ public final class ClassDef extends AbstractElement {
 
         private final List<FieldDef> fields = new ArrayList<>();
         private final List<MethodDef> methods = new ArrayList<>();
+        private final List<PropertyDef> properties = new ArrayList<>();
 
         private ClassDefBuilder(String name) {
             super(name);
         }
 
-        public void addField(FieldDef fieldDef) {
-            fields.add(fieldDef);
+        public void addField(FieldDef field) {
+            fields.add(field);
         }
 
-        public void addMethod(MethodDef methodDef) {
-            methods.add(methodDef);
+        public void addMethod(MethodDef method) {
+            methods.add(method);
+        }
+
+        public void addProperty(PropertyDef property) {
+            properties.add(property);
         }
 
         public ClassDef build() {
-            return new ClassDef(name, modifiers, fields, methods);
+            return new ClassDef(name, modifiers, fields, methods, properties, annotations);
         }
 
     }

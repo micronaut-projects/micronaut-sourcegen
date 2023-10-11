@@ -1,5 +1,7 @@
-package io.micronaut.sourcegen.visitors
+package io.micronaut.sourcegen.example
 
+import io.micronaut.sourcegen.example.Person
+import io.micronaut.sourcegen.example.PersonBuilder
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

@@ -18,6 +18,8 @@ package io.micronaut.sourcegen.model;
 import io.micronaut.core.annotation.Experimental;
 
 import javax.lang.model.element.Modifier;
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -29,18 +31,40 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public sealed class AbstractElementBuilder<ThisType> permits ClassDef.ClassDefBuilder, FieldDef.FieldDefBuilder, MethodDef.MethodDefBuilder {
+public sealed class AbstractElementBuilder<ThisType> permits ClassDef.ClassDefBuilder,
+    FieldDef.FieldDefBuilder, MethodDef.MethodDefBuilder, ParameterDef.ParameterDefBuilder, PropertyDef.PropertyDefBuilder {
 
     protected final String name;
     protected EnumSet<Modifier> modifiers = EnumSet.noneOf(Modifier.class);
+    protected List<AnnotationDef> annotations = new ArrayList<>();
+    private final ThisType thisInstance;
 
     protected AbstractElementBuilder(String name) {
         this.name = name;
+        this.thisInstance = (ThisType) this;
+
     }
 
     public final ThisType addModifiers(Modifier... modifiers) {
         this.modifiers.addAll(List.of(modifiers));
-        return (ThisType) this;
+        return thisInstance;
+    }
+
+    public final ThisType addAnnotation(String annotationName) {
+        return addAnnotation(TypeDef.of(annotationName));
+    }
+
+    public final ThisType addAnnotation(Class<? extends Annotation> annotationType) {
+        return addAnnotation(TypeDef.of(annotationType));
+    }
+
+    public final ThisType addAnnotation(TypeDef typeDef) {
+        return addAnnotation(AnnotationDef.builder(typeDef).build());
+    }
+
+    public final ThisType addAnnotation(AnnotationDef annotationDef) {
+        annotations.add(annotationDef);
+        return thisInstance;
     }
 
 }

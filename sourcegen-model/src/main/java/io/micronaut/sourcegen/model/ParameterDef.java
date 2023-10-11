@@ -17,6 +17,10 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 
+import javax.lang.model.element.Modifier;
+import java.util.List;
+import java.util.Set;
+
 /**
  * The parameter definition.
  *
@@ -24,21 +28,42 @@ import io.micronaut.core.annotation.Experimental;
  * @since 1.0
  */
 @Experimental
-public final class ParameterDef extends AbstractAnnotatedElement {
+public final class ParameterDef extends AbstractElement {
 
-    private final String name;
     private final TypeDef type;
 
-    ParameterDef(String name, TypeDef type) {
-        this.name = name;
+    private ParameterDef(String name, Set<Modifier> modifiers, List<AnnotationDef> annotations, TypeDef type) {
+        super(name, modifiers, annotations);
         this.type = type;
     }
 
-    public String getName() {
-        return name;
+    public static ParameterDefBuilder builder(String name, TypeDef type) {
+        return new ParameterDefBuilder(name, type);
     }
 
     public TypeDef getType() {
         return type;
+    }
+
+    /**
+     * The parameter definition builder.
+     *
+     * @author Denis Stepanov
+     * @since 1.0
+     */
+    @Experimental
+    public static final class ParameterDefBuilder extends AbstractElementBuilder<ParameterDefBuilder> {
+
+        private final TypeDef type;
+
+        private ParameterDefBuilder(String name, TypeDef type) {
+            super(name);
+            this.type = type;
+        }
+
+        public ParameterDef build() {
+            return new ParameterDef(name, modifiers, annotations, type);
+        }
+
     }
 }

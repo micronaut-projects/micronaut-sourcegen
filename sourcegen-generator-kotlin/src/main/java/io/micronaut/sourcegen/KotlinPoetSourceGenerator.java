@@ -15,6 +15,8 @@
  */
 package io.micronaut.sourcegen;
 
+import com.squareup.kotlinpoet.AnnotationSpec;
+import com.squareup.kotlinpoet.ClassName;
 import com.squareup.kotlinpoet.FileSpec;
 import com.squareup.kotlinpoet.FunSpec;
 import com.squareup.kotlinpoet.KModifier;
@@ -27,10 +29,12 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.SourceGenerator;
+import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -41,8 +45,11 @@ import java.io.Writer;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static java.lang.Character.isISOControl;
 
 /**
  * Kotlin source code generator.
@@ -63,6 +70,17 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
         classBuilder.addModifiers(asKModifiers(classDef.getModifiers()));
         TypeSpec.Builder companionBuilder = null;
+        for (PropertyDef property : classDef.getProperties()) {
+            String propertyName = property.getName();
+            classBuilder.addProperty(
+                buildNullableProperty(
+                    propertyName,
+                    property.getType().makeNullable(),
+                    property.getModifiers(),
+                    property.getAnnotations()
+                )
+            );
+        }
         for (FieldDef field : classDef.getFields()) {
             Set<Modifier> modifiers = field.getModifiers();
             if (modifiers.contains(Modifier.STATIC)) {
@@ -78,6 +96,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                 );
             }
         }
+
         for (MethodDef method : classDef.getMethods()) {
             Set<Modifier> modifiers = method.getModifiers();
             if (modifiers.contains(Modifier.STATIC)) {
@@ -103,14 +122,27 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             .writeTo(writer);
     }
 
-    private static PropertySpec buildProperty(FieldDef field, Set<Modifier> modifiers) {
-        return PropertySpec.builder(
-                field.getName(),
-                asType(field.getType()),
-                asKModifiers(modifiers)
-            )
-            .mutable(true)
+    private static PropertySpec buildNullableProperty(String name,
+                                                      TypeDef typeDef,
+                                                      Set<Modifier> modifiers,
+                                                      List<AnnotationDef> annotations) {
+        PropertySpec.Builder propertyBuilder = PropertySpec.builder(
+            name,
+            asType(typeDef),
+            asKModifiers(modifiers)
+        );
+        propertyBuilder.setMutable$kotlinpoet(true);
+        for (AnnotationDef annotation : annotations) {
+            propertyBuilder.addAnnotation(
+                asAnnotationSpec(annotation)
+            );
+        }
+        return propertyBuilder
             .initializer("null").build();
+    }
+
+    private static PropertySpec buildProperty(FieldDef field, Set<Modifier> modifiers) {
+        return buildNullableProperty(field.getName(), field.getType(), modifiers, field.getAnnotations());
     }
 
     private static Set<Modifier> stripStatic(Set<Modifier> modifiers) {
@@ -131,6 +163,11 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                     ).build())
                     .toList()
             );
+        for (AnnotationDef annotation : method.getAnnotations()) {
+            funBuilder.addAnnotation(
+                asAnnotationSpec(annotation)
+            );
+        }
         method.getStatements().stream()
             .map(st -> renderStatement(classDef, method, st))
             .forEach(funBuilder::addStatement);
@@ -259,6 +296,44 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             rendered += "!!";
         }
         return rendered;
+    }
+
+    private static AnnotationSpec asAnnotationSpec(AnnotationDef annotationDef) {
+        AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.bestGuess(annotationDef.getType().getTypeName()));
+        for (Map.Entry<String, Object> e : annotationDef.getValues().entrySet()) {
+            String memberName = e.getKey();
+            Object value = e.getValue();
+            if (value instanceof Class<?>) {
+                builder = builder.addMember(memberName + " = %T::class", value);
+            } else if (value instanceof Enum) {
+                builder = builder.addMember(memberName + " = %T.%L", value.getClass(), ((Enum<?>) value).name());
+            } else if (value instanceof String) {
+                builder = builder.addMember(memberName + " = %S", value);
+            } else if (value instanceof Float) {
+                builder = builder.addMember(memberName + " = %Lf", value);
+            } else if (value instanceof Character) {
+                builder = builder.addMember(memberName + " = '%L'", characterLiteralWithoutSingleQuotes((char) value));
+            } else {
+                builder = builder.addMember(memberName + " = %L", value);
+            }
+        }
+        return builder.build();
+    }
+
+    // Copy from com.squareup.javapoet.Util
+    private static String characterLiteralWithoutSingleQuotes(char c) {
+        // see https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.10.6
+        return switch (c) {
+            case '\b' -> "\\b"; /* \u0008: backspace (BS) */
+            case '\t' -> "\\t"; /* \u0009: horizontal tab (HT) */
+            case '\n' -> "\\n"; /* \u000a: linefeed (LF) */
+            case '\f' -> "\\f"; /* \u000c: form feed (FF) */
+            case '\r' -> "\\r"; /* \u000d: carriage return (CR) */
+            case '\"' -> "\"";  /* \u0022: double quote (") */
+            case '\'' -> "\\'"; /* \u0027: single quote (') */
+            case '\\' -> "\\\\";  /* \u005c: backslash (\) */
+            default -> isISOControl(c) ? String.format("\\u%04x", (int) c) : Character.toString(c);
+        };
     }
 
     private record ExpResult(String rendered, TypeDef type) {

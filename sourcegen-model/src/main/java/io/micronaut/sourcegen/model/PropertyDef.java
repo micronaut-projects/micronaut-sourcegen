@@ -22,23 +22,26 @@ import java.util.EnumSet;
 import java.util.List;
 
 /**
- * The field definition.
+ * The property definition.
  *
  * @author Denis Stepanov
  * @since 1.0
  */
 @Experimental
-public final class FieldDef extends AbstractElement {
+public final class PropertyDef extends AbstractElement {
 
     private final TypeDef type;
 
-    private FieldDef(String name, EnumSet<Modifier> modifiers, TypeDef type, List<AnnotationDef> annotations) {
+    private PropertyDef(String name, EnumSet<Modifier> modifiers, TypeDef type, List<AnnotationDef> annotations) {
         super(name, modifiers, annotations);
+        if (type == null) {
+            throw new IllegalStateException("The type of property: " + name + " is not specified!");
+        }
         this.type = type;
     }
 
-    public static FieldDefBuilder builder(String name) {
-        return new FieldDefBuilder(name);
+    public static PropertyDefBuilder builder(String name) {
+        return new PropertyDefBuilder(name);
     }
 
     public TypeDef getType() {
@@ -46,27 +49,27 @@ public final class FieldDef extends AbstractElement {
     }
 
     /**
-     * The field builder definition.
+     * The property builder definition.
      *
      * @author Denis Stepanov
      * @since 1.0
      */
     @Experimental
-    public static final class FieldDefBuilder extends AbstractElementBuilder<FieldDefBuilder> {
+    public static final class PropertyDefBuilder extends AbstractElementBuilder<PropertyDefBuilder> {
 
         private TypeDef type;
 
-        private FieldDefBuilder(String name) {
+        private PropertyDefBuilder(String name) {
             super(name);
         }
 
-        public FieldDefBuilder ofType(TypeDef type) {
+        public PropertyDefBuilder ofType(TypeDef type) {
             this.type = type;
             return this;
         }
 
-        public FieldDef build() {
-            return new FieldDef(name, modifiers, type, annotations);
+        public PropertyDef build() {
+            return new PropertyDef(name, modifiers, type, annotations);
         }
 
     }
