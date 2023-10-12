@@ -3,6 +3,9 @@ plugins {
 }
 
 dependencies {
+    api(libs.managed.javapoet) {
+        because("Groovy annotation processing would fail without it")
+    }
     implementation(projects.sourcegenGenerator)
-    implementation(libs.managed.javapoet)
 }
+

@@ -33,7 +33,7 @@ import java.util.Optional;
 @Experimental
 public final class SourceGenerators {
 
-    private static  List<SourceGenerator> SOURCE_GENERATORS;
+    private static List<SourceGenerator> SOURCE_GENERATORS;
 
     private SourceGenerators() {
     }
@@ -43,7 +43,6 @@ public final class SourceGenerators {
         if (SOURCE_GENERATORS == null) {
             SOURCE_GENERATORS = SoftServiceLoader.load(SourceGenerator.class).collectAll();
         }
-        System.out.println("SOURCE_GENERATORS " + SOURCE_GENERATORS);
         return SOURCE_GENERATORS;
     }
 

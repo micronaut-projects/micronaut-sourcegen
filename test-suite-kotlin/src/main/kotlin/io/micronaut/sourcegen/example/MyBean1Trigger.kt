@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.visitors;
+package io.micronaut.sourcegen.example
 
+import io.micronaut.sourcegen.custom.example.GenerateMyBean1
 
-import io.micronaut.sourcegen.annotations.Builder;
-
-@Builder
-public record Person(Long id, String name) {
-}
+@GenerateMyBean1
+class MyBean1Trigger

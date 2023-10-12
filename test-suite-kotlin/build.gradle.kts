@@ -8,8 +8,10 @@ plugins {
 dependencies {
     ksp(mn.micronaut.inject.kotlin)
     ksp(projects.sourcegenGeneratorKotlin)
+    ksp(projects.testSuiteCustomGenerators)
     implementation(mn.micronaut.inject.kotlin)
     implementation(projects.sourcegenAnnotations)
+    implementation(projects.testSuiteCustomAnnotations)
     testImplementation(mnTest.micronaut.test.kotest5)
     testRuntimeOnly(mnTest.kotest.runner.junit5.jvm)
 }

@@ -19,8 +19,10 @@ include("sourcegen-generator-kotlin")
 include("sourcegen-bom")
 
 include("test-suite-java")
-//include("test-suite-groovy") TODO
+//include("test-suite-groovy")
 include("test-suite-kotlin")
+include("test-suite-custom-annotations")
+include("test-suite-custom-generators")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
@@ -31,6 +33,8 @@ configure<io.micronaut.build.MicronautBuildSettingsExtension> {
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
-        mavenLocal()
+        maven {
+            url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+        }
     }
 }
