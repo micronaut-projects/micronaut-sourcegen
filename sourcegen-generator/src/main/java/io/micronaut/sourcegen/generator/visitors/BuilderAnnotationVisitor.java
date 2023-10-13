@@ -27,6 +27,7 @@ import io.micronaut.sourcegen.annotations.Builder;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -60,7 +61,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         String simpleName = element.getSimpleName() + "Builder";
         String builderClassName = element.getPackageName() + "." + simpleName;
 
-        TypeDef builderType = TypeDef.of(builderClassName);
+        ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
 
         ClassDef.ClassDefBuilder builder = ClassDef.builder(builderClassName)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
@@ -70,6 +71,9 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             String propertyName = beanProperty.getSimpleName();
             TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
             TypeDef fieldType = propertyTypeDef.makeNullable();
+            if (!fieldType.isNullable()) {
+                throw  new IllegalStateException();
+            }
             builder.addField(FieldDef.builder(propertyName)
                 .ofType(fieldType)
                 .addModifiers(Modifier.PRIVATE)
@@ -92,7 +96,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
         element.getPrimaryConstructor().ifPresent(constructor -> {
             if (constructor.isPublic()) {
-                TypeDef buildType = TypeDef.of(element);
+                ClassTypeDef buildType = ClassTypeDef.of(element);
                 builder.addMethod(MethodDef.builder("build")
                     .addModifiers(Modifier.PUBLIC)
                     .returns(buildType)
@@ -132,13 +136,17 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
     }
 
     private List<StatementDef> propertyBuilderMethod(TypeDef builderType, TypeDef fieldType, PropertyElement propertyElement) {
-        String name = propertyElement.getName();
-        TypeDef type = TypeDef.of(propertyElement.getType());
-        String name1 = propertyElement.getName();
         return List.of(
             new StatementDef.Assign(
-                new VariableDef.Field(new VariableDef.This(builderType), name1, fieldType),
-                new VariableDef.MethodParameter(name, type)
+                new VariableDef.Field(
+                    new VariableDef.This(builderType),
+                    propertyElement.getName(),
+                    fieldType
+                ),
+                new VariableDef.MethodParameter(
+                    propertyElement.getName(),
+                    TypeDef.of(propertyElement.getType())
+                )
             ),
             new StatementDef.Return(
                 new VariableDef.This(builderType)
@@ -146,24 +154,26 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         );
     }
 
-    private StatementDef builderMethod(TypeDef builderType) {
+    private StatementDef builderMethod(ClassTypeDef builderType) {
         return new StatementDef.Return(
             new ExpressionDef.NewInstance(builderType, List.of())
         );
     }
 
-    private StatementDef buildMethod(TypeDef builderType,
-                                     TypeDef buildType,
+    private StatementDef buildMethod(ClassTypeDef builderType,
+                                     ClassTypeDef buildType,
                                      MethodElement constructorElement) {
         List<ExpressionDef> values = new ArrayList<>();
         for (ParameterElement parameter : constructorElement.getParameters()) {
-            String name = parameter.getName();
-            TypeDef type = TypeDef.of(parameter.getType()).makeNullable();
             // We need to convert it for the correct type in Kotlin
             values.add(
                 new ExpressionDef.Convert(
                     TypeDef.of(parameter.getType()),
-                    new VariableDef.Field(new VariableDef.This(builderType), name, type)
+                    new VariableDef.Field(
+                        new VariableDef.This(builderType),
+                        parameter.getName(),
+                        TypeDef.of(parameter.getType()).makeNullable()
+                    )
                 )
             );
         }

@@ -44,7 +44,7 @@ public sealed interface ExpressionDef permits ExpressionDef.Convert, ExpressionD
      * @since 1.0
      */
     @Experimental
-    record NewInstance(TypeDef type,
+    record NewInstance(ClassTypeDef type,
                        List<ExpressionDef> values) implements ExpressionDef {
     }
 

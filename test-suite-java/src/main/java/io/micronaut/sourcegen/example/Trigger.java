@@ -13,9 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.example
+package io.micronaut.sourcegen.example;
 
-import io.micronaut.sourcegen.custom.example.GenerateMyBean1
+
+import io.micronaut.sourcegen.custom.example.GenerateMyBean1;
+import io.micronaut.sourcegen.custom.example.GenerateMyBean2;
 
 @GenerateMyBean1
-class MyBean1Trigger
+@GenerateMyBean2
+public class Trigger {
+}

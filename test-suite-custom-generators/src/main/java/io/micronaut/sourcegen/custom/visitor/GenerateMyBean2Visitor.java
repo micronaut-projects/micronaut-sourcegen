@@ -21,6 +21,7 @@ import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean1;
+import io.micronaut.sourcegen.custom.example.GenerateMyBean2;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.AnnotationDef;
@@ -35,7 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Internal
-public final class GenerateMyBean1Visitor implements TypeElementVisitor<GenerateMyBean1, Object> {
+public final class GenerateMyBean2Visitor implements TypeElementVisitor<GenerateMyBean2, Object> {
 
     private final List<ElementAndClass> builderClasses = new ArrayList<>();
 
@@ -46,7 +47,7 @@ public final class GenerateMyBean1Visitor implements TypeElementVisitor<Generate
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        String builderClassName = element.getPackageName() + ".MyBean1";
+        String builderClassName = element.getPackageName() + ".MyBean2";
 
         ClassDef.ClassDefBuilder builder = ClassDef.builder(builderClassName)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
@@ -54,7 +55,7 @@ public final class GenerateMyBean1Visitor implements TypeElementVisitor<Generate
             builder.addProperty(
                 PropertyDef.builder("id")
                     .addModifiers(Modifier.PUBLIC)
-                    .ofType(TypeDef.primitive(int.class))
+                    .ofType(TypeDef.primitive(int.class).makeNullable())
                     .addAnnotation(Deprecated.class)
                     .build()
             );
@@ -62,40 +63,18 @@ public final class GenerateMyBean1Visitor implements TypeElementVisitor<Generate
             builder.addProperty(
                 PropertyDef.builder("name")
                     .addModifiers(Modifier.PUBLIC)
-                    .ofType(TypeDef.of(String.class))
+                    .ofType(TypeDef.of(String.class).makeNullable())
                     .build()
             );
 
             builder.addProperty(
                 PropertyDef.builder("age")
                     .addModifiers(Modifier.PUBLIC)
-                    .ofType(TypeDef.of(Integer.class))
+                    .ofType(TypeDef.of(Integer.class).makeNullable())
                     .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(Deprecated.class))
                         .addMember("since", "xyz")
                         .addMember("forRemoval", true)
                         .build())
-                    .build()
-            );
-
-            builder.addProperty(
-                PropertyDef.builder("addresses")
-                    .addModifiers(Modifier.PUBLIC)
-                    .ofType(new ClassTypeDef.Parameterized(
-                        ClassTypeDef.of(List.class),
-                        List.of(TypeDef.of(String.class))
-                    ))
-                    .build()
-            );
-
-            builder.addProperty(
-                PropertyDef.builder("tags")
-                    .addModifiers(Modifier.PUBLIC)
-                    .ofType(new ClassTypeDef.Parameterized(
-                        ClassTypeDef.of(List.class),
-                        List.of(
-                            TypeDef.wildcard()
-                        )
-                    ))
                     .build()
             );
 

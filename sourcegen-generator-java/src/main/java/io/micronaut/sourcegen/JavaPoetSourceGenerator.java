@@ -21,8 +21,10 @@ import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
+import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.WildcardTypeName;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.naming.NameUtils;
@@ -30,6 +32,7 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -137,7 +140,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private AnnotationSpec asAnnotationSpec(AnnotationDef annotationDef) {
-        AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.bestGuess(annotationDef.getType().getTypeName()));
+        AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.bestGuess(annotationDef.getType().getName()));
         for (Map.Entry<String, Object> e : annotationDef.getValues().entrySet()) {
             String memberName = e.getKey();
             Object value = e.getValue();
@@ -175,10 +178,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private static TypeName asType(TypeDef typeDef) {
-        String packageName = typeDef.getPackageName();
-        String simpleName = typeDef.getSimpleName();
-        if ("".equals(packageName)) {
-            TypeName typeName = switch (simpleName) {
+        if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
+            return ParameterizedTypeName.get(
+                asClassType(parameterized.rawType()),
+                parameterized.typeArguments().stream().map(JavaPoetSourceGenerator::asType).toArray(TypeName[]::new)
+            );
+        }
+        if (typeDef instanceof TypeDef.PrimitiveType primitiveType) {
+            return switch (primitiveType.name()) {
                 case "void" -> TypeName.VOID;
                 case "byte" -> TypeName.BYTE;
                 case "short" -> TypeName.SHORT;
@@ -188,13 +195,32 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 case "float" -> TypeName.FLOAT;
                 case "double" -> TypeName.DOUBLE;
                 case "boolean" -> TypeName.BOOLEAN;
-                default -> null;
+                default ->
+                    throw new IllegalStateException("Unrecognized primitive name: " + primitiveType.name());
             };
-            if (typeName != null) {
-                return typeName;
-            }
         }
-        return ClassName.bestGuess(typeDef.getTypeName());
+        if (typeDef instanceof ClassTypeDef classType) {
+            return ClassName.bestGuess(classType.getName());
+        }
+        if (typeDef instanceof TypeDef.WildcardTypeDef wildcardTypeDef) {
+            if (!wildcardTypeDef.lowerBounds().isEmpty()) {
+                return WildcardTypeName.supertypeOf(
+                    asType(
+                        wildcardTypeDef.lowerBounds().get(0)
+                    )
+                );
+            }
+            return WildcardTypeName.subtypeOf(
+                asType(
+                    wildcardTypeDef.upperBounds().get(0)
+                )
+            );
+        }
+        throw new IllegalStateException("Unrecognized type definition " + typeDef);
+    }
+
+    private static ClassName asClassType(ClassTypeDef classTypeDef) {
+        return ClassName.bestGuess(classTypeDef.getName());
     }
 
     private static String renderStatement(@Nullable ClassDef classDef, MethodDef methodDef, StatementDef statementDef) {
@@ -211,7 +237,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private static String renderExpression(@Nullable ClassDef classDef, MethodDef methodDef, ExpressionDef expressionDef) {
         if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
-            return "new " + newInstance.type().getTypeName()
+            return "new " + newInstance.type().getName()
                 + "(" + newInstance.values()
                 .stream()
                 .map(exp -> renderExpression(classDef, methodDef, exp)).collect(Collectors.joining(", "))

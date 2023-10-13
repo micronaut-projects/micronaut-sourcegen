@@ -51,14 +51,14 @@ public sealed class AbstractElementBuilder<ThisType> permits ClassDef.ClassDefBu
     }
 
     public final ThisType addAnnotation(String annotationName) {
-        return addAnnotation(TypeDef.of(annotationName));
+        return addAnnotation(ClassTypeDef.of(annotationName));
     }
 
     public final ThisType addAnnotation(Class<? extends Annotation> annotationType) {
-        return addAnnotation(TypeDef.of(annotationType));
+        return addAnnotation(ClassTypeDef.of(annotationType));
     }
 
-    public final ThisType addAnnotation(TypeDef typeDef) {
+    public final ThisType addAnnotation(ClassTypeDef typeDef) {
         return addAnnotation(AnnotationDef.builder(typeDef).build());
     }
 

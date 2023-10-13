@@ -16,8 +16,12 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import io.micronaut.core.naming.NameUtils;
+import io.micronaut.core.reflect.ClassUtils;
+import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * The type definition.
@@ -27,185 +31,128 @@ import io.micronaut.inject.ast.ClassElement;
  * @since 1.0
  */
 @Experimental
-public sealed interface TypeDef {
+public sealed interface TypeDef permits ClassTypeDef, TypeDef.PrimitiveType, TypeDef.TypeVariableRef, TypeDef.WildcardTypeDef {
 
     /**
-     * @return The type name
+     * Creates new primitive type.
+     *
+     * @param name The primitive type name
+     * @return a new type definition
      */
-    String getTypeName();
+    static TypeDef primitive(String name) {
+        return new PrimitiveType(name);
+    }
+
+    /**
+     * Creates new primitive type.
+     *
+     * @param type The primitive type
+     * @return a new type definition
+     */
+    static TypeDef primitive(Class<?> type) {
+        if (!type.isPrimitive()) {
+            throw new IllegalStateException("Expected a primitive type got: " + type);
+        }
+        return primitive(type.getName());
+    }
+
+    static WildcardTypeDef wildcard() {
+        return new WildcardTypeDef(Collections.singletonList(TypeDef.of(Object.class)), Collections.emptyList());
+    }
+
+    static WildcardTypeDef wildcardSubtypeOf(TypeDef upperBound) {
+        return new WildcardTypeDef(Collections.singletonList(upperBound), Collections.emptyList());
+    }
+
+    static WildcardTypeDef wildcardSupertypeOf(TypeDef lowerBound) {
+        return new WildcardTypeDef(Collections.singletonList(TypeDef.of(Object.class)), Collections.singletonList(lowerBound));
+    }
+
+    /**
+     * Creates a new type.
+     *
+     * @param type The type
+     * @return a new type definition
+     */
+    static TypeDef of(Class<?> type) {
+        if (type.isPrimitive()) {
+            return primitive(type);
+        }
+        return ClassTypeDef.of(type);
+    }
+
+    /**
+     * Creates a new type.
+     *
+     * @param classElement The class element
+     * @return a new type definition
+     */
+    static TypeDef of(ClassElement classElement) {
+        if (classElement.isPrimitive()) {
+            return primitive(classElement.getName());
+        }
+        return ClassTypeDef.of(classElement.getName());
+    }
 
     /**
      * @return Is nullable type
      */
-    boolean isNullable();
+    default boolean isNullable() {
+        return false;
+    }
 
     /**
      * @return A new nullable type
      */
-    TypeDef makeNullable();
-
-    /**
-     * @return The simple name
-     */
-    default String getSimpleName() {
-        return NameUtils.getSimpleName(getTypeName());
+    default TypeDef makeNullable() {
+        return this;
     }
 
     /**
-     * @return The package name
-     */
-    default String getPackageName() {
-        return NameUtils.getPackageName(getTypeName());
-    }
-
-    /**
-     * Create a new type definition.
+     * The primitive type name.
      *
-     * @param type The class
-     * @return type definition
-     */
-    static TypeDef of(Class<?> type) {
-        return new ClassTypeDef(type, false);
-    }
-
-    /**
-     * Create a new type definition.
-     *
-     * @param className The class name
-     * @return type definition
-     */
-    static TypeDef of(String className) {
-        return new ClassNameTypeDef(className, false);
-    }
-
-    /**
-     * Create a new type definition.
-     *
-     * @param classElement The class element
-     * @return type definition
-     */
-    static TypeDef of(ClassElement classElement) {
-        return new ClassElementTypeDef(classElement, false);
-    }
-
-    /**
-     * Create a new type definition.
-     *
-     * @param classDef The class definition
-     * @return type definition
-     */
-    static TypeDef of(ClassDef classDef) {
-        return new ClassDefTypeDef(classDef, false);
-    }
-
-    /**
-     * The class type.
-     *
-     * @param type     The type
-     * @param nullable Is nullable
+     * @param name The primitive type name
      * @author Denis Stepanov
      * @since 1.0
      */
     @Experimental
-    record ClassTypeDef(Class<?> type, boolean nullable) implements TypeDef {
-
-        @Override
-        public String getTypeName() {
-            return type.getTypeName();
-        }
-
-        @Override
-        public boolean isNullable() {
-            return nullable;
-        }
+    record PrimitiveType(String name) implements TypeDef {
 
         @Override
         public TypeDef makeNullable() {
-            return new ClassTypeDef(type, true);
+            return wrapperType().makeNullable();
+        }
+
+        public ClassTypeDef wrapperType() {
+            Class<?> primitiveType = ClassUtils.getPrimitiveType(name).orElseThrow(() -> new IllegalStateException("Unrecognized primitive type: " + name));
+            return ClassTypeDef.of(
+                ReflectionUtils.getWrapperType(primitiveType)
+            );
         }
     }
 
     /**
-     * The class name type.
+     * The wildcard type definition.
      *
-     * @param className The class name
-     * @param nullable  Is nullable
+     * @param upperBounds The upper bounds
+     * @param lowerBounds The lower bounds
      * @author Denis Stepanov
      * @since 1.0
      */
     @Experimental
-    record ClassNameTypeDef(String className, boolean nullable) implements TypeDef {
-
-        @Override
-        public String getTypeName() {
-            return className;
-        }
-
-        @Override
-        public boolean isNullable() {
-            return nullable;
-        }
-
-        @Override
-        public TypeDef makeNullable() {
-            return new ClassNameTypeDef(className, true);
-        }
-
+    record WildcardTypeDef(List<TypeDef> upperBounds,
+                           List<TypeDef> lowerBounds) implements TypeDef {
     }
 
     /**
-     * The class element type.
+     * The type variable ref.
      *
-     * @param classElement The class element
-     * @param nullable     Is nullable
+     * @param name   The variable name
+     * @param bounds The bounds
      * @author Denis Stepanov
      * @since 1.0
      */
     @Experimental
-    record ClassElementTypeDef(ClassElement classElement, boolean nullable) implements TypeDef {
-
-        @Override
-        public String getTypeName() {
-            return classElement.getName();
-        }
-
-        @Override
-        public boolean isNullable() {
-            return nullable;
-        }
-
-        @Override
-        public TypeDef makeNullable() {
-            return new ClassElementTypeDef(classElement, true);
-        }
-
-    }
-
-    /**
-     * The class definition type.
-     *
-     * @param classDef The class definition
-     * @param nullable Is nullable
-     * @author Denis Stepanov
-     * @since 1.0
-     */
-    @Experimental
-    record ClassDefTypeDef(ClassDef classDef, boolean nullable) implements TypeDef {
-
-        @Override
-        public String getTypeName() {
-            return classDef.getName();
-        }
-
-        @Override
-        public boolean isNullable() {
-            return nullable;
-        }
-
-        @Override
-        public TypeDef makeNullable() {
-            return new ClassDefTypeDef(classDef, true);
-        }
-
+    record TypeVariableRef(String name, List<TypeDef> bounds) implements TypeDef {
     }
 }
