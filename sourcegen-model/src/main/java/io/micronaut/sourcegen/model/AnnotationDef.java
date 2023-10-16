@@ -31,15 +31,15 @@ import java.util.Map;
 @Experimental
 public final class AnnotationDef {
 
-    private final TypeDef type;
+    private final ClassTypeDef type;
     private final Map<String, Object> values;
 
-    private AnnotationDef(TypeDef type, Map<String, Object> values) {
+    private AnnotationDef(ClassTypeDef type, Map<String, Object> values) {
         this.type = type;
         this.values = values;
     }
 
-    public TypeDef getType() {
+    public ClassTypeDef getType() {
         return type;
     }
 
@@ -47,12 +47,12 @@ public final class AnnotationDef {
         return values;
     }
 
-    public static AnnotationDefBuilder builder(TypeDef type) {
+    public static AnnotationDefBuilder builder(ClassTypeDef type) {
         return new AnnotationDefBuilder(type);
     }
 
     public static AnnotationDefBuilder builder(Class<? extends Annotation> annotationType) {
-        return new AnnotationDefBuilder(TypeDef.of(annotationType));
+        return new AnnotationDefBuilder(ClassTypeDef.of(annotationType));
     }
 
     /**
@@ -64,10 +64,10 @@ public final class AnnotationDef {
     @Experimental
     public static final class AnnotationDefBuilder {
 
-        private final TypeDef type;
+        private final ClassTypeDef type;
         private final Map<String, Object> values = new LinkedHashMap<>();
 
-        public AnnotationDefBuilder(TypeDef type) {
+        public AnnotationDefBuilder(ClassTypeDef type) {
             this.type = type;
         }
 

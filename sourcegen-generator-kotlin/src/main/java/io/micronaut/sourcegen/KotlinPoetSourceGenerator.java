@@ -21,9 +21,11 @@ import com.squareup.kotlinpoet.FileSpec;
 import com.squareup.kotlinpoet.FunSpec;
 import com.squareup.kotlinpoet.KModifier;
 import com.squareup.kotlinpoet.ParameterSpec;
+import com.squareup.kotlinpoet.ParameterizedTypeName;
 import com.squareup.kotlinpoet.PropertySpec;
 import com.squareup.kotlinpoet.TypeName;
 import com.squareup.kotlinpoet.TypeSpec;
+import com.squareup.kotlinpoet.WildcardTypeName;
 import com.squareup.kotlinpoet.javapoet.J2kInteropKt;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.Nullable;
@@ -31,6 +33,7 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -38,10 +41,12 @@ import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
+import org.jetbrains.annotations.NotNull;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -70,15 +75,34 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
         classBuilder.addModifiers(asKModifiers(classDef.getModifiers()));
         TypeSpec.Builder companionBuilder = null;
+        List<PropertyDef> notNullProperties = new ArrayList<>();
         for (PropertyDef property : classDef.getProperties()) {
-            String propertyName = property.getName();
-            classBuilder.addProperty(
-                buildNullableProperty(
-                    propertyName,
+            PropertySpec propertySpec;
+            if (property.getType().isNullable()) {
+                propertySpec = buildNullableProperty(
+                    property.getName(),
                     property.getType().makeNullable(),
                     property.getModifiers(),
                     property.getAnnotations()
-                )
+                );
+            } else {
+                propertySpec = buildNotNullProperty(
+                    property.getName(),
+                    property.getType(),
+                    property.getModifiers(),
+                    property.getAnnotations()
+                );
+                notNullProperties.add(property);
+            }
+            classBuilder.addProperty(
+                propertySpec
+            );
+        }
+        if (!notNullProperties.isEmpty()) {
+            classBuilder.setPrimaryConstructor$kotlinpoet(
+                FunSpec.constructorBuilder().addModifiers(KModifier.PUBLIC).addParameters(
+                    notNullProperties.stream().map(prop -> ParameterSpec.builder(prop.getName(), asType(prop.getType())).build()).toList()
+                ).build()
             );
         }
         for (FieldDef field : classDef.getFields()) {
@@ -131,7 +155,9 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             asType(typeDef),
             asKModifiers(modifiers)
         );
-        propertyBuilder.setMutable$kotlinpoet(true);
+        if (!modifiers.contains(Modifier.FINAL)) {
+            propertyBuilder.setMutable$kotlinpoet(true);
+        }
         for (AnnotationDef annotation : annotations) {
             propertyBuilder.addAnnotation(
                 asAnnotationSpec(annotation)
@@ -139,6 +165,28 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         }
         return propertyBuilder
             .initializer("null").build();
+    }
+
+    private static PropertySpec buildNotNullProperty(String name,
+                                                     TypeDef typeDef,
+                                                     Set<Modifier> modifiers,
+                                                     List<AnnotationDef> annotations) {
+        PropertySpec.Builder propertyBuilder = PropertySpec.builder(
+            name,
+            asType(typeDef),
+            asKModifiers(modifiers)
+        );
+        if (!modifiers.contains(Modifier.FINAL)) {
+            propertyBuilder.setMutable$kotlinpoet(true);
+        }
+        for (AnnotationDef annotation : annotations) {
+            propertyBuilder.addAnnotation(
+                asAnnotationSpec(annotation)
+            );
+        }
+        return propertyBuilder
+            .initializer(name)
+            .build();
     }
 
     private static PropertySpec buildProperty(FieldDef field, Set<Modifier> modifiers) {
@@ -175,10 +223,14 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
     }
 
     private static TypeName asType(TypeDef typeDef) {
-        String packageName = typeDef.getPackageName();
-        String simpleName = typeDef.getSimpleName();
-        if ("".equals(packageName)) {
-            TypeName typeName = switch (simpleName) {
+        TypeName result;
+        if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
+            result = ParameterizedTypeName.get(
+                asClassName(parameterized.rawType()),
+                parameterized.typeArguments().stream().map(KotlinPoetSourceGenerator::asType).toArray(TypeName[]::new)
+            );
+        } else if (typeDef instanceof TypeDef.PrimitiveType primitiveType) {
+            result = switch (primitiveType.name()) {
                 case "void" -> J2kInteropKt.toKTypeName(com.squareup.javapoet.TypeName.VOID);
                 case "byte" -> J2kInteropKt.toKTypeName(com.squareup.javapoet.TypeName.BYTE);
                 case "short" -> J2kInteropKt.toKTypeName(com.squareup.javapoet.TypeName.SHORT);
@@ -188,20 +240,43 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                 case "float" -> J2kInteropKt.toKTypeName(com.squareup.javapoet.TypeName.FLOAT);
                 case "double" -> J2kInteropKt.toKTypeName(com.squareup.javapoet.TypeName.DOUBLE);
                 case "boolean" -> J2kInteropKt.toKTypeName(com.squareup.javapoet.TypeName.BOOLEAN);
-                default -> null;
+                default ->
+                    throw new IllegalStateException("Unrecognized primitive name: " + primitiveType.name());
             };
-            if (typeName != null) {
-                if (typeDef.isNullable()) {
-                    typeName = asNullable(typeName);
-                }
-                return typeName;
+        } else if (typeDef instanceof ClassTypeDef classType) {
+            result = asClassName(classType);
+        } else if (typeDef instanceof TypeDef.WildcardTypeDef wildcardTypeDef) {
+            if (!wildcardTypeDef.lowerBounds().isEmpty()) {
+                result =  WildcardTypeName.consumerOf(
+                    asType(
+                        wildcardTypeDef.lowerBounds().get(0)
+                    )
+                );
+            } else {
+                result = WildcardTypeName.producerOf(
+                    asType(
+                        wildcardTypeDef.upperBounds().get(0)
+                    )
+                );
             }
+        } else {
+            throw new IllegalStateException("Unrecognized type definition " + typeDef);
         }
-        var kClassName = J2kInteropKt.toKClassName(com.squareup.javapoet.ClassName.get(packageName, simpleName));
         if (typeDef.isNullable()) {
-            return asNullable(kClassName);
+            return asNullable(result);
         }
-        return kClassName;
+        return result;
+    }
+
+    @NotNull
+    private static ClassName asClassName(ClassTypeDef classType) {
+        String packageName = classType.getPackageName();
+        String simpleName = classType.getSimpleName();
+        ClassName result = J2kInteropKt.toKClassName(com.squareup.javapoet.ClassName.get(packageName, simpleName));
+        if (result.isNullable()) {
+            return (ClassName) asNullable(result);
+        }
+        return result;
     }
 
     private static TypeName asNullable(TypeName kClassName) {
@@ -238,7 +313,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
     private static ExpResult renderExpression(@Nullable ClassDef classDef, MethodDef methodDef, ExpressionDef expressionDef) {
         if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
             return new ExpResult(
-                newInstance.type().getTypeName()
+                newInstance.type().getName()
                     + "(" + newInstance.values()
                     .stream()
                     .map(exp -> {
@@ -299,7 +374,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
     }
 
     private static AnnotationSpec asAnnotationSpec(AnnotationDef annotationDef) {
-        AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.bestGuess(annotationDef.getType().getTypeName()));
+        AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.bestGuess(annotationDef.getType().getName()));
         for (Map.Entry<String, Object> e : annotationDef.getValues().entrySet()) {
             String memberName = e.getKey();
             Object value = e.getValue();

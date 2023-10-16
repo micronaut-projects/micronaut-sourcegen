@@ -54,8 +54,8 @@ public final class ClassDef extends AbstractElement {
         return new ClassDefBuilder(name);
     }
 
-    public TypeDef asTypeDef() {
-        return TypeDef.of(this);
+    public ClassTypeDef asTypeDef() {
+        return ClassTypeDef.of(this);
     }
 
     public String getPackageName() {

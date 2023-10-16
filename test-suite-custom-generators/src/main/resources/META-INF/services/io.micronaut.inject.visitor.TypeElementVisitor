@@ -1,1 +1,2 @@
 io.micronaut.sourcegen.custom.visitor.GenerateMyBean1Visitor
+io.micronaut.sourcegen.custom.visitor.GenerateMyBean2Visitor

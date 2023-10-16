@@ -10,29 +10,45 @@ class MyBean1Test {
 
     @Test
     @Throws(Exception::class)
-    fun validatesClone() {
-        val clone = MyBean1()
-        clone.id = 123
-        clone.name = "TheName"
-        clone.age = 55
-        assertEquals("TheName", clone.name)
-        assertEquals(123, clone.id)
-        assertEquals(55, clone.age)
+    fun test() {
+        val bean = MyBean1(123, "TheName", 55, listOf(), listOf())
+        assertEquals("TheName", bean.name)
+        assertEquals(123, bean.id)
+        assertEquals(55, bean.age)
+        bean.name = "Xyz"
+        bean.id = 987
+        bean.age = 123
+        bean.addresses = listOf("Address 1", "Address 2")
+        bean.tags = listOf("Tag 1", "Tag 2")
+        assertEquals("Xyz", bean.name)
+        assertEquals(987, bean.id)
+        assertEquals(123, bean.age)
+        assertEquals(listOf("Address 1", "Address 2"), bean.addresses)
+        assertEquals(listOf("Tag 1", "Tag 2"), bean.tags)
 
         Assertions.assertTrue(
             Modifier.isPrivate(
-                clone.javaClass.getDeclaredField("id").modifiers
+                bean.javaClass.getDeclaredField("id").modifiers
             )
         )
+        Assertions.assertFalse(
+            Modifier.isFinal(
+                bean.javaClass.getDeclaredField("id").modifiers
+            )
+        )
+        // For primary constructor bean the annotation are set on the constructor parameters
         Assertions.assertTrue(
-            clone.javaClass.getDeclaredField("id").declaredAnnotations[0] is Deprecated
+            bean.javaClass.constructors[0].parameters[0].declaredAnnotations[0] is Deprecated
         )
         Assertions.assertTrue(
             Modifier.isPublic(
-                clone.javaClass.getDeclaredMethod("getId").modifiers
+                bean.javaClass.getDeclaredMethod("getId").modifiers
             )
         )
-        val deprecated = clone.javaClass.getDeclaredField("age").declaredAnnotations[0] as Deprecated
+        Assertions.assertNotNull(
+                bean.javaClass.declaredMethods.find { it.name == "setId" }
+        )
+        val deprecated = bean.javaClass.constructors[0].parameters[2].declaredAnnotations[0] as Deprecated
         assertEquals(deprecated.since, "xyz")
         Assertions.assertTrue(deprecated.forRemoval)
     }

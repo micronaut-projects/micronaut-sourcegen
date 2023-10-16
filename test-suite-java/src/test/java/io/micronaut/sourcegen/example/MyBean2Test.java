@@ -18,38 +18,29 @@ package io.micronaut.sourcegen.example;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Modifier;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class MyBean1Test {
+class MyBean2Test {
     @Test
     public void test() throws Exception {
-        MyBean1 bean = new MyBean1();
+        MyBean2 bean = new MyBean2();
         bean.setId(123);
         bean.setName("TheName");
         bean.setAge(55);
-        bean.setAddresses(List.of("Address 1"));
-        bean.setTags(List.of("X", "Y"));
 
         assertEquals("TheName", bean.getName());
         assertEquals(123, bean.getId());
         assertEquals(55, bean.getAge());
-        assertEquals(List.of("Address 1"), bean.getAddresses());
-        assertEquals(List.of("X", "Y"), bean.getTags());
 
         bean.setId(987);
         bean.setName("Xyz");
         bean.setAge(123);
-        bean.setAddresses(List.of("Address X", "Address Y"));
-        bean.setTags(List.of("A", "B", "C"));
 
         assertEquals("Xyz", bean.getName());
         assertEquals(987, bean.getId());
         assertEquals(123, bean.getAge());
-        assertEquals(List.of("Address X", "Address Y"), bean.getAddresses());
-        assertEquals(List.of("A", "B", "C"), bean.getTags());
 
         assertTrue(Modifier.isPrivate(
             bean.getClass().getDeclaredField("id").getModifiers()
