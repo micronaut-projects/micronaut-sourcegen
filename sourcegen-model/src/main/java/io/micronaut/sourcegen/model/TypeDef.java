@@ -33,6 +33,8 @@ import java.util.List;
 @Experimental
 public sealed interface TypeDef permits ClassTypeDef, TypeDef.PrimitiveType, TypeDef.TypeVariableRef, TypeDef.WildcardTypeDef {
 
+    TypeDef VOID = primitive("void");
+
     /**
      * Creates new primitive type.
      *

@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.example
+package io.micronaut.sourcegen.model;
 
-import io.micronaut.sourcegen.custom.example.GenerateMyBean1
-import io.micronaut.sourcegen.custom.example.GenerateMyBean2
-import io.micronaut.sourcegen.custom.example.GenerateMyInterface1
-
-@GenerateMyBean1
-@GenerateMyBean2
-@GenerateMyInterface1
-class Trigger
+/**
+ * The interface defining the object type.
+ *
+ * @author Denis Stepanov
+ * @since 1.0
+ */
+public interface ObjectDefinition {
+}

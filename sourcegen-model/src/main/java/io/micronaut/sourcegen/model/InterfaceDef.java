@@ -16,8 +16,6 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import io.micronaut.core.annotation.NonNull;
-import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.naming.NameUtils;
 
 import javax.lang.model.element.Modifier;
@@ -26,36 +24,33 @@ import java.util.EnumSet;
 import java.util.List;
 
 /**
- * The class definition.
+ * The interface definition.
  *
  * @author Denis Stepanov
  * @since 1.0
  */
 @Experimental
-public final class ClassDef extends AbstractElement implements ObjectDefinition {
+public final class InterfaceDef extends AbstractElement implements ObjectDefinition {
 
-    private final List<FieldDef> fields;
     private final List<MethodDef> methods;
     private final List<PropertyDef> properties;
 
-    private ClassDef(String name,
-                     EnumSet<Modifier> modifiers,
-                     List<FieldDef> fields,
-                     List<MethodDef> methods,
-                     List<PropertyDef> properties,
-                     List<AnnotationDef> annotations) {
+    private InterfaceDef(String name,
+                         EnumSet<Modifier> modifiers,
+                         List<MethodDef> methods,
+                         List<PropertyDef> properties,
+                         List<AnnotationDef> annotations) {
         super(name, modifiers, annotations);
-        this.fields = fields;
         this.methods = methods;
         this.properties = properties;
     }
 
-    public static ClassDefBuilder builder(String name) {
-        return new ClassDefBuilder(name);
+    public static InterfaceDefBuilder builder(String name) {
+        return new InterfaceDefBuilder(name);
     }
 
     public ClassTypeDef asTypeDef() {
-        return ClassTypeDef.of(this);
+        return ClassTypeDef.of(getName());
     }
 
     public String getPackageName() {
@@ -66,10 +61,6 @@ public final class ClassDef extends AbstractElement implements ObjectDefinition 
         return NameUtils.getSimpleName(name);
     }
 
-    public List<FieldDef> getFields() {
-        return fields;
-    }
-
     public List<MethodDef> getMethods() {
         return methods;
     }
@@ -78,44 +69,20 @@ public final class ClassDef extends AbstractElement implements ObjectDefinition 
         return properties;
     }
 
-    @Nullable
-    public FieldDef findField(String name) {
-        for (FieldDef field : fields) {
-            if (field.getName().equals(name)) {
-                return field;
-            }
-        }
-        return null;
-    }
-
-    @NonNull
-    public FieldDef getField(String name) {
-        FieldDef field = findField(name);
-        if (field == null) {
-            throw new IllegalStateException("Class: " + name + " doesn't have a field: " + name);
-        }
-        return null;
-    }
-
     /**
-     * The class definition builder.
+     * The interface definition builder.
      *
      * @author Denis Stepanov
      * @since 1.0
      */
     @Experimental
-    public static final class ClassDefBuilder extends AbstractElementBuilder<ClassDefBuilder> {
+    public static final class InterfaceDefBuilder extends AbstractElementBuilder<InterfaceDefBuilder> {
 
-        private final List<FieldDef> fields = new ArrayList<>();
         private final List<MethodDef> methods = new ArrayList<>();
         private final List<PropertyDef> properties = new ArrayList<>();
 
-        private ClassDefBuilder(String name) {
+        private InterfaceDefBuilder(String name) {
             super(name);
-        }
-
-        public void addField(FieldDef field) {
-            fields.add(field);
         }
 
         public void addMethod(MethodDef method) {
@@ -126,8 +93,8 @@ public final class ClassDef extends AbstractElement implements ObjectDefinition 
             properties.add(property);
         }
 
-        public ClassDef build() {
-            return new ClassDef(name, modifiers, fields, methods, properties, annotations);
+        public InterfaceDef build() {
+            return new InterfaceDef(name, modifiers, methods, properties, annotations);
         }
 
     }

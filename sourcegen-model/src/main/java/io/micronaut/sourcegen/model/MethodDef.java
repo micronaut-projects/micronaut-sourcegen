@@ -108,9 +108,17 @@ public final class MethodDef extends AbstractElement {
             return this;
         }
 
+        public MethodDefBuilder returns(Class<?> type) {
+            return returns(TypeDef.of(type));
+        }
+
         public MethodDefBuilder addParameter(String name, TypeDef type) {
             parameters.add(ParameterDef.builder(name, type).build());
             return this;
+        }
+
+        public MethodDefBuilder addParameter(String name, Class<?> type) {
+            return addParameter(name, TypeDef.of(type));
         }
 
         public MethodDefBuilder addStatement(StatementDef statement) {

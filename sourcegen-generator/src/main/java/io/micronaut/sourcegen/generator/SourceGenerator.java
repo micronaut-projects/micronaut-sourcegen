@@ -17,7 +17,7 @@ package io.micronaut.sourcegen.generator;
 
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.inject.visitor.VisitorContext;
-import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.ObjectDefinition;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -39,10 +39,10 @@ public interface SourceGenerator {
     /**
      * Write the source code.
      *
-     * @param classDef The class definition
-     * @param writer   The writer
+     * @param objectDefinition The object definition
+     * @param writer           The writer
      * @throws IOException The IO exception
      */
-    void write(ClassDef classDef, Writer writer) throws IOException;
+    void write(ObjectDefinition objectDefinition, Writer writer) throws IOException;
 
 }
