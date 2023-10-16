@@ -32,7 +32,7 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public final class ClassDef extends AbstractElement implements ObjectDefinition {
+public final class ClassDef extends AbstractElement implements ObjectDef {
 
     private final List<FieldDef> fields;
     private final List<MethodDef> methods;

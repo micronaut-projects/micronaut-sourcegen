@@ -37,7 +37,7 @@ import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
-import io.micronaut.sourcegen.model.ObjectDefinition;
+import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -66,8 +66,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     @Override
-    public void write(ObjectDefinition objectDefinition, Writer writer) throws IOException {
-        if (objectDefinition instanceof ClassDef classDef) {
+    public void write(ObjectDef objectDef, Writer writer) throws IOException {
+        if (objectDef instanceof ClassDef classDef) {
             TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
             classBuilder.addModifiers(classDef.getModifiersArray());
             for (PropertyDef property : classDef.getProperties()) {
@@ -140,7 +140,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             JavaFile javaFile = JavaFile.builder(classDef.getPackageName(), classBuilder.build()).build();
             javaFile.writeTo(writer);
-        } else if (objectDefinition instanceof InterfaceDef interfaceDef) {
+        } else if (objectDef instanceof InterfaceDef interfaceDef) {
             TypeSpec.Builder classBuilder = TypeSpec.interfaceBuilder(interfaceDef.getSimpleName());
             classBuilder.addModifiers(interfaceDef.getModifiersArray());
             for (PropertyDef property : interfaceDef.getProperties()) {
@@ -199,7 +199,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             JavaFile javaFile = JavaFile.builder(interfaceDef.getPackageName(), classBuilder.build()).build();
             javaFile.writeTo(writer);
         } else {
-            throw new IllegalStateException("Unknown object definition: " + objectDefinition);
+            throw new IllegalStateException("Unknown object definition: " + objectDef);
         }
     }
 
@@ -287,53 +287,53 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         return ClassName.bestGuess(classTypeDef.getName());
     }
 
-    private static String renderStatement(@Nullable ObjectDefinition objectDefinition, MethodDef methodDef, StatementDef statementDef) {
+    private static String renderStatement(@Nullable ObjectDef objectDef, MethodDef methodDef, StatementDef statementDef) {
         if (statementDef instanceof StatementDef.Return aReturn) {
-            return "return " + renderExpression(objectDefinition, methodDef, aReturn.expression());
+            return "return " + renderExpression(objectDef, methodDef, aReturn.expression());
         }
         if (statementDef instanceof StatementDef.Assign assign) {
-            return renderExpression(objectDefinition, methodDef, assign.variable())
+            return renderExpression(objectDef, methodDef, assign.variable())
                 + " = " +
-                renderExpression(objectDefinition, methodDef, assign.expression());
+                renderExpression(objectDef, methodDef, assign.expression());
         }
         throw new IllegalStateException("Unrecognized statement: " + statementDef);
     }
 
-    private static String renderExpression(@Nullable ObjectDefinition objectDefinition, MethodDef methodDef, ExpressionDef expressionDef) {
+    private static String renderExpression(@Nullable ObjectDef objectDef, MethodDef methodDef, ExpressionDef expressionDef) {
         if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
             return "new " + newInstance.type().getName()
                 + "(" + newInstance.values()
                 .stream()
-                .map(exp -> renderExpression(objectDefinition, methodDef, exp)).collect(Collectors.joining(", "))
+                .map(exp -> renderExpression(objectDef, methodDef, exp)).collect(Collectors.joining(", "))
                 + ")";
         }
         if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
-            return renderVariable(objectDefinition, methodDef, convertExpressionDef.variable());
+            return renderVariable(objectDef, methodDef, convertExpressionDef.variable());
         }
         if (expressionDef instanceof VariableDef variableDef) {
-            return renderVariable(objectDefinition, methodDef, variableDef);
+            return renderVariable(objectDef, methodDef, variableDef);
         }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
-    private static String renderVariable(@Nullable ObjectDefinition objectDefinition, MethodDef methodDef, VariableDef variableDef) {
+    private static String renderVariable(@Nullable ObjectDef objectDef, MethodDef methodDef, VariableDef variableDef) {
         if (variableDef instanceof VariableDef.MethodParameter parameterVariableDef) {
             methodDef.getParameter(parameterVariableDef.name()); // Check if exists
             return parameterVariableDef.name();
         }
         if (variableDef instanceof VariableDef.Field field) {
-            if (objectDefinition == null) {
+            if (objectDef == null) {
                 throw new IllegalStateException("Accessing 'this' is not available");
             }
-            if (objectDefinition instanceof ClassDef classDef) {
+            if (objectDef instanceof ClassDef classDef) {
                 classDef.getField(field.name()); // Check if exists
             } else {
-                throw new IllegalStateException("Field access no supported on the object definition: " + objectDefinition);
+                throw new IllegalStateException("Field access no supported on the object definition: " + objectDef);
             }
-            return renderExpression(objectDefinition, methodDef, field.instanceVariable()) + "." + field.name();
+            return renderExpression(objectDef, methodDef, field.instanceVariable()) + "." + field.name();
         }
         if (variableDef instanceof VariableDef.This) {
-            if (objectDefinition == null) {
+            if (objectDef == null) {
                 throw new IllegalStateException("Accessing 'this' is not available");
             }
             return "this";

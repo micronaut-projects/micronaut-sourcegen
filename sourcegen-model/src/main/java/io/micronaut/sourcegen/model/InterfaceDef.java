@@ -30,7 +30,7 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public final class InterfaceDef extends AbstractElement implements ObjectDefinition {
+public final class InterfaceDef extends AbstractElement implements ObjectDef {
 
     private final List<MethodDef> methods;
     private final List<PropertyDef> properties;

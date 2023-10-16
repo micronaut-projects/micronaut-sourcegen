@@ -21,5 +21,5 @@ package io.micronaut.sourcegen.model;
  * @author Denis Stepanov
  * @since 1.0
  */
-public interface ObjectDefinition {
+public interface ObjectDef {
 }

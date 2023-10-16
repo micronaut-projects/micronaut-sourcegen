@@ -38,7 +38,7 @@ import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
-import io.micronaut.sourcegen.model.ObjectDefinition;
+import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -48,7 +48,6 @@ import org.jetbrains.annotations.NotNull;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -75,8 +74,8 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
     }
 
     @Override
-    public void write(ObjectDefinition objectDefinition, Writer writer) throws IOException {
-        if (objectDefinition instanceof ClassDef classDef) {
+    public void write(ObjectDef objectDef, Writer writer) throws IOException {
+        if (objectDef instanceof ClassDef classDef) {
             TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
             classBuilder.addModifiers(asKModifiers(classDef.getModifiers()));
             TypeSpec.Builder companionBuilder = null;
@@ -149,7 +148,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                 .addType(classBuilder.build())
                 .build()
                 .writeTo(writer);
-        } else if (objectDefinition instanceof InterfaceDef interfaceDef) {
+        } else if (objectDef instanceof InterfaceDef interfaceDef) {
             TypeSpec.Builder classBuilder = TypeSpec.interfaceBuilder(interfaceDef.getSimpleName());
             classBuilder.addModifiers(asKModifiers(interfaceDef.getModifiers()));
             TypeSpec.Builder companionBuilder = null;
@@ -198,7 +197,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                 .build()
                 .writeTo(writer);
         } else {
-            throw new IllegalStateException("Unknown object definition: " + objectDefinition);
+            throw new IllegalStateException("Unknown object definition: " + objectDef);
         }
     }
 
@@ -255,7 +254,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         return modifiers;
     }
 
-    private static FunSpec buildFunction(ObjectDefinition objectDefinition, MethodDef method, Set<Modifier> modifiers) {
+    private static FunSpec buildFunction(ObjectDef objectDef, MethodDef method, Set<Modifier> modifiers) {
         FunSpec.Builder funBuilder = FunSpec.builder(method.getName())
             .addModifiers(asKModifiers(modifiers))
             .returns(asType(method.getReturnType()))
@@ -273,7 +272,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             );
         }
         method.getStatements().stream()
-            .map(st -> renderStatement(objectDefinition, method, st))
+            .map(st -> renderStatement(objectDef, method, st))
             .forEach(funBuilder::addStatement);
         return funBuilder.build();
     }
@@ -351,14 +350,14 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         }).toList();
     }
 
-    private static String renderStatement(@Nullable ObjectDefinition objectDefinition, MethodDef methodDef, StatementDef statementDef) {
+    private static String renderStatement(@Nullable ObjectDef objectDef, MethodDef methodDef, StatementDef statementDef) {
         if (statementDef instanceof StatementDef.Return aReturn) {
-            ExpResult expResult = renderExpression(objectDefinition, methodDef, aReturn.expression());
+            ExpResult expResult = renderExpression(objectDef, methodDef, aReturn.expression());
             return "return " + renderWithNotNullAssertion(expResult, methodDef.getReturnType());
         }
         if (statementDef instanceof StatementDef.Assign assign) {
-            ExpResult variableExp = renderVariable(objectDefinition, methodDef, assign.variable());
-            ExpResult valueExp = renderExpression(objectDefinition, methodDef, assign.expression());
+            ExpResult variableExp = renderVariable(objectDef, methodDef, assign.variable());
+            ExpResult valueExp = renderExpression(objectDef, methodDef, assign.expression());
             return variableExp.rendered
                 + " = " +
                 renderWithNotNullAssertion(valueExp, variableExp.type);
@@ -366,7 +365,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         throw new IllegalStateException("Unrecognized statement: " + statementDef);
     }
 
-    private static ExpResult renderExpression(@Nullable ObjectDefinition objectDefinition, MethodDef methodDef, ExpressionDef expressionDef) {
+    private static ExpResult renderExpression(@Nullable ObjectDef objectDef, MethodDef methodDef, ExpressionDef expressionDef) {
         if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
             return new ExpResult(
                 newInstance.type().getName()
@@ -374,7 +373,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                     .stream()
                     .map(exp -> {
                         TypeDef result = exp.type();
-                        ExpResult expResult = renderExpression(objectDefinition, methodDef, exp);
+                        ExpResult expResult = renderExpression(objectDef, methodDef, exp);
                         return renderWithNotNullAssertion(expResult, result);
                     }).collect(Collectors.joining(", "))
                     + ")",
@@ -382,7 +381,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             );
         }
         if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
-            ExpResult expResult = renderVariable(objectDefinition, methodDef, convertExpressionDef.variable());
+            ExpResult expResult = renderVariable(objectDef, methodDef, convertExpressionDef.variable());
             TypeDef resultType = convertExpressionDef.type();
             return new ExpResult(
                 renderWithNotNullAssertion(expResult, resultType),
@@ -390,27 +389,27 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             );
         }
         if (expressionDef instanceof VariableDef variableDef) {
-            return renderVariable(objectDefinition, methodDef, variableDef);
+            return renderVariable(objectDef, methodDef, variableDef);
         }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
-    private static ExpResult renderVariable(@Nullable ObjectDefinition objectDefinition, MethodDef methodDef, VariableDef variableDef) {
+    private static ExpResult renderVariable(@Nullable ObjectDef objectDef, MethodDef methodDef, VariableDef variableDef) {
         if (variableDef instanceof VariableDef.MethodParameter parameterVariableDef) {
             methodDef.getParameter(parameterVariableDef.name()); // Check if exists
             return new ExpResult(parameterVariableDef.name(), parameterVariableDef.type());
         }
         if (variableDef instanceof VariableDef.Field field) {
-            if (objectDefinition == null) {
+            if (objectDef == null) {
                 throw new IllegalStateException("Field 'this' is not available");
             }
-            if (objectDefinition instanceof ClassDef classDef) {
+            if (objectDef instanceof ClassDef classDef) {
                 classDef.getField(field.name()); // Check if exists
             } else {
-                throw new IllegalStateException("Field access no supported on the object definition: " + objectDefinition);
+                throw new IllegalStateException("Field access no supported on the object definition: " + objectDef);
 
             }
-            ExpResult expResult = renderVariable(objectDefinition, methodDef, field.instanceVariable());
+            ExpResult expResult = renderVariable(objectDef, methodDef, field.instanceVariable());
             String rendered = expResult.rendered();
             if (expResult.type().isNullable()) {
                 rendered += "!!";
@@ -421,7 +420,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             );
         }
         if (variableDef instanceof VariableDef.This aThis) {
-            if (objectDefinition == null) {
+            if (objectDef == null) {
                 throw new IllegalStateException("Accessing 'this' is not available");
             }
             return new ExpResult("this", aThis.type());
