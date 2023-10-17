@@ -31,13 +31,12 @@ import io.micronaut.sourcegen.model.TypeDef;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 @Internal
 public final class GenerateMyBean1Visitor implements TypeElementVisitor<GenerateMyBean1, Object> {
 
-    private final List<ElementAndClass> builderClasses = new ArrayList<>();
+    ClassElement thisElement;
 
     @Override
     public @NonNull VisitorKind getVisitorKind() {
@@ -46,27 +45,39 @@ public final class GenerateMyBean1Visitor implements TypeElementVisitor<Generate
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
+        thisElement = element;
+    }
+
+    @Override
+    public void finish(VisitorContext visitorContext) {
+        if (thisElement != null) {
+            generate(thisElement, visitorContext);
+            thisElement = null;
+        }
+    }
+
+    private void generate(ClassElement element, VisitorContext context) {
         String builderClassName = element.getPackageName() + ".MyBean1";
 
-        ClassDef.ClassDefBuilder builder = ClassDef.builder(builderClassName)
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+        ClassDef beanDef = ClassDef.builder(builderClassName)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
 
-            builder.addProperty(
+            .addProperty(
                 PropertyDef.builder("id")
                     .addModifiers(Modifier.PUBLIC)
                     .ofType(TypeDef.primitive(int.class))
                     .addAnnotation(Deprecated.class)
                     .build()
-            );
+            )
 
-            builder.addProperty(
+            .addProperty(
                 PropertyDef.builder("name")
                     .addModifiers(Modifier.PUBLIC)
                     .ofType(TypeDef.of(String.class))
                     .build()
-            );
+            )
 
-            builder.addProperty(
+            .addProperty(
                 PropertyDef.builder("age")
                     .addModifiers(Modifier.PUBLIC)
                     .ofType(TypeDef.of(Integer.class))
@@ -75,9 +86,9 @@ public final class GenerateMyBean1Visitor implements TypeElementVisitor<Generate
                         .addMember("forRemoval", true)
                         .build())
                     .build()
-            );
+            )
 
-            builder.addProperty(
+            .addProperty(
                 PropertyDef.builder("addresses")
                     .addModifiers(Modifier.PUBLIC)
                     .ofType(new ClassTypeDef.Parameterized(
@@ -85,9 +96,9 @@ public final class GenerateMyBean1Visitor implements TypeElementVisitor<Generate
                         List.of(TypeDef.of(String.class))
                     ))
                     .build()
-            );
+            )
 
-            builder.addProperty(
+            .addProperty(
                 PropertyDef.builder("tags")
                     .addModifiers(Modifier.PUBLIC)
                     .ofType(new ClassTypeDef.Parameterized(
@@ -97,37 +108,21 @@ public final class GenerateMyBean1Visitor implements TypeElementVisitor<Generate
                         )
                     ))
                     .build()
-            );
+            )
+            .build();
 
-        builderClasses.add(new ElementAndClass(element, builder.build()));
-    }
-
-    @Override
-    public void finish(VisitorContext visitorContext) {
-        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(visitorContext.getLanguage()).orElse(null);
+        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
         if (sourceGenerator == null) {
             return;
         }
-        for (ElementAndClass tuple : builderClasses) {
-            ClassDef builderDef = tuple.classDef();
-            visitorContext.visitGeneratedSourceFile(
-                builderDef.getPackageName(),
-                builderDef.getSimpleName(),
-                tuple.element
-            ).ifPresent(sourceFile -> {
+        context.visitGeneratedSourceFile(beanDef.getPackageName(), beanDef.getSimpleName(), thisElement)
+            .ifPresent(generatedFile -> {
                 try {
-                    sourceFile.write(
-                        writer -> sourceGenerator.write(builderDef, writer)
-                    );
+                    generatedFile.write(writer -> sourceGenerator.write(beanDef, writer));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             });
-        }
-        // Somehow finish is called twice
-        builderClasses.clear();
     }
 
-    private record ElementAndClass(ClassElement element, ClassDef classDef) {
-    }
 }

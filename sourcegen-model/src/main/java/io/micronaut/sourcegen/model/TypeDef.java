@@ -31,7 +31,7 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public sealed interface TypeDef permits ClassTypeDef, TypeDef.PrimitiveType, TypeDef.TypeVariableRef, TypeDef.WildcardTypeDef {
+public sealed interface TypeDef permits ClassTypeDef, TypeDef.Primitive, TypeDef.TypeVariable, TypeDef.Wildcard {
 
     TypeDef VOID = primitive("void");
 
@@ -42,7 +42,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.PrimitiveType, Typ
      * @return a new type definition
      */
     static TypeDef primitive(String name) {
-        return new PrimitiveType(name);
+        return new Primitive(name);
     }
 
     /**
@@ -58,16 +58,16 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.PrimitiveType, Typ
         return primitive(type.getName());
     }
 
-    static WildcardTypeDef wildcard() {
-        return new WildcardTypeDef(Collections.singletonList(TypeDef.of(Object.class)), Collections.emptyList());
+    static Wildcard wildcard() {
+        return new Wildcard(Collections.singletonList(TypeDef.of(Object.class)), Collections.emptyList());
     }
 
-    static WildcardTypeDef wildcardSubtypeOf(TypeDef upperBound) {
-        return new WildcardTypeDef(Collections.singletonList(upperBound), Collections.emptyList());
+    static Wildcard wildcardSubtypeOf(TypeDef upperBound) {
+        return new Wildcard(Collections.singletonList(upperBound), Collections.emptyList());
     }
 
-    static WildcardTypeDef wildcardSupertypeOf(TypeDef lowerBound) {
-        return new WildcardTypeDef(Collections.singletonList(TypeDef.of(Object.class)), Collections.singletonList(lowerBound));
+    static Wildcard wildcardSupertypeOf(TypeDef lowerBound) {
+        return new Wildcard(Collections.singletonList(TypeDef.of(Object.class)), Collections.singletonList(lowerBound));
     }
 
     /**
@@ -118,7 +118,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.PrimitiveType, Typ
      * @since 1.0
      */
     @Experimental
-    record PrimitiveType(String name) implements TypeDef {
+    record Primitive(String name) implements TypeDef {
 
         @Override
         public TypeDef makeNullable() {
@@ -142,8 +142,8 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.PrimitiveType, Typ
      * @since 1.0
      */
     @Experimental
-    record WildcardTypeDef(List<TypeDef> upperBounds,
-                           List<TypeDef> lowerBounds) implements TypeDef {
+    record Wildcard(List<TypeDef> upperBounds,
+                    List<TypeDef> lowerBounds) implements TypeDef {
     }
 
     /**
@@ -155,6 +155,6 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.PrimitiveType, Typ
      * @since 1.0
      */
     @Experimental
-    record TypeVariableRef(String name, List<TypeDef> bounds) implements TypeDef {
+    record TypeVariable(String name, List<TypeDef> bounds) implements TypeDef {
     }
 }

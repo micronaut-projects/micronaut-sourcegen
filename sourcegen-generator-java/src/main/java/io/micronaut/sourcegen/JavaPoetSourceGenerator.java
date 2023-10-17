@@ -24,6 +24,7 @@ import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.TypeVariableName;
 import com.squareup.javapoet.WildcardTypeName;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.Nullable;
@@ -70,6 +71,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (objectDef instanceof ClassDef classDef) {
             TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
             classBuilder.addModifiers(classDef.getModifiersArray());
+            classDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
+            classDef.getSuperinterfaces().stream().map(this::asType).forEach(classBuilder::addSuperinterface);
+
             for (PropertyDef property : classDef.getProperties()) {
                 TypeName propertyType = asType(property.getType());
                 String propertyName = property.getName();
@@ -141,8 +145,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             JavaFile javaFile = JavaFile.builder(classDef.getPackageName(), classBuilder.build()).build();
             javaFile.writeTo(writer);
         } else if (objectDef instanceof InterfaceDef interfaceDef) {
-            TypeSpec.Builder classBuilder = TypeSpec.interfaceBuilder(interfaceDef.getSimpleName());
-            classBuilder.addModifiers(interfaceDef.getModifiersArray());
+            TypeSpec.Builder interfaceBuilder = TypeSpec.interfaceBuilder(interfaceDef.getSimpleName());
+            interfaceBuilder.addModifiers(interfaceDef.getModifiersArray());
+            interfaceDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(interfaceBuilder::addTypeVariable);
+            interfaceDef.getSuperinterfaces().stream().map(this::asType).forEach(interfaceBuilder::addSuperinterface);
+
             for (PropertyDef property : interfaceDef.getProperties()) {
                 TypeName propertyType = asType(property.getType());
                 String propertyName = property.getName();
@@ -155,17 +162,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         asAnnotationSpec(annotation)
                     );
                 }
-                classBuilder.addField(
+                interfaceBuilder.addField(
                     fieldBuilder
                         .build()
                 );
                 String capitalizedPropertyName = NameUtils.capitalize(propertyName);
-                classBuilder.addMethod(MethodSpec.methodBuilder("get" + capitalizedPropertyName)
+                interfaceBuilder.addMethod(MethodSpec.methodBuilder("get" + capitalizedPropertyName)
                     .addModifiers(property.getModifiersArray())
                     .returns(propertyType)
 //                    .addStatement("return this." + propertyName)
                     .build());
-                classBuilder.addMethod(MethodSpec.methodBuilder("set" + capitalizedPropertyName)
+                interfaceBuilder.addMethod(MethodSpec.methodBuilder("set" + capitalizedPropertyName)
                     .addModifiers(property.getModifiersArray())
                     .addParameter(ParameterSpec.builder(propertyType, propertyName).build())
 //                    .addStatement("this." + propertyName + " = " + propertyName)
@@ -192,15 +199,22 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 method.getStatements().stream()
                     .map(st -> renderStatement(interfaceDef, method, st))
                     .forEach(methodBuilder::addStatement);
-                classBuilder.addMethod(
+                interfaceBuilder.addMethod(
                     methodBuilder.build()
                 );
             }
-            JavaFile javaFile = JavaFile.builder(interfaceDef.getPackageName(), classBuilder.build()).build();
+            JavaFile javaFile = JavaFile.builder(interfaceDef.getPackageName(), interfaceBuilder.build()).build();
             javaFile.writeTo(writer);
         } else {
             throw new IllegalStateException("Unknown object definition: " + objectDef);
         }
+    }
+
+    private TypeVariableName asTypeVariable(TypeDef.TypeVariable tv) {
+        return TypeVariableName.get(
+            tv.name(),
+            tv.bounds().stream().map(this::asType).toArray(TypeName[]::new)
+        );
     }
 
     private AnnotationSpec asAnnotationSpec(AnnotationDef annotationDef) {
@@ -241,15 +255,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         };
     }
 
-    private static TypeName asType(TypeDef typeDef) {
+    private TypeName asType(TypeDef typeDef) {
         if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
             return ParameterizedTypeName.get(
                 asClassType(parameterized.rawType()),
-                parameterized.typeArguments().stream().map(JavaPoetSourceGenerator::asType).toArray(TypeName[]::new)
+                parameterized.typeArguments().stream().map(this::asType).toArray(TypeName[]::new)
             );
         }
-        if (typeDef instanceof TypeDef.PrimitiveType primitiveType) {
-            return switch (primitiveType.name()) {
+        if (typeDef instanceof TypeDef.Primitive primitive) {
+            return switch (primitive.name()) {
                 case "void" -> TypeName.VOID;
                 case "byte" -> TypeName.BYTE;
                 case "short" -> TypeName.SHORT;
@@ -260,25 +274,28 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 case "double" -> TypeName.DOUBLE;
                 case "boolean" -> TypeName.BOOLEAN;
                 default ->
-                    throw new IllegalStateException("Unrecognized primitive name: " + primitiveType.name());
+                    throw new IllegalStateException("Unrecognized primitive name: " + primitive.name());
             };
         }
         if (typeDef instanceof ClassTypeDef classType) {
             return ClassName.bestGuess(classType.getName());
         }
-        if (typeDef instanceof TypeDef.WildcardTypeDef wildcardTypeDef) {
-            if (!wildcardTypeDef.lowerBounds().isEmpty()) {
+        if (typeDef instanceof TypeDef.Wildcard wildcard) {
+            if (!wildcard.lowerBounds().isEmpty()) {
                 return WildcardTypeName.supertypeOf(
                     asType(
-                        wildcardTypeDef.lowerBounds().get(0)
+                        wildcard.lowerBounds().get(0)
                     )
                 );
             }
             return WildcardTypeName.subtypeOf(
                 asType(
-                    wildcardTypeDef.upperBounds().get(0)
+                    wildcard.upperBounds().get(0)
                 )
             );
+        }
+        if (typeDef instanceof TypeDef.TypeVariable typeVariable) {
+            return asTypeVariable(typeVariable);
         }
         throw new IllegalStateException("Unrecognized type definition " + typeDef);
     }

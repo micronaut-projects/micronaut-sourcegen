@@ -1,8 +1,8 @@
 plugins {
     id("io.micronaut.build.internal.sourcegen-testsuite")
-    id("org.jetbrains.kotlin.jvm") version("1.8.22")
-    id("com.google.devtools.ksp") version "1.8.22-1.0.11"
-    id("org.jetbrains.kotlin.plugin.allopen") version "1.8.22"
+    id("org.jetbrains.kotlin.jvm") version("1.9.10")
+    id("com.google.devtools.ksp") version "1.9.10-1.0.13"
+    id("org.jetbrains.kotlin.plugin.allopen") version "1.9.10"
 }
 
 dependencies {

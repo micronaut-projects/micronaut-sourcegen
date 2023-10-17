@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import io.micronaut.core.naming.NameUtils;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
@@ -34,31 +33,24 @@ public final class InterfaceDef extends AbstractElement implements ObjectDef {
 
     private final List<MethodDef> methods;
     private final List<PropertyDef> properties;
+    private final List<TypeDef.TypeVariable> typeVariables;
+    private final List<TypeDef> superinterfaces;
 
     private InterfaceDef(String name,
                          EnumSet<Modifier> modifiers,
                          List<MethodDef> methods,
                          List<PropertyDef> properties,
-                         List<AnnotationDef> annotations) {
+                         List<AnnotationDef> annotations,
+                         List<TypeDef.TypeVariable> typeVariables, List<TypeDef> superinterfaces) {
         super(name, modifiers, annotations);
         this.methods = methods;
         this.properties = properties;
+        this.typeVariables = typeVariables;
+        this.superinterfaces = superinterfaces;
     }
 
     public static InterfaceDefBuilder builder(String name) {
         return new InterfaceDefBuilder(name);
-    }
-
-    public ClassTypeDef asTypeDef() {
-        return ClassTypeDef.of(getName());
-    }
-
-    public String getPackageName() {
-        return NameUtils.getPackageName(name);
-    }
-
-    public String getSimpleName() {
-        return NameUtils.getSimpleName(name);
     }
 
     public List<MethodDef> getMethods() {
@@ -67,6 +59,14 @@ public final class InterfaceDef extends AbstractElement implements ObjectDef {
 
     public List<PropertyDef> getProperties() {
         return properties;
+    }
+
+    public List<TypeDef.TypeVariable> getTypeVariables() {
+        return typeVariables;
+    }
+
+    public List<TypeDef> getSuperinterfaces() {
+        return superinterfaces;
     }
 
     /**
@@ -80,21 +80,35 @@ public final class InterfaceDef extends AbstractElement implements ObjectDef {
 
         private final List<MethodDef> methods = new ArrayList<>();
         private final List<PropertyDef> properties = new ArrayList<>();
+        private final List<TypeDef.TypeVariable> typeVariables = new ArrayList<>();
+        private final List<TypeDef> superinterfaces = new ArrayList<>();
 
         private InterfaceDefBuilder(String name) {
             super(name);
         }
 
-        public void addMethod(MethodDef method) {
+        public InterfaceDefBuilder addMethod(MethodDef method) {
             methods.add(method);
+            return this;
         }
 
-        public void addProperty(PropertyDef property) {
+        public InterfaceDefBuilder addProperty(PropertyDef property) {
             properties.add(property);
+            return this;
+        }
+
+        public InterfaceDefBuilder addTypeVariable(TypeDef.TypeVariable typeVariable) {
+            typeVariables.add(typeVariable);
+            return this;
+        }
+
+        public InterfaceDefBuilder addSuperinterface(TypeDef superinterface) {
+            superinterfaces.add(superinterface);
+            return this;
         }
 
         public InterfaceDef build() {
-            return new InterfaceDef(name, modifiers, methods, properties, annotations);
+            return new InterfaceDef(name, modifiers, methods, properties, annotations, typeVariables, superinterfaces);
         }
 
     }

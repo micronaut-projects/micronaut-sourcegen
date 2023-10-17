@@ -68,6 +68,10 @@ public final class PropertyDef extends AbstractElement {
             return this;
         }
 
+        public PropertyDefBuilder ofType(Class<?> type) {
+            return ofType(TypeDef.of(type));
+        }
+
         public PropertyDef build() {
             return new PropertyDef(name, modifiers, type, annotations);
         }

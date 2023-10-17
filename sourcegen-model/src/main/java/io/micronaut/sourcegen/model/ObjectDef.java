@@ -15,6 +15,8 @@
  */
 package io.micronaut.sourcegen.model;
 
+import io.micronaut.core.naming.NameUtils;
+
 /**
  * The interface defining the object type.
  *
@@ -22,4 +24,19 @@ package io.micronaut.sourcegen.model;
  * @since 1.0
  */
 public interface ObjectDef {
+
+    String getName();
+
+    default String getPackageName() {
+        return NameUtils.getPackageName(getName());
+    }
+
+    default String getSimpleName() {
+        return NameUtils.getSimpleName(getName());
+    }
+
+    default ClassTypeDef asTypeDef() {
+        return ClassTypeDef.of(getName());
+    }
+
 }
