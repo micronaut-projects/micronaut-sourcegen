@@ -5,4 +5,5 @@ io.micronaut.sourcegen.custom.visitor
 io.micronaut.sourcegen.example
 io.micronaut.sourcegen.generator
 io.micronaut.sourcegen.generator.visitors
+io.micronaut.sourcegen.javapoet
 io.micronaut.sourcegen.model
