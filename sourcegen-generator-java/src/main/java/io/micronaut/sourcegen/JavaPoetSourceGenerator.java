@@ -15,17 +15,17 @@
  */
 package io.micronaut.sourcegen;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.FieldSpec;
-import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.ParameterSpec;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
-import com.squareup.javapoet.TypeSpec;
-import com.squareup.javapoet.TypeVariableName;
-import com.squareup.javapoet.WildcardTypeName;
+import io.micronaut.sourcegen.javapoet.AnnotationSpec;
+import io.micronaut.sourcegen.javapoet.ClassName;
+import io.micronaut.sourcegen.javapoet.FieldSpec;
+import io.micronaut.sourcegen.javapoet.JavaFile;
+import io.micronaut.sourcegen.javapoet.MethodSpec;
+import io.micronaut.sourcegen.javapoet.ParameterSpec;
+import io.micronaut.sourcegen.javapoet.ParameterizedTypeName;
+import io.micronaut.sourcegen.javapoet.TypeName;
+import io.micronaut.sourcegen.javapoet.TypeSpec;
+import io.micronaut.sourcegen.javapoet.TypeVariableName;
+import io.micronaut.sourcegen.javapoet.WildcardTypeName;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.naming.NameUtils;
@@ -239,7 +239,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         return builder.build();
     }
 
-    // Copy from com.squareup.javapoet.Util
+    // Copy from io.micronaut.javapoet.Util
     private static String characterLiteralWithoutSingleQuotes(char c) {
         // see https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.10.6
         return switch (c) {

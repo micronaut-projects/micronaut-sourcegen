@@ -9,5 +9,5 @@ dependencies {
     implementation(projects.sourcegenAnnotations)
     implementation(projects.testSuiteCustomAnnotations)
     testImplementation(mnTest.micronaut.test.junit5)
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.2")
+    testImplementation(libs.junit.jupiter.engine)
 }
