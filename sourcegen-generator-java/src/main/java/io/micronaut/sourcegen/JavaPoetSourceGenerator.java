@@ -35,7 +35,9 @@ import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
+import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -64,79 +66,141 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     @Override
-    public void write(ClassDef classDef, Writer writer) throws IOException {
-        TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
-        classBuilder.addModifiers(classDef.getModifiersArray());
-        for (PropertyDef property : classDef.getProperties()) {
-            TypeName propertyType = asType(property.getType());
-            String propertyName = property.getName();
-            FieldSpec.Builder fieldBuilder = FieldSpec.builder(
-                propertyType,
-                propertyName
-            ).addModifiers(Modifier.PRIVATE);
-            for (AnnotationDef annotation : property.getAnnotations()) {
-                fieldBuilder.addAnnotation(
-                    asAnnotationSpec(annotation)
+    public void write(ObjectDef objectDef, Writer writer) throws IOException {
+        if (objectDef instanceof ClassDef classDef) {
+            TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
+            classBuilder.addModifiers(classDef.getModifiersArray());
+            for (PropertyDef property : classDef.getProperties()) {
+                TypeName propertyType = asType(property.getType());
+                String propertyName = property.getName();
+                FieldSpec.Builder fieldBuilder = FieldSpec.builder(
+                    propertyType,
+                    propertyName
+                ).addModifiers(Modifier.PRIVATE);
+                for (AnnotationDef annotation : property.getAnnotations()) {
+                    fieldBuilder.addAnnotation(
+                        asAnnotationSpec(annotation)
+                    );
+                }
+                classBuilder.addField(
+                    fieldBuilder
+                        .build()
+                );
+                String capitalizedPropertyName = NameUtils.capitalize(propertyName);
+                classBuilder.addMethod(MethodSpec.methodBuilder("get" + capitalizedPropertyName)
+                    .addModifiers(property.getModifiersArray())
+                    .returns(propertyType)
+                    .addStatement("return this." + propertyName)
+                    .build());
+                classBuilder.addMethod(MethodSpec.methodBuilder("set" + capitalizedPropertyName)
+                    .addModifiers(property.getModifiersArray())
+                    .addParameter(ParameterSpec.builder(propertyType, propertyName).build())
+                    .addStatement("this." + propertyName + " = " + propertyName)
+                    .build());
+            }
+            for (FieldDef field : classDef.getFields()) {
+                FieldSpec.Builder fieldBuilder = FieldSpec.builder(
+                    asType(field.getType()),
+                    field.getName()
+                ).addModifiers(field.getModifiersArray());
+                for (AnnotationDef annotation : field.getAnnotations()) {
+                    fieldBuilder.addAnnotation(
+                        asAnnotationSpec(annotation)
+                    );
+                }
+                classBuilder.addField(
+                    fieldBuilder
+                        .build()
                 );
             }
-            classBuilder.addField(
-                fieldBuilder
-                    .build()
-            );
-            String capitalizedPropertyName = NameUtils.capitalize(propertyName);
-            classBuilder.addMethod(MethodSpec.methodBuilder("get" + capitalizedPropertyName)
-                .addModifiers(property.getModifiersArray())
-                .returns(propertyType)
-                .addStatement("return this." + propertyName)
-                .build());
-            classBuilder.addMethod(MethodSpec.methodBuilder("set" + capitalizedPropertyName)
-                .addModifiers(property.getModifiersArray())
-                .addParameter(ParameterSpec.builder(propertyType, propertyName).build())
-                .addStatement("this." + propertyName + " = " + propertyName)
-                .build());
-        }
-        for (FieldDef field : classDef.getFields()) {
-            FieldSpec.Builder fieldBuilder = FieldSpec.builder(
-                asType(field.getType()),
-                field.getName()
-            ).addModifiers(field.getModifiersArray());
-            for (AnnotationDef annotation : field.getAnnotations()) {
-                fieldBuilder.addAnnotation(
-                    asAnnotationSpec(annotation)
+            for (MethodDef method : classDef.getMethods()) {
+                MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(method.getName())
+                    .addModifiers(method.getModifiersArray())
+                    .returns(asType(method.getReturnType()))
+                    .addParameters(
+                        method.getParameters().stream()
+                            .map(param -> ParameterSpec.builder(
+                                asType(param.getType()),
+                                param.getName(),
+                                param.getModifiersArray()
+                            ).build())
+                            .toList()
+                    );
+                for (AnnotationDef annotation : method.getAnnotations()) {
+                    methodBuilder.addAnnotation(
+                        asAnnotationSpec(annotation)
+                    );
+                }
+                method.getStatements().stream()
+                    .map(st -> renderStatement(classDef, method, st))
+                    .forEach(methodBuilder::addStatement);
+                classBuilder.addMethod(
+                    methodBuilder.build()
                 );
             }
-            classBuilder.addField(
-                fieldBuilder
-                    .build()
-            );
-        }
-        for (MethodDef method : classDef.getMethods()) {
-            MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(method.getName())
-                .addModifiers(method.getModifiersArray())
-                .returns(asType(method.getReturnType()))
-                .addParameters(
-                    method.getParameters().stream()
-                        .map(param -> ParameterSpec.builder(
-                            asType(param.getType()),
-                            param.getName(),
-                            param.getModifiersArray()
-                        ).build())
-                        .toList()
+            JavaFile javaFile = JavaFile.builder(classDef.getPackageName(), classBuilder.build()).build();
+            javaFile.writeTo(writer);
+        } else if (objectDef instanceof InterfaceDef interfaceDef) {
+            TypeSpec.Builder classBuilder = TypeSpec.interfaceBuilder(interfaceDef.getSimpleName());
+            classBuilder.addModifiers(interfaceDef.getModifiersArray());
+            for (PropertyDef property : interfaceDef.getProperties()) {
+                TypeName propertyType = asType(property.getType());
+                String propertyName = property.getName();
+                FieldSpec.Builder fieldBuilder = FieldSpec.builder(
+                    propertyType,
+                    propertyName
+                ).addModifiers(Modifier.PRIVATE);
+                for (AnnotationDef annotation : property.getAnnotations()) {
+                    fieldBuilder.addAnnotation(
+                        asAnnotationSpec(annotation)
+                    );
+                }
+                classBuilder.addField(
+                    fieldBuilder
+                        .build()
                 );
-            for (AnnotationDef annotation : method.getAnnotations()) {
-                methodBuilder.addAnnotation(
-                    asAnnotationSpec(annotation)
+                String capitalizedPropertyName = NameUtils.capitalize(propertyName);
+                classBuilder.addMethod(MethodSpec.methodBuilder("get" + capitalizedPropertyName)
+                    .addModifiers(property.getModifiersArray())
+                    .returns(propertyType)
+//                    .addStatement("return this." + propertyName)
+                    .build());
+                classBuilder.addMethod(MethodSpec.methodBuilder("set" + capitalizedPropertyName)
+                    .addModifiers(property.getModifiersArray())
+                    .addParameter(ParameterSpec.builder(propertyType, propertyName).build())
+//                    .addStatement("this." + propertyName + " = " + propertyName)
+                    .build());
+            }
+            for (MethodDef method : interfaceDef.getMethods()) {
+                MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(method.getName())
+                    .addModifiers(method.getModifiersArray())
+                    .returns(asType(method.getReturnType()))
+                    .addParameters(
+                        method.getParameters().stream()
+                            .map(param -> ParameterSpec.builder(
+                                asType(param.getType()),
+                                param.getName(),
+                                param.getModifiersArray()
+                            ).build())
+                            .toList()
+                    );
+                for (AnnotationDef annotation : method.getAnnotations()) {
+                    methodBuilder.addAnnotation(
+                        asAnnotationSpec(annotation)
+                    );
+                }
+                method.getStatements().stream()
+                    .map(st -> renderStatement(interfaceDef, method, st))
+                    .forEach(methodBuilder::addStatement);
+                classBuilder.addMethod(
+                    methodBuilder.build()
                 );
             }
-            method.getStatements().stream()
-                .map(st -> renderStatement(classDef, method, st))
-                .forEach(methodBuilder::addStatement);
-            classBuilder.addMethod(
-                methodBuilder.build()
-            );
+            JavaFile javaFile = JavaFile.builder(interfaceDef.getPackageName(), classBuilder.build()).build();
+            javaFile.writeTo(writer);
+        } else {
+            throw new IllegalStateException("Unknown object definition: " + objectDef);
         }
-        JavaFile javaFile = JavaFile.builder(classDef.getPackageName(), classBuilder.build()).build();
-        javaFile.writeTo(writer);
     }
 
     private AnnotationSpec asAnnotationSpec(AnnotationDef annotationDef) {
@@ -223,46 +287,53 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         return ClassName.bestGuess(classTypeDef.getName());
     }
 
-    private static String renderStatement(@Nullable ClassDef classDef, MethodDef methodDef, StatementDef statementDef) {
+    private static String renderStatement(@Nullable ObjectDef objectDef, MethodDef methodDef, StatementDef statementDef) {
         if (statementDef instanceof StatementDef.Return aReturn) {
-            return "return " + renderExpression(classDef, methodDef, aReturn.expression());
+            return "return " + renderExpression(objectDef, methodDef, aReturn.expression());
         }
         if (statementDef instanceof StatementDef.Assign assign) {
-            return renderExpression(classDef, methodDef, assign.variable())
+            return renderExpression(objectDef, methodDef, assign.variable())
                 + " = " +
-                renderExpression(classDef, methodDef, assign.expression());
+                renderExpression(objectDef, methodDef, assign.expression());
         }
         throw new IllegalStateException("Unrecognized statement: " + statementDef);
     }
 
-    private static String renderExpression(@Nullable ClassDef classDef, MethodDef methodDef, ExpressionDef expressionDef) {
+    private static String renderExpression(@Nullable ObjectDef objectDef, MethodDef methodDef, ExpressionDef expressionDef) {
         if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
             return "new " + newInstance.type().getName()
                 + "(" + newInstance.values()
                 .stream()
-                .map(exp -> renderExpression(classDef, methodDef, exp)).collect(Collectors.joining(", "))
+                .map(exp -> renderExpression(objectDef, methodDef, exp)).collect(Collectors.joining(", "))
                 + ")";
         }
         if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
-            return renderVariable(classDef, methodDef, convertExpressionDef.variable());
+            return renderVariable(objectDef, methodDef, convertExpressionDef.variable());
         }
         if (expressionDef instanceof VariableDef variableDef) {
-            return renderVariable(classDef, methodDef, variableDef);
+            return renderVariable(objectDef, methodDef, variableDef);
         }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
-    private static String renderVariable(@Nullable ClassDef classDef, MethodDef methodDef, VariableDef variableDef) {
+    private static String renderVariable(@Nullable ObjectDef objectDef, MethodDef methodDef, VariableDef variableDef) {
         if (variableDef instanceof VariableDef.MethodParameter parameterVariableDef) {
             methodDef.getParameter(parameterVariableDef.name()); // Check if exists
             return parameterVariableDef.name();
         }
         if (variableDef instanceof VariableDef.Field field) {
-            classDef.getField(field.name()); // Check if exists
-            return renderExpression(classDef, methodDef, field.instanceVariable()) + "." + field.name();
+            if (objectDef == null) {
+                throw new IllegalStateException("Accessing 'this' is not available");
+            }
+            if (objectDef instanceof ClassDef classDef) {
+                classDef.getField(field.name()); // Check if exists
+            } else {
+                throw new IllegalStateException("Field access no supported on the object definition: " + objectDef);
+            }
+            return renderExpression(objectDef, methodDef, field.instanceVariable()) + "." + field.name();
         }
         if (variableDef instanceof VariableDef.This) {
-            if (classDef == null) {
+            if (objectDef == null) {
                 throw new IllegalStateException("Accessing 'this' is not available");
             }
             return "this";
