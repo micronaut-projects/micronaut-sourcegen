@@ -18,8 +18,10 @@ package io.micronaut.sourcegen.example
 import io.micronaut.sourcegen.custom.example.GenerateMyBean1
 import io.micronaut.sourcegen.custom.example.GenerateMyBean2
 import io.micronaut.sourcegen.custom.example.GenerateMyInterface1
+import io.micronaut.sourcegen.custom.example.GenerateMyRepository1
 
 @GenerateMyBean1
 @GenerateMyBean2
 @GenerateMyInterface1
+@GenerateMyRepository1
 class Trigger

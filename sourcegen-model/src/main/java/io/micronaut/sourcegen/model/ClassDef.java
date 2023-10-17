@@ -18,7 +18,6 @@ package io.micronaut.sourcegen.model;
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.annotation.Nullable;
-import io.micronaut.core.naming.NameUtils;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
@@ -37,33 +36,26 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
     private final List<FieldDef> fields;
     private final List<MethodDef> methods;
     private final List<PropertyDef> properties;
+    private final List<TypeDef.TypeVariable> typeVariables;
+    private final List<TypeDef> superinterfaces;
 
     private ClassDef(String name,
                      EnumSet<Modifier> modifiers,
                      List<FieldDef> fields,
                      List<MethodDef> methods,
                      List<PropertyDef> properties,
-                     List<AnnotationDef> annotations) {
+                     List<AnnotationDef> annotations, List<TypeDef.TypeVariable> typeVariables,
+                     List<TypeDef> superinterfaces) {
         super(name, modifiers, annotations);
         this.fields = fields;
         this.methods = methods;
         this.properties = properties;
+        this.typeVariables = typeVariables;
+        this.superinterfaces = superinterfaces;
     }
 
     public static ClassDefBuilder builder(String name) {
         return new ClassDefBuilder(name);
-    }
-
-    public ClassTypeDef asTypeDef() {
-        return ClassTypeDef.of(this);
-    }
-
-    public String getPackageName() {
-        return NameUtils.getPackageName(name);
-    }
-
-    public String getSimpleName() {
-        return NameUtils.getSimpleName(name);
     }
 
     public List<FieldDef> getFields() {
@@ -76,6 +68,14 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
 
     public List<PropertyDef> getProperties() {
         return properties;
+    }
+
+    public List<TypeDef.TypeVariable> getTypeVariables() {
+        return typeVariables;
+    }
+
+    public List<TypeDef> getSuperinterfaces() {
+        return superinterfaces;
     }
 
     @Nullable
@@ -109,25 +109,40 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
         private final List<FieldDef> fields = new ArrayList<>();
         private final List<MethodDef> methods = new ArrayList<>();
         private final List<PropertyDef> properties = new ArrayList<>();
+        private final List<TypeDef.TypeVariable> typeVariables = new ArrayList<>();
+        private final List<TypeDef> superinterfaces = new ArrayList<>();
 
         private ClassDefBuilder(String name) {
             super(name);
         }
 
-        public void addField(FieldDef field) {
+        public ClassDefBuilder addField(FieldDef field) {
             fields.add(field);
+            return this;
         }
 
-        public void addMethod(MethodDef method) {
+        public ClassDefBuilder addMethod(MethodDef method) {
             methods.add(method);
+            return this;
         }
 
-        public void addProperty(PropertyDef property) {
+        public ClassDefBuilder addProperty(PropertyDef property) {
             properties.add(property);
+            return this;
+        }
+
+        public ClassDefBuilder addTypeVariable(TypeDef.TypeVariable typeVariable) {
+            typeVariables.add(typeVariable);
+            return this;
+        }
+
+        public ClassDefBuilder addSuperinterface(TypeDef superinterface) {
+            superinterfaces.add(superinterface);
+            return this;
         }
 
         public ClassDef build() {
-            return new ClassDef(name, modifiers, fields, methods, properties, annotations);
+            return new ClassDef(name, modifiers, fields, methods, properties, annotations, typeVariables, superinterfaces);
         }
 
     }
