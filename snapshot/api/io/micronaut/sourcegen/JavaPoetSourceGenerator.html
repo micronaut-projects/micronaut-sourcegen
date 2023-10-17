@@ -126,7 +126,7 @@ implements <a href="generator/SourceGenerator.html" title="interface in io.micro
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getLanguage()" class="member-name-link">getLanguage</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#write(io.micronaut.sourcegen.model.ClassDef,java.io.Writer)" class="member-name-link">write</a><wbr>(<a href="model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a>&nbsp;classDef,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#write(io.micronaut.sourcegen.model.ObjectDef,java.io.Writer)" class="member-name-link">write</a><wbr>(<a href="model/ObjectDef.html" title="interface in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Writer.html" title="class or interface in java.io" class="external-link">Writer</a>&nbsp;writer)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Write the source code.</div>
@@ -175,18 +175,18 @@ implements <a href="generator/SourceGenerator.html" title="interface in io.micro
 </section>
 </li>
 <li>
-<section class="detail" id="write(io.micronaut.sourcegen.model.ClassDef,java.io.Writer)">
+<section class="detail" id="write(io.micronaut.sourcegen.model.ObjectDef,java.io.Writer)">
 <h3>write</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">write</span><wbr><span class="parameters">(<a href="model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a>&nbsp;classDef,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">write</span><wbr><span class="parameters">(<a href="model/ObjectDef.html" title="interface in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Writer.html" title="class or interface in java.io" class="external-link">Writer</a>&nbsp;writer)</span>
            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="generator/SourceGenerator.html#write(io.micronaut.sourcegen.model.ClassDef,java.io.Writer)">SourceGenerator</a></code></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="generator/SourceGenerator.html#write(io.micronaut.sourcegen.model.ObjectDef,java.io.Writer)">SourceGenerator</a></code></span></div>
 <div class="block">Write the source code.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code><a href="generator/SourceGenerator.html#write(io.micronaut.sourcegen.model.ClassDef,java.io.Writer)">write</a></code>&nbsp;in interface&nbsp;<code><a href="generator/SourceGenerator.html" title="interface in io.micronaut.sourcegen.generator">SourceGenerator</a></code></dd>
+<dd><code><a href="generator/SourceGenerator.html#write(io.micronaut.sourcegen.model.ObjectDef,java.io.Writer)">write</a></code>&nbsp;in interface&nbsp;<code><a href="generator/SourceGenerator.html" title="interface in io.micronaut.sourcegen.generator">SourceGenerator</a></code></dd>
 <dt>Parameters:</dt>
-<dd><code>classDef</code> - The class definition</dd>
+<dd><code>objectDef</code> - The object definition</dd>
 <dd><code>writer</code> - The writer</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - The IO exception</dd>
