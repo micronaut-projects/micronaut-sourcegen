@@ -4,16 +4,26 @@ micronaut-docs = "2.0.0"
 micronaut-test = "3.9.1"
 groovy = "4.0.12"
 spock = "2.3-groovy-4.0"
-managed-javapoet = "1.13.0"
 managed-kotlinpoet = "1.14.2"
 
+google-truth = "1.1.3"
+google-compile-testing = "0.19"
+google-jimfs = "1.2"
+mockito = "3.12.4"
+junit-jupiter-engine = "5.9.2"
 [libraries]
 # Core
 micronaut-core = { module = 'io.micronaut:micronaut-core-bom', version.ref = 'micronaut' }
 
-managed-javapoet = { module = "com.squareup:javapoet", version.ref = "managed-javapoet" }
 managed-kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "managed-kotlinpoet" }
 managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", version.ref = "managed-kotlinpoet" }
+
+# Testing
+google-truth = { module = "com.google.truth:truth", version.ref = "google-truth" }
+google-compile-testing = { module = "com.google.testing.compile:compile-testing", version.ref = "google-compile-testing" }
+google-jimfs = { module = "com.google.jimfs:jimfs", version.ref = "google-jimfs" }
+mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter-engine" }
 
 [bundles]
 
