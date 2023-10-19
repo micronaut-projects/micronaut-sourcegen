@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.example
+package io.micronaut.sourcegen.custom.example;
 
-import io.micronaut.sourcegen.custom.example.GenerateMyBean1
-import io.micronaut.sourcegen.custom.example.GenerateMyBean2
-import io.micronaut.sourcegen.custom.example.GenerateMyInterface1
-import io.micronaut.sourcegen.custom.example.GenerateMyRecord1
-import io.micronaut.sourcegen.custom.example.GenerateMyRepository1
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-@GenerateMyBean1
-@GenerateMyBean2
-@GenerateMyInterface1
-@GenerateMyRepository1
-@GenerateMyRecord1
-class Trigger
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+@Documented
+@Retention(RUNTIME)
+@Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
+public @interface GenerateMyRecord1 {
+}

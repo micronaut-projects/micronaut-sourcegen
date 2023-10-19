@@ -42,6 +42,7 @@ import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.PropertyDef;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -78,135 +79,198 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
     @Override
     public void write(ObjectDef objectDef, Writer writer) throws IOException {
         if (objectDef instanceof ClassDef classDef) {
-            TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
-            classBuilder.addModifiers(asKModifiers(classDef.getModifiers()));
-            classDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
-            classDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> classBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
-
-            TypeSpec.Builder companionBuilder = null;
-            List<PropertyDef> notNullProperties = new ArrayList<>();
-            for (PropertyDef property : classDef.getProperties()) {
-                PropertySpec propertySpec;
-                if (property.getType().isNullable()) {
-                    propertySpec = buildNullableProperty(
-                        property.getName(),
-                        property.getType().makeNullable(),
-                        property.getModifiers(),
-                        property.getAnnotations()
-                    );
-                } else {
-                    propertySpec = buildNotNullProperty(
-                        property.getName(),
-                        property.getType(),
-                        property.getModifiers(),
-                        property.getAnnotations()
-                    );
-                    notNullProperties.add(property);
-                }
-                classBuilder.addProperty(
-                    propertySpec
-                );
-            }
-            if (!notNullProperties.isEmpty()) {
-                classBuilder.setPrimaryConstructor$kotlinpoet(
-                    FunSpec.constructorBuilder().addModifiers(KModifier.PUBLIC).addParameters(
-                        notNullProperties.stream().map(prop -> ParameterSpec.builder(prop.getName(), asType(prop.getType())).build()).toList()
-                    ).build()
-                );
-            }
-            for (FieldDef field : classDef.getFields()) {
-                Set<Modifier> modifiers = field.getModifiers();
-                if (modifiers.contains(Modifier.STATIC)) {
-                    if (companionBuilder == null) {
-                        companionBuilder = TypeSpec.companionObjectBuilder();
-                    }
-                    companionBuilder.addProperty(
-                        buildProperty(field, stripStatic(modifiers))
-                    );
-                } else {
-                    classBuilder.addProperty(
-                        buildProperty(field, modifiers)
-                    );
-                }
-            }
-
-            for (MethodDef method : classDef.getMethods()) {
-                Set<Modifier> modifiers = method.getModifiers();
-                if (modifiers.contains(Modifier.STATIC)) {
-                    if (companionBuilder == null) {
-                        companionBuilder = TypeSpec.companionObjectBuilder();
-                    }
-                    modifiers = stripStatic(modifiers);
-                    companionBuilder.addFunction(
-                        buildFunction(null, method, modifiers)
-                    );
-                } else {
-                    classBuilder.addFunction(
-                        buildFunction(classDef, method, modifiers)
-                    );
-                }
-            }
-            if (companionBuilder != null) {
-                classBuilder.addType(companionBuilder.build());
-            }
-            FileSpec.builder(classDef.getPackageName(), classDef.getSimpleName() + ".kt")
-                .addType(classBuilder.build())
-                .build()
-                .writeTo(writer);
+            writeClass(writer, classDef);
+        } else if (objectDef instanceof RecordDef recordDef) {
+            writeRecordDef(writer, recordDef);
         } else if (objectDef instanceof InterfaceDef interfaceDef) {
-            TypeSpec.Builder interfaceBuilder = TypeSpec.interfaceBuilder(interfaceDef.getSimpleName());
-            interfaceBuilder.addModifiers(asKModifiers(interfaceDef.getModifiers()));
-            interfaceDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(interfaceBuilder::addTypeVariable);
-            interfaceDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> interfaceBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
-
-            TypeSpec.Builder companionBuilder = null;
-            for (PropertyDef property : interfaceDef.getProperties()) {
-                PropertySpec propertySpec;
-                if (property.getType().isNullable()) {
-                    propertySpec = buildNullableProperty(
-                        property.getName(),
-                        property.getType().makeNullable(),
-                        property.getModifiers(),
-                        property.getAnnotations()
-                    );
-                } else {
-                    propertySpec = buildNotNullProperty(
-                        property.getName(),
-                        property.getType(),
-                        property.getModifiers(),
-                        property.getAnnotations()
-                    );
-                }
-                interfaceBuilder.addProperty(
-                    propertySpec
-                );
-            }
-            for (MethodDef method : interfaceDef.getMethods()) {
-                Set<Modifier> modifiers = method.getModifiers();
-                if (modifiers.contains(Modifier.STATIC)) {
-                    if (companionBuilder == null) {
-                        companionBuilder = TypeSpec.companionObjectBuilder();
-                    }
-                    modifiers = stripStatic(modifiers);
-                    companionBuilder.addFunction(
-                        buildFunction(null, method, modifiers)
-                    );
-                } else {
-                    interfaceBuilder.addFunction(
-                        buildFunction(interfaceDef, method, modifiers)
-                    );
-                }
-            }
-            if (companionBuilder != null) {
-                interfaceBuilder.addType(companionBuilder.build());
-            }
-            FileSpec.builder(interfaceDef.getPackageName(), interfaceDef.getSimpleName() + ".kt")
-                .addType(interfaceBuilder.build())
-                .build()
-                .writeTo(writer);
+            writeInterface(writer, interfaceDef);
         } else {
             throw new IllegalStateException("Unknown object definition: " + objectDef);
         }
+    }
+
+    private void writeInterface(Writer writer, InterfaceDef interfaceDef) throws IOException {
+        TypeSpec.Builder interfaceBuilder = TypeSpec.interfaceBuilder(interfaceDef.getSimpleName());
+        interfaceBuilder.addModifiers(asKModifiers(interfaceDef.getModifiers()));
+        interfaceDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(interfaceBuilder::addTypeVariable);
+        interfaceDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> interfaceBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
+
+        TypeSpec.Builder companionBuilder = null;
+        for (PropertyDef property : interfaceDef.getProperties()) {
+            PropertySpec propertySpec;
+            if (property.getType().isNullable()) {
+                propertySpec = buildNullableProperty(
+                    property.getName(),
+                    property.getType().makeNullable(),
+                    property.getModifiers(),
+                    property.getAnnotations()
+                );
+            } else {
+                propertySpec = buildConstructorProperty(
+                    property.getName(),
+                    property.getType(),
+                    property.getModifiers(),
+                    property.getAnnotations()
+                );
+            }
+            interfaceBuilder.addProperty(
+                propertySpec
+            );
+        }
+        for (MethodDef method : interfaceDef.getMethods()) {
+            Set<Modifier> modifiers = method.getModifiers();
+            if (modifiers.contains(Modifier.STATIC)) {
+                if (companionBuilder == null) {
+                    companionBuilder = TypeSpec.companionObjectBuilder();
+                }
+                modifiers = stripStatic(modifiers);
+                companionBuilder.addFunction(
+                    buildFunction(null, method, modifiers)
+                );
+            } else {
+                interfaceBuilder.addFunction(
+                    buildFunction(interfaceDef, method, modifiers)
+                );
+            }
+        }
+        if (companionBuilder != null) {
+            interfaceBuilder.addType(companionBuilder.build());
+        }
+        FileSpec.builder(interfaceDef.getPackageName(), interfaceDef.getSimpleName() + ".kt")
+            .addType(interfaceBuilder.build())
+            .build()
+            .writeTo(writer);
+    }
+
+    private void writeClass(Writer writer, ClassDef classDef) throws IOException {
+        TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
+        classBuilder.addModifiers(asKModifiers(classDef.getModifiers()));
+        classDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
+        classDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> classBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
+
+        TypeSpec.Builder companionBuilder = null;
+        List<PropertyDef> notNullProperties = new ArrayList<>();
+        for (PropertyDef property : classDef.getProperties()) {
+            PropertySpec propertySpec;
+            if (property.getType().isNullable()) {
+                propertySpec = buildNullableProperty(
+                    property.getName(),
+                    property.getType().makeNullable(),
+                    property.getModifiers(),
+                    property.getAnnotations()
+                );
+            } else {
+                propertySpec = buildConstructorProperty(
+                    property.getName(),
+                    property.getType(),
+                    property.getModifiers(),
+                    property.getAnnotations()
+                );
+                notNullProperties.add(property);
+            }
+            classBuilder.addProperty(
+                propertySpec
+            );
+        }
+        if (!notNullProperties.isEmpty()) {
+            classBuilder.setPrimaryConstructor$kotlinpoet(
+                FunSpec.constructorBuilder().addModifiers(KModifier.PUBLIC).addParameters(
+                    notNullProperties.stream().map(prop -> ParameterSpec.builder(prop.getName(), asType(prop.getType())).build()).toList()
+                ).build()
+            );
+        }
+        for (FieldDef field : classDef.getFields()) {
+            Set<Modifier> modifiers = field.getModifiers();
+            if (modifiers.contains(Modifier.STATIC)) {
+                if (companionBuilder == null) {
+                    companionBuilder = TypeSpec.companionObjectBuilder();
+                }
+                companionBuilder.addProperty(
+                    buildNullableProperty(field, stripStatic(modifiers))
+                );
+            } else {
+                classBuilder.addProperty(
+                    buildNullableProperty(field, modifiers)
+                );
+            }
+        }
+
+        for (MethodDef method : classDef.getMethods()) {
+            Set<Modifier> modifiers = method.getModifiers();
+            if (modifiers.contains(Modifier.STATIC)) {
+                if (companionBuilder == null) {
+                    companionBuilder = TypeSpec.companionObjectBuilder();
+                }
+                modifiers = stripStatic(modifiers);
+                companionBuilder.addFunction(
+                    buildFunction(null, method, modifiers)
+                );
+            } else {
+                classBuilder.addFunction(
+                    buildFunction(classDef, method, modifiers)
+                );
+            }
+        }
+        if (companionBuilder != null) {
+            classBuilder.addType(companionBuilder.build());
+        }
+        FileSpec.builder(classDef.getPackageName(), classDef.getSimpleName() + ".kt")
+            .addType(classBuilder.build())
+            .build()
+            .writeTo(writer);
+    }
+
+    private void writeRecordDef(Writer writer, RecordDef recordDef) throws IOException {
+        TypeSpec.Builder classBuilder = TypeSpec.classBuilder(recordDef.getSimpleName());
+        classBuilder.addModifiers(KModifier.DATA);
+        classBuilder.addModifiers(asKModifiers(recordDef.getModifiers()));
+        recordDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
+        recordDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> classBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
+
+        TypeSpec.Builder companionBuilder = null;
+        List<PropertyDef> constructorProperties = new ArrayList<>();
+        for (PropertyDef property : recordDef.getProperties()) {
+            constructorProperties.add(property);
+            classBuilder.addProperty(
+                buildConstructorProperty(
+                    property.getName(),
+                    property.getType(),
+                    extendModifiers(property.getModifiers(), Modifier.FINAL),
+                    property.getAnnotations()
+                )
+            );
+        }
+        if (!constructorProperties.isEmpty()) {
+            classBuilder.setPrimaryConstructor$kotlinpoet(
+                FunSpec.constructorBuilder().addModifiers(KModifier.PUBLIC).addParameters(
+                    constructorProperties.stream().map(prop -> ParameterSpec.builder(prop.getName(), asType(prop.getType())).build()).toList()
+                ).build()
+            );
+        }
+
+        for (MethodDef method : recordDef.getMethods()) {
+            Set<Modifier> modifiers = method.getModifiers();
+            if (modifiers.contains(Modifier.STATIC)) {
+                if (companionBuilder == null) {
+                    companionBuilder = TypeSpec.companionObjectBuilder();
+                }
+                modifiers = stripStatic(modifiers);
+                companionBuilder.addFunction(
+                    buildFunction(null, method, modifiers)
+                );
+            } else {
+                classBuilder.addFunction(
+                    buildFunction(recordDef, method, modifiers)
+                );
+            }
+        }
+        if (companionBuilder != null) {
+            classBuilder.addType(companionBuilder.build());
+        }
+        FileSpec.builder(recordDef.getPackageName(), recordDef.getSimpleName() + ".kt")
+            .addType(classBuilder.build())
+            .build()
+            .writeTo(writer);
     }
 
     private PropertySpec buildNullableProperty(String name,
@@ -230,10 +294,10 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             .initializer("null").build();
     }
 
-    private PropertySpec buildNotNullProperty(String name,
-                                              TypeDef typeDef,
-                                              Set<Modifier> modifiers,
-                                              List<AnnotationDef> annotations) {
+    private PropertySpec buildConstructorProperty(String name,
+                                                  TypeDef typeDef,
+                                                  Set<Modifier> modifiers,
+                                                  List<AnnotationDef> annotations) {
         PropertySpec.Builder propertyBuilder = PropertySpec.builder(
             name,
             asType(typeDef),
@@ -252,13 +316,22 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             .build();
     }
 
-    private PropertySpec buildProperty(FieldDef field, Set<Modifier> modifiers) {
+    private PropertySpec buildNullableProperty(FieldDef field, Set<Modifier> modifiers) {
         return buildNullableProperty(field.getName(), field.getType(), modifiers, field.getAnnotations());
     }
 
     private static Set<Modifier> stripStatic(Set<Modifier> modifiers) {
         modifiers = new HashSet<>(modifiers);
         modifiers.remove(Modifier.STATIC);
+        return modifiers;
+    }
+
+    private static Set<Modifier> extendModifiers(Set<Modifier> modifiers, Modifier modifier) {
+        if (modifiers.contains(modifier)) {
+            return modifiers;
+        }
+        modifiers = new HashSet<>(modifiers);
+        modifiers.add(modifier);
         return modifiers;
     }
 
