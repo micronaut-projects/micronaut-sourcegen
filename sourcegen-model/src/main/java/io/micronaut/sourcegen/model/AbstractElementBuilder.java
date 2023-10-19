@@ -31,7 +31,7 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public sealed class AbstractElementBuilder<ThisType> permits ClassDef.ClassDefBuilder, FieldDef.FieldDefBuilder, InterfaceDef.InterfaceDefBuilder, MethodDef.MethodDefBuilder, ParameterDef.ParameterDefBuilder, PropertyDef.PropertyDefBuilder {
+public sealed class AbstractElementBuilder<ThisType> permits ClassDef.ClassDefBuilder, FieldDef.FieldDefBuilder, InterfaceDef.InterfaceDefBuilder, MethodDef.MethodDefBuilder, ParameterDef.ParameterDefBuilder, PropertyDef.PropertyDefBuilder, RecordDef.RecordDefBuilder {
 
     protected final String name;
     protected EnumSet<Modifier> modifiers = EnumSet.noneOf(Modifier.class);
