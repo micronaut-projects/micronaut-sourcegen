@@ -77,11 +77,11 @@ loadScripts(document, 'script');</script>
 </dl>
 <dl class="notes">
 <dt>All Known Implementing Classes:</dt>
-<dd><code><a href="ExpressionDef.Convert.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a></code>, <code><a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code>, <code><a href="VariableDef.Field.html" title="class in io.micronaut.sourcegen.model">VariableDef.Field</a></code>, <code><a href="VariableDef.MethodParameter.html" title="class in io.micronaut.sourcegen.model">VariableDef.MethodParameter</a></code>, <code><a href="VariableDef.This.html" title="class in io.micronaut.sourcegen.model">VariableDef.This</a></code></dd>
+<dd><code><a href="ExpressionDef.CallInstanceMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallInstanceMethod</a></code>, <code><a href="ExpressionDef.Convert.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a></code>, <code><a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code>, <code><a href="VariableDef.Field.html" title="class in io.micronaut.sourcegen.model">VariableDef.Field</a></code>, <code><a href="VariableDef.MethodParameter.html" title="class in io.micronaut.sourcegen.model">VariableDef.MethodParameter</a></code>, <code><a href="VariableDef.This.html" title="class in io.micronaut.sourcegen.model">VariableDef.This</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public sealed interface </span><span class="element-name type-name-label">ExpressionDef</span>
-<span class="permits">permits <a href="ExpressionDef.Convert.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a>, <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a>, <a href="VariableDef.html" title="interface in io.micronaut.sourcegen.model">VariableDef</a></span></div>
+<span class="permits">permits <a href="ExpressionDef.CallInstanceMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallInstanceMethod</a>, <a href="ExpressionDef.Convert.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a>, <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a>, <a href="VariableDef.html" title="interface in io.micronaut.sourcegen.model">VariableDef</a></span></div>
 <div class="block">The expression definition.</div>
 <dl class="notes">
 <dt>Since:</dt>
@@ -102,13 +102,18 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Interface</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="ExpressionDef.Convert.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a></code></div>
+<div class="col-second even-row-color"><code><a href="ExpressionDef.CallInstanceMethod.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallInstanceMethod</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">The convert variable expression.</div>
+<div class="block">The call method expression.</div>
 </div>
 <div class="col-first odd-row-color"><code>static final record&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="ExpressionDef.NewInstance.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
+<div class="col-second odd-row-color"><code><a href="ExpressionDef.Convert.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a></code></div>
 <div class="col-last odd-row-color">
+<div class="block">The convert variable expression.</div>
+</div>
+<div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="ExpressionDef.NewInstance.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">The new instance expression.</div>
 </div>
 </div>
