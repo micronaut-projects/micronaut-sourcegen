@@ -15,6 +15,11 @@
  */
 package io.micronaut.sourcegen;
 
+import io.micronaut.core.annotation.Internal;
+import io.micronaut.core.annotation.Nullable;
+import io.micronaut.core.naming.NameUtils;
+import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec;
 import io.micronaut.sourcegen.javapoet.ClassName;
 import io.micronaut.sourcegen.javapoet.FieldSpec;
@@ -26,14 +31,10 @@ import io.micronaut.sourcegen.javapoet.TypeName;
 import io.micronaut.sourcegen.javapoet.TypeSpec;
 import io.micronaut.sourcegen.javapoet.TypeVariableName;
 import io.micronaut.sourcegen.javapoet.WildcardTypeName;
-import io.micronaut.core.annotation.Internal;
-import io.micronaut.core.annotation.Nullable;
-import io.micronaut.core.naming.NameUtils;
-import io.micronaut.inject.visitor.VisitorContext;
-import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
@@ -50,8 +51,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static java.lang.Character.isISOControl;
 
 /**
  * The Java source generator.
@@ -75,6 +74,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             writeRecord(writer, recordDef);
         } else if (objectDef instanceof InterfaceDef interfaceDef) {
             writeInterface(writer, interfaceDef);
+        } else if (objectDef instanceof EnumDef enumDef) {
+            writeEnum(writer, enumDef);
         } else {
             throw new IllegalStateException("Unknown object definition: " + objectDef);
         }
@@ -120,6 +121,24 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             );
         }
         JavaFile javaFile = JavaFile.builder(interfaceDef.getPackageName(), interfaceBuilder.build()).build();
+        javaFile.writeTo(writer);
+    }
+
+    private void writeEnum(Writer writer, EnumDef enumDef) throws IOException {
+        TypeSpec.Builder enumBuilder = TypeSpec.enumBuilder(enumDef.getSimpleName());
+        enumBuilder.addModifiers(enumDef.getModifiersArray());
+        enumDef.getSuperinterfaces().stream().map(this::asType).forEach(enumBuilder::addSuperinterface);
+
+        for (String enumConstant : enumDef.getEnumConstants()) {
+            enumBuilder.addEnumConstant(enumConstant);
+        }
+
+        for (MethodDef method : enumDef.getMethods()) {
+            enumBuilder.addMethod(
+                asMethodSpec(enumDef, method)
+            );
+        }
+        JavaFile javaFile = JavaFile.builder(enumDef.getPackageName(), enumBuilder.build()).build();
         javaFile.writeTo(writer);
     }
 
@@ -255,28 +274,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             } else if (value instanceof Float) {
                 builder = builder.addMember(memberName, "$Lf", value);
             } else if (value instanceof Character) {
-                builder = builder.addMember(memberName, "'$L'", characterLiteralWithoutSingleQuotes((char) value));
+                builder = builder.addMember(memberName, "'$L'", io.micronaut.sourcegen.javapoet.Util.characterLiteralWithoutSingleQuotes((char) value));
             } else {
                 builder = builder.addMember(memberName, "$L", value);
             }
         }
         return builder.build();
-    }
-
-    // Copy from io.micronaut.javapoet.Util
-    private static String characterLiteralWithoutSingleQuotes(char c) {
-        // see https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.10.6
-        return switch (c) {
-            case '\b' -> "\\b"; /* \u0008: backspace (BS) */
-            case '\t' -> "\\t"; /* \u0009: horizontal tab (HT) */
-            case '\n' -> "\\n"; /* \u000a: linefeed (LF) */
-            case '\f' -> "\\f"; /* \u000c: form feed (FF) */
-            case '\r' -> "\\r"; /* \u000d: carriage return (CR) */
-            case '\"' -> "\"";  /* \u0022: double quote (") */
-            case '\'' -> "\\'"; /* \u0027: single quote (') */
-            case '\\' -> "\\\\";  /* \u005c: backslash (\) */
-            default -> isISOControl(c) ? String.format("\\u%04x", (int) c) : Character.toString(c);
-        };
     }
 
     private TypeName asType(TypeDef typeDef) {
@@ -350,6 +353,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
             return renderVariable(objectDef, methodDef, convertExpressionDef.variable());
+        }
+        if (expressionDef instanceof ExpressionDef.CallInstanceMethod callInstanceMethod) {
+            return renderVariable(objectDef, methodDef, callInstanceMethod.instance())
+                + "." + callInstanceMethod.name()
+                + "(" + callInstanceMethod.parameters()
+                .stream()
+                .map(exp -> renderExpression(objectDef, methodDef, expressionDef))
+                .collect(Collectors.joining(", "))
+                + ")";
         }
         if (expressionDef instanceof VariableDef variableDef) {
             return renderVariable(objectDef, methodDef, variableDef);

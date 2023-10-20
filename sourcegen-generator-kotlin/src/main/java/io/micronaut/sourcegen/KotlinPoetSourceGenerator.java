@@ -36,6 +36,7 @@ import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
@@ -84,6 +85,8 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             writeRecordDef(writer, recordDef);
         } else if (objectDef instanceof InterfaceDef interfaceDef) {
             writeInterface(writer, interfaceDef);
+        } else if (objectDef instanceof EnumDef enumDef) {
+            writeEnumDef(writer, enumDef);
         } else {
             throw new IllegalStateException("Unknown object definition: " + objectDef);
         }
@@ -269,6 +272,41 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         }
         FileSpec.builder(recordDef.getPackageName(), recordDef.getSimpleName() + ".kt")
             .addType(classBuilder.build())
+            .build()
+            .writeTo(writer);
+    }
+
+    private void writeEnumDef(Writer writer, EnumDef enumDef) throws IOException {
+        TypeSpec.Builder enumBuilder = TypeSpec.enumBuilder(enumDef.getSimpleName());
+        enumBuilder.addModifiers(asKModifiers(enumDef.getModifiers()));
+        enumDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> enumBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
+
+        for (String enumConstant : enumDef.getEnumConstants()) {
+            enumBuilder.addEnumConstant(enumConstant);
+        }
+
+        TypeSpec.Builder companionBuilder = null;
+        for (MethodDef method : enumDef.getMethods()) {
+            Set<Modifier> modifiers = method.getModifiers();
+            if (modifiers.contains(Modifier.STATIC)) {
+                if (companionBuilder == null) {
+                    companionBuilder = TypeSpec.companionObjectBuilder();
+                }
+                modifiers = stripStatic(modifiers);
+                companionBuilder.addFunction(
+                    buildFunction(null, method, modifiers)
+                );
+            } else {
+                enumBuilder.addFunction(
+                    buildFunction(enumDef, method, modifiers)
+                );
+            }
+        }
+        if (companionBuilder != null) {
+            enumBuilder.addType(companionBuilder.build());
+        }
+        FileSpec.builder(enumDef.getPackageName(), enumDef.getSimpleName() + ".kt")
+            .addType(enumBuilder.build())
             .build()
             .writeTo(writer);
     }
@@ -468,6 +506,24 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                     }).collect(Collectors.joining(", "))
                     + ")",
                 newInstance.type()
+            );
+        }
+        if (expressionDef instanceof ExpressionDef.CallInstanceMethod callInstanceMethod) {
+            ExpResult expResult = renderVariable(objectDef, methodDef, callInstanceMethod.instance());
+
+            return new ExpResult(
+                expResult.rendered
+                    + "." + callInstanceMethod.name()
+                    + "(" + callInstanceMethod.parameters()
+                    .stream()
+                    .map(exp -> {
+                        ExpResult paramExp = renderExpression(objectDef, methodDef, expressionDef);
+                        return paramExp.rendered;
+
+                    })
+                    .collect(Collectors.joining(", "))
+                    + ")",
+                callInstanceMethod.type()
             );
         }
         if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {

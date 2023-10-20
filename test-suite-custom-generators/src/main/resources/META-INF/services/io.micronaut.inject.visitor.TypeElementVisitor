@@ -3,3 +3,4 @@ io.micronaut.sourcegen.custom.visitor.GenerateMyBean2Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyInterface1Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyRepository1Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyRecord1Visitor
+io.micronaut.sourcegen.custom.visitor.GenerateMyEnum1
