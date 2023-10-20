@@ -29,7 +29,7 @@ import java.util.Set;
  * @since 1.0
  */
 @Experimental
-abstract sealed class AbstractElement permits ClassDef, FieldDef, InterfaceDef, MethodDef, ParameterDef, PropertyDef, RecordDef {
+abstract sealed class AbstractElement permits ClassDef, EnumDef, FieldDef, InterfaceDef, MethodDef, ParameterDef, PropertyDef, RecordDef {
 
     protected final String name;
     protected final Set<Modifier> modifiers;

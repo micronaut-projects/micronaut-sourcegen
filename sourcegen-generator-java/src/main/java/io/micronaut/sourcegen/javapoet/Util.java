@@ -32,7 +32,7 @@ import static java.lang.Character.isISOControl;
  * Like Guava, but worse and standalone. This makes it easier to mix JavaPoet with libraries that
  * bring their own version of Guava.
  */
-final class Util {
+public final class Util {
   private Util() {
   }
 
@@ -86,7 +86,7 @@ final class Util {
         modifiers, Arrays.toString(mutuallyExclusive));
   }
 
-  static String characterLiteralWithoutSingleQuotes(char c) {
+  public static String characterLiteralWithoutSingleQuotes(char c) {
     // see https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.10.6
     switch (c) {
       case '\b': return "\\b"; /* \u0008: backspace (BS) */

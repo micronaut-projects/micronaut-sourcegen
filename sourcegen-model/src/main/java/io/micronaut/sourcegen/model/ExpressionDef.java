@@ -26,7 +26,7 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public sealed interface ExpressionDef permits ExpressionDef.Convert, ExpressionDef.NewInstance, VariableDef {
+public sealed interface ExpressionDef permits ExpressionDef.CallInstanceMethod, ExpressionDef.Convert, ExpressionDef.NewInstance, VariableDef {
 
     /**
      * The type of the expression.
@@ -51,7 +51,7 @@ public sealed interface ExpressionDef permits ExpressionDef.Convert, ExpressionD
     /**
      * The convert variable expression. (To support Kotlin's nullable -> not-null conversion)
      *
-     * @param type        The type
+     * @param type     The type
      * @param variable The variable reference
      * @author Denis Stepanov
      * @since 1.0
@@ -61,4 +61,22 @@ public sealed interface ExpressionDef permits ExpressionDef.Convert, ExpressionD
                    VariableDef variable) implements ExpressionDef {
     }
 
+    /**
+     * The call method expression.
+     *
+     * @param instance   The instance
+     * @param name       The method name
+     * @param parameters The parameters
+     * @param returning  The returning
+     * @author Denis Stepanov
+     * @since 1.0
+     */
+    @Experimental
+    record CallInstanceMethod(VariableDef instance, String name, List<ExpressionDef> parameters,
+                              TypeDef returning) implements ExpressionDef {
+        @Override
+        public TypeDef type() {
+            return returning;
+        }
+    }
 }
