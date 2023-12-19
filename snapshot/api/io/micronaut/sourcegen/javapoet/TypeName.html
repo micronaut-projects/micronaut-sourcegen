@@ -92,14 +92,14 @@ loadScripts(document, 'script');</script>
  <p>Instances of this class are immutable value objects that implement <code>equals()</code> and <code>
  hashCode()</code> properly.
 
- <h3>Referencing existing types</h3>
+ <strong>Referencing existing types</strong>
 
  <p>Primitives and void are constants that you can reference directly: see <a href="#INT"><code>INT</code></a>, <a href="#DOUBLE"><code>DOUBLE</code></a>, and <a href="#VOID"><code>VOID</code></a>.
 
  <p>In an annotation processor you can get a type name instance for a type mirror by calling
  <a href="#get(javax.lang.model.type.TypeMirror)"><code>get(TypeMirror)</code></a>. In reflection code, you can use <a href="#get(java.lang.reflect.Type)"><code>get(Type)</code></a>.
 
- <h3>Defining new types</h3>
+ <strong>Defining new types</strong>
 
  <p>Create new reference types like <code>com.example.HelloWorld</code> with <a href="ClassName.html#get(java.lang.String,java.lang.String,java.lang.String...)"><code>ClassName.get(String, String, String...)</code></a>. To build composite types like <code>char[]</code> and
  <code>Set&lt;Long&gt;</code>, use the factory methods on <a href="ArrayTypeName.html" title="class in io.micronaut.sourcegen.javapoet"><code>ArrayTypeName</code></a>, <a href="ParameterizedTypeName.html" title="class in io.micronaut.sourcegen.javapoet"><code>ParameterizedTypeName</code></a>, <a href="TypeVariableName.html" title="class in io.micronaut.sourcegen.javapoet"><code>TypeVariableName</code></a>, and <a href="WildcardTypeName.html" title="class in io.micronaut.sourcegen.javapoet"><code>WildcardTypeName</code></a>.</div>
