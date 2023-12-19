@@ -1,6 +1,6 @@
 plugins {
     id("io.micronaut.build.internal.sourcegen-base")
-    id("io.micronaut.build.internal.base-module")
+    id("io.micronaut.build.internal.common")
 }
 
 tasks.withType(Test).configureEach {
@@ -9,12 +9,6 @@ tasks.withType(Test).configureEach {
 
 tasks.withType(Checkstyle).configureEach {
     enabled = false
-}
-
-micronautBuild {
-    binaryCompatibility {
-        enabled.set(false)
-    }
 }
 
 if (System.getenv("SONAR_TOKEN") != null) {

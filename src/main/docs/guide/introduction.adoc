@@ -1,1 +1,1 @@
-TODO
+Micronaut SourceGen exposes a language-neutral API for source code generation. It uses https://github.com/square/javapoet[JavaPoet] internally.

@@ -16,8 +16,10 @@
 package io.micronaut.sourcegen.example;
 
 
+//tag::clazz[]
 import io.micronaut.sourcegen.annotations.Builder;
 
 @Builder
 public record Person(Long id, String name) {
 }
+//end::clazz[]
