@@ -87,6 +87,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         interfaceDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(interfaceBuilder::addTypeVariable);
         interfaceDef.getSuperinterfaces().stream().map(this::asType).forEach(interfaceBuilder::addSuperinterface);
 
+        for (AnnotationDef annotation: interfaceDef.getAnnotations()) {
+            interfaceBuilder.addAnnotation(asAnnotationSpec(annotation));
+        }
         for (PropertyDef property : interfaceDef.getProperties()) {
             TypeName propertyType = asType(property.getType());
             String propertyName = property.getName();
@@ -129,6 +132,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         enumBuilder.addModifiers(enumDef.getModifiersArray());
         enumDef.getSuperinterfaces().stream().map(this::asType).forEach(enumBuilder::addSuperinterface);
 
+        for (AnnotationDef annotation: enumDef.getAnnotations()) {
+            enumBuilder.addAnnotation(asAnnotationSpec(annotation));
+        }
+
         for (String enumConstant : enumDef.getEnumConstants()) {
             enumBuilder.addEnumConstant(enumConstant);
         }
@@ -148,6 +155,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         classDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
         classDef.getSuperinterfaces().stream().map(this::asType).forEach(classBuilder::addSuperinterface);
 
+        for (AnnotationDef annotation: classDef.getAnnotations()) {
+            classBuilder.addAnnotation(asAnnotationSpec(annotation));
+        }
         for (PropertyDef property : classDef.getProperties()) {
             TypeName propertyType = asType(property.getType());
             String propertyName = property.getName();
@@ -206,6 +216,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         recordDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
         recordDef.getSuperinterfaces().stream().map(this::asType).forEach(classBuilder::addSuperinterface);
 
+        for (AnnotationDef annotation: recordDef.getAnnotations()) {
+            classBuilder.addAnnotation(asAnnotationSpec(annotation));
+        }
         for (PropertyDef property : recordDef.getProperties()) {
             TypeName propertyType = asType(property.getType());
             String propertyName = property.getName();
