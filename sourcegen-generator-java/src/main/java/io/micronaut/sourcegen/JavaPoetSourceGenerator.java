@@ -278,7 +278,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         for (Map.Entry<String, Object> e : annotationDef.getValues().entrySet()) {
             String memberName = e.getKey();
             Object value = e.getValue();
-            if (value instanceof Class<?>) {
+            if (value instanceof AnnotationDef annotationValue) {
+                builder = builder.addMember(memberName, asAnnotationSpec(annotationValue));
+            } else if (value instanceof Class<?>) {
                 builder = builder.addMember(memberName, "$T.class", value);
             } else if (value instanceof Enum) {
                 builder = builder.addMember(memberName, "$T.$L", value.getClass(), ((Enum<?>) value).name());
