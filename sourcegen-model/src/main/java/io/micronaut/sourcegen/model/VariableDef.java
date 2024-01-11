@@ -54,6 +54,21 @@ public sealed interface VariableDef extends ExpressionDef {
     }
 
     /**
+     * The variable of a static field.
+     *
+     * @param ownerType The owner type of the static field
+     * @param name The field name
+     * @param type The type of the field
+     * @author Andriy Dmytruk
+     * @since 1.0
+     */
+    @Experimental
+    record StaticField(TypeDef ownerType,
+                       String name,
+                       TypeDef type) implements VariableDef {
+    }
+
+    /**
      * The variable of `this`.
      *
      * @param type The type
