@@ -81,7 +81,8 @@ public final class AnnotationDef {
      * @since 1.0
      */
     public static AnnotationDef of(AnnotationValue<?> annotation, VisitorContext context) {
-        ClassElement annotationElement = context.getClassElement(annotation.getAnnotationName()).get();
+        ClassElement annotationElement = context.getClassElement(annotation.getAnnotationName())
+            .orElseThrow(() -> new RuntimeException("Could not create class element for " + annotation.getAnnotationName()));
         Map<String, ClassElement> fieldTypes = annotationElement.getMethods().stream()
             .collect(Collectors.toMap(MethodElement::getName, MethodElement::getReturnType));
 
