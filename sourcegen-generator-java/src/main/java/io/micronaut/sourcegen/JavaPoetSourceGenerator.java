@@ -402,8 +402,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
-    private CodeBlock renderVariable(@Nullable ObjectDef objectDef, MethodDef methodDef, VariableDef variableDef) {
+    private CodeBlock renderVariable(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, VariableDef variableDef) {
         if (variableDef instanceof VariableDef.MethodParameter parameterVariableDef) {
+            if (methodDef == null) {
+                throw new IllegalStateException("Accessing method parameters is not available");
+            }
             methodDef.getParameter(parameterVariableDef.name()); // Check if exists
             return CodeBlock.of(parameterVariableDef.name());
         }
