@@ -67,16 +67,13 @@ public final class CopyAnnotationsVisitor implements TypeElementVisitor<CopyAnno
             + element.getAnnotation(CopyAnnotations.class)
                 .get("newTypeName", String.class, null);
 
-        System.out.println("Class element: " + element);
         ClassDefBuilder builder = ClassDef.builder(className)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         for (String name: element.getAnnotationNames()) {
             if (name.equals(CopyAnnotations.class.getName())) {
                 continue;
             }
-            System.out.println("Annotation name: " + name);
             AnnotationValue<?> value = element.getAnnotation(name);
-            System.out.println("Annotation: " + value);
             builder.addAnnotation(AnnotationDef.of(value, context));
         }
         ClassDef recordDef = builder.build();

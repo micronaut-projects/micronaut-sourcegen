@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class HeronTest {
 
     @Test
-    public void test() throws Exception {
+    void test() throws Exception {
         BeanIntrospection<BlueHeron> intro = BeanIntrospection.getIntrospection(BlueHeron.class);
 
         AnnotationValue<Simple> simple = intro.getAnnotation(Simple.class);
