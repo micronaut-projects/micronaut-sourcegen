@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.model;
 import io.micronaut.core.annotation.Experimental;
 
 import java.lang.annotation.Annotation;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -73,6 +74,16 @@ public final class AnnotationDef {
 
         public AnnotationDefBuilder addMember(String member, Object value) {
             values.put(member, value);
+            return this;
+        }
+
+        public AnnotationDefBuilder addMember(String member, Collection<Object> values) {
+            this.values.put(member, values);
+            return this;
+        }
+
+        public AnnotationDefBuilder addMember(String member, AnnotationDef annotationValue) {
+            values.put(member, annotationValue);
             return this;
         }
 

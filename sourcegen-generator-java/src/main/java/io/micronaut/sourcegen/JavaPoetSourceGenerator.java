@@ -50,6 +50,8 @@ import io.micronaut.sourcegen.model.VariableDef;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -278,27 +280,31 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private AnnotationSpec asAnnotationSpec(AnnotationDef annotationDef) {
         AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.bestGuess(annotationDef.getType().getName()));
         for (Map.Entry<String, Object> e : annotationDef.getValues().entrySet()) {
-            String memberName = e.getKey();
-            Object value = e.getValue();
-            if (value instanceof AnnotationDef annotationValue) {
-                builder = builder.addMember(memberName, asAnnotationSpec(annotationValue));
-            } else if (value instanceof VariableDef variableDef) {
-                builder = builder.addMember(memberName, renderVariable(null, null, variableDef));
-            } else if (value instanceof Class<?>) {
-                builder = builder.addMember(memberName, "$T.class", value);
-            } else if (value instanceof Enum) {
-                builder = builder.addMember(memberName, "$T.$L", value.getClass(), ((Enum<?>) value).name());
-            } else if (value instanceof String) {
-                builder = builder.addMember(memberName, "$S", value);
-            } else if (value instanceof Float) {
-                builder = builder.addMember(memberName, "$Lf", value);
-            } else if (value instanceof Character) {
-                builder = builder.addMember(memberName, "'$L'", io.micronaut.sourcegen.javapoet.Util.characterLiteralWithoutSingleQuotes((char) value));
-            } else {
-                builder = builder.addMember(memberName, "$L", value);
-            }
+            addAnnotationValue(builder, e.getKey(), e.getValue());
         }
         return builder.build();
+    }
+
+    private void addAnnotationValue(AnnotationSpec.Builder builder, String memberName, Object value) {
+        if (value instanceof Collection<?> collection) {
+            collection.forEach(v -> addAnnotationValue(builder, memberName, v));
+        } else if (value instanceof AnnotationDef annotationValue) {
+            builder.addMember(memberName, asAnnotationSpec(annotationValue));
+        } else if (value instanceof VariableDef variableDef) {
+            builder.addMember(memberName, renderVariable(null, null, variableDef));
+        } else if (value instanceof Class<?>) {
+            builder.addMember(memberName, "$T.class", value);
+        } else if (value instanceof Enum) {
+            builder.addMember(memberName, "$T.$L", value.getClass(), ((Enum<?>) value).name());
+        } else if (value instanceof String) {
+            builder.addMember(memberName, "$S", value);
+        } else if (value instanceof Float) {
+            builder.addMember(memberName, "$Lf", value);
+        } else if (value instanceof Character) {
+            builder.addMember(memberName, "'$L'", io.micronaut.sourcegen.javapoet.Util.characterLiteralWithoutSingleQuotes((char) value));
+        } else {
+            builder.addMember(memberName, "$L", value);
+        }
     }
 
     private TypeName asType(TypeDef typeDef) {

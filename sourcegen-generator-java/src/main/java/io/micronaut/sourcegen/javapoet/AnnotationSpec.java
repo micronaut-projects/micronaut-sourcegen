@@ -86,6 +86,7 @@ public final class AnnotationSpec {
                                     String memberSeparator, List<AnnotationValueSpec> values, boolean inline) throws IOException {
     if (values.size() != 1) {
       codeWriter.emit("{" + whitespace);
+      codeWriter.indent(2);
     }
     boolean first = true;
     for (AnnotationValueSpec value : values) {
@@ -98,7 +99,8 @@ public final class AnnotationSpec {
       first = false;
     }
     if (values.size() != 1) {
-      codeWriter.emit(whitespace + "}");
+        codeWriter.unindent(2);
+        codeWriter.emit(whitespace + "}");
     }
   }
 
