@@ -36,6 +36,7 @@ public sealed class AbstractElementBuilder<ThisType> permits ClassDef.ClassDefBu
     protected final String name;
     protected EnumSet<Modifier> modifiers = EnumSet.noneOf(Modifier.class);
     protected List<AnnotationDef> annotations = new ArrayList<>();
+    protected List<String> javadoc = new ArrayList<>();
     private final ThisType thisInstance;
 
     protected AbstractElementBuilder(String name) {
@@ -63,6 +64,11 @@ public sealed class AbstractElementBuilder<ThisType> permits ClassDef.ClassDefBu
 
     public final ThisType addAnnotation(AnnotationDef annotationDef) {
         annotations.add(annotationDef);
+        return thisInstance;
+    }
+
+    public final ThisType addJavadoc(String doc) {
+        javadoc.add(doc);
         return thisInstance;
     }
 

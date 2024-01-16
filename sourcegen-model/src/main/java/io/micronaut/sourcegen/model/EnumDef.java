@@ -39,9 +39,10 @@ public final class EnumDef extends AbstractElement implements ObjectDef {
                     EnumSet<Modifier> modifiers,
                     List<MethodDef> methods,
                     List<AnnotationDef> annotations,
+                    List<String> javadoc,
                     List<String> enumConstants,
                     List<TypeDef> superinterfaces) {
-        super(name, modifiers, annotations);
+        super(name, modifiers, annotations, javadoc);
         this.methods = methods;
         this.enumConstants = enumConstants;
         this.superinterfaces = superinterfaces;
@@ -96,7 +97,7 @@ public final class EnumDef extends AbstractElement implements ObjectDef {
         }
 
         public EnumDef build() {
-            return new EnumDef(name, modifiers, methods, annotations, enumConstants, superinterfaces);
+            return new EnumDef(name, modifiers, methods, annotations, javadoc, enumConstants, superinterfaces);
         }
 
     }

@@ -97,6 +97,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         interfaceBuilder.addModifiers(asKModifiers(interfaceDef.getModifiers()));
         interfaceDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(interfaceBuilder::addTypeVariable);
         interfaceDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> interfaceBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
+        interfaceDef.getJavadoc().forEach(interfaceBuilder::addKdoc);
 
         TypeSpec.Builder companionBuilder = null;
         for (PropertyDef property : interfaceDef.getProperties()) {
@@ -106,14 +107,16 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                     property.getName(),
                     property.getType().makeNullable(),
                     property.getModifiers(),
-                    property.getAnnotations()
+                    property.getAnnotations(),
+                    property.getJavadoc()
                 );
             } else {
                 propertySpec = buildConstructorProperty(
                     property.getName(),
                     property.getType(),
                     property.getModifiers(),
-                    property.getAnnotations()
+                    property.getAnnotations(),
+                    property.getJavadoc()
                 );
             }
             interfaceBuilder.addProperty(
@@ -150,6 +153,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         classBuilder.addModifiers(asKModifiers(classDef.getModifiers()));
         classDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
         classDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> classBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
+        classDef.getJavadoc().forEach(classBuilder::addKdoc);
 
         TypeSpec.Builder companionBuilder = null;
         List<PropertyDef> notNullProperties = new ArrayList<>();
@@ -160,14 +164,16 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                     property.getName(),
                     property.getType().makeNullable(),
                     property.getModifiers(),
-                    property.getAnnotations()
+                    property.getAnnotations(),
+                    property.getJavadoc()
                 );
             } else {
                 propertySpec = buildConstructorProperty(
                     property.getName(),
                     property.getType(),
                     property.getModifiers(),
-                    property.getAnnotations()
+                    property.getAnnotations(),
+                    property.getJavadoc()
                 );
                 notNullProperties.add(property);
             }
@@ -189,11 +195,11 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                     companionBuilder = TypeSpec.companionObjectBuilder();
                 }
                 companionBuilder.addProperty(
-                    buildNullableProperty(field, stripStatic(modifiers))
+                    buildNullableProperty(field, stripStatic(modifiers), field.getJavadoc())
                 );
             } else {
                 classBuilder.addProperty(
-                    buildNullableProperty(field, modifiers)
+                    buildNullableProperty(field, modifiers, field.getJavadoc())
                 );
             }
         }
@@ -229,6 +235,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         classBuilder.addModifiers(asKModifiers(recordDef.getModifiers()));
         recordDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
         recordDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> classBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
+        recordDef.getJavadoc().forEach(classBuilder::addKdoc);
 
         TypeSpec.Builder companionBuilder = null;
         List<PropertyDef> constructorProperties = new ArrayList<>();
@@ -239,7 +246,8 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                     property.getName(),
                     property.getType(),
                     extendModifiers(property.getModifiers(), Modifier.FINAL),
-                    property.getAnnotations()
+                    property.getAnnotations(),
+                    property.getJavadoc()
                 )
             );
         }
@@ -280,7 +288,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         TypeSpec.Builder enumBuilder = TypeSpec.enumBuilder(enumDef.getSimpleName());
         enumBuilder.addModifiers(asKModifiers(enumDef.getModifiers()));
         enumDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> enumBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
-
+        enumDef.getJavadoc().forEach(enumBuilder::addKdoc);
         for (String enumConstant : enumDef.getEnumConstants()) {
             enumBuilder.addEnumConstant(enumConstant);
         }
@@ -314,12 +322,15 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
     private PropertySpec buildNullableProperty(String name,
                                                TypeDef typeDef,
                                                Set<Modifier> modifiers,
-                                               List<AnnotationDef> annotations) {
+                                               List<AnnotationDef> annotations,
+                                               List<String> docs) {
         PropertySpec.Builder propertyBuilder = PropertySpec.builder(
             name,
             asType(typeDef),
             asKModifiers(modifiers)
         );
+        docs.forEach(propertyBuilder::addKdoc);
+
         if (!modifiers.contains(Modifier.FINAL)) {
             propertyBuilder.setMutable$kotlinpoet(true);
         }
@@ -335,12 +346,14 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
     private PropertySpec buildConstructorProperty(String name,
                                                   TypeDef typeDef,
                                                   Set<Modifier> modifiers,
-                                                  List<AnnotationDef> annotations) {
+                                                  List<AnnotationDef> annotations,
+                                                  List<String> docs) {
         PropertySpec.Builder propertyBuilder = PropertySpec.builder(
             name,
             asType(typeDef),
             asKModifiers(modifiers)
         );
+        docs.forEach(propertyBuilder::addKdoc);
         if (!modifiers.contains(Modifier.FINAL)) {
             propertyBuilder.setMutable$kotlinpoet(true);
         }
@@ -354,8 +367,8 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             .build();
     }
 
-    private PropertySpec buildNullableProperty(FieldDef field, Set<Modifier> modifiers) {
-        return buildNullableProperty(field.getName(), field.getType(), modifiers, field.getAnnotations());
+    private PropertySpec buildNullableProperty(FieldDef field, Set<Modifier> modifiers, List<String> docs) {
+        return buildNullableProperty(field.getName(), field.getType(), modifiers, field.getAnnotations(), docs);
     }
 
     private static Set<Modifier> stripStatic(Set<Modifier> modifiers) {
@@ -393,6 +406,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         method.getStatements().stream()
             .map(st -> renderStatement(objectDef, method, st))
             .forEach(funBuilder::addStatement);
+        method.getJavadoc().forEach(funBuilder::addKdoc);
         return funBuilder.build();
     }
 

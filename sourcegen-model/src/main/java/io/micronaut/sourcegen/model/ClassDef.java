@@ -44,9 +44,11 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
                      List<FieldDef> fields,
                      List<MethodDef> methods,
                      List<PropertyDef> properties,
-                     List<AnnotationDef> annotations, List<TypeDef.TypeVariable> typeVariables,
+                     List<AnnotationDef> annotations,
+                     List<String> javadoc,
+                     List<TypeDef.TypeVariable> typeVariables,
                      List<TypeDef> superinterfaces) {
-        super(name, modifiers, annotations);
+        super(name, modifiers, annotations, javadoc);
         this.fields = fields;
         this.methods = methods;
         this.properties = properties;
@@ -142,7 +144,7 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
         }
 
         public ClassDef build() {
-            return new ClassDef(name, modifiers, fields, methods, properties, annotations, typeVariables, superinterfaces);
+            return new ClassDef(name, modifiers, fields, methods, properties, annotations, javadoc, typeVariables, superinterfaces);
         }
 
     }

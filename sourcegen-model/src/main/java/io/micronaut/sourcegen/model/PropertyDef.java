@@ -32,8 +32,12 @@ public final class PropertyDef extends AbstractElement {
 
     private final TypeDef type;
 
-    private PropertyDef(String name, EnumSet<Modifier> modifiers, TypeDef type, List<AnnotationDef> annotations) {
-        super(name, modifiers, annotations);
+    private PropertyDef(String name,
+                        EnumSet<Modifier> modifiers,
+                        TypeDef type,
+                        List<AnnotationDef> annotations,
+                        List<String> javadoc) {
+        super(name, modifiers, annotations, javadoc);
         if (type == null) {
             throw new IllegalStateException("The type of property: " + name + " is not specified!");
         }
@@ -73,7 +77,7 @@ public final class PropertyDef extends AbstractElement {
         }
 
         public PropertyDef build() {
-            return new PropertyDef(name, modifiers, type, annotations);
+            return new PropertyDef(name, modifiers, type, annotations, javadoc);
         }
 
     }

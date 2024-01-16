@@ -127,6 +127,7 @@ public final class AnnotationDef {
                 new VariableDef.StaticField(TypeDef.of(type), "class", TypeDef.of(Class.class))
             );
         } else {
+            System.err.println("BBB " + requiredType + " " + value);
             // Must be an enum
             TypeDef type = ClassTypeDef.of(requiredType);
             return Optional.of(new VariableDef.StaticField(type, value.toString(), type));
