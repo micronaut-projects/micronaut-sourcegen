@@ -35,7 +35,7 @@ import java.io.IOException;
 import java.util.List;
 
 @Internal
-public final class GenerateMyRecord1Visitor implements TypeElementVisitor<GenerateMyRecord1, Object> {
+public final class GenerateMyRecord2Visitor implements TypeElementVisitor<GenerateMyRecord1, Object> {
 
     ClassElement thisElement;
 
@@ -58,7 +58,7 @@ public final class GenerateMyRecord1Visitor implements TypeElementVisitor<Genera
     }
 
     private void generate(ClassElement element, VisitorContext context) {
-        String builderClassName = element.getPackageName() + ".MyRecord1";
+        String builderClassName = element.getName() + "$MyRecord2";
 
         RecordDef beanDef = RecordDef.builder(builderClassName)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
