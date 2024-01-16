@@ -86,7 +86,11 @@ public sealed interface ClassTypeDef extends TypeDef {
         if (classElement.isPrimitive()) {
             throw new IllegalStateException("Primitive classes cannot be of type: " + ClassTypeDef.class.getName());
         }
-        return new ClassName(classElement.getName().replace("$", "."), classElement.isNullable());
+        String name = classElement.getName();
+        if (classElement.isInner()) {
+            name = name.replace("$", ".");
+        }
+        return new ClassName(name, classElement.isNullable());
     }
 
     /**

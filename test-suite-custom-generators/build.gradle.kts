@@ -5,4 +5,5 @@ plugins {
 dependencies {
     implementation(projects.testSuiteCustomAnnotations)
     implementation(projects.sourcegenGenerator)
+    implementation(projects.sourcegenAnnotations)
 }

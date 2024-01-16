@@ -373,7 +373,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private CodeBlock renderExpression(@Nullable ObjectDef objectDef, MethodDef methodDef, ExpressionDef expressionDef) {
         if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
             return CodeBlock.concat(
-                CodeBlock.of("new " + newInstance.type().getName() + "("),
+                CodeBlock.of("new $L(", asType(newInstance.type())),
                 newInstance.values()
                     .stream()
                     .map(exp -> renderExpression(objectDef, methodDef, exp))

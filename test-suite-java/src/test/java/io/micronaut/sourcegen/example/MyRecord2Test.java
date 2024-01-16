@@ -23,10 +23,10 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class MyRecord1Test {
+class MyRecord2Test {
     @Test
     public void test() throws Exception {
-        MyRecord1 bean = new MyRecord1(123, "TheName", 55, List.of("Address 1"), List.of("X", "Y"));
+        Trigger$MyRecord2 bean = new Trigger$MyRecord2(123, "TheName", 55, List.of("Address 1"), List.of("X", "Y"));
 
         assertEquals("TheName", bean.name());
         assertEquals(123, bean.id());
@@ -50,7 +50,7 @@ class MyRecord1Test {
 
     @Test
     public void testBuilder() throws Exception {
-        MyRecord1 bean = MyRecord1Builder.builder()
+        Trigger$MyRecord2 bean = Trigger$MyRecord2Builder.builder()
             .id(123)
             .name("TheName")
             .age(55)
