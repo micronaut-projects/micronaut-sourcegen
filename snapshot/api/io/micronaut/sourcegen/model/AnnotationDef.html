@@ -127,6 +127,13 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getValues()" class="member-name-link">getValues</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#of(io.micronaut.core.annotation.AnnotationValue,io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">of</a><wbr>(io.micronaut.core.annotation.AnnotationValue&lt;?&gt;&nbsp;annotation,
+ io.micronaut.inject.visitor.VisitorContext&nbsp;context)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Create an annotation definition from an <code>AnnotationValue</code>
+ annotation.</div>
+</div>
 </div>
 </div>
 </div>
@@ -166,6 +173,28 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="builder(java.lang.Class)">
 <h3>builder</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="AnnotationDef.AnnotationDefBuilder.html" title="class in io.micronaut.sourcegen.model">AnnotationDef.AnnotationDefBuilder</a></span>&nbsp;<span class="element-name">builder</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;? extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/annotation/Annotation.html" title="class or interface in java.lang.annotation" class="external-link">Annotation</a>&gt;&nbsp;annotationType)</span></div>
+</section>
+</li>
+<li>
+<section class="detail" id="of(io.micronaut.core.annotation.AnnotationValue,io.micronaut.inject.visitor.VisitorContext)">
+<h3>of</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a></span>&nbsp;<span class="element-name">of</span><wbr><span class="parameters">(io.micronaut.core.annotation.AnnotationValue&lt;?&gt;&nbsp;annotation,
+ io.micronaut.inject.visitor.VisitorContext&nbsp;context)</span></div>
+<div class="block">Create an annotation definition from an <code>AnnotationValue</code>
+ annotation.
+ <p>Visitor context is required to deduce the types for
+ annotation members, as <code>AnnotationValue</code> does not retain
+ such information. The annotation does not need to be present on
+ the classpath, but type mirror information must be retrievable.</p></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>annotation</code> - The annotation</dd>
+<dd><code>context</code> - The visitor context</dd>
+<dt>Returns:</dt>
+<dd>The copy of given annotation</dd>
+<dt>Since:</dt>
+<dd>1.0</dd>
+</dl>
 </section>
 </li>
 </ul>
