@@ -93,7 +93,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Primitive, TypeDef
         if (classElement.isPrimitive()) {
             return primitive(classElement.getName());
         }
-        return ClassTypeDef.of(classElement.getName());
+        return ClassTypeDef.of(classElement);
     }
 
     /**

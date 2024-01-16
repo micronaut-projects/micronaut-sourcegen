@@ -22,6 +22,7 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec;
 import io.micronaut.sourcegen.javapoet.ClassName;
+import io.micronaut.sourcegen.javapoet.CodeBlock;
 import io.micronaut.sourcegen.javapoet.FieldSpec;
 import io.micronaut.sourcegen.javapoet.JavaFile;
 import io.micronaut.sourcegen.javapoet.MethodSpec;
@@ -49,8 +50,8 @@ import io.micronaut.sourcegen.model.VariableDef;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Collection;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * The Java source generator.
@@ -276,23 +277,31 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private AnnotationSpec asAnnotationSpec(AnnotationDef annotationDef) {
         AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.bestGuess(annotationDef.getType().getName()));
         for (Map.Entry<String, Object> e : annotationDef.getValues().entrySet()) {
-            String memberName = e.getKey();
-            Object value = e.getValue();
-            if (value instanceof Class<?>) {
-                builder = builder.addMember(memberName, "$T.class", value);
-            } else if (value instanceof Enum) {
-                builder = builder.addMember(memberName, "$T.$L", value.getClass(), ((Enum<?>) value).name());
-            } else if (value instanceof String) {
-                builder = builder.addMember(memberName, "$S", value);
-            } else if (value instanceof Float) {
-                builder = builder.addMember(memberName, "$Lf", value);
-            } else if (value instanceof Character) {
-                builder = builder.addMember(memberName, "'$L'", io.micronaut.sourcegen.javapoet.Util.characterLiteralWithoutSingleQuotes((char) value));
-            } else {
-                builder = builder.addMember(memberName, "$L", value);
-            }
+            addAnnotationValue(builder, e.getKey(), e.getValue());
         }
         return builder.build();
+    }
+
+    private void addAnnotationValue(AnnotationSpec.Builder builder, String memberName, Object value) {
+        if (value instanceof Collection<?> collection) {
+            collection.forEach(v -> addAnnotationValue(builder, memberName, v));
+        } else if (value instanceof AnnotationDef annotationValue) {
+            builder.addMember(memberName, asAnnotationSpec(annotationValue));
+        } else if (value instanceof VariableDef variableDef) {
+            builder.addMember(memberName, renderVariable(null, null, variableDef));
+        } else if (value instanceof Class<?>) {
+            builder.addMember(memberName, "$T.class", value);
+        } else if (value instanceof Enum) {
+            builder.addMember(memberName, "$T.$L", value.getClass(), ((Enum<?>) value).name());
+        } else if (value instanceof String) {
+            builder.addMember(memberName, "$S", value);
+        } else if (value instanceof Float) {
+            builder.addMember(memberName, "$Lf", value);
+        } else if (value instanceof Character) {
+            builder.addMember(memberName, "'$L'", io.micronaut.sourcegen.javapoet.Util.characterLiteralWithoutSingleQuotes((char) value));
+        } else {
+            builder.addMember(memberName, "$L", value);
+        }
     }
 
     private TypeName asType(TypeDef typeDef) {
@@ -344,37 +353,48 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         return ClassName.bestGuess(classTypeDef.getName());
     }
 
-    private static String renderStatement(@Nullable ObjectDef objectDef, MethodDef methodDef, StatementDef statementDef) {
+    private CodeBlock renderStatement(@Nullable ObjectDef objectDef, MethodDef methodDef, StatementDef statementDef) {
         if (statementDef instanceof StatementDef.Return aReturn) {
-            return "return " + renderExpression(objectDef, methodDef, aReturn.expression());
+            return CodeBlock.concat(
+                CodeBlock.of("return "),
+                renderExpression(objectDef, methodDef, aReturn.expression())
+            );
         }
         if (statementDef instanceof StatementDef.Assign assign) {
-            return renderExpression(objectDef, methodDef, assign.variable())
-                + " = " +
-                renderExpression(objectDef, methodDef, assign.expression());
+            return CodeBlock.concat(
+                renderExpression(objectDef, methodDef, assign.variable()),
+                CodeBlock.of(" = "),
+                renderExpression(objectDef, methodDef, assign.expression())
+            );
         }
         throw new IllegalStateException("Unrecognized statement: " + statementDef);
     }
 
-    private static String renderExpression(@Nullable ObjectDef objectDef, MethodDef methodDef, ExpressionDef expressionDef) {
+    private CodeBlock renderExpression(@Nullable ObjectDef objectDef, MethodDef methodDef, ExpressionDef expressionDef) {
         if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
-            return "new " + newInstance.type().getName()
-                + "(" + newInstance.values()
-                .stream()
-                .map(exp -> renderExpression(objectDef, methodDef, exp)).collect(Collectors.joining(", "))
-                + ")";
+            return CodeBlock.concat(
+                CodeBlock.of("new " + newInstance.type().getName() + "("),
+                newInstance.values()
+                    .stream()
+                    .map(exp -> renderExpression(objectDef, methodDef, exp))
+                    .collect(CodeBlock.joining(", ")),
+                CodeBlock.of(")")
+            );
         }
         if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
             return renderVariable(objectDef, methodDef, convertExpressionDef.variable());
         }
         if (expressionDef instanceof ExpressionDef.CallInstanceMethod callInstanceMethod) {
-            return renderVariable(objectDef, methodDef, callInstanceMethod.instance())
-                + "." + callInstanceMethod.name()
-                + "(" + callInstanceMethod.parameters()
-                .stream()
-                .map(exp -> renderExpression(objectDef, methodDef, expressionDef))
-                .collect(Collectors.joining(", "))
-                + ")";
+            return CodeBlock.concat(
+                CodeBlock.of(renderVariable(objectDef, methodDef, callInstanceMethod.instance())
+                    + "." + callInstanceMethod.name()
+                    + "("),
+                callInstanceMethod.parameters()
+                    .stream()
+                    .map(exp -> renderExpression(objectDef, methodDef, expressionDef))
+                    .collect(CodeBlock.joining(", ")),
+                CodeBlock.of(")")
+            );
         }
         if (expressionDef instanceof VariableDef variableDef) {
             return renderVariable(objectDef, methodDef, variableDef);
@@ -382,10 +402,16 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
-    private static String renderVariable(@Nullable ObjectDef objectDef, MethodDef methodDef, VariableDef variableDef) {
+    private CodeBlock renderVariable(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, VariableDef variableDef) {
         if (variableDef instanceof VariableDef.MethodParameter parameterVariableDef) {
+            if (methodDef == null) {
+                throw new IllegalStateException("Accessing method parameters is not available");
+            }
             methodDef.getParameter(parameterVariableDef.name()); // Check if exists
-            return parameterVariableDef.name();
+            return CodeBlock.of(parameterVariableDef.name());
+        }
+        if (variableDef instanceof VariableDef.StaticField staticField) {
+            return CodeBlock.of("$T.$L", asType(staticField.ownerType()), staticField.name());
         }
         if (variableDef instanceof VariableDef.Field field) {
             if (objectDef == null) {
@@ -396,13 +422,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             } else {
                 throw new IllegalStateException("Field access no supported on the object definition: " + objectDef);
             }
-            return renderExpression(objectDef, methodDef, field.instanceVariable()) + "." + field.name();
+            return CodeBlock.of(renderExpression(objectDef, methodDef, field.instanceVariable()) + "." + field.name());
         }
         if (variableDef instanceof VariableDef.This) {
             if (objectDef == null) {
                 throw new IllegalStateException("Accessing 'this' is not available");
             }
-            return "this";
+            return CodeBlock.of("this");
         }
         throw new IllegalStateException("Unrecognized variable: " + variableDef);
     }

@@ -41,7 +41,7 @@ public final class AnnotationSpec {
   public static final String VALUE = "value";
 
   public final TypeName type;
-  public final Map<String, List<CodeBlock>> members;
+  public final Map<String, List<AnnotationValueSpec>> members;
 
   private AnnotationSpec(Builder builder) {
     this.type = builder.type;
@@ -57,7 +57,7 @@ public final class AnnotationSpec {
     } else if (members.size() == 1 && members.containsKey("value")) {
       // @Named("foo")
       codeWriter.emit("@$T(", type);
-      emitAnnotationValues(codeWriter, whitespace, memberSeparator, members.get("value"));
+      emitAnnotationValues(codeWriter, whitespace, memberSeparator, members.get("value"), inline);
       codeWriter.emit(")");
     } else {
       // Inline:
@@ -70,11 +70,11 @@ public final class AnnotationSpec {
       //   )
       codeWriter.emit("@$T(" + whitespace, type);
       codeWriter.indent(2);
-      for (Iterator<Map.Entry<String, List<CodeBlock>>> i
+      for (Iterator<Map.Entry<String, List<AnnotationValueSpec>>> i
            = members.entrySet().iterator(); i.hasNext(); ) {
-        Map.Entry<String, List<CodeBlock>> entry = i.next();
+        Map.Entry<String, List<AnnotationValueSpec>> entry = i.next();
         codeWriter.emit("$L = ", entry.getKey());
-        emitAnnotationValues(codeWriter, whitespace, memberSeparator, entry.getValue());
+        emitAnnotationValues(codeWriter, whitespace, memberSeparator, entry.getValue(), inline);
         if (i.hasNext()) codeWriter.emit(memberSeparator);
       }
       codeWriter.unindent(2);
@@ -83,24 +83,25 @@ public final class AnnotationSpec {
   }
 
   private void emitAnnotationValues(CodeWriter codeWriter, String whitespace,
-                                    String memberSeparator, List<CodeBlock> values) throws IOException {
-    if (values.size() == 1) {
+                                    String memberSeparator, List<AnnotationValueSpec> values, boolean inline) throws IOException {
+    if (values.size() != 1) {
+      codeWriter.emit("{" + whitespace);
       codeWriter.indent(2);
-      codeWriter.emit(values.get(0));
-      codeWriter.unindent(2);
-      return;
     }
-
-    codeWriter.emit("{" + whitespace);
-    codeWriter.indent(2);
     boolean first = true;
-    for (CodeBlock codeBlock : values) {
+    for (AnnotationValueSpec value : values) {
       if (!first) codeWriter.emit(memberSeparator);
-      codeWriter.emit(codeBlock);
+      if (value instanceof AnnotationSpecValue annotationValue) {
+        annotationValue.annotation.emit(codeWriter, inline);
+      } else if (value instanceof CodeAnnotationValue codeValue) {
+        codeWriter.emit(codeValue.codeBlock);
+      }
       first = false;
     }
-    codeWriter.unindent(2);
-    codeWriter.emit(whitespace + "}");
+    if (values.size() != 1) {
+        codeWriter.unindent(2);
+        codeWriter.emit(whitespace + "}");
+    }
   }
 
   public static AnnotationSpec get(Annotation annotation) {
@@ -160,7 +161,7 @@ public final class AnnotationSpec {
 
   public Builder toBuilder() {
     Builder builder = new Builder(type);
-    for (Map.Entry<String, List<CodeBlock>> entry : members.entrySet()) {
+    for (Map.Entry<String, List<AnnotationValueSpec>> entry : members.entrySet()) {
       builder.members.put(entry.getKey(), new ArrayList<>(entry.getValue()));
     }
     return builder;
@@ -191,7 +192,7 @@ public final class AnnotationSpec {
   public static final class Builder {
     private final TypeName type;
 
-    public final Map<String, List<CodeBlock>> members = new LinkedHashMap<>();
+    public final Map<String, List<AnnotationValueSpec>> members = new LinkedHashMap<>();
 
     private Builder(TypeName type) {
       this.type = type;
@@ -202,9 +203,15 @@ public final class AnnotationSpec {
     }
 
     public Builder addMember(String name, CodeBlock codeBlock) {
-      List<CodeBlock> values = members.computeIfAbsent(name, k -> new ArrayList<>());
-      values.add(codeBlock);
+      List<AnnotationValueSpec> values = members.computeIfAbsent(name, k -> new ArrayList<>());
+      values.add(new CodeAnnotationValue(codeBlock));
       return this;
+    }
+
+    public Builder addMember(String name, AnnotationSpec annotation) {
+        List<AnnotationValueSpec> values = members.computeIfAbsent(name, k -> new ArrayList<>());
+        values.add(new AnnotationSpecValue(annotation));
+        return this;
     }
 
     /**
@@ -276,5 +283,20 @@ public final class AnnotationSpec {
       }
       return builder;
     }
+  }
+
+  public sealed interface AnnotationValueSpec permits AnnotationSpecValue, CodeAnnotationValue {
+  }
+
+  public record AnnotationSpecValue(
+      AnnotationSpec annotation
+  ) implements AnnotationValueSpec {
+
+  }
+
+  public record CodeAnnotationValue(
+      CodeBlock codeBlock
+  ) implements AnnotationValueSpec {
+
   }
 }

@@ -20,6 +20,7 @@ import javax.lang.model.type.TypeMirror;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -101,6 +102,13 @@ public final class CodeBlock {
 
   public static CodeBlock of(String format, Object... args) {
     return new Builder().add(format, args).build();
+  }
+
+  /**
+   * Concatenates {@code codeBlocks} into a single {@link CodeBlock}.
+   */
+  public static CodeBlock concat(CodeBlock... codeBlocks) {
+    return Arrays.stream(codeBlocks).collect(joining(""));
   }
 
   /**

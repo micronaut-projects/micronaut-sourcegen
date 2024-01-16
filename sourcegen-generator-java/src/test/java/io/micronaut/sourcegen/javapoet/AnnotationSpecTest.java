@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.javapoet;
 
 import com.google.testing.compile.CompilationRule;
+import io.micronaut.sourcegen.javapoet.AnnotationSpec.CodeAnnotationValue;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -375,7 +376,7 @@ public final class AnnotationSpecTest {
             .addMember("value", "$S", "Foo");
 
     builder.members.clear();
-    builder.members.put("value", List.of(CodeBlock.of("$S", "Bar")));
+    builder.members.put("value", List.of(new CodeAnnotationValue(CodeBlock.of("$S", "Bar"))));
 
     assertThat(builder.build().toString()).isEqualTo("@java.lang.SuppressWarnings(\"Bar\")");
   }

@@ -86,7 +86,7 @@ public sealed interface ClassTypeDef extends TypeDef {
         if (classElement.isPrimitive()) {
             throw new IllegalStateException("Primitive classes cannot be of type: " + ClassTypeDef.class.getName());
         }
-        return new ClassName(classElement.getName(), classElement.isNullable());
+        return new ClassName(classElement.getName().replace("$", "."), classElement.isNullable());
     }
 
     /**
@@ -112,7 +112,7 @@ public sealed interface ClassTypeDef extends TypeDef {
 
         @Override
         public String getName() {
-            return type.getTypeName();
+            return type.getCanonicalName();
         }
 
         @Override
