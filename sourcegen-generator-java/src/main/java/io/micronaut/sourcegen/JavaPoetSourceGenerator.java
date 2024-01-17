@@ -252,9 +252,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private MethodSpec asMethodSpec(ObjectDef objectDef, MethodDef method) {
-        MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(method.getName())
+        String methodName = method.getName();
+        MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(method.getModifiersArray())
-            .returns(asType(method.getReturnType()))
             .addParameters(
                 method.getParameters().stream()
                     .map(param -> ParameterSpec.builder(
@@ -264,6 +264,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     ).build())
                     .toList()
             );
+        if (!methodName.equals(MethodSpec.CONSTRUCTOR)) {
+            methodBuilder.returns(asType(method.getReturnType()));
+        }
         method.getJavadoc().forEach(methodBuilder::addJavadoc);
         for (AnnotationDef annotation : method.getAnnotations()) {
             methodBuilder.addAnnotation(

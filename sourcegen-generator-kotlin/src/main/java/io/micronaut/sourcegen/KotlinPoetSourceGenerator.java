@@ -214,10 +214,11 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                 companionBuilder.addFunction(
                     buildFunction(null, method, modifiers)
                 );
-            } else {
+            } else if (!method.getName().equals("<init>")) {
                 classBuilder.addFunction(
                     buildFunction(classDef, method, modifiers)
                 );
+
             }
         }
         if (companionBuilder != null) {

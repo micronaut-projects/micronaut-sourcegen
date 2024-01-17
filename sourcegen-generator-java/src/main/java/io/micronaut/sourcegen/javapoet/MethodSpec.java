@@ -41,7 +41,7 @@ import static io.micronaut.sourcegen.javapoet.Util.checkState;
 
 /** A generated constructor or method declaration. */
 public final class MethodSpec {
-  static final String CONSTRUCTOR = "<init>";
+  public static final String CONSTRUCTOR = "<init>";
 
   public final String name;
   public final CodeBlock javadoc;

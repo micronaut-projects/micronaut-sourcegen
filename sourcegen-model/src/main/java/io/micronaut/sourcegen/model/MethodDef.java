@@ -35,6 +35,7 @@ import java.util.List;
 @Experimental
 public final class MethodDef extends AbstractElement {
 
+    private static final String CONSTRUCTOR = "<init>";
     private final TypeDef returnType;
     private final List<ParameterDef> parameters;
     private final List<StatementDef> statements;
@@ -50,6 +51,13 @@ public final class MethodDef extends AbstractElement {
         this.returnType = returnType;
         this.parameters = Collections.unmodifiableList(parameters);
         this.statements = statements;
+    }
+
+    /**
+     * @return Starts a constructor.
+     */
+    public static MethodDefBuilder constructor() {
+        return MethodDef.builder(CONSTRUCTOR);
     }
 
     public TypeDef getReturnType() {
@@ -133,7 +141,7 @@ public final class MethodDef extends AbstractElement {
         }
 
         public MethodDef build() {
-            if (returnType == null) {
+            if (returnType == null && !name.equals(CONSTRUCTOR)) {
                 throw new IllegalStateException("Return type of method: " + name + " not specified!");
             }
             return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc);

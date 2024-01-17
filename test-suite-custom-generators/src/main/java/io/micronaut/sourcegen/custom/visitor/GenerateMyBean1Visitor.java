@@ -26,9 +26,13 @@ import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.FieldDef;
+import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.PropertyDef;
+import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
+import io.micronaut.sourcegen.model.VariableDef;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.util.List;
@@ -60,6 +64,8 @@ public final class GenerateMyBean1Visitor implements TypeElementVisitor<Generate
         String builderClassName = element.getPackageName() + ".MyBean1";
 
         ClassDef beanDef = ClassDef.builder(builderClassName)
+            .addMethod(MethodDef.constructor().build())
+
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
 
             .addProperty(
@@ -76,7 +82,13 @@ public final class GenerateMyBean1Visitor implements TypeElementVisitor<Generate
                     .ofType(TypeDef.of(String.class))
                     .build()
             )
-
+//            .addField(FieldDef.builder("otherName").ofType(TypeDef.of(String.class)).build())
+//            .addMethod(MethodDef.constructor().addParameter("name", ClassTypeDef.of(String.class))
+//                .addStatement(new StatementDef.Assign(
+//                    new VariableDef.Field(new VariableDef.This(ClassTypeDef.of(builderClassName)), "otherName", ClassTypeDef.of(String.class)),
+//                    new VariableDef.MethodParameter("name", ClassTypeDef.of(String.class))
+//                ))
+//                .build())
             .addProperty(
                 PropertyDef.builder("age")
                     .addModifiers(Modifier.PUBLIC)
