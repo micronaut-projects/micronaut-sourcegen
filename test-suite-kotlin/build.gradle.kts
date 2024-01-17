@@ -12,6 +12,6 @@ dependencies {
     implementation(mn.micronaut.inject.kotlin)
     implementation(projects.sourcegenAnnotations)
     implementation(projects.testSuiteCustomAnnotations)
-    testImplementation(mnTest.micronaut.test.kotest5)
-    testRuntimeOnly(mnTest.kotest.runner.junit5.jvm)
+    testImplementation(mnTest.micronaut.test.junit5)
+    testImplementation(libs.junit.jupiter.engine)
 }
