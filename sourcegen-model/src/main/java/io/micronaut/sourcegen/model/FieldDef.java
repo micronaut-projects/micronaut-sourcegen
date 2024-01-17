@@ -32,8 +32,12 @@ public final class FieldDef extends AbstractElement {
 
     private final TypeDef type;
 
-    private FieldDef(String name, EnumSet<Modifier> modifiers, TypeDef type, List<AnnotationDef> annotations) {
-        super(name, modifiers, annotations);
+    private FieldDef(String name,
+                     EnumSet<Modifier> modifiers,
+                     TypeDef type,
+                     List<AnnotationDef> annotations,
+                     List<String> javadoc) {
+        super(name, modifiers, annotations, javadoc);
         this.type = type;
     }
 
@@ -66,7 +70,7 @@ public final class FieldDef extends AbstractElement {
         }
 
         public FieldDef build() {
-            return new FieldDef(name, modifiers, type, annotations);
+            return new FieldDef(name, modifiers, type, annotations, javadoc);
         }
 
     }

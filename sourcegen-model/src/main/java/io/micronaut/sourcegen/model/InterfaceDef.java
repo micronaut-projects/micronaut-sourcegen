@@ -41,8 +41,10 @@ public final class InterfaceDef extends AbstractElement implements ObjectDef {
                          List<MethodDef> methods,
                          List<PropertyDef> properties,
                          List<AnnotationDef> annotations,
-                         List<TypeDef.TypeVariable> typeVariables, List<TypeDef> superinterfaces) {
-        super(name, modifiers, annotations);
+                         List<String> javadoc,
+                         List<TypeDef.TypeVariable> typeVariables,
+                         List<TypeDef> superinterfaces) {
+        super(name, modifiers, annotations, javadoc);
         this.methods = methods;
         this.properties = properties;
         this.typeVariables = typeVariables;
@@ -108,7 +110,7 @@ public final class InterfaceDef extends AbstractElement implements ObjectDef {
         }
 
         public InterfaceDef build() {
-            return new InterfaceDef(name, modifiers, methods, properties, annotations, typeVariables, superinterfaces);
+            return new InterfaceDef(name, modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces);
         }
 
     }

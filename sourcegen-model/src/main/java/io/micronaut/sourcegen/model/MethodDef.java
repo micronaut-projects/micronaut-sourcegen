@@ -44,8 +44,9 @@ public final class MethodDef extends AbstractElement {
               TypeDef returnType,
               List<ParameterDef> parameters,
               List<StatementDef> statements,
-              List<AnnotationDef> annotations) {
-        super(name, modifiers, annotations);
+              List<AnnotationDef> annotations,
+              List<String> javadoc) {
+        super(name, modifiers, annotations, javadoc);
         this.returnType = returnType;
         this.parameters = Collections.unmodifiableList(parameters);
         this.statements = statements;
@@ -135,7 +136,7 @@ public final class MethodDef extends AbstractElement {
             if (returnType == null) {
                 throw new IllegalStateException("Return type of method: " + name + " not specified!");
             }
-            return new MethodDef(name, modifiers, returnType, parameters, statements, annotations);
+            return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc);
         }
 
     }

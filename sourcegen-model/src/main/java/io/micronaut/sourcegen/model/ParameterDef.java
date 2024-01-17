@@ -32,8 +32,11 @@ public final class ParameterDef extends AbstractElement {
 
     private final TypeDef type;
 
-    private ParameterDef(String name, Set<Modifier> modifiers, List<AnnotationDef> annotations, TypeDef type) {
-        super(name, modifiers, annotations);
+    private ParameterDef(String name, Set<Modifier> modifiers,
+                         List<AnnotationDef> annotations,
+                         List<String> javadoc,
+                         TypeDef type) {
+        super(name, modifiers, annotations, javadoc);
         this.type = type;
     }
 
@@ -62,7 +65,7 @@ public final class ParameterDef extends AbstractElement {
         }
 
         public ParameterDef build() {
-            return new ParameterDef(name, modifiers, annotations, type);
+            return new ParameterDef(name, modifiers, annotations, javadoc, type);
         }
 
     }

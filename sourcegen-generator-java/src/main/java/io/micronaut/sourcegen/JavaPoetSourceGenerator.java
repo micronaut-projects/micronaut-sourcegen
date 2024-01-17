@@ -87,6 +87,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         interfaceBuilder.addModifiers(interfaceDef.getModifiersArray());
         interfaceDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(interfaceBuilder::addTypeVariable);
         interfaceDef.getSuperinterfaces().stream().map(this::asType).forEach(interfaceBuilder::addSuperinterface);
+        interfaceDef.getJavadoc().forEach(interfaceBuilder::addJavadoc);
 
         for (AnnotationDef annotation: interfaceDef.getAnnotations()) {
             interfaceBuilder.addAnnotation(asAnnotationSpec(annotation));
@@ -98,6 +99,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 propertyType,
                 propertyName
             ).addModifiers(Modifier.PRIVATE);
+            property.getJavadoc().forEach(fieldBuilder::addJavadoc);
+
             for (AnnotationDef annotation : property.getAnnotations()) {
                 fieldBuilder.addAnnotation(
                     asAnnotationSpec(annotation)
@@ -132,6 +135,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         TypeSpec.Builder enumBuilder = TypeSpec.enumBuilder(enumDef.getSimpleName());
         enumBuilder.addModifiers(enumDef.getModifiersArray());
         enumDef.getSuperinterfaces().stream().map(this::asType).forEach(enumBuilder::addSuperinterface);
+        enumDef.getJavadoc().forEach(enumBuilder::addJavadoc);
 
         for (AnnotationDef annotation: enumDef.getAnnotations()) {
             enumBuilder.addAnnotation(asAnnotationSpec(annotation));
@@ -155,6 +159,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         classBuilder.addModifiers(classDef.getModifiersArray());
         classDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
         classDef.getSuperinterfaces().stream().map(this::asType).forEach(classBuilder::addSuperinterface);
+        classDef.getJavadoc().forEach(classBuilder::addJavadoc);
 
         for (AnnotationDef annotation: classDef.getAnnotations()) {
             classBuilder.addAnnotation(asAnnotationSpec(annotation));
@@ -171,6 +176,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     asAnnotationSpec(annotation)
                 );
             }
+            property.getJavadoc().forEach(fieldBuilder::addJavadoc);
             classBuilder.addField(
                 fieldBuilder
                     .build()
@@ -192,6 +198,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 asType(field.getType()),
                 field.getName()
             ).addModifiers(field.getModifiersArray());
+            field.getJavadoc().forEach(fieldBuilder::addJavadoc);
             for (AnnotationDef annotation : field.getAnnotations()) {
                 fieldBuilder.addAnnotation(
                     asAnnotationSpec(annotation)
@@ -216,6 +223,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         classBuilder.addModifiers(recordDef.getModifiersArray());
         recordDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
         recordDef.getSuperinterfaces().stream().map(this::asType).forEach(classBuilder::addSuperinterface);
+        recordDef.getJavadoc().forEach(classBuilder::addJavadoc);
 
         for (AnnotationDef annotation: recordDef.getAnnotations()) {
             classBuilder.addAnnotation(asAnnotationSpec(annotation));
@@ -224,6 +232,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             TypeName propertyType = asType(property.getType());
             String propertyName = property.getName();
             ParameterSpec.Builder componentBuilder = ParameterSpec.builder(propertyType, propertyName);
+            property.getJavadoc().forEach(componentBuilder::addJavadoc);
             for (AnnotationDef annotation : property.getAnnotations()) {
                 componentBuilder.addAnnotation(
                     asAnnotationSpec(annotation)
@@ -255,6 +264,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     ).build())
                     .toList()
             );
+        method.getJavadoc().forEach(methodBuilder::addJavadoc);
         for (AnnotationDef annotation : method.getAnnotations()) {
             methodBuilder.addAnnotation(
                 asAnnotationSpec(annotation)

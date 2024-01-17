@@ -34,11 +34,13 @@ abstract sealed class AbstractElement permits ClassDef, EnumDef, FieldDef, Inter
     protected final String name;
     protected final Set<Modifier> modifiers;
     private final List<AnnotationDef> annotations;
+    private final List<String> javadoc;
 
-    AbstractElement(String name, Set<Modifier> modifiers, List<AnnotationDef> annotations) {
+    AbstractElement(String name, Set<Modifier> modifiers, List<AnnotationDef> annotations, List<String> javadoc) {
         this.name = name;
         this.modifiers = Collections.unmodifiableSet(modifiers);
-        this.annotations = annotations;
+        this.annotations = Collections.unmodifiableList(annotations);
+        this.javadoc = Collections.unmodifiableList(javadoc);
     }
 
     public final String getName() {
@@ -55,5 +57,9 @@ abstract sealed class AbstractElement permits ClassDef, EnumDef, FieldDef, Inter
 
     public final List<AnnotationDef> getAnnotations() {
         return annotations;
+    }
+
+    public List<String> getJavadoc() {
+        return javadoc;
     }
 }
