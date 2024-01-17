@@ -20,8 +20,10 @@ import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
 
+import io.micronaut.inject.ast.GenericPlaceholderElement;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The type definition.
@@ -93,7 +95,31 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Primitive, TypeDef
         if (classElement.isPrimitive()) {
             return primitive(classElement.getName());
         }
-        return ClassTypeDef.of(classElement);
+        return toTypeDef(classElement);
+    }
+
+    private static TypeDef toTypeDef(ClassElement classElement) {
+        if (classElement.getFirstTypeArgument().isPresent()) {
+            Map<String, ClassElement> nextArguments = classElement.getTypeArguments();
+            List<? extends GenericPlaceholderElement> placeHolders = classElement.getDeclaredGenericPlaceholders();
+            return new ClassTypeDef.Parameterized(
+                ClassTypeDef.of(classElement),
+                toTypeArguments(placeHolders, nextArguments)
+            );
+        } else {
+            return ClassTypeDef.of(classElement);
+        }
+    }
+
+    private  static List<TypeDef> toTypeArguments(
+        List<? extends GenericPlaceholderElement> declaredTypeVariables,
+        Map<String, ClassElement> typeArguments) {
+        return declaredTypeVariables
+            .stream().map(v -> {
+                String variableName = v.getVariableName();
+                ClassElement classElement = typeArguments.get(variableName);
+                return toTypeDef(classElement != null ? classElement : v.getType());
+            }).toList();
     }
 
     /**

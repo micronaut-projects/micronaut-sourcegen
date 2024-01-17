@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.custom.visitor;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.FieldElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.annotations.Builder;
@@ -60,7 +61,18 @@ public final class GenerateMyRecord1Visitor implements TypeElementVisitor<Genera
     private void generate(ClassElement element, VisitorContext context) {
         String builderClassName = element.getPackageName() + ".MyRecord1";
 
-        RecordDef beanDef = RecordDef.builder(builderClassName)
+        RecordDef.RecordDefBuilder builder = RecordDef.builder(builderClassName);
+        List<FieldElement> fields = element.getFields();
+        for (FieldElement field : fields) {
+            ClassElement genericType = field.getGenericType();
+            builder.addProperty(
+                PropertyDef.builder(field.getName())
+                    .addModifiers(Modifier.PUBLIC)
+                    .ofType(TypeDef.of(genericType))
+                    .build()
+            );
+        }
+        RecordDef beanDef = builder
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addAnnotation(Builder.class)
 

@@ -22,6 +22,7 @@ import io.micronaut.sourcegen.custom.example.GenerateMyEnum1;
 import io.micronaut.sourcegen.custom.example.GenerateMyInterface1;
 import io.micronaut.sourcegen.custom.example.GenerateMyRecord1;
 import io.micronaut.sourcegen.custom.example.GenerateMyRepository1;
+import java.util.List;
 
 @GenerateMyBean1
 @GenerateMyBean2
@@ -30,4 +31,5 @@ import io.micronaut.sourcegen.custom.example.GenerateMyRepository1;
 @GenerateMyRepository1
 @GenerateMyEnum1
 public class Trigger {
+    public List<String> copyAddresses;
 }
