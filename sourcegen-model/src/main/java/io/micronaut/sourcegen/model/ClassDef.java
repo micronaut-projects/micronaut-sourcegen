@@ -94,7 +94,7 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
     public FieldDef getField(String name) {
         FieldDef field = findField(name);
         if (field == null) {
-            throw new IllegalStateException("Class: " + name + " doesn't have a field: " + name);
+            throw new IllegalStateException("Class: " + this.name + " doesn't have a field: " + name);
         }
         return null;
     }

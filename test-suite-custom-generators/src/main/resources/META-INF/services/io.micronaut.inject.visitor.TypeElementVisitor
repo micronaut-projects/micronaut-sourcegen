@@ -1,6 +1,7 @@
 io.micronaut.sourcegen.custom.visitor.CopyAnnotationsVisitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyBean1Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyBean2Visitor
+io.micronaut.sourcegen.custom.visitor.GenerateMyBean3Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyInterface1Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyRepository1Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyRecord1Visitor

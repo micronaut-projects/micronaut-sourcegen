@@ -218,6 +218,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                 classBuilder.addFunction(
                     buildFunction(classDef, method, modifiers)
                 );
+
             }
         }
         if (companionBuilder != null) {
@@ -387,9 +388,14 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
     }
 
     private FunSpec buildFunction(ObjectDef objectDef, MethodDef method, Set<Modifier> modifiers) {
-        FunSpec.Builder funBuilder = FunSpec.builder(method.getName())
+        FunSpec.Builder funBuilder;
+        if (method.getName().equals("<init>")) {
+            funBuilder = FunSpec.constructorBuilder();
+        } else {
+            funBuilder = FunSpec.builder(method.getName()).returns(asType(method.getReturnType()));
+        }
+        funBuilder = funBuilder
             .addModifiers(asKModifiers(modifiers))
-            .returns(asType(method.getReturnType()))
             .addParameters(
                 method.getParameters().stream()
                     .map(param -> ParameterSpec.builder(

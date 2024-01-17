@@ -21,6 +21,7 @@ import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean1;
+import io.micronaut.sourcegen.custom.example.GenerateMyBean3;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.AnnotationDef;
@@ -31,14 +32,14 @@ import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
-
 import io.micronaut.sourcegen.model.VariableDef;
+
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.util.List;
 
 @Internal
-public final class GenerateMyBean1Visitor implements TypeElementVisitor<GenerateMyBean1, Object> {
+public final class GenerateMyBean3Visitor implements TypeElementVisitor<GenerateMyBean3, Object> {
 
     ClassElement thisElement;
 
@@ -61,59 +62,21 @@ public final class GenerateMyBean1Visitor implements TypeElementVisitor<Generate
     }
 
     private void generate(ClassElement element, VisitorContext context) {
-        String builderClassName = element.getPackageName() + ".MyBean1";
+        String builderClassName = element.getPackageName() + ".MyBean3";
 
         ClassDef beanDef = ClassDef.builder(builderClassName)
-
+            .addMethod(MethodDef.constructor().build())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-
-            .addProperty(
-                PropertyDef.builder("id")
-                    .addModifiers(Modifier.PUBLIC)
-                    .ofType(TypeDef.primitive(int.class))
-                    .addAnnotation(Deprecated.class)
-                    .build()
-            )
-
-            .addProperty(
-                PropertyDef.builder("name")
-                    .addModifiers(Modifier.PUBLIC)
-                    .ofType(TypeDef.of(String.class))
-                    .build()
-            )
-
-            .addProperty(
-                PropertyDef.builder("age")
-                    .addModifiers(Modifier.PUBLIC)
-                    .ofType(TypeDef.of(Integer.class))
-                    .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(Deprecated.class))
-                        .addMember("since", "xyz")
-                        .addMember("forRemoval", true)
-                        .build())
-                    .build()
-            )
-
-            .addProperty(
-                PropertyDef.builder("addresses")
-                    .addModifiers(Modifier.PUBLIC)
-                    .ofType(new ClassTypeDef.Parameterized(
-                        ClassTypeDef.of(List.class),
-                        List.of(TypeDef.of(String.class))
-                    ))
-                    .build()
-            )
-
-            .addProperty(
-                PropertyDef.builder("tags")
-                    .addModifiers(Modifier.PUBLIC)
-                    .ofType(new ClassTypeDef.Parameterized(
-                        ClassTypeDef.of(List.class),
-                        List.of(
-                            TypeDef.wildcard()
-                        )
-                    ))
-                    .build()
-            )
+            .addField(FieldDef.builder("otherName").ofType(TypeDef.of(String.class).makeNullable()).build())
+            .addMethod(MethodDef.constructor().addParameter("name", ClassTypeDef.of(String.class))
+                .addStatement(new StatementDef.Assign(
+                    new VariableDef.Field(new VariableDef.This(
+                        ClassTypeDef.of(builderClassName)),
+                        "otherName", ClassTypeDef.of(String.class)
+                    ),
+                    new VariableDef.MethodParameter("name", ClassTypeDef.of(String.class))
+                ))
+                .build())
             .build();
 
         SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
