@@ -26,12 +26,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MyRecord1Test {
     @Test
     public void test() throws Exception {
-        MyRecord1 bean = new MyRecord1(123, "TheName", 55, List.of("Address 1"), List.of("X", "Y"));
+        MyRecord1 bean = new MyRecord1(List.of("Copied Address"), 123, "TheName", 55, List.of("Address 1"), List.of("X", "Y"));
 
         assertEquals("TheName", bean.name());
         assertEquals(123, bean.id());
         assertEquals(55, bean.age());
         assertEquals(List.of("Address 1"), bean.addresses());
+        assertEquals(List.of("Copied Address"), bean.copyAddresses());
         assertEquals(List.of("X", "Y"), bean.tags());
 
         assertTrue(Modifier.isPrivate(
