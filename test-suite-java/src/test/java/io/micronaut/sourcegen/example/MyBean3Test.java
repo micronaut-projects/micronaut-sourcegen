@@ -15,9 +15,12 @@
  */
 package io.micronaut.sourcegen.example;
 
+import io.micronaut.core.annotation.Nullable;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class MyBean3Test {
@@ -28,5 +31,8 @@ class MyBean3Test {
 
         MyBean3 bean2 = new MyBean3("xyz");
         assertEquals("xyz", bean2.otherName);
+        assertNotNull(
+            MyBean3.class.getDeclaredConstructor(Integer.class).getParameters()[0].getDeclaredAnnotation(Nullable.class)
+        );
     }
 }
