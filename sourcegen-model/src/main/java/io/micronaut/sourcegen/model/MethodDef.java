@@ -19,6 +19,7 @@ import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.annotation.Nullable;
 
+import java.util.Objects;
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -122,7 +123,13 @@ public final class MethodDef extends AbstractElement {
         }
 
         public MethodDefBuilder addParameter(String name, TypeDef type) {
-            parameters.add(ParameterDef.builder(name, type).build());
+            ParameterDef parameterDef = ParameterDef.builder(name, type).build();
+            return addParameter(parameterDef);
+        }
+
+        public MethodDefBuilder addParameter(ParameterDef parameterDef) {
+            Objects.requireNonNull(parameterDef, "Parameter cannot be null");
+            parameters.add(parameterDef);
             return this;
         }
 
