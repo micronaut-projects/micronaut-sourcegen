@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.custom.visitor;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
@@ -29,6 +30,7 @@ import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -68,6 +70,11 @@ public final class GenerateMyBean3Visitor implements TypeElementVisitor<Generate
             .addMethod(MethodDef.constructor().build())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addField(FieldDef.builder("otherName").ofType(TypeDef.of(String.class).makeNullable()).build())
+            .addMethod(MethodDef.constructor().addParameter(
+                ParameterDef.builder("num", ClassTypeDef.of(Integer.class))
+                    .addAnnotation(Nullable.class)
+                    .build()
+            ).build())
             .addMethod(MethodDef.constructor().addParameter("name", ClassTypeDef.of(String.class))
                 .addStatement(new StatementDef.Assign(
                     new VariableDef.Field(new VariableDef.This(
@@ -76,7 +83,8 @@ public final class GenerateMyBean3Visitor implements TypeElementVisitor<Generate
                     ),
                     new VariableDef.MethodParameter("name", ClassTypeDef.of(String.class))
                 ))
-                .build())
+                .build()
+            )
             .build();
 
         SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);

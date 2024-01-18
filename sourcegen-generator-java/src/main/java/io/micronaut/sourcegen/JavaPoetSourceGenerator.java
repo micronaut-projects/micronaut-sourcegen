@@ -261,7 +261,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         asType(param.getType()),
                         param.getName(),
                         param.getModifiersArray()
-                    ).build())
+                    ).addAnnotations(param.getAnnotations().stream().map(this::asAnnotationSpec).toList()).build())
                     .toList()
             );
         if (!methodName.equals(MethodSpec.CONSTRUCTOR)) {
