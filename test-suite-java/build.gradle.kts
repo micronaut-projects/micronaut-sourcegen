@@ -10,4 +10,5 @@ dependencies {
     implementation(projects.testSuiteCustomAnnotations)
     testImplementation(mnTest.micronaut.test.junit5)
     testImplementation(libs.junit.jupiter.engine)
+    testAnnotationProcessor(mn.micronaut.inject.java)
 }
