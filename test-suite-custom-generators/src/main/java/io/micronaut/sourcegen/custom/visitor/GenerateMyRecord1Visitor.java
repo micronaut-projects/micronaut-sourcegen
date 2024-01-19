@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.custom.visitor;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
+import io.micronaut.core.annotation.Vetoed;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.FieldElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
@@ -81,6 +82,7 @@ public final class GenerateMyRecord1Visitor implements TypeElementVisitor<Genera
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addAnnotation(Builder.class)
             .addMethod(MethodDef.builder("builder")
+                .addAnnotation(Vetoed.class)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .returns(builderDef)
                 .addStatement(
