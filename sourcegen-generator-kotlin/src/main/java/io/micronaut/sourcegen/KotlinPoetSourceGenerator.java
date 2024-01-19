@@ -546,6 +546,22 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                 callInstanceMethod.type()
             );
         }
+        if (expressionDef instanceof ExpressionDef.CallStaticMethod callStaticMethod) {
+
+            return new ExpResult(
+                callStaticMethod.classDef().getName() + "." + callStaticMethod.name()
+                    + "(" + callStaticMethod.parameters()
+                    .stream()
+                    .map(exp -> {
+                        ExpResult paramExp = renderExpression(objectDef, methodDef, expressionDef);
+                        return paramExp.rendered;
+
+                    })
+                    .collect(Collectors.joining(", "))
+                    + ")",
+                callStaticMethod.type()
+            );
+        }
         if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
             ExpResult expResult = renderVariable(objectDef, methodDef, convertExpressionDef.variable());
             TypeDef resultType = convertExpressionDef.type();

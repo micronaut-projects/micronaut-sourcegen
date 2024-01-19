@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MyRecord1Test {
     @Test
     public void test() throws Exception {
+        MyRecord1 builder = MyRecord1.builder();
         MyRecord1 bean = new MyRecord1(List.of("Copied Address"), 123, "TheName", 55, List.of("Address 1"), List.of("X", "Y"));
 
         assertEquals("TheName", bean.name());

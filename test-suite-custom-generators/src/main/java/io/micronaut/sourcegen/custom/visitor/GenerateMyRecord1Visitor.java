@@ -26,9 +26,13 @@ import io.micronaut.sourcegen.custom.example.GenerateMyRecord1;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
+import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
 import javax.lang.model.element.Modifier;
@@ -72,10 +76,24 @@ public final class GenerateMyRecord1Visitor implements TypeElementVisitor<Genera
                     .build()
             );
         }
+        ClassTypeDef builderDef = ClassTypeDef.of(builderClassName + "Builder");
         RecordDef beanDef = builder
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addAnnotation(Builder.class)
-
+            .addMethod(MethodDef.builder("builder")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(builderDef)
+                .addStatement(
+                    new StatementDef.Return(
+                        ExpressionDef.invokeStatic(
+                            builderDef,
+                            "builder",
+                            List.of(),
+                            builderDef
+                        )
+                    )
+                )
+                .build())
             .addProperty(
                 PropertyDef.builder("id")
                     .addModifiers(Modifier.PUBLIC)

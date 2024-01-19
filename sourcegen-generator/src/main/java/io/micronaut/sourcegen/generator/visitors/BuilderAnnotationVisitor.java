@@ -156,7 +156,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     private StatementDef builderMethod(ClassTypeDef builderType) {
         return new StatementDef.Return(
-            new ExpressionDef.NewInstance(builderType, List.of())
+            ExpressionDef.instantiate(builderType, List.of())
         );
     }
 
@@ -177,7 +177,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 )
             );
         }
-        return new StatementDef.Return(new ExpressionDef.NewInstance(buildType, values));
+        return new StatementDef.Return(ExpressionDef.instantiate(buildType, values));
     }
 
     private record ElementAndBuilder(ClassElement element, ClassDef builderDef) {
