@@ -7,3 +7,8 @@ plugins {
 if (System.getenv("SONAR_TOKEN") != null) {
     tasks.configureEach { if (it.name == "testCodeCoverageReport") { enabled = false } }
 }
+afterEvaluate {
+    configurations.javadocAggregatorBase.dependencies.removeIf {
+        it.name.startsWith('test-suite')
+    }
+}
