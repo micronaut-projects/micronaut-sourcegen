@@ -26,7 +26,8 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public sealed interface ExpressionDef permits ExpressionDef.CallInstanceMethod, ExpressionDef.Convert, ExpressionDef.NewInstance, VariableDef {
+public sealed interface ExpressionDef
+    permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Convert, ExpressionDef.NewInstance, VariableDef {
 
     /**
      * The type of the expression.
@@ -34,6 +35,68 @@ public sealed interface ExpressionDef permits ExpressionDef.CallInstanceMethod, 
      * @return The type
      */
     TypeDef type();
+
+    /**
+     * The new instance expression.
+     *
+     * @param type   The type
+     * @param values The constructor values
+     * @return The new instance
+     */
+    @Experimental
+    static NewInstance instantiate(ClassTypeDef type,
+                                   List<ExpressionDef> values) {
+        return new NewInstance(
+            type, values
+        );
+    }
+
+    /**
+     * The call the instance method expression.
+     *
+     * @param instance   The instance
+     * @param name       The method name
+     * @param parameters The parameters
+     * @param returning  The returning
+     * @return The call to the instance method
+     */
+    @Experimental
+    static CallInstanceMethod invoke(
+        VariableDef instance,
+        String name,
+        List<ExpressionDef> parameters,
+        TypeDef returning) {
+        return new CallInstanceMethod(
+            instance,
+            name,
+            parameters,
+            returning
+        );
+    }
+
+
+    /**
+     * The call the instance method expression.
+     *
+     * @param typeDef    The class type def
+     * @param name       The method name
+     * @param parameters The parameters
+     * @param returning  The returning
+     * @return The call to the static method
+     */
+    @Experimental
+    static CallStaticMethod invokeStatic(
+        ClassTypeDef typeDef,
+        String name,
+        List<ExpressionDef> parameters,
+        TypeDef returning) {
+        return new CallStaticMethod(
+            typeDef,
+            name,
+            parameters,
+            returning
+        );
+    }
 
     /**
      * The new instance expression.
@@ -62,7 +125,7 @@ public sealed interface ExpressionDef permits ExpressionDef.CallInstanceMethod, 
     }
 
     /**
-     * The call method expression.
+     * The call an instance method expression.
      *
      * @param instance   The instance
      * @param name       The method name
@@ -74,6 +137,25 @@ public sealed interface ExpressionDef permits ExpressionDef.CallInstanceMethod, 
     @Experimental
     record CallInstanceMethod(VariableDef instance, String name, List<ExpressionDef> parameters,
                               TypeDef returning) implements ExpressionDef {
+        @Override
+        public TypeDef type() {
+            return returning;
+        }
+    }
+
+    /**
+     * The call a static method expression.
+     *
+     * @param classDef   The instance
+     * @param name       The method name
+     * @param parameters The parameters
+     * @param returning  The returning
+     * @author Denis Stepanov
+     * @since 1.0
+     */
+    @Experimental
+    record CallStaticMethod(ClassTypeDef classDef, String name, List<ExpressionDef> parameters,
+                            TypeDef returning) implements ExpressionDef {
         @Override
         public TypeDef type() {
             return returning;

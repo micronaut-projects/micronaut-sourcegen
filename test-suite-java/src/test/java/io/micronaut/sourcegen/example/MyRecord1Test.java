@@ -78,4 +78,34 @@ class MyRecord1Test {
         assertEquals(deprecated.since(), "xyz");
         assertTrue(deprecated.forRemoval());
     }
+
+    @Test
+    public void testBuilder2() throws Exception {
+        MyRecord1 bean = MyRecord1.builder()
+            .id(123)
+            .name("TheName")
+            .age(55)
+            .addresses(List.of("Address 1"))
+            .tags(List.of("X", "Y"))
+            .build();
+
+        assertEquals("TheName", bean.name());
+        assertEquals(123, bean.id());
+        assertEquals(55, bean.age());
+        assertEquals(List.of("Address 1"), bean.addresses());
+        assertEquals(List.of("X", "Y"), bean.tags());
+
+        assertTrue(Modifier.isPrivate(
+            bean.getClass().getDeclaredField("id").getModifiers()
+        ));
+        assertTrue(
+            bean.getClass().getDeclaredField("id").getDeclaredAnnotations()[0] instanceof Deprecated
+        );
+        assertTrue(Modifier.isPublic(
+            bean.getClass().getDeclaredMethod("id").getModifiers()
+        ));
+        Deprecated deprecated = (Deprecated) bean.getClass().getDeclaredField("age").getDeclaredAnnotations()[0];
+        assertEquals(deprecated.since(), "xyz");
+        assertTrue(deprecated.forRemoval());
+    }
 }

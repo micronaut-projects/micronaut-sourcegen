@@ -409,6 +409,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 CodeBlock.of(")")
             );
         }
+        if (expressionDef instanceof ExpressionDef.CallStaticMethod staticMethod) {
+            return CodeBlock.concat(
+                CodeBlock.of("$T." + staticMethod.name()
+                    + "(", asType(staticMethod.classDef())),
+                staticMethod.parameters()
+                    .stream()
+                    .map(exp -> renderExpression(objectDef, methodDef, expressionDef))
+                    .collect(CodeBlock.joining(", ")),
+                CodeBlock.of(")")
+            );
+        }
         if (expressionDef instanceof VariableDef variableDef) {
             return renderVariable(objectDef, methodDef, variableDef);
         }
