@@ -33,17 +33,17 @@ import java.util.Optional;
 @Experimental
 public final class SourceGenerators {
 
-    private static List<SourceGenerator> SOURCE_GENERATORS;
+    private static List<SourceGenerator> sourceGenerators;
 
     private SourceGenerators() {
     }
 
     @NonNull
     public static synchronized List<SourceGenerator> getAll() {
-        if (SOURCE_GENERATORS == null) {
-            SOURCE_GENERATORS = SoftServiceLoader.load(SourceGenerator.class).collectAll();
+        if (sourceGenerators == null) {
+            sourceGenerators = SoftServiceLoader.load(SourceGenerator.class).collectAll();
         }
-        return SOURCE_GENERATORS;
+        return sourceGenerators;
     }
 
     @Nullable

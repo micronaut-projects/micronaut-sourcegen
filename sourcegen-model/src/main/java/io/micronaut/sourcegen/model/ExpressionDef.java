@@ -41,8 +41,7 @@ public sealed interface ExpressionDef
      *
      * @param type   The type
      * @param values The constructor values
-     * @author Denis Stepanov
-     * @since 1.0
+     * @return The new instance
      */
     @Experimental
     static NewInstance instantiate(ClassTypeDef type,
@@ -59,8 +58,7 @@ public sealed interface ExpressionDef
      * @param name       The method name
      * @param parameters The parameters
      * @param returning  The returning
-     * @author Denis Stepanov
-     * @since 1.0
+     * @return The call to the instance method
      */
     @Experimental
     static CallInstanceMethod invoke(
@@ -84,8 +82,7 @@ public sealed interface ExpressionDef
      * @param name       The method name
      * @param parameters The parameters
      * @param returning  The returning
-     * @author Denis Stepanov
-     * @since 1.0
+     * @return The call to the static method
      */
     @Experimental
     static CallStaticMethod invokeStatic(
