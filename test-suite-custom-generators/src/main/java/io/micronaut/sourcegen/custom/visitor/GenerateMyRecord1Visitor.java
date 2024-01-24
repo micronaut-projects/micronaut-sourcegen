@@ -43,8 +43,6 @@ import java.util.List;
 @Internal
 public final class GenerateMyRecord1Visitor implements TypeElementVisitor<GenerateMyRecord1, Object> {
 
-    ClassElement thisElement;
-
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
@@ -52,18 +50,6 @@ public final class GenerateMyRecord1Visitor implements TypeElementVisitor<Genera
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        thisElement = element;
-    }
-
-    @Override
-    public void finish(VisitorContext visitorContext) {
-        if (thisElement != null) {
-            generate(thisElement, visitorContext);
-            thisElement = null;
-        }
-    }
-
-    private void generate(ClassElement element, VisitorContext context) {
         String builderClassName = element.getPackageName() + ".MyRecord1";
 
         RecordDef.RecordDefBuilder builder = RecordDef.builder(builderClassName);
@@ -149,7 +135,7 @@ public final class GenerateMyRecord1Visitor implements TypeElementVisitor<Genera
         if (sourceGenerator == null) {
             return;
         }
-        context.visitGeneratedSourceFile(beanDef.getPackageName(), beanDef.getSimpleName(), thisElement)
+        context.visitGeneratedSourceFile(beanDef.getPackageName(), beanDef.getSimpleName(), element)
             .ifPresent(generatedFile -> {
                 try {
                     generatedFile.write(writer -> sourceGenerator.write(beanDef, writer));

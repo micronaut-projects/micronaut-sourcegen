@@ -33,8 +33,6 @@ import java.io.IOException;
 @Internal
 public final class GenerateMyInterface1Visitor implements TypeElementVisitor<GenerateMyInterface1, Object> {
 
-    ClassElement thisElement;
-
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
@@ -42,18 +40,6 @@ public final class GenerateMyInterface1Visitor implements TypeElementVisitor<Gen
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        thisElement = element;
-    }
-
-    @Override
-    public void finish(VisitorContext visitorContext) {
-        if (thisElement != null) {
-            generate(thisElement, visitorContext);
-            thisElement = null;
-        }
-    }
-
-    private void generate(ClassElement element, VisitorContext context) {
         SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
         if (sourceGenerator == null) {
             return;

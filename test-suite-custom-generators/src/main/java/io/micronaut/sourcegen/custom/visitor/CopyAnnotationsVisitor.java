@@ -41,8 +41,6 @@ import java.util.List;
 @Internal
 public final class CopyAnnotationsVisitor implements TypeElementVisitor<CopyAnnotations, Object> {
 
-    ClassElement thisElement;
-
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
@@ -50,18 +48,6 @@ public final class CopyAnnotationsVisitor implements TypeElementVisitor<CopyAnno
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        thisElement = element;
-    }
-
-    @Override
-    public void finish(VisitorContext visitorContext) {
-        if (thisElement != null) {
-            generate(thisElement, visitorContext);
-            thisElement = null;
-        }
-    }
-
-    private void generate(ClassElement element, VisitorContext context) {
         String className = element.getPackageName()
             + "."
             + element.getAnnotation(CopyAnnotations.class)
@@ -82,7 +68,7 @@ public final class CopyAnnotationsVisitor implements TypeElementVisitor<CopyAnno
         if (sourceGenerator == null) {
             return;
         }
-        context.visitGeneratedSourceFile(recordDef.getPackageName(), recordDef.getSimpleName(), thisElement)
+        context.visitGeneratedSourceFile(recordDef.getPackageName(), recordDef.getSimpleName(), element)
             .ifPresent(generatedFile -> {
                 try {
                     generatedFile.write(writer -> sourceGenerator.write(recordDef, writer));
