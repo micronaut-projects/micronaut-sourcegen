@@ -35,8 +35,6 @@ import java.io.IOException;
 @Internal
 public final class GenerateMyBean2Visitor implements TypeElementVisitor<GenerateMyBean2, Object> {
 
-    ClassElement thisElement;
-
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
@@ -44,18 +42,6 @@ public final class GenerateMyBean2Visitor implements TypeElementVisitor<Generate
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        thisElement = element;
-    }
-
-    @Override
-    public void finish(VisitorContext visitorContext) {
-        if (thisElement != null) {
-            generate(thisElement, visitorContext);
-            thisElement = null;
-        }
-    }
-
-    private void generate(ClassElement element, VisitorContext context) {
         SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
         if (sourceGenerator == null) {
             return;

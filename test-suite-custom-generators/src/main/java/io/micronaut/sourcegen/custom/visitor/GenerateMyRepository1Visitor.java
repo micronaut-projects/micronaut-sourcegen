@@ -40,8 +40,6 @@ import java.util.Optional;
 @Internal
 public final class GenerateMyRepository1Visitor implements TypeElementVisitor<GenerateMyRepository1, Object> {
 
-    ClassElement thisElement;
-
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
@@ -49,18 +47,6 @@ public final class GenerateMyRepository1Visitor implements TypeElementVisitor<Ge
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        thisElement = element;
-    }
-
-    @Override
-    public void finish(VisitorContext visitorContext) {
-        if (thisElement != null)  {
-            generate(thisElement, visitorContext);
-            thisElement = null;
-        }
-    }
-
-    private void generate(ClassElement element, VisitorContext context) {
         SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
         if (sourceGenerator == null) {
             return;

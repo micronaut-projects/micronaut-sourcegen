@@ -51,8 +51,6 @@ import java.util.List;
 @Internal
 public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builder, Object> {
 
-    private final List<ElementAndBuilder> builderClasses = new ArrayList<>();
-
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
@@ -116,33 +114,25 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             }
         });
 
-        builderClasses.add(new ElementAndBuilder(element, builder.build()));
-    }
-
-    @Override
-    public void finish(VisitorContext visitorContext) {
-        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(visitorContext.getLanguage()).orElse(null);
+        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
         if (sourceGenerator == null) {
             return;
         }
-        for (ElementAndBuilder tuple : builderClasses) {
-            ClassDef builderDef = tuple.builderDef();
-            visitorContext.visitGeneratedSourceFile(
-                builderDef.getPackageName(),
-                builderDef.getSimpleName(),
-                tuple.element
-            ).ifPresent(sourceFile -> {
-                try {
-                    sourceFile.write(
-                        writer -> sourceGenerator.write(builderDef, writer)
-                    );
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        }
-        // Somehow finish is called twice
-        builderClasses.clear();
+
+        ClassDef builderDef = builder.build();
+        context.visitGeneratedSourceFile(
+            builderDef.getPackageName(),
+            builderDef.getSimpleName(),
+            element
+        ).ifPresent(sourceFile -> {
+            try {
+                sourceFile.write(
+                    writer -> sourceGenerator.write(builderDef, writer)
+                );
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     private List<StatementDef> propertyBuilderMethod(TypeDef builderType, TypeDef fieldType, PropertyElement propertyElement) {
@@ -190,6 +180,4 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         return new StatementDef.Return(ExpressionDef.instantiate(buildType, values));
     }
 
-    private record ElementAndBuilder(ClassElement element, ClassDef builderDef) {
-    }
 }

@@ -98,6 +98,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         interfaceDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(interfaceBuilder::addTypeVariable);
         interfaceDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> interfaceBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
         interfaceDef.getJavadoc().forEach(interfaceBuilder::addKdoc);
+        interfaceDef.getAnnotations().stream().map(KotlinPoetSourceGenerator::asAnnotationSpec).forEach(interfaceBuilder::addAnnotation);
 
         TypeSpec.Builder companionBuilder = null;
         for (PropertyDef property : interfaceDef.getProperties()) {
@@ -154,6 +155,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         classDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
         classDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> classBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
         classDef.getJavadoc().forEach(classBuilder::addKdoc);
+        classDef.getAnnotations().stream().map(KotlinPoetSourceGenerator::asAnnotationSpec).forEach(classBuilder::addAnnotation);
 
         TypeSpec.Builder companionBuilder = null;
         List<PropertyDef> notNullProperties = new ArrayList<>();
@@ -237,6 +239,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         recordDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
         recordDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> classBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
         recordDef.getJavadoc().forEach(classBuilder::addKdoc);
+        recordDef.getAnnotations().stream().map(KotlinPoetSourceGenerator::asAnnotationSpec).forEach(classBuilder::addAnnotation);
 
         TypeSpec.Builder companionBuilder = null;
         List<PropertyDef> constructorProperties = new ArrayList<>();
@@ -290,6 +293,8 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
         enumBuilder.addModifiers(asKModifiers(enumDef.getModifiers()));
         enumDef.getSuperinterfaces().stream().map(this::asType).forEach(it -> enumBuilder.addSuperinterface(it, CodeBlock.Companion.getEMPTY$kotlinpoet()));
         enumDef.getJavadoc().forEach(enumBuilder::addKdoc);
+        enumDef.getAnnotations().stream().map(KotlinPoetSourceGenerator::asAnnotationSpec).forEach(enumBuilder::addAnnotation);
+
         for (String enumConstant : enumDef.getEnumConstants()) {
             enumBuilder.addEnumConstant(enumConstant);
         }
