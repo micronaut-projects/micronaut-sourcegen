@@ -108,8 +108,8 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                     property.getType().makeNullable(),
                     property.getModifiers(),
                     property.getAnnotations(),
-                    property.getJavadoc()
-                );
+                    property.getJavadoc(),
+                    null);
             } else {
                 propertySpec = buildConstructorProperty(
                     property.getName(),
@@ -165,8 +165,8 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                     property.getType().makeNullable(),
                     property.getModifiers(),
                     property.getAnnotations(),
-                    property.getJavadoc()
-                );
+                    property.getJavadoc(),
+                    null);
             } else {
                 propertySpec = buildConstructorProperty(
                     property.getName(),
@@ -324,7 +324,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
                                                TypeDef typeDef,
                                                Set<Modifier> modifiers,
                                                List<AnnotationDef> annotations,
-                                               List<String> docs) {
+                                               List<String> docs, ExpressionDef initializer) {
         PropertySpec.Builder propertyBuilder = PropertySpec.builder(
             name,
             asType(typeDef),
@@ -339,6 +339,13 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
             propertyBuilder.addAnnotation(
                 asAnnotationSpec(annotation)
             );
+        }
+        if (initializer != null) {
+            if (initializer instanceof ExpressionDef.Constant constant) {
+                propertyBuilder.initializer(CodeBlock.of(
+                    "%L", constant.value()
+                ));
+            }
         }
         return propertyBuilder
             .initializer("null").build();
@@ -369,7 +376,7 @@ public final class KotlinPoetSourceGenerator implements SourceGenerator {
     }
 
     private PropertySpec buildNullableProperty(FieldDef field, Set<Modifier> modifiers, List<String> docs) {
-        return buildNullableProperty(field.getName(), field.getType(), modifiers, field.getAnnotations(), docs);
+        return buildNullableProperty(field.getName(), field.getType(), modifiers, field.getAnnotations(), docs, field.getInitializer().orElse(null));
     }
 
     private static Set<Modifier> stripStatic(Set<Modifier> modifiers) {

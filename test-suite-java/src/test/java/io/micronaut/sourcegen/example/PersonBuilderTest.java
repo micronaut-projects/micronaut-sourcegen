@@ -32,4 +32,22 @@ class PersonBuilderTest {
         assertEquals(123L, person.id());
     }
 //end::test[]
+
+    @Test
+    public void buildsPersonWithPrimitiveDefaults() {
+        var person = Person2Builder.builder()
+            .build();
+        assertEquals("Bob\"", person.name());
+        assertEquals(10L, person.id());
+        assertEquals(Person2.State.SINGLE, person.state());
+
+        var person2 = Person2Builder.builder()
+            .id(20)
+            .name("Fred")
+            .state(Person2.State.MARRIED)
+            .build();
+        assertEquals("Fred", person2.name());
+        assertEquals(20, person2.id());
+        assertEquals(Person2.State.MARRIED, person2.state());
+    }
 }

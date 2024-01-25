@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 
+import java.util.Optional;
 import javax.lang.model.element.Modifier;
 import java.util.EnumSet;
 import java.util.List;
@@ -31,14 +32,17 @@ import java.util.List;
 public final class FieldDef extends AbstractElement {
 
     private final TypeDef type;
+    private final ExpressionDef initializer;
 
     private FieldDef(String name,
                      EnumSet<Modifier> modifiers,
                      TypeDef type,
+                     ExpressionDef initializer,
                      List<AnnotationDef> annotations,
                      List<String> javadoc) {
         super(name, modifiers, annotations, javadoc);
         this.type = type;
+        this.initializer = initializer;
     }
 
     public static FieldDefBuilder builder(String name) {
@@ -47,6 +51,10 @@ public final class FieldDef extends AbstractElement {
 
     public TypeDef getType() {
         return type;
+    }
+
+    public Optional<ExpressionDef> getInitializer() {
+        return Optional.ofNullable(initializer);
     }
 
     /**
@@ -59,6 +67,7 @@ public final class FieldDef extends AbstractElement {
     public static final class FieldDefBuilder extends AbstractElementBuilder<FieldDefBuilder> {
 
         private TypeDef type;
+        private ExpressionDef initializer;
 
         private FieldDefBuilder(String name) {
             super(name);
@@ -70,8 +79,12 @@ public final class FieldDef extends AbstractElement {
         }
 
         public FieldDef build() {
-            return new FieldDef(name, modifiers, type, annotations, javadoc);
+            return new FieldDef(name, modifiers, type, initializer, annotations, javadoc);
         }
 
+        public FieldDefBuilder initializer(ExpressionDef expr) {
+            this.initializer = expr;
+            return this;
+        }
     }
 }

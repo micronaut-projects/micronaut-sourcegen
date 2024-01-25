@@ -18,6 +18,7 @@ package io.micronaut.sourcegen;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.naming.NameUtils;
+import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec;
@@ -198,6 +199,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 asType(field.getType()),
                 field.getName()
             ).addModifiers(field.getModifiersArray());
+            field.getInitializer().ifPresent(init ->
+                fieldBuilder.initializer(renderExpression(
+                    null,
+                    null,
+                    init
+                ))
+            );
             field.getJavadoc().forEach(fieldBuilder::addJavadoc);
             for (AnnotationDef annotation : field.getAnnotations()) {
                 fieldBuilder.addAnnotation(
@@ -396,6 +404,30 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
             return renderVariable(objectDef, methodDef, convertExpressionDef.variable());
+        }
+        if (expressionDef instanceof ExpressionDef.Constant constant) {
+            TypeDef type = constant.type();
+            if (type instanceof TypeDef.Primitive primitive) {
+                return switch (primitive.name()) {
+                    case "long" -> CodeBlock.of(constant.value() + "l");
+                    case "float" -> CodeBlock.of(constant.value() + "f");
+                    case "double" -> CodeBlock.of(constant.value() + "d");
+                    default -> CodeBlock.of("$L", constant.value());
+                };
+            } else if (type instanceof ClassTypeDef classTypeDef) {
+                String name = classTypeDef.getName();
+                if (ClassUtils.isJavaLangType(name)) {
+                    return switch (name) {
+                        case "java.lang.Long" -> CodeBlock.of(constant.value() + "l");
+                        case "java.lang.Float" -> CodeBlock.of(constant.value() + "f");
+                        case "java.lang.Double" -> CodeBlock.of(constant.value() + "d");
+                        case "java.lang.String" -> CodeBlock.of("$S", constant.value());
+                        default -> CodeBlock.of("$L", constant.value());
+                    };
+                } else {
+                    return CodeBlock.of("$L", constant.value());
+                }
+            }
         }
         if (expressionDef instanceof ExpressionDef.CallInstanceMethod callInstanceMethod) {
             return CodeBlock.concat(

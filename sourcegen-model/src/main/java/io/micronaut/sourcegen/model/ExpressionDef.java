@@ -17,7 +17,12 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 
+import io.micronaut.core.annotation.Nullable;
+import io.micronaut.core.convert.ConversionService;
+import io.micronaut.core.reflect.ClassUtils;
+import io.micronaut.inject.ast.ClassElement;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * The expression definition.
@@ -27,7 +32,38 @@ import java.util.List;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Convert, ExpressionDef.NewInstance, VariableDef {
+    permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.NewInstance, VariableDef {
+
+    /**
+     * Resolve a constant for the given type from the string.
+     *
+     * @param type        The type
+     * @param typeDef     The type def
+     * @param stringValue The string value
+     * @return The constant
+     * @throws IllegalArgumentException if the constant is not supported.
+     */
+    @Experimental
+    static @Nullable ExpressionDef constant(ClassElement type, TypeDef typeDef, @Nullable String stringValue) {
+        Objects.requireNonNull(type, "Type cannot be null");
+
+        if (type.isPrimitive()) {
+            return ClassUtils.getPrimitiveType(type.getName()).flatMap(t ->
+                ConversionService.SHARED.convert(stringValue, t)
+            ).map(o -> new Constant(typeDef, o)).orElse(null);
+        } else if (ClassUtils.isJavaLangType(type.getName())) {
+            return ClassUtils.forName(type.getName(), ExpressionDef.class.getClassLoader())
+                .flatMap(t -> ConversionService.SHARED.convert(stringValue, t))
+                .map(o -> new Constant(typeDef, o)).orElse(null);
+        } else if (type.isEnum()) {
+            return new VariableDef.StaticField(
+                typeDef,
+                stringValue,
+                typeDef
+            );
+        }
+        return null;
+    }
 
     /**
      * The type of the expression.
@@ -122,6 +158,19 @@ public sealed interface ExpressionDef
     @Experimental
     record Convert(TypeDef type,
                    VariableDef variable) implements ExpressionDef {
+    }
+
+    /**
+     * The convert variable expression. (To support Kotlin's nullable -> not-null conversion)
+     *
+     * @param type  The type
+     * @param value The value
+     * @author Denis Stepanov
+     * @since 1.0
+     */
+    @Experimental
+    record Constant(TypeDef type,
+                    Object value) implements ExpressionDef {
     }
 
     /**
