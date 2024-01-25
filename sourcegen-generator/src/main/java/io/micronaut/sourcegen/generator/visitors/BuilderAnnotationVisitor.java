@@ -17,10 +17,12 @@ package io.micronaut.sourcegen.generator.visitors;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
+import io.micronaut.core.bind.annotation.Bindable;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.ast.PropertyElement;
+import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.annotations.Builder;
@@ -74,9 +76,17 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             if (!fieldType.isNullable()) {
                 throw  new IllegalStateException();
             }
-            builder.addField(FieldDef.builder(propertyName)
+            FieldDef.FieldDefBuilder fieldDef = FieldDef.builder(propertyName)
                 .ofType(fieldType)
-                .addModifiers(Modifier.PRIVATE)
+                .addModifiers(Modifier.PRIVATE);
+            try {
+                beanProperty.stringValue(Bindable.class, "defaultValue").ifPresent(defaultValue ->
+                    fieldDef.initializer(ExpressionDef.constant(beanProperty.getType(), fieldType, defaultValue))
+                );
+            } catch (IllegalArgumentException e) {
+                throw new ProcessingException(beanProperty, "Invalid or unsupported default value specified: " + beanProperty.stringValue(Bindable.class, "defaultValue").orElse(null));
+            }
+            builder.addField(fieldDef
                 .build()
             );
             builder.addMethod(
