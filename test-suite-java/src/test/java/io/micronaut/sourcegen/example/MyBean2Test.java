@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Modifier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MyBean2Test {
@@ -45,9 +46,7 @@ class MyBean2Test {
         assertTrue(Modifier.isPrivate(
             bean.getClass().getDeclaredField("id").getModifiers()
         ));
-        assertTrue(
-            bean.getClass().getDeclaredField("id").getDeclaredAnnotations()[0] instanceof Deprecated
-        );
+        assertInstanceOf(Deprecated.class, bean.getClass().getDeclaredField("id").getDeclaredAnnotations()[0]);
         assertTrue(Modifier.isPublic(
             bean.getClass().getDeclaredMethod("getId").getModifiers()
         ));

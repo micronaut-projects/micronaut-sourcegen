@@ -29,6 +29,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class HeronTest {
 
@@ -41,7 +42,7 @@ class HeronTest {
         assertEquals("A", simple.stringValue("name").get());
         assertEquals(12, simple.intValue("age").getAsInt());
         assertEquals(Color.WHITE, simple.enumValue("color", Color.class).get());
-        assertEquals(String.class, simple.classValue("type").get());
+        assertSame(String.class, simple.classValue("type").get());
 
         AnnotationValue<Nested> nested = intro.getAnnotation(Nested.class);
         assertNotNull(nested);

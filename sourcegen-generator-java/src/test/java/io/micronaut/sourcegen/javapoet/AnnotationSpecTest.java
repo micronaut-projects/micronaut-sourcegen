@@ -72,7 +72,7 @@ public final class AnnotationSpecTest {
 
     Breakfast i() default Breakfast.WAFFLES;
 
-    AnnotationA j() default @AnnotationA();
+    AnnotationA j() default @AnnotationA;
 
     String k() default "maple";
 

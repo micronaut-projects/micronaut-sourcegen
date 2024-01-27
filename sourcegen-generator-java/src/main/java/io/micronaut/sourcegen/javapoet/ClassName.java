@@ -118,8 +118,7 @@ public final class ClassName extends TypeName implements Comparable<ClassName> {
     if (enclosingClassName == null) {
       simpleNames = Collections.singletonList(simpleName);
     } else {
-      List<String> mutableNames = new ArrayList<>();
-      mutableNames.addAll(enclosingClassName().simpleNames());
+      List<String> mutableNames = new ArrayList<>(enclosingClassName().simpleNames());
       mutableNames.add(simpleName);
       simpleNames = Collections.unmodifiableList(mutableNames);
     }
@@ -162,10 +161,10 @@ public final class ClassName extends TypeName implements Comparable<ClassName> {
     Util.checkArgument(!void.class.equals(clazz), "'void' type cannot be represented as a ClassName");
     Util.checkArgument(!clazz.isArray(), "array types cannot be represented as a ClassName");
 
-    String anonymousSuffix = "";
+    var anonymousSuffix = new StringBuilder();
     while (clazz.isAnonymousClass()) {
       int lastDollar = clazz.getName().lastIndexOf('$');
-      anonymousSuffix = clazz.getName().substring(lastDollar) + anonymousSuffix;
+      anonymousSuffix.insert(0, clazz.getName().substring(lastDollar));
       clazz = clazz.getEnclosingClass();
     }
     String name = clazz.getSimpleName() + anonymousSuffix;

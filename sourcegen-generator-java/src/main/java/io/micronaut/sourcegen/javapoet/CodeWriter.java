@@ -438,7 +438,7 @@ final class CodeWriter {
     }
 
     // Match the top-level class.
-    if (typeSpecStack.size() > 0 && Objects.equals(typeSpecStack.get(0).name, simpleName)) {
+    if (!typeSpecStack.isEmpty() && Objects.equals(typeSpecStack.get(0).name, simpleName)) {
       return ClassName.get(packageName, simpleName);
     }
 
