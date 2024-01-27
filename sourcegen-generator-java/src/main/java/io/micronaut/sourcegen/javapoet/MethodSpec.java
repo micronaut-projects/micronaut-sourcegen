@@ -101,7 +101,7 @@ public final class MethodSpec {
         codeWriter.emit("$T $L", returnType, name);
       }
 
-      emitParameters(codeWriter, parameters, varargs);
+      emitParameters(codeWriter, parameters, varargs, false);
     }
 
     if (defaultValue != null && !defaultValue.isEmpty()) {
@@ -157,18 +157,28 @@ public final class MethodSpec {
   }
 
   static void emitParameters(CodeWriter codeWriter, Iterable<ParameterSpec> parameters,
-                             boolean varargs) throws IOException {
+                             boolean varargs, boolean isRecord) throws IOException {
     codeWriter.emit(CodeBlock.of("($Z"));
 
+    boolean hasParameters = false;
     boolean firstParameter = true;
     for (Iterator<ParameterSpec> i = parameters.iterator(); i.hasNext(); ) {
+      hasParameters = true;
       ParameterSpec parameter = i.next();
-      if (!firstParameter)
-        codeWriter.emit(",").emitWrappingSpace();
+      if (!firstParameter) {
+          codeWriter.emit(",");
+          if (!isRecord)
+            codeWriter.emitWrappingSpace();
+      }
+      if (isRecord)
+        codeWriter.emit("\n  ");
       parameter.emit(codeWriter, !i.hasNext() && varargs);
       firstParameter = false;
     }
 
+    if (isRecord && hasParameters) {
+        codeWriter.emit("\n");
+    }
     codeWriter.emit(")");
   }
 
