@@ -50,16 +50,16 @@ public final class Util {
   }
 
   static void checkArgument(boolean condition, String format, Object... args) {
-    if (!condition) throw new IllegalArgumentException(String.format(format, args));
+    if (!condition) throw new IllegalArgumentException(format.formatted(args));
   }
 
   static <T> T checkNotNull(T reference, String format, Object... args) {
-    if (reference == null) throw new NullPointerException(String.format(format, args));
+    if (reference == null) throw new NullPointerException(format.formatted(args));
     return reference;
   }
 
   static void checkState(boolean condition, String format, Object... args) {
-    if (!condition) throw new IllegalStateException(String.format(format, args));
+    if (!condition) throw new IllegalStateException(format.formatted(args));
   }
 
   static <T> List<T> immutableList(Collection<T> collection) {
@@ -71,8 +71,7 @@ public final class Util {
   }
 
   static <T> Set<T> union(Set<T> a, Set<T> b) {
-    Set<T> result = new LinkedHashSet<>();
-    result.addAll(a);
+    Set<T> result = new LinkedHashSet<>(a);
     result.addAll(b);
     return result;
   }
@@ -88,18 +87,17 @@ public final class Util {
 
   public static String characterLiteralWithoutSingleQuotes(char c) {
     // see https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.10.6
-    switch (c) {
-      case '\b': return "\\b"; /* \u0008: backspace (BS) */
-      case '\t': return "\\t"; /* \u0009: horizontal tab (HT) */
-      case '\n': return "\\n"; /* \u000a: linefeed (LF) */
-      case '\f': return "\\f"; /* \u000c: form feed (FF) */
-      case '\r': return "\\r"; /* \u000d: carriage return (CR) */
-      case '\"': return "\"";  /* \u0022: double quote (") */
-      case '\'': return "\\'"; /* \u0027: single quote (') */
-      case '\\': return "\\\\";  /* \u005c: backslash (\) */
-      default:
-        return isISOControl(c) ? String.format("\\u%04x", (int) c) : Character.toString(c);
-    }
+      return switch (c) {
+          case '\b' -> "\\b"; /* \u0008: backspace (BS) */
+          case '\t' -> "\\t"; /* \u0009: horizontal tab (HT) */
+          case '\n' -> "\\n"; /* \u000a: linefeed (LF) */
+          case '\f' -> "\\f"; /* \u000c: form feed (FF) */
+          case '\r' -> "\\r"; /* \u000d: carriage return (CR) */
+          case '\"' -> "\"";  /* \u0022: double quote (") */
+          case '\'' -> "\\'"; /* \u0027: single quote (') */
+          case '\\' -> "\\\\";  /* \u005c: backslash (\) */
+          default -> isISOControl(c) ? "\\u%04x".formatted((int) c) : Character.toString(c);
+      };
   }
 
   /** Returns the string literal representing {@code value}, including wrapping double quotes. */
@@ -110,7 +108,7 @@ public final class Util {
       char c = value.charAt(i);
       // trivial case: single quote must not be escaped
       if (c == '\'') {
-        result.append("'");
+        result.append('\'');
         continue;
       }
       // trivial case: double quotes must be escaped

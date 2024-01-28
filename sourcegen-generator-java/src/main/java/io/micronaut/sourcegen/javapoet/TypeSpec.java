@@ -87,8 +87,7 @@ public final class TypeSpec {
     this.alwaysQualifiedNames = Util.immutableSet(builder.alwaysQualifiedNames);
 
     nestedTypesSimpleNames = new HashSet<>(builder.typeSpecs.size());
-    List<Element> originatingElementsMutable = new ArrayList<>();
-    originatingElementsMutable.addAll(builder.originatingElements);
+    List<Element> originatingElementsMutable = new ArrayList<>(builder.originatingElements);
     for (TypeSpec typeSpec : builder.typeSpecs) {
       nestedTypesSimpleNames.add(typeSpec.name);
       originatingElementsMutable.addAll(typeSpec.originatingElements);

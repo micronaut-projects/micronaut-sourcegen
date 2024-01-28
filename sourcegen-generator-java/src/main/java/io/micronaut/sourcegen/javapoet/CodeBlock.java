@@ -337,7 +337,7 @@ public final class CodeBlock {
           break;
         default:
           throw new IllegalArgumentException(
-              String.format("invalid format string: '%s'", format));
+              "invalid format string: '%s'".formatted(format));
       }
     }
 
@@ -355,7 +355,7 @@ public final class CodeBlock {
     }
 
     private String argToString(Object o) {
-      return o != null ? String.valueOf(o) : null;
+      return o != null ? o.toString() : null;
     }
 
     private TypeName argToType(Object o) {

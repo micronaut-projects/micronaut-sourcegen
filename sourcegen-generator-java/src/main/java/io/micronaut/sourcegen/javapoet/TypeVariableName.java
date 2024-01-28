@@ -32,7 +32,7 @@ public final class TypeVariableName extends TypeName {
   public final List<TypeName> bounds;
 
   private TypeVariableName(String name, List<TypeName> bounds) {
-    this(name, bounds, new ArrayList<>());
+    this(name, bounds, Collections.emptyList());
   }
 
   private TypeVariableName(String name, List<TypeName> bounds, List<AnnotationSpec> annotations) {
@@ -62,8 +62,7 @@ public final class TypeVariableName extends TypeName {
   }
 
   public TypeVariableName withBounds(List<? extends TypeName> bounds) {
-    ArrayList<TypeName> newBounds = new ArrayList<>();
-    newBounds.addAll(this.bounds);
+    ArrayList<TypeName> newBounds = new ArrayList<>(this.bounds);
     newBounds.addAll(bounds);
     return new TypeVariableName(name, newBounds, annotations);
   }
@@ -133,7 +132,7 @@ public final class TypeVariableName extends TypeName {
     String name = element.getSimpleName().toString();
     List<? extends TypeMirror> boundsMirrors = element.getBounds();
 
-    List<TypeName> boundsTypeNames = new ArrayList<>();
+    List<TypeName> boundsTypeNames = new ArrayList<>(boundsMirrors.size());
     for (TypeMirror typeMirror : boundsMirrors) {
       boundsTypeNames.add(TypeName.get(typeMirror));
     }

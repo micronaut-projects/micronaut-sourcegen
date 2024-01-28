@@ -83,7 +83,7 @@ final class CodeWriter {
     this.importedTypes = Util.checkNotNull(importedTypes, "importedTypes == null");
     this.staticImports = Util.checkNotNull(staticImports, "staticImports == null");
     this.alwaysQualify = Util.checkNotNull(alwaysQualify, "alwaysQualify == null");
-    this.staticImportClassNames = new LinkedHashSet<>();
+    this.staticImportClassNames = new LinkedHashSet<>(staticImports.size());
     for (String signature : staticImports) {
       staticImportClassNames.add(signature.substring(0, signature.lastIndexOf('.')));
     }

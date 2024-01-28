@@ -19,8 +19,8 @@ import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +34,7 @@ public final class ParameterizedTypeName extends TypeName {
 
   ParameterizedTypeName(ParameterizedTypeName enclosingType, ClassName rawType,
       List<TypeName> typeArguments) {
-    this(enclosingType, rawType, typeArguments, new ArrayList<>());
+    this(enclosingType, rawType, typeArguments, Collections.emptyList());
   }
 
   private ParameterizedTypeName(ParameterizedTypeName enclosingType, ClassName rawType,
@@ -60,7 +60,7 @@ public final class ParameterizedTypeName extends TypeName {
   @Override
   public TypeName withoutAnnotations() {
     return new ParameterizedTypeName(
-        enclosingType, rawType.withoutAnnotations(), typeArguments, new ArrayList<>());
+        enclosingType, rawType.withoutAnnotations(), typeArguments, Collections.emptyList());
   }
 
   @Override
@@ -95,8 +95,8 @@ public final class ParameterizedTypeName extends TypeName {
    */
   public ParameterizedTypeName nestedClass(String name) {
     Util.checkNotNull(name, "name == null");
-    return new ParameterizedTypeName(this, rawType.nestedClass(name), new ArrayList<>(),
-        new ArrayList<>());
+    return new ParameterizedTypeName(this, rawType.nestedClass(name), Collections.emptyList(),
+        Collections.emptyList());
   }
 
   /**
@@ -106,7 +106,7 @@ public final class ParameterizedTypeName extends TypeName {
   public ParameterizedTypeName nestedClass(String name, List<TypeName> typeArguments) {
     Util.checkNotNull(name, "name == null");
     return new ParameterizedTypeName(this, rawType.nestedClass(name), typeArguments,
-        new ArrayList<>());
+        Collections.emptyList());
   }
 
   /** Returns a parameterized type, applying {@code typeArguments} to {@code rawType}. */

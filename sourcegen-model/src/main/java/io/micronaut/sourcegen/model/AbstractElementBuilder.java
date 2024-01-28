@@ -20,6 +20,7 @@ import io.micronaut.core.annotation.Experimental;
 import javax.lang.model.element.Modifier;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -46,7 +47,7 @@ public sealed class AbstractElementBuilder<ThisType> permits ClassDef.ClassDefBu
     }
 
     public final ThisType addModifiers(Modifier... modifiers) {
-        this.modifiers.addAll(List.of(modifiers));
+        Collections.addAll(this.modifiers, modifiers);
         return thisInstance;
     }
 

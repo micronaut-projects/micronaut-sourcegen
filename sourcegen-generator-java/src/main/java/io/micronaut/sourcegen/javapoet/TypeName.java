@@ -34,6 +34,7 @@ import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,7 +96,7 @@ public class TypeName {
   private String cachedString;
 
   private TypeName(String keyword) {
-    this(keyword, new ArrayList<>());
+    this(keyword, Collections.emptyList());
   }
 
   private TypeName(String keyword, List<AnnotationSpec> annotations) {
@@ -247,26 +248,17 @@ public class TypeName {
       final Map<TypeParameterElement, TypeVariableName> typeVariables) {
     return mirror.accept(new SimpleTypeVisitor8<TypeName, Void>() {
       @Override public TypeName visitPrimitive(PrimitiveType t, Void p) {
-        switch (t.getKind()) {
-          case BOOLEAN:
-            return TypeName.BOOLEAN;
-          case BYTE:
-            return TypeName.BYTE;
-          case SHORT:
-            return TypeName.SHORT;
-          case INT:
-            return TypeName.INT;
-          case LONG:
-            return TypeName.LONG;
-          case CHAR:
-            return TypeName.CHAR;
-          case FLOAT:
-            return TypeName.FLOAT;
-          case DOUBLE:
-            return TypeName.DOUBLE;
-          default:
-            throw new AssertionError();
-        }
+          return switch (t.getKind()) {
+              case BOOLEAN -> TypeName.BOOLEAN;
+              case BYTE -> TypeName.BYTE;
+              case SHORT -> TypeName.SHORT;
+              case INT -> TypeName.INT;
+              case LONG -> TypeName.LONG;
+              case CHAR -> TypeName.CHAR;
+              case FLOAT -> TypeName.FLOAT;
+              case DOUBLE -> TypeName.DOUBLE;
+              default -> throw new AssertionError();
+          };
       }
 
       @Override public TypeName visitDeclared(DeclaredType t, Void p) {
@@ -281,7 +273,7 @@ public class TypeName {
           return rawType;
         }
 
-        List<TypeName> typeArgumentNames = new ArrayList<>();
+        List<TypeName> typeArgumentNames = new ArrayList<>(t.getTypeArguments().size());
         for (TypeMirror mirror : t.getTypeArguments()) {
           typeArgumentNames.add(get(mirror, typeVariables));
         }

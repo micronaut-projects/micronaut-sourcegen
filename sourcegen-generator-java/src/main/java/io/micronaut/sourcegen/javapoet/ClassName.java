@@ -118,8 +118,7 @@ public final class ClassName extends TypeName implements Comparable<ClassName> {
     if (enclosingClassName == null) {
       simpleNames = Collections.singletonList(simpleName);
     } else {
-      List<String> mutableNames = new ArrayList<>();
-      mutableNames.addAll(enclosingClassName().simpleNames());
+      List<String> mutableNames = new ArrayList<>(enclosingClassName().simpleNames());
       mutableNames.add(simpleName);
       simpleNames = Collections.unmodifiableList(mutableNames);
     }

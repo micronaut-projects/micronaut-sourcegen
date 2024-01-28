@@ -20,7 +20,6 @@ import javax.lang.model.type.TypeMirror;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,7 +32,7 @@ public final class WildcardTypeName extends TypeName {
   public final List<TypeName> lowerBounds;
 
   private WildcardTypeName(List<TypeName> upperBounds, List<TypeName> lowerBounds) {
-    this(upperBounds, lowerBounds, new ArrayList<>());
+    this(upperBounds, lowerBounds, Collections.emptyList());
   }
 
   private WildcardTypeName(List<TypeName> upperBounds, List<TypeName> lowerBounds,
