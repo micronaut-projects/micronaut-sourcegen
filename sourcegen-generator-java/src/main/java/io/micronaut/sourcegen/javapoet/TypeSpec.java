@@ -240,7 +240,7 @@ public final class TypeSpec {
 
       // Record components.
       if (kind == Kind.RECORD) {
-        MethodSpec.emitParameters(codeWriter, recordComponents, varargs);
+        MethodSpec.emitParameters(codeWriter, recordComponents, varargs, true);
       }
 
       List<TypeName> extendsTypes;
@@ -313,7 +313,7 @@ public final class TypeSpec {
       for (Iterator<Map.Entry<String, TypeSpec>> i = enumConstants.entrySet().iterator();
           i.hasNext(); ) {
         Map.Entry<String, TypeSpec> enumConstant = i.next();
-        if (!firstMember) codeWriter.emit("\n");
+        if (firstMember) codeWriter.emit("\n");
         enumConstant.getValue().emit(codeWriter, enumConstant.getKey(), Collections.emptySet());
         firstMember = false;
         if (i.hasNext()) {
