@@ -27,7 +27,7 @@ class MyRepository1Test {
         MyRepository1Instance myInstance = new MyRepository1Instance();
         MyEntity1 myEntity1 = new MyEntity1();
 
-        Assertions.assertTrue(myInstance instanceof CrudRepository1<?, ?>);
+        Assertions.assertInstanceOf(CrudRepository1.class, myInstance);
 
         Assertions.assertTrue(myInstance.findById(123L).isEmpty());
 

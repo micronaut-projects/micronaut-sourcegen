@@ -165,7 +165,7 @@ public final class JavaFile {
         : packageName + "." + typeSpec.name;
     List<Element> originatingElements = typeSpec.originatingElements;
     JavaFileObject filerSourceFile = filer.createSourceFile(fileName,
-        originatingElements.toArray(new Element[originatingElements.size()]));
+        originatingElements.toArray(new Element[0]));
     try (Writer writer = filerSourceFile.openWriter()) {
       writeTo(writer);
     } catch (Exception e) {

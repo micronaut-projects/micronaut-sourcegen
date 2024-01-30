@@ -138,7 +138,7 @@ public class TypeNameTest {
         ParameterizedTypeName.get(Object.class));
     assertEqualsHashCodeAndToString(ParameterizedTypeName.get(Set.class, UUID.class),
         ParameterizedTypeName.get(Set.class, UUID.class));
-    assertNotEquals(ClassName.get(List.class), ParameterizedTypeName.get(List.class,
+    assertNotEquals(ParameterizedTypeName.get(List.class), ParameterizedTypeName.get(List.class,
         String.class));
   }
 
