@@ -84,7 +84,7 @@ public final class ParameterSpec {
   }
 
   public static ParameterSpec get(VariableElement element) {
-    checkArgument(element.getKind().equals(ElementKind.PARAMETER), "element is not a parameter");
+    checkArgument(element.getKind() == ElementKind.PARAMETER, "element is not a parameter");
 
     TypeName type = TypeName.get(element.asType());
     String name = element.getSimpleName().toString();
@@ -187,7 +187,7 @@ public final class ParameterSpec {
     public Builder addModifiers(Iterable<Modifier> modifiers) {
       checkNotNull(modifiers, "modifiers == null");
       for (Modifier modifier : modifiers) {
-        if (!modifier.equals(Modifier.FINAL)) {
+        if (modifier != Modifier.FINAL) {
           throw new IllegalStateException("unexpected parameter modifier: " + modifier);
         }
         this.modifiers.add(modifier);

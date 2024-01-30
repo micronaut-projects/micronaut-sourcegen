@@ -110,7 +110,7 @@ public final class NameAllocator implements Cloneable {
     suggestion = toJavaIdentifier(suggestion);
 
     while (SourceVersion.isKeyword(suggestion) || !allocatedNames.add(suggestion)) {
-      suggestion = suggestion + "_";
+      suggestion = suggestion + '_';
     }
 
     String replaced = tagToName.put(tag, suggestion);
@@ -130,7 +130,7 @@ public final class NameAllocator implements Cloneable {
       if (i == 0
           && !Character.isJavaIdentifierStart(codePoint)
           && Character.isJavaIdentifierPart(codePoint)) {
-        result.append("_");
+        result.append('_');
       }
 
       int validCodePoint = Character.isJavaIdentifierPart(codePoint) ? codePoint : '_';
