@@ -10,6 +10,10 @@ google-compile-testing = "0.19"
 google-jimfs = "1.2"
 mockito = "3.12.4"
 junit-jupiter-engine = "5.9.2"
+
+kotlin = '1.9.22'
+ksp = '1.9.22-1.0.16'
+
 [libraries]
 # Core
 micronaut-core = { module = 'io.micronaut:micronaut-core-bom', version.ref = 'micronaut' }
@@ -24,6 +28,6 @@ google-jimfs = { module = "com.google.jimfs:jimfs", version.ref = "google-jimfs"
 mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter-engine" }
 
-[bundles]
-
-[plugins]
+kotlin-gradle-plugin = { module = 'org.jetbrains.kotlin:kotlin-gradle-plugin', version.ref = 'kotlin' }
+kotlin-gradle-allopen = { module = 'org.jetbrains.kotlin:kotlin-allopen', version.ref = 'kotlin' }
+kotlin-gradle-ksp = { module = 'com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin', version.ref = 'ksp' }
