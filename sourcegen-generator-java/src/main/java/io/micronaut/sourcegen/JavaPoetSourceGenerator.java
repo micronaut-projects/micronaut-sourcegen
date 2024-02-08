@@ -436,7 +436,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     + "("),
                 callInstanceMethod.parameters()
                     .stream()
-                    .map(exp -> renderExpression(objectDef, methodDef, expressionDef))
+                    .map(exp -> renderExpression(objectDef, methodDef, exp))
                     .collect(CodeBlock.joining(", ")),
                 CodeBlock.of(")")
             );
@@ -447,7 +447,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     + "(", asType(staticMethod.classDef())),
                 staticMethod.parameters()
                     .stream()
-                    .map(exp -> renderExpression(objectDef, methodDef, expressionDef))
+                    .map(exp -> renderExpression(objectDef, methodDef, exp))
                     .collect(CodeBlock.joining(", ")),
                 CodeBlock.of(")")
             );
