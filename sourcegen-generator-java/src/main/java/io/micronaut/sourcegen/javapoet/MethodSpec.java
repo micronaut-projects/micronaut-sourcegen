@@ -158,26 +158,29 @@ public final class MethodSpec {
 
   static void emitParameters(CodeWriter codeWriter, Iterable<ParameterSpec> parameters,
                              boolean varargs, boolean isRecord) throws IOException {
-    codeWriter.emit(CodeBlock.of("($Z"));
+    Iterator<ParameterSpec> paramIter = parameters.iterator();
+    boolean hasParameters = paramIter.hasNext();
+    codeWriter.emit(CodeBlock.of("($Z"), isRecord && hasParameters);
 
-    boolean hasParameters = false;
     boolean firstParameter = true;
-    for (Iterator<ParameterSpec> i = parameters.iterator(); i.hasNext(); ) {
+    if (isRecord && hasParameters) {
+        codeWriter.indent(2);
+    }
+    while (paramIter.hasNext()) {
       hasParameters = true;
-      ParameterSpec parameter = i.next();
+      ParameterSpec parameter = paramIter.next();
       if (!firstParameter) {
-          codeWriter.emit(",");
+          codeWriter.emit(CodeBlock.of(","), isRecord);
           if (!isRecord)
             codeWriter.emitWrappingSpace();
       }
-      if (isRecord)
-        codeWriter.emit("\n  ");
-      parameter.emit(codeWriter, !i.hasNext() && varargs);
+      parameter.emit(codeWriter, !paramIter.hasNext() && varargs);
       firstParameter = false;
     }
-
     if (isRecord && hasParameters) {
-        codeWriter.emit("\n");
+        codeWriter.unindent(2);
+        // Add new line in the end
+        codeWriter.emit(CodeBlock.of(""), true);
     }
     codeWriter.emit(")");
   }
