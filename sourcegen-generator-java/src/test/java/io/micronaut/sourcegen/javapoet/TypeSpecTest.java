@@ -1301,17 +1301,17 @@ public final class TypeSpecTest {
   @Test
   public void recordComponentJavadoc() throws Exception {
     TypeSpec taco = TypeSpec.recordBuilder("Taco")
-        .addJavadoc("Wants a cat to be a tacocat.\n")
+        .addJavadoc("Wants a cat to be a tacocat.")
         .addRecordComponent(ParameterSpec.builder(ClassName.get(String.class), "shell")
-            .addJavadoc("the outer level of tortilla of the taco\n")
+            .addJavadoc("the outer level of tortilla of the taco")
             .build())
         .addRecordComponent(ParameterSpec.builder(boolean.class, "soft")
             .addJavadoc("true for a soft flour tortilla, or false for a crunchy corn tortilla\n")
             .build())
         .compactConstructor(MethodSpec.constructorBuilder()
-            .addJavadoc("Makes a taco without a cat :(.\n")
+            .addJavadoc("Makes a taco without a cat :(.")
             .addParameter(ParameterSpec.builder(ClassName.get(String.class), "shell")
-                .addJavadoc("the outer level of tortilla of the taco\n")
+                .addJavadoc("the outer level of tortilla of the taco")
                 .build())
             .build())
         .build();
