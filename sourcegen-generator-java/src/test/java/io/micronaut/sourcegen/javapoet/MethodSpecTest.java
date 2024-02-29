@@ -297,12 +297,12 @@ public final class MethodSpecTest {
   @Test public void withParameterJavaDoc() {
     MethodSpec methodSpec = MethodSpec.methodBuilder("getTaco")
         .addParameter(ParameterSpec.builder(TypeName.DOUBLE, "money")
-            .addJavadoc("the amount required to buy the taco.\n")
+            .addJavadoc("the amount required to buy the taco.")
             .build())
         .addParameter(ParameterSpec.builder(TypeName.INT, "count")
-            .addJavadoc("the number of Tacos to buy.\n")
+            .addJavadoc("the number of Tacos to buy.")
             .build())
-        .addJavadoc("Gets the best Taco money can buy.\n")
+        .addJavadoc("Gets the best Taco money can buy.")
         .build();
     assertThat(methodSpec.toString()).isEqualTo("/**\n"
         + " * Gets the best Taco money can buy.\n"
@@ -317,10 +317,10 @@ public final class MethodSpecTest {
   @Test public void withParameterJavaDocAndWithoutMethodJavadoc() {
     MethodSpec methodSpec = MethodSpec.methodBuilder("getTaco")
         .addParameter(ParameterSpec.builder(TypeName.DOUBLE, "money")
-            .addJavadoc("the amount required to buy the taco.\n")
+            .addJavadoc("the amount required to buy the taco.")
             .build())
         .addParameter(ParameterSpec.builder(TypeName.INT, "count")
-            .addJavadoc("the number of Tacos to buy.\n")
+            .addJavadoc("the number of Tacos to buy.")
             .build())
         .build();
     assertThat(methodSpec.toString()).isEqualTo("/**\n"

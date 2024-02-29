@@ -46,6 +46,55 @@ public class RecordWriteTest {
         assertEquals(expected.strip(), result.strip());
     }
 
+    @Test
+    public void writeRecordWithJavadoc() throws IOException {
+        RecordDef recordDef = RecordDef.builder("test.TestRecord")
+                .addProperty(PropertyDef.builder("name").ofType(String.class)
+                        .addJavadoc("The person's name").build())
+                .addProperty(PropertyDef.builder("age").ofType(Integer.class)
+                        .addJavadoc("The person's age")
+                        .build()
+                )
+                .addJavadoc("A record representing a person.")
+                .build();
+        var result = writeRecord(recordDef);
+
+        var expected = """
+        /**
+         * A record representing a person.
+         *
+         * @param name The person's name
+         * @param age The person's age
+         */
+        record TestRecord(
+            String name,
+            Integer age
+        ) {
+        }
+        """;
+        assertEquals(expected.strip(), result.strip());
+    }
+
+    @Test
+    public void writeRecordWithOnlyParameterJavadoc() throws IOException {
+        RecordDef recordDef = RecordDef.builder("test.TestRecord")
+            .addProperty(PropertyDef.builder("name").ofType(String.class)
+                .addJavadoc("The person's name").build())
+            .build();
+        var result = writeRecord(recordDef);
+
+        var expected = """
+        /**
+         * @param name The person's name
+         */
+        record TestRecord(
+            String name
+        ) {
+        }
+        """;
+        assertEquals(expected.strip(), result.strip());
+    }
+
     private String writeRecord(RecordDef recordDef) throws IOException {
         JavaPoetSourceGenerator generator = new JavaPoetSourceGenerator();
         String result;
@@ -55,8 +104,8 @@ public class RecordWriteTest {
         }
 
         // The regex will skip the imports and make sure it is a record
-        final Pattern RECORD_REGEX = Pattern.compile("package [^;]+;[\\s\\S]+" +
-            "(record \\S+[\\s\\S]+})\\s*");
+        final Pattern RECORD_REGEX = Pattern.compile("package [^;]+;[^/]+" +
+            "((?:/\\*\\*[\\S\\s]+\\*/\\s+|)record \\S+[\\s\\S]+})\\s*");
         Matcher matcher = RECORD_REGEX.matcher(result);
         if (!matcher.matches()) {
             fail("Expected record to match regex: \n" + RECORD_REGEX + "\nbut is: \n" + result);

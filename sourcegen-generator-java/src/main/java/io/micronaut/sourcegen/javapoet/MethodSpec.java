@@ -148,7 +148,10 @@ public final class MethodSpec {
     for (ParameterSpec parameterSpec : parameters) {
       if (!parameterSpec.javadoc.isEmpty()) {
         // Emit a new line before @param section only if the method javadoc is present.
-        if (emitTagNewline && !javadoc.isEmpty()) builder.add("\n");
+        if (!builder.isEmpty()) {
+            if (emitTagNewline) builder.add("\n");
+            builder.add("\n");
+        }
         emitTagNewline = false;
         builder.add("@param $L $L", parameterSpec.name, parameterSpec.javadoc);
       }
