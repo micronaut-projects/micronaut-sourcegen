@@ -12,7 +12,6 @@ mockito = "3.12.4"
 junit-jupiter-engine = "5.9.2"
 
 kotlin = '1.9.22'
-ksp = '1.9.22-1.0.18'
 
 [libraries]
 # Core
@@ -30,4 +29,3 @@ junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", vers
 
 kotlin-gradle-plugin = { module = 'org.jetbrains.kotlin:kotlin-gradle-plugin', version.ref = 'kotlin' }
 kotlin-gradle-allopen = { module = 'org.jetbrains.kotlin:kotlin-allopen', version.ref = 'kotlin' }
-kotlin-gradle-ksp = { module = 'com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin', version.ref = 'ksp' }
