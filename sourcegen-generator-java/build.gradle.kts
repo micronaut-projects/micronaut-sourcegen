@@ -7,7 +7,7 @@ dependencies {
     testImplementation(libs.google.truth)
     testImplementation(libs.google.compile.testing)
     testImplementation(libs.google.jimfs)
-    testImplementation(libs.mockito)
+    testImplementation(mnTest.mockito.core)
 }
 
 tasks.withType(Test::class.java).configureEach {

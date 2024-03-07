@@ -1,15 +1,13 @@
 [versions]
-micronaut = "4.3.1"
+micronaut = "4.3.9"
 micronaut-docs = "2.0.0"
 micronaut-test = "4.1.0"
 groovy = "4.0.15"
 spock = "2.3-groovy-4.0"
-managed-kotlinpoet = "1.14.2"
-google-truth = "1.1.3"
-google-compile-testing = "0.19"
+managed-kotlinpoet = "1.16.0"
+google-truth = "1.4.2"
+google-compile-testing = "0.21.0"
 google-jimfs = "1.3.0"
-mockito = "3.12.4"
-junit-jupiter-engine = "5.9.2"
 
 kotlin = '1.9.22'
 ksp = '1.9.22-1.0.16'
@@ -25,8 +23,7 @@ managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", ver
 google-truth = { module = "com.google.truth:truth", version.ref = "google-truth" }
 google-compile-testing = { module = "com.google.testing.compile:compile-testing", version.ref = "google-compile-testing" }
 google-jimfs = { module = "com.google.jimfs:jimfs", version.ref = "google-jimfs" }
-mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }
-junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter-engine" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine" }
 
 kotlin-gradle-plugin = { module = 'org.jetbrains.kotlin:kotlin-gradle-plugin', version.ref = 'kotlin' }
 kotlin-gradle-allopen = { module = 'org.jetbrains.kotlin:kotlin-allopen', version.ref = 'kotlin' }
