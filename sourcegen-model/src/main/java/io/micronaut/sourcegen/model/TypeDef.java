@@ -33,7 +33,8 @@ import java.util.Map;
  * @since 1.0
  */
 @Experimental
-public sealed interface TypeDef permits ClassTypeDef, TypeDef.Primitive, TypeDef.TypeVariable, TypeDef.Wildcard {
+public sealed interface TypeDef permits ClassTypeDef,
+    TypeDef.Primitive, TypeDef.TypeVariable, TypeDef.Wildcard, TypeDef.Array {
 
     TypeDef VOID = primitive("void");
 
@@ -72,6 +73,14 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Primitive, TypeDef
         return new Wildcard(Collections.singletonList(TypeDef.of(Object.class)), Collections.singletonList(lowerBound));
     }
 
+    static Array array(TypeDef componentType) {
+        return new Array(componentType, 1, false);
+    }
+
+    static Array array(TypeDef componentType, int dimensions) {
+        return new Array(componentType, dimensions, false);
+    }
+
     /**
      * Creates a new type.
      *
@@ -92,6 +101,13 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Primitive, TypeDef
      * @return a new type definition
      */
     static TypeDef of(ClassElement classElement) {
+        if (classElement.isArray()) {
+            int dimensions = classElement.getArrayDimensions();
+            for (int i = 0; i < dimensions; ++i) {
+                classElement = classElement.fromArray();
+            }
+            return array(TypeDef.of(classElement), dimensions);
+        }
         if (classElement.isPrimitive()) {
             return primitive(classElement.getName());
         }
@@ -182,5 +198,27 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Primitive, TypeDef
      */
     @Experimental
     record TypeVariable(String name, List<TypeDef> bounds) implements TypeDef {
+    }
+
+    /**
+     * The type for representing an array.
+     *
+     * @param componentType The array component type
+     * @param dimensions    The dimensions
+     * @author Andriy Dmytruk
+     * @since 1.0
+     */
+    @Experimental
+    record Array(TypeDef componentType, int dimensions, boolean nullable) implements TypeDef {
+
+        @Override
+        public boolean isNullable() {
+            return nullable;
+        }
+
+        @Override
+        public TypeDef makeNullable() {
+            return new Array(componentType, dimensions, true);
+        }
     }
 }
