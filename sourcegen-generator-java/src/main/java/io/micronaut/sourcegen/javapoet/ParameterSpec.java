@@ -147,6 +147,11 @@ public final class ParameterSpec {
       this.name = name;
     }
 
+      public Builder addJavadoc(String value) {
+          javadoc.add(value.replaceAll("\\$", "\\$\\$"));
+          return this;
+      }
+
     public Builder addJavadoc(String format, Object... args) {
       javadoc.add(format, args);
       return this;
