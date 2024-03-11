@@ -77,11 +77,11 @@ loadScripts(document, 'script');</script>
 </dl>
 <dl class="notes">
 <dt>All Known Implementing Classes:</dt>
-<dd><code><a href="ClassTypeDef.ClassName.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassName</a></code>, <code><a href="ClassTypeDef.JavaClass.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.JavaClass</a></code>, <code><a href="ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></code>, <code><a href="TypeDef.Primitive.html" title="class in io.micronaut.sourcegen.model">TypeDef.Primitive</a></code>, <code><a href="TypeDef.TypeVariable.html" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a></code>, <code><a href="TypeDef.Wildcard.html" title="class in io.micronaut.sourcegen.model">TypeDef.Wildcard</a></code></dd>
+<dd><code><a href="ClassTypeDef.ClassName.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassName</a></code>, <code><a href="ClassTypeDef.JavaClass.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.JavaClass</a></code>, <code><a href="ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></code>, <code><a href="TypeDef.Array.html" title="class in io.micronaut.sourcegen.model">TypeDef.Array</a></code>, <code><a href="TypeDef.Primitive.html" title="class in io.micronaut.sourcegen.model">TypeDef.Primitive</a></code>, <code><a href="TypeDef.TypeVariable.html" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a></code>, <code><a href="TypeDef.Wildcard.html" title="class in io.micronaut.sourcegen.model">TypeDef.Wildcard</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public sealed interface </span><span class="element-name type-name-label">TypeDef</span>
-<span class="permits">permits <a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>, <a href="TypeDef.Primitive.html" title="class in io.micronaut.sourcegen.model">TypeDef.Primitive</a>, <a href="TypeDef.TypeVariable.html" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a>, <a href="TypeDef.Wildcard.html" title="class in io.micronaut.sourcegen.model">TypeDef.Wildcard</a></span></div>
+<span class="permits">permits <a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>, <a href="TypeDef.Primitive.html" title="class in io.micronaut.sourcegen.model">TypeDef.Primitive</a>, <a href="TypeDef.TypeVariable.html" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a>, <a href="TypeDef.Wildcard.html" title="class in io.micronaut.sourcegen.model">TypeDef.Wildcard</a>, <a href="TypeDef.Array.html" title="class in io.micronaut.sourcegen.model">TypeDef.Array</a></span></div>
 <div class="block">The type definition.
  Not-null by default.</div>
 <dl class="notes">
@@ -103,18 +103,23 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Interface</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="TypeDef.Primitive.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">TypeDef.Primitive</a></code></div>
+<div class="col-second even-row-color"><code><a href="TypeDef.Array.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">TypeDef.Array</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">The primitive type name.</div>
+<div class="block">The type for representing an array.</div>
 </div>
 <div class="col-first odd-row-color"><code>static final record&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="TypeDef.TypeVariable.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a></code></div>
+<div class="col-second odd-row-color"><code><a href="TypeDef.Primitive.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">TypeDef.Primitive</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">The type variable ref.</div>
+<div class="block">The primitive type name.</div>
 </div>
 <div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="TypeDef.Wildcard.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">TypeDef.Wildcard</a></code></div>
+<div class="col-second even-row-color"><code><a href="TypeDef.TypeVariable.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a></code></div>
 <div class="col-last even-row-color">
+<div class="block">The type variable ref.</div>
+</div>
+<div class="col-first odd-row-color"><code>static final record&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="TypeDef.Wildcard.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">TypeDef.Wildcard</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">The wildcard type definition.</div>
 </div>
 </div>
@@ -146,6 +151,13 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static <a href="TypeDef.Array.html" title="class in io.micronaut.sourcegen.model">TypeDef.Array</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#array(io.micronaut.sourcegen.model.TypeDef)" class="member-name-link">array</a><wbr>(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;componentType)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1"><code>static <a href="TypeDef.Array.html" title="class in io.micronaut.sourcegen.model">TypeDef.Array</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1"><code><a href="#array(io.micronaut.sourcegen.model.TypeDef,int)" class="member-name-link">array</a><wbr>(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;componentType,
+ int&nbsp;dimensions)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isNullable()" class="member-name-link">isNullable</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
@@ -251,6 +263,19 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="wildcardSupertypeOf(io.micronaut.sourcegen.model.TypeDef)">
 <h3>wildcardSupertypeOf</h3>
 <div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="TypeDef.Wildcard.html" title="class in io.micronaut.sourcegen.model">TypeDef.Wildcard</a></span>&nbsp;<span class="element-name">wildcardSupertypeOf</span><wbr><span class="parameters">(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;lowerBound)</span></div>
+</section>
+</li>
+<li>
+<section class="detail" id="array(io.micronaut.sourcegen.model.TypeDef)">
+<h3>array</h3>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="TypeDef.Array.html" title="class in io.micronaut.sourcegen.model">TypeDef.Array</a></span>&nbsp;<span class="element-name">array</span><wbr><span class="parameters">(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;componentType)</span></div>
+</section>
+</li>
+<li>
+<section class="detail" id="array(io.micronaut.sourcegen.model.TypeDef,int)">
+<h3>array</h3>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="TypeDef.Array.html" title="class in io.micronaut.sourcegen.model">TypeDef.Array</a></span>&nbsp;<span class="element-name">array</span><wbr><span class="parameters">(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;componentType,
+ int&nbsp;dimensions)</span></div>
 </section>
 </li>
 <li>
