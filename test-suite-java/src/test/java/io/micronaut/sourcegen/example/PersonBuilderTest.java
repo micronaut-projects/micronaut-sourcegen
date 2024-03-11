@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.example;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class PersonBuilderTest {
@@ -27,8 +28,10 @@ class PersonBuilderTest {
         var person = PersonBuilder.builder()
             .id(123L)
             .name("Cédric")
+            .bytes(new byte[]{1,2,3})
             .build();
         assertEquals("Cédric", person.name());
+        assertArrayEquals(new byte[]{1, 2, 3}, person.bytes());
         assertEquals(123L, person.id());
     }
 //end::test[]

@@ -22,6 +22,7 @@ import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec;
+import io.micronaut.sourcegen.javapoet.ArrayTypeName;
 import io.micronaut.sourcegen.javapoet.ClassName;
 import io.micronaut.sourcegen.javapoet.CodeBlock;
 import io.micronaut.sourcegen.javapoet.FieldSpec;
@@ -326,6 +327,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private TypeName asType(TypeDef typeDef) {
+        if (typeDef instanceof TypeDef.Array array) {
+            TypeName arrayTypeName = ArrayTypeName.of(asType(array.componentType()));
+            for (int i = 1; i < array.dimensions(); ++i) {
+                arrayTypeName = ArrayTypeName.of(arrayTypeName);
+            }
+            return arrayTypeName;
+        }
         if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
             return ParameterizedTypeName.get(
                 asClassType(parameterized.rawType()),

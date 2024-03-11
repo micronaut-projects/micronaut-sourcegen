@@ -72,7 +72,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
             TypeDef fieldType = propertyTypeDef.makeNullable();
             if (!fieldType.isNullable()) {
-                throw  new IllegalStateException();
+                throw  new IllegalStateException("Could not make the field nullable");
             }
             FieldDef.FieldDefBuilder fieldDef = FieldDef.builder(propertyName)
                 .ofType(fieldType)

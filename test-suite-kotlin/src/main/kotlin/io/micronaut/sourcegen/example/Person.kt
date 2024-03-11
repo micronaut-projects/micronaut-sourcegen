@@ -18,4 +18,4 @@ package io.micronaut.sourcegen.example
 import io.micronaut.sourcegen.annotations.Builder
 
 @Builder
-data class Person(val id: Long, val name: String)
+data class Person(val id: Long, val name: String, val bytes: Array<Byte>)
