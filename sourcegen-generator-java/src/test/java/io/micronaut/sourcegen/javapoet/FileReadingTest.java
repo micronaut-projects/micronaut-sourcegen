@@ -23,6 +23,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import javax.lang.model.element.Modifier;
+import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
@@ -34,6 +35,7 @@ import javax.tools.ToolProvider;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
 
@@ -111,7 +113,10 @@ public class FileReadingTest {
         Collections.singleton(javaFile.toJavaFileObject()));
 
     assertThat(task.call()).isTrue();
-    assertThat(diagnosticCollector.getDiagnostics()).isEmpty();
+    // see https://bugs.openjdk.org/browse/JDK-8315534 - with jdk21 there is a Note in diagnostics
+      List<Diagnostic<? extends JavaFileObject>> diagnostics = diagnosticCollector.getDiagnostics().stream()
+          .filter(diagnostic -> diagnostic.getKind() != Diagnostic.Kind.NOTE).toList();
+      assertThat(diagnostics).isEmpty();
 
     ClassLoader loader = fileManager.getClassLoader(StandardLocation.CLASS_OUTPUT);
     Callable<?> test = Class.forName("foo.Test", true, loader)
