@@ -76,6 +76,35 @@ public class RecordWriteTest {
     }
 
     @Test
+    public void writeRecordWithDollarSign() throws IOException {
+        RecordDef recordDef = RecordDef.builder("test.$TestRecord")
+            .addProperty(PropertyDef.builder("name$").ofType(String.class)
+                .addJavadoc("The person's $name").build())
+            .addProperty(PropertyDef.builder("age").ofType(Integer.class)
+                .addJavadoc("The person's age")
+                .build()
+            )
+            .addJavadoc("A record representing a $person.")
+            .build();
+        var result = writeRecord(recordDef);
+
+        var expected = """
+        /**
+         * A record representing a $person.
+         *
+         * @param name$ The person's $name
+         * @param age The person's age
+         */
+        record $TestRecord(
+            String name$,
+            Integer age
+        ) {
+        }
+        """;
+        assertEquals(expected.strip(), result.strip());
+    }
+
+    @Test
     public void writeRecordWithOnlyParameterJavadoc() throws IOException {
         RecordDef recordDef = RecordDef.builder("test.TestRecord")
             .addProperty(PropertyDef.builder("name").ofType(String.class)
