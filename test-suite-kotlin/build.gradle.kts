@@ -1,7 +1,7 @@
 plugins {
     id("io.micronaut.build.internal.sourcegen-testsuite")
     id("org.jetbrains.kotlin.jvm")
-    id("com.google.devtools.ksp")
+    id("com.google.devtools.ksp") version mn.versions.ksp
     id("org.jetbrains.kotlin.plugin.allopen")
 }
 

@@ -10,7 +10,6 @@ google-compile-testing = "0.21.0"
 google-jimfs = "1.3.0"
 
 kotlin = '1.9.22'
-ksp = '1.9.22-1.0.16'
 
 [libraries]
 # Core
@@ -27,4 +26,3 @@ junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine" }
 
 kotlin-gradle-plugin = { module = 'org.jetbrains.kotlin:kotlin-gradle-plugin', version.ref = 'kotlin' }
 kotlin-gradle-allopen = { module = 'org.jetbrains.kotlin:kotlin-allopen', version.ref = 'kotlin' }
-kotlin-gradle-ksp = { module = 'com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin', version.ref = 'ksp' }
