@@ -114,9 +114,9 @@ public class FileReadingTest {
 
     assertThat(task.call()).isTrue();
     // see https://bugs.openjdk.org/browse/JDK-8315534 - with jdk21 there is a Note in diagnostics
-      List<Diagnostic<? extends JavaFileObject>> diagnostics = diagnosticCollector.getDiagnostics().stream()
-          .filter(diagnostic -> diagnostic.getKind() != Diagnostic.Kind.NOTE).toList();
-      assertThat(diagnostics).isEmpty();
+    List<Diagnostic<? extends JavaFileObject>> diagnostics = diagnosticCollector.getDiagnostics().stream()
+        .filter(diagnostic -> diagnostic.getKind() != Diagnostic.Kind.NOTE).toList();
+    assertThat(diagnostics).isEmpty();
 
     ClassLoader loader = fileManager.getClassLoader(StandardLocation.CLASS_OUTPUT);
     Callable<?> test = Class.forName("foo.Test", true, loader)
