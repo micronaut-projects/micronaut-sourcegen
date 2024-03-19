@@ -2,8 +2,6 @@
 micronaut = "4.3.11"
 micronaut-docs = "2.0.0"
 micronaut-test = "4.1.0"
-groovy = "4.0.15"
-spock = "2.3-groovy-4.0"
 managed-kotlinpoet = "1.16.0"
 google-truth = "1.4.2"
 google-compile-testing = "0.21.0"
