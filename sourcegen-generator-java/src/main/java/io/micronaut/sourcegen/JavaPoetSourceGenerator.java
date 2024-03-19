@@ -49,6 +49,7 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
+import java.util.Arrays;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
@@ -422,6 +423,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     case "double" -> CodeBlock.of(constant.value() + "d");
                     default -> CodeBlock.of("$L", constant.value());
                 };
+            } else if (type instanceof TypeDef.Array array) {
+                if (array.componentType() instanceof ClassTypeDef arrayClassTypeDef &&
+                        constant.value() instanceof String[] stringArray) {
+                    final var values = Arrays.stream(stringArray)
+                            .map(string -> CodeBlock.of("$S", string))
+                            .collect(CodeBlock.joining(", "));
+                    return CodeBlock.concat(
+                            CodeBlock.of("new $N[] {", arrayClassTypeDef.getSimpleName()),
+                            values,
+                            CodeBlock.of("}"));
+                }
             } else if (type instanceof ClassTypeDef classTypeDef) {
                 String name = classTypeDef.getName();
                 if (ClassUtils.isJavaLangType(name)) {

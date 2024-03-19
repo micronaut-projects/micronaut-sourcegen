@@ -52,4 +52,12 @@ public class ExpressionWriteTest extends AbstractWriteTest {
         assertEquals("this.equals(\"hello\")", result);
     }
 
+    @Test
+    public void returnConstantArray() throws IOException {
+        ExpressionDef stringArray = new VariableDef.Constant(TypeDef.array(ClassTypeDef.of(String.class)),
+            new String[] {"hello", "world"});
+        String result = writeMethodWithExpression(stringArray);
+
+        assertEquals("new String[] {\"hello\", \"world\"}", result);
+    }
 }
