@@ -53,11 +53,29 @@ public class ExpressionWriteTest extends AbstractWriteTest {
     }
 
     @Test
-    public void returnConstantArray() throws IOException {
+    public void returnConstantStringArray() throws IOException {
         ExpressionDef stringArray = new VariableDef.Constant(TypeDef.array(ClassTypeDef.of(String.class)),
             new String[] {"hello", "world"});
         String result = writeMethodWithExpression(stringArray);
 
         assertEquals("new String[] {\"hello\", \"world\"}", result);
+    }
+
+    @Test
+    public void returnConstantIntegerArray() throws IOException {
+        ExpressionDef integerArray = new VariableDef.Constant(TypeDef.array(ClassTypeDef.of(Integer.class)),
+            new Integer[] {1, 2});
+        String result = writeMethodWithExpression(integerArray);
+
+        assertEquals("new Integer[] {1, 2}", result);
+    }
+
+    @Test
+    public void returnConstantIntArray() throws IOException {
+        ExpressionDef integerArray = new VariableDef.Constant(TypeDef.array(TypeDef.primitive(Integer.TYPE)),
+            new int[] {1, 2});
+        String result = writeMethodWithExpression(integerArray);
+
+        assertEquals("new int[] {1, 2}", result);
     }
 }

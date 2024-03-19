@@ -49,7 +49,9 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.stream.IntStream;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
@@ -415,39 +417,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return renderVariable(objectDef, methodDef, convertExpressionDef.variable());
         }
         if (expressionDef instanceof ExpressionDef.Constant constant) {
-            TypeDef type = constant.type();
-            if (type instanceof TypeDef.Primitive primitive) {
-                return switch (primitive.name()) {
-                    case "long" -> CodeBlock.of(constant.value() + "l");
-                    case "float" -> CodeBlock.of(constant.value() + "f");
-                    case "double" -> CodeBlock.of(constant.value() + "d");
-                    default -> CodeBlock.of("$L", constant.value());
-                };
-            } else if (type instanceof TypeDef.Array array) {
-                if (array.componentType() instanceof ClassTypeDef arrayClassTypeDef &&
-                        constant.value() instanceof String[] stringArray) {
-                    final var values = Arrays.stream(stringArray)
-                            .map(string -> CodeBlock.of("$S", string))
-                            .collect(CodeBlock.joining(", "));
-                    return CodeBlock.concat(
-                            CodeBlock.of("new $N[] {", arrayClassTypeDef.getSimpleName()),
-                            values,
-                            CodeBlock.of("}"));
-                }
-            } else if (type instanceof ClassTypeDef classTypeDef) {
-                String name = classTypeDef.getName();
-                if (ClassUtils.isJavaLangType(name)) {
-                    return switch (name) {
-                        case "java.lang.Long" -> CodeBlock.of(constant.value() + "l");
-                        case "java.lang.Float" -> CodeBlock.of(constant.value() + "f");
-                        case "java.lang.Double" -> CodeBlock.of(constant.value() + "d");
-                        case "java.lang.String" -> CodeBlock.of("$S", constant.value());
-                        default -> CodeBlock.of("$L", constant.value());
-                    };
-                } else {
-                    return CodeBlock.of("$L", constant.value());
-                }
-            }
+            return renderConstantExpression(constant);
         }
         if (expressionDef instanceof ExpressionDef.CallInstanceMethod callInstanceMethod) {
             return CodeBlock.concat(
@@ -476,6 +446,54 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return renderVariable(objectDef, methodDef, variableDef);
         }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
+    }
+
+    private CodeBlock renderConstantExpression(ExpressionDef.Constant constant) {
+        TypeDef type = constant.type();
+        if (type instanceof TypeDef.Primitive primitive) {
+            return switch (primitive.name()) {
+                case "long" -> CodeBlock.of(constant.value() + "l");
+                case "float" -> CodeBlock.of(constant.value() + "f");
+                case "double" -> CodeBlock.of(constant.value() + "d");
+                default -> CodeBlock.of("$L", constant.value());
+            };
+        } else if (type instanceof TypeDef.Array arrayDef) {
+            if (constant.value().getClass().isArray()) {
+                final var array = constant.value();
+                final var values = IntStream.range(0, Array.getLength(array))
+                        .mapToObj(i -> {
+                            Object value = Array.get(array, i);
+                            return renderConstantExpression(new ExpressionDef.Constant(arrayDef.componentType(), value));
+                        })
+                        .collect(CodeBlock.joining(", "));
+                final String typeName;
+                if (arrayDef.componentType() instanceof ClassTypeDef arrayClassTypeDef) {
+                    typeName = arrayClassTypeDef.getSimpleName();
+                } else if (arrayDef.componentType() instanceof TypeDef.Primitive arrayPrimitive) {
+                    typeName = arrayPrimitive.name();
+                } else {
+                    throw new IllegalStateException("Unrecognized expression: " + constant);
+                }
+                return CodeBlock.concat(
+                        CodeBlock.of("new $N[] {", typeName),
+                        values,
+                        CodeBlock.of("}"));
+            }
+        } else if (type instanceof ClassTypeDef classTypeDef) {
+            String name = classTypeDef.getName();
+            if (ClassUtils.isJavaLangType(name)) {
+                return switch (name) {
+                    case "java.lang.Long" -> CodeBlock.of(constant.value() + "l");
+                    case "java.lang.Float" -> CodeBlock.of(constant.value() + "f");
+                    case "java.lang.Double" -> CodeBlock.of(constant.value() + "d");
+                    case "java.lang.String" -> CodeBlock.of("$S", constant.value());
+                    default -> CodeBlock.of("$L", constant.value());
+                };
+            } else {
+                return CodeBlock.of("$L", constant.value());
+            }
+        }
+        throw new IllegalStateException("Unrecognized expression: " + constant);
     }
 
     private CodeBlock renderVariable(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, VariableDef variableDef) {
