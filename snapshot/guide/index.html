@@ -97,7 +97,7 @@
         <h1>Compilation time source code generators</h1>
         <p></p>
         <p>Micronaut SourceGen exposes a language-neutral API for source code generation.</p>
-        <p><strong>Version:</strong> <select style='max-width: 200px' onChange='window.document.location.href=this.options[this.selectedIndex].value;'><option selected='selected' value='https://micronaut-projects.github.io/micronaut-sourcegen/snapshot/guide/index.html'>SNAPSHOT</option><option value='https://micronaut-projects.github.io/micronaut-sourcegen/latest/guide/index.html'>LATEST</option></select> </p>
+        <p><strong>Version:</strong> 1.0.0-SNAPSHOT </p>
     </div>
     
 <h1 id="introduction"><a class="anchor" href="#introduction"></a>1 Introduction</h1>
@@ -205,7 +205,7 @@
 <pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import io.micronaut.sourcegen.annotations.Builder;
 
 @Builder
-public record Person(Long id, String name) {
+public record Person(Long id, String name, byte[] bytes) {
 }</code></pre>
 </div>
 </div>
@@ -219,8 +219,10 @@ public void buildsPerson() {
     var person = PersonBuilder.builder()
         .id(123L)
         .name("Cédric")
+        .bytes(new byte[]{1,2,3})
         .build();
     assertEquals("Cédric", person.name());
+    assertArrayEquals(new byte[]{1, 2, 3}, person.bytes());
     assertEquals(123L, person.id());
 }</code></pre>
 </div>
