@@ -499,6 +499,11 @@ public final class TypeSpec {
       this.anonymousTypeArguments = anonymousTypeArguments;
     }
 
+    public Builder addJavadoc(String value) {
+        javadoc.add(value.replaceAll("\\$", "\\$\\$"));
+        return this;
+    }
+
     public Builder addJavadoc(String format, Object... args) {
       javadoc.add(format, args);
       return this;

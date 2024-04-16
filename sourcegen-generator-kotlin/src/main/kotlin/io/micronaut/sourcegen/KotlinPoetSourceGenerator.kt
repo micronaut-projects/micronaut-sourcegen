@@ -473,7 +473,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
     @OptIn(KotlinPoetJavaPoetPreview::class)
     private fun asType(typeDef: TypeDef): TypeName {
-        val result: TypeName = if (typeDef is ClassTypeDef.Parameterized) {
+        val result: TypeName = if (typeDef is TypeDef.Array) {
+            asArray(typeDef)
+        } else if (typeDef is ClassTypeDef.Parameterized) {
             asClassName(typeDef.rawType).parameterizedBy(
                 typeDef.typeArguments.map { v: TypeDef -> this.asType(v) }
             )
@@ -515,6 +517,15 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             return asNullable(result)
         }
         return result
+    }
+
+    private fun asArray(classType: TypeDef.Array): TypeName {
+        var newDef = ClassTypeDef.Parameterized(
+                ClassTypeDef.of("kotlin.Array"), listOf(classType.componentType))
+        for (i in 2.. classType.dimensions) {
+            newDef = ClassTypeDef.Parameterized(ClassTypeDef.of("kotlin.Array"), listOf(newDef))
+        }
+        return this.asType(newDef)
     }
 
     private fun asTypeVariable(tv: TypeDef.TypeVariable): TypeVariableName {
