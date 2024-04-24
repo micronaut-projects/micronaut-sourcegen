@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.example;
 import io.micronaut.sourcegen.annotations.Builder;
 import io.micronaut.sourcegen.annotations.Wither;
 
+//tag::clazz[]
 @Wither
 @Builder
 public record Walrus2(
@@ -26,3 +27,4 @@ public record Walrus2(
     byte[] chipInfo
 ) implements Walrus2Wither  {
 }
+//end::clazz[]

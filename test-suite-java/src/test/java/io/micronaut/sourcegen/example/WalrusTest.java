@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class WalrusTest {
+
+//tag::test[]
     @Test
     public void test() throws Exception {
         Walrus walrus = new Walrus("Abc", 123, new byte[]{56});
@@ -46,6 +48,6 @@ class WalrusTest {
         assertEquals(walrus.name(), "Xyz");
         assertEquals(walrus.age(), 99);
         assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
-
     }
+//end::test[]
 }

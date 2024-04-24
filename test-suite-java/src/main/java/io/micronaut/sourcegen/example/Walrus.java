@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.example;
 
 import io.micronaut.sourcegen.annotations.Wither;
 
+//tag::clazz[]
 @Wither
 public record Walrus (
     String name,
@@ -24,3 +25,6 @@ public record Walrus (
     byte[] chipInfo
 ) implements WalrusWither  {
 }
+//end::clazz[]
+
+
