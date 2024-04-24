@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class Walrus2Test {
 
@@ -28,6 +29,13 @@ class Walrus2Test {
         Walrus2 walrus = new Walrus2("Abc", 123, new byte[]{56});
 
         assertEquals(walrus.name(), "Abc");
+        assertEquals(walrus.age(), 123);
+        assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+
+        // The name property is NOT annotated with @NotNull so `withName(null)` method should NOT fail
+        walrus = walrus.withName(null);
+
+        assertNull(walrus.name());
         assertEquals(walrus.age(), 123);
         assertArrayEquals(walrus.chipInfo(), new byte[]{56});
 

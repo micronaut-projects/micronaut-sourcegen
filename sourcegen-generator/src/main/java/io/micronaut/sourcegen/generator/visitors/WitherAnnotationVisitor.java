@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -92,7 +93,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                     .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                     .returns(recordType)
                     .addParameter(propertyName, propertyTypeDef)
-                    .addStatement(withPropertyMethodStatement(recordElement, recordType, witherType, propertyTypeDef, beanProperty, propertyAccessMethods))
+                    .addStatements(withPropertyMethodStatement(recordElement, recordType, witherType, propertyTypeDef, beanProperty, propertyAccessMethods))
                     .build()
             );
         }
@@ -170,12 +171,12 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         });
     }
 
-    private StatementDef withPropertyMethodStatement(ClassElement recordElement,
-                                                     ClassTypeDef recordType,
-                                                     ClassTypeDef witherType,
-                                                     TypeDef propertyTypeDef,
-                                                     PropertyElement propertyElement,
-                                                     Map<String, MethodDef> propertyAccessMethods) {
+    private List<StatementDef> withPropertyMethodStatement(ClassElement recordElement,
+                                                           ClassTypeDef recordType,
+                                                           ClassTypeDef witherType,
+                                                           TypeDef propertyTypeDef,
+                                                           PropertyElement propertyElement,
+                                                           Map<String, MethodDef> propertyAccessMethods) {
 
         List<ExpressionDef> values = new ArrayList<>();
         for (ParameterElement parameter : recordElement.getPrimaryConstructor().orElseThrow().getParameters()) {
@@ -193,7 +194,25 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             }
             values.add(exp);
         }
-        return new StatementDef.Return(ExpressionDef.instantiate(recordType, values));
+        if (propertyElement.isNonNull()) {
+            return List.of(
+                new ExpressionDef.CallStaticMethod(
+                    ClassTypeDef.of(Objects.class),
+                    "requireNonNull",
+                    List.of(
+                        new VariableDef.MethodParameter(
+                            propertyElement.getName(),
+                            propertyTypeDef
+                        )
+                    ),
+                    ClassTypeDef.of(Object.class)
+                ),
+                new StatementDef.Return(ExpressionDef.instantiate(recordType, values))
+            );
+        }
+        return List.of(
+            new StatementDef.Return(ExpressionDef.instantiate(recordType, values))
+        );
     }
 
     private StatementDef withMethodStatement(ClassElement recordElement,

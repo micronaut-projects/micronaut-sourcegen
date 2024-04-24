@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 class WalrusTest {
 
@@ -30,6 +31,10 @@ class WalrusTest {
         assertEquals(walrus.name(), "Abc");
         assertEquals(walrus.age(), 123);
         assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+
+        Walrus finalWalrus = walrus;
+        // The name property is annotated with @NotNull the `withName(null)` method should fail
+        assertThrowsExactly(NullPointerException.class, () -> finalWalrus.withName(null));
 
         walrus = walrus.withName("Xyz");
 
