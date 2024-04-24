@@ -21,6 +21,8 @@ import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
 
 import io.micronaut.inject.ast.GenericPlaceholderElement;
+import io.micronaut.inject.ast.WildcardElement;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -111,6 +113,12 @@ public sealed interface TypeDef permits ClassTypeDef,
         if (classElement.isPrimitive()) {
             return primitive(classElement.getName());
         }
+        if (classElement instanceof WildcardElement wildcardElement) {
+            return new Wildcard(
+                wildcardElement.getUpperBounds().stream().map(TypeDef::of).toList(),
+                wildcardElement.getLowerBounds().stream().map(TypeDef::of).toList()
+            );
+        }
         return toTypeDef(classElement);
     }
 
@@ -134,7 +142,7 @@ public sealed interface TypeDef permits ClassTypeDef,
             .stream().map(v -> {
                 String variableName = v.getVariableName();
                 ClassElement classElement = typeArguments.get(variableName);
-                return toTypeDef(classElement != null ? classElement : v.getType());
+                return TypeDef.of(classElement != null ? classElement : v.getType());
             }).toList();
     }
 
@@ -205,6 +213,7 @@ public sealed interface TypeDef permits ClassTypeDef,
      *
      * @param componentType The array component type
      * @param dimensions    The dimensions
+     * @param nullable      Is nullable
      * @author Andriy Dmytruk
      * @since 1.0
      */

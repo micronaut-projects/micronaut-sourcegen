@@ -40,12 +40,20 @@ public final class ParameterDef extends AbstractElement {
         this.type = type;
     }
 
+    public static ParameterDef of(String name, TypeDef type) {
+        return ParameterDef.builder(name, type).build();
+    }
+
     public static ParameterDefBuilder builder(String name, TypeDef type) {
         return new ParameterDefBuilder(name, type);
     }
 
     public TypeDef getType() {
         return type;
+    }
+
+    public VariableDef asExpression() {
+        return new VariableDef.MethodParameter(name, type);
     }
 
     /**

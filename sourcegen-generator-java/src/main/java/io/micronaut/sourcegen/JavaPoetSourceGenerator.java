@@ -50,7 +50,6 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import java.lang.reflect.Array;
-import java.util.Arrays;
 import java.util.stream.IntStream;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
@@ -399,6 +398,16 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 renderExpression(objectDef, methodDef, assign.expression())
             );
         }
+        if (statementDef instanceof StatementDef.DefineAndAssign assign) {
+            return CodeBlock.concat(
+                CodeBlock.of("$T $L", asType(assign.variable().type()), assign.variable().name()),
+                CodeBlock.of(" = "),
+                renderExpression(objectDef, methodDef, assign.expression())
+            );
+        }
+        if (statementDef instanceof ExpressionDef expressionDef) {
+            return renderExpression(objectDef, methodDef, expressionDef);
+        }
         throw new IllegalStateException("Unrecognized statement: " + statementDef);
     }
 
@@ -497,6 +506,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private CodeBlock renderVariable(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, VariableDef variableDef) {
+        if (variableDef instanceof VariableDef.Local localVariableDef) {
+            return CodeBlock.of(localVariableDef.name());
+        }
         if (variableDef instanceof VariableDef.MethodParameter parameterVariableDef) {
             if (methodDef == null) {
                 throw new IllegalStateException("Accessing method parameters is not available");

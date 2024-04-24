@@ -27,6 +27,18 @@ import io.micronaut.core.annotation.Experimental;
 public sealed interface VariableDef extends ExpressionDef {
 
     /**
+     * The local variable.
+     *
+     * @param name The name
+     * @param type The type
+     * @author Denis Stepanov
+     * @since 1.0
+     */
+    @Experimental
+    record Local(String name, TypeDef type) implements VariableDef {
+    }
+
+    /**
      * The variable of a method parameter.
      *
      * @param name The name

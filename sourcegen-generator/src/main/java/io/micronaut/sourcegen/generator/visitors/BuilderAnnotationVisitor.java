@@ -33,6 +33,7 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -96,6 +97,10 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     .build()
             );
         }
+
+        builder.addMethod(MethodDef.constructor().build());
+        builder.addMethod(MethodDef.constructor(builderType, properties.stream().map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList()));
+
         builder.addMethod(MethodDef.builder("builder")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(builderType)
