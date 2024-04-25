@@ -4,8 +4,6 @@ To use them, you need the following dependency:
 
 dependency:micronaut-sourcegen-annotations[groupId=io.micronaut.sourcegen]
 
-dependency:micronaut-sourcegen-annotations[groupId=io.micronaut.sourcegen,scope=annotationProcessor]
-
 [options="header"]
 |===
 | Annotation | Description
