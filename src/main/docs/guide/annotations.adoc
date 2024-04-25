@@ -4,8 +4,6 @@ To use them, you need the following dependency:
 
 dependency:micronaut-sourcegen-annotations[groupId=io.micronaut.sourcegen]
 
-dependency:micronaut-sourcegen-annotations[groupId=io.micronaut.sourcegen,scope=annotationProcessor]
-
 [options="header"]
 |===
 | Annotation | Description
@@ -17,50 +15,5 @@ dependency:micronaut-sourcegen-annotations[groupId=io.micronaut.sourcegen,scope=
 |===
 
 
-If you annotate a Java Record with `@Builder`, a `PersonBuilder` class is generated at compilation-time.
 
-[source,java]
-----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Person.java[tags=clazz,indent=0]
-----
 
-You can use a https://blogs.oracle.com/javamagazine/post/exploring-joshua-blochs-builder-design-pattern-in-java[builder pattern] to create a `Person` instance:
-
-[source,java]
-----
-include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/PersonBuilderTest.java[tags=test,indent=0]
-----
-
-NOTE: The https://github.com/micronaut-projects/micronaut-sourcegen/blob/master/sourcegen-generator/src/main/java/io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.java[BuilderAnnotationVisitor] is an example of how to use the Micronaut SourceGen API.
-
-If you annotate a Java Record with `@Wither`, a `YourRecordWither` interface is generated at compilation-time with all the methods having a default implementation (nothing needs to be implemented). The record class can add that interface using `implements YourRecordWither` which will expand it with the default `withProperty` copy style methods like `YourRecord withPropertyName(PropertyValue)`, calling those methods will create a copy of the record with a modified property.
-
-[source,java]
-----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Walrus.java[tags=clazz,indent=0]
-----
-
-Example of different ways to use the copy methods:
-
-[source,java]
-----
-include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/WalrusTest.java[tags=test,indent=0]
-----
-
-If your record is annotated with api:sourcegen.annotations.Builder[] the wither interface will also include:
-
-- `default YourRecordBuilder with() {...}` method that will return the record builder populated with the current values of the record
-
-- `default YourRecord with(Consumer<YourRecordBuilder> consumer) {...}` a method receiving a lambda that can modify the populated record builder with the current values of the record and producing a new instance of a record as a result
-
-[source,java]
-----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Walrus2.java[tags=clazz,indent=0]
-----
-
-Example of different ways to use the copy and builder methods:
-
-[source,java]
-----
-include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/Walrus2Test.java[tags=test,indent=0]
-----
