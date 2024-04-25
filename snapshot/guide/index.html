@@ -48,9 +48,11 @@
                                 
                                 <div class="toc-item" style="margin-left:0"><a href="#releaseHistory"><strong>2</strong><span>Release History</span></a></div>
                                 
-                                <div class="toc-item" style="margin-left:0"><a href="#annotations"><strong>3</strong><span>Annotations</span></a></div>
+                                <div class="toc-item" style="margin-left:0"><a href="#gettingStarted"><strong>3</strong><span>Quick Start</span></a></div>
                                 
-                                <div class="toc-item" style="margin-left:0"><a href="#repository"><strong>4</strong><span>Repository</span></a></div>
+                                <div class="toc-item" style="margin-left:0"><a href="#annotations"><strong>4</strong><span>Annotations</span></a></div>
+                                
+                                <div class="toc-item" style="margin-left:0"><a href="#repository"><strong>5</strong><span>Repository</span></a></div>
                                 
                             </div>
                         </div>
@@ -85,13 +87,15 @@
         
         <div class="toc-item" style="margin-left:0px" id="toc-item-releaseHistory"><a href="#releaseHistory"><strong>2</strong><span>Release History</span></a></div>
         
-        <div class="toc-item" style="margin-left:0px" id="toc-item-annotations"><a href="#annotations"><strong>3</strong><span>Annotations</span></a></div>
+        <div class="toc-item" style="margin-left:0px" id="toc-item-gettingStarted"><a href="#gettingStarted"><strong>3</strong><span>Quick Start</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-builder"><a href="#builder"><strong>3.1</strong><span>Builder</span></a></div>
+        <div class="toc-item" style="margin-left:0px" id="toc-item-annotations"><a href="#annotations"><strong>4</strong><span>Annotations</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-wither"><a href="#wither"><strong>3.2</strong><span>Wither</span></a></div>
+        <div class="toc-item" style="margin-left:10px" id="toc-item-builder"><a href="#builder"><strong>4.1</strong><span>Builder</span></a></div>
         
-        <div class="toc-item" style="margin-left:0px" id="toc-item-repository"><a href="#repository"><strong>4</strong><span>Repository</span></a></div>
+        <div class="toc-item" style="margin-left:10px" id="toc-item-wither"><a href="#wither"><strong>4.2</strong><span>Wither</span></a></div>
+        
+        <div class="toc-item" style="margin-left:0px" id="toc-item-repository"><a href="#repository"><strong>5</strong><span>Repository</span></a></div>
         
         </div>
     </div>
@@ -155,7 +159,82 @@
 <p><a href="https://github.com/micronaut-projects/micronaut-sourcegen/releases">https://github.com/micronaut-projects/micronaut-sourcegen/releases</a></p>
 </div>
 
-<h1 id="annotations"><a class="anchor" href="#annotations"></a>3 Annotations</h1>
+<h1 id="gettingStarted"><a class="anchor" href="#gettingStarted"></a>3 Quick Start</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/gettingStarted.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>To get started add Micronaut SourceGen to the annotation processor scope of your build configuration:</p>
+</div>
+<div class="paragraph">
+<p>For Java projects add:</p>
+</div>
+<div class="paragraph">
+<p>        <div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-kotlin hljs" data-lang="gradle">annotationProcessor(<span class="hljs-string">"io.micronaut.sourcegen:micronaut-sourcegen-generator-java")</span></code></pre>
+</div>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="maven">&lt;annotationProcessorPaths&gt;
+    &lt;path&gt;
+        &lt;groupId&gt;io.micronaut.sourcegen&lt;/groupId&gt;
+        &lt;artifactId&gt;micronaut-sourcegen-generator-java&lt;/artifactId&gt;
+    &lt;/path&gt;
+&lt;/annotationProcessorPaths&gt;</code></pre>
+</div>
+</div></p>
+</div>
+<div class="paragraph">
+<p>For Kotlin projects using KSP add:</p>
+</div>
+<div class="paragraph">
+<p>        <div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-kotlin hljs" data-lang="gradle">ksp(<span class="hljs-string">"io.micronaut.sourcegen:micronaut-sourcegen-generator-kotlin")</span></code></pre>
+</div>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="maven">&lt;dependency&gt;
+    &lt;groupId&gt;io.micronaut.sourcegen&lt;/groupId&gt;
+    &lt;artifactId&gt;micronaut-sourcegen-generator-kotlin&lt;/artifactId&gt;
+    &lt;scope&gt;ksp&lt;/scope&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div></p>
+</div>
+<div class="paragraph">
+<p>or, for those using KAPT add:</p>
+</div>
+<div class="paragraph">
+<p>        <div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-kotlin hljs" data-lang="gradle">kapt(<span class="hljs-string">"io.micronaut.sourcegen:micronaut-sourcegen-generator-kotlin")</span></code></pre>
+</div>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="maven">&lt;dependency&gt;
+    &lt;groupId&gt;io.micronaut.sourcegen&lt;/groupId&gt;
+    &lt;artifactId&gt;micronaut-sourcegen-generator-kotlin&lt;/artifactId&gt;
+    &lt;scope&gt;kapt&lt;/scope&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div></p>
+</div>
+
+<h1 id="annotations"><a class="anchor" href="#annotations"></a>4 Annotations</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/annotations.adoc"'>
@@ -209,7 +288,7 @@
 </tbody>
 </table>
 
-<h2 id="builder"><a class="anchor" href="#builder"></a>3.1 Builder</h2>
+<h2 id="builder"><a class="anchor" href="#builder"></a>4.1 Builder</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/annotations/builder.adoc"'>
@@ -261,7 +340,7 @@ The <a href="https://github.com/micronaut-projects/micronaut-sourcegen/blob/mast
 </table>
 </div>
 
-<h2 id="wither"><a class="anchor" href="#wither"></a>3.2 Wither</h2>
+<h2 id="wither"><a class="anchor" href="#wither"></a>4.2 Wither</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/annotations/wither.adoc"'>
@@ -418,7 +497,7 @@ public void testWitherAndBuilder() throws Exception {
 </div>
 </div>
 
-<h1 id="repository"><a class="anchor" href="#repository"></a>4 Repository</h1>
+<h1 id="repository"><a class="anchor" href="#repository"></a>5 Repository</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/repository.adoc"'>
