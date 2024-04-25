@@ -1,1 +1,11 @@
-Micronaut SourceGen exposes a language-neutral API for source code generation. It uses https://github.com/square/javapoet[JavaPoet] internally.
+Micronaut SourceGen exposes a language-neutral API for performing source code generation. Since https://github.com/square/javapoet[JavaPoet] is no longer maintained this module includes a fork of the code with extensions to support Java Records and other modern Java constructs.
+
+An additional API is provided in the `io.micronaut.sourcegen.model` package that abstracts both JavaPoet and KotlinPoet such that the developer can build source generators in a language neutral manner.
+
+Any processors built with the Micronaut SourceGen API work with:
+
+* Java
+* Kotlin via KAPT
+* Kotlin via KSP
+
+Note that Groovy is not supported at this time of writing since it lacks APIs to add generated sources to the current compilation unit and perform multiple rounds of processing like Java and Kotlin do.
