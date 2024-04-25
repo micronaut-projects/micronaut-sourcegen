@@ -85,7 +85,7 @@ loadScripts(document, 'script');</script>
 </dl>
 <dl class="notes">
 <dt>All Implemented Interfaces:</dt>
-<dd><code><a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></dd>
+<dd><code><a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code>, <code><a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></code></dd>
 </dl>
 <dl class="notes">
 <dt>Enclosing interface:</dt>
@@ -94,7 +94,7 @@ loadScripts(document, 'script');</script>
 <hr>
 <div class="type-signature"><span class="modifiers">public static record </span><span class="element-name type-name-label">ExpressionDef.CallInstanceMethod</span>(<a href="VariableDef.html" title="interface in io.micronaut.sourcegen.model">VariableDef</a>&nbsp;instance, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;parameters, <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returning)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a>
-implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></span></div>
+implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>, <a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></span></div>
 <div class="block">The call an instance method expression.</div>
 <dl class="notes">
 <dt>Since:</dt>
@@ -112,6 +112,9 @@ implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourceg
 <div class="inherited-list">
 <h2 id="nested-classes-inherited-from-class-io.micronaut.sourcegen.model.ExpressionDef">Nested classes/interfaces inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></h2>
 <code><a href="ExpressionDef.CallInstanceMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallInstanceMethod</a>, <a href="ExpressionDef.CallStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallStaticMethod</a>, <a href="ExpressionDef.Constant.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Constant</a>, <a href="ExpressionDef.Convert.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a>, <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
+<div class="inherited-list">
+<h2 id="nested-classes-inherited-from-class-io.micronaut.sourcegen.model.StatementDef">Nested classes/interfaces inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></h2>
+<code><a href="StatementDef.Assign.html" title="class in io.micronaut.sourcegen.model">StatementDef.Assign</a>, <a href="StatementDef.DefineAndAssign.html" title="class in io.micronaut.sourcegen.model">StatementDef.DefineAndAssign</a>, <a href="StatementDef.Return.html" title="class in io.micronaut.sourcegen.model">StatementDef.Return</a></code></div>
 </section>
 </li>
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
@@ -122,11 +125,14 @@ implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourceg
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.VariableDef,java.lang.String,java.util.List,io.micronaut.sourcegen.model.TypeDef)" class="member-name-link">CallInstanceMethod</a><wbr>(<a href="VariableDef.html" title="interface in io.micronaut.sourcegen.model">VariableDef</a>&nbsp;instance,
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.VariableDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">CallInstanceMethod</a><wbr>(<a href="VariableDef.html" title="interface in io.micronaut.sourcegen.model">VariableDef</a>&nbsp;instance,
+ <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.VariableDef,java.lang.String,java.util.List,io.micronaut.sourcegen.model.TypeDef)" class="member-name-link">CallInstanceMethod</a><wbr>(<a href="VariableDef.html" title="interface in io.micronaut.sourcegen.model">VariableDef</a>&nbsp;instance,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;parameters,
  <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returning)</code></div>
-<div class="col-last even-row-color">
+<div class="col-last odd-row-color">
 <div class="block">Creates an instance of a <code>CallInstanceMethod</code> record class.</div>
 </div>
 </div>
@@ -200,6 +206,13 @@ implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourceg
 <section class="constructor-details" id="constructor-detail">
 <h2>Constructor Details</h2>
 <ul class="member-list">
+<li>
+<section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.VariableDef,io.micronaut.sourcegen.model.MethodDef)">
+<h3>CallInstanceMethod</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">CallInstanceMethod</span><wbr><span class="parameters">(<a href="VariableDef.html" title="interface in io.micronaut.sourcegen.model">VariableDef</a>&nbsp;instance,
+ <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</span></div>
+</section>
+</li>
 <li>
 <section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.VariableDef,java.lang.String,java.util.List,io.micronaut.sourcegen.model.TypeDef)">
 <h3>CallInstanceMethod</h3>

@@ -87,6 +87,10 @@
         
         <div class="toc-item" style="margin-left:0px" id="toc-item-annotations"><a href="#annotations"><strong>3</strong><span>Annotations</span></a></div>
         
+        <div class="toc-item" style="margin-left:10px" id="toc-item-builder"><a href="#builder"><strong>3.1</strong><span>Builder</span></a></div>
+        
+        <div class="toc-item" style="margin-left:10px" id="toc-item-wither"><a href="#wither"><strong>3.2</strong><span>Wither</span></a></div>
+        
         <div class="toc-item" style="margin-left:0px" id="toc-item-repository"><a href="#repository"><strong>4</strong><span>Repository</span></a></div>
         
         </div>
@@ -160,25 +164,6 @@
 </div>
 </div></p>
 </div>
-<div class="paragraph">
-<p>        <div class="listingblock multi-language-sample">
-<div class="title"></div>
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-kotlin hljs" data-lang="gradle">annotationProcessor(<span class="hljs-string">"io.micronaut.sourcegen:micronaut-sourcegen-annotations")</span></code></pre>
-</div>
-</div>
-<div class="listingblock multi-language-sample">
-<div class="title"></div>
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="maven">&lt;annotationProcessorPaths&gt;
-    &lt;path&gt;
-        &lt;groupId&gt;io.micronaut.sourcegen&lt;/groupId&gt;
-        &lt;artifactId&gt;micronaut-sourcegen-annotations&lt;/artifactId&gt;
-    &lt;/path&gt;
-&lt;/annotationProcessorPaths&gt;</code></pre>
-</div>
-</div></p>
-</div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 50%;">
@@ -195,10 +180,24 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../api/io/micronaut/sourcegen/annotations/Builder.html">Builder</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Create a builder of the annotated type.</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../api/io/micronaut/sourcegen/annotations/Wither.html">Wither</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Create an interface with copy style method and possible builder style methods for a record</p></td>
+</tr>
 </tbody>
 </table>
+
+<h2 id="builder"><a class="anchor" href="#builder"></a>3.1 Builder</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/annotations/builder.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
 <div class="paragraph">
-<p>If you annotate a Java Record with <code>@Builder</code>, a <code>PersonBuilder</code> class is generated at compliation-time.</p>
+<p>If you annotate a Java Record with <code>@Builder</code>, a <code>PersonBuilder</code> class is generated at compilation-time.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -238,6 +237,163 @@ The <a href="https://github.com/micronaut-projects/micronaut-sourcegen/blob/mast
 </td>
 </tr>
 </table>
+</div>
+
+<h2 id="wither"><a class="anchor" href="#wither"></a>3.2 Wither</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/annotations/wither.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>If you annotate a Java Record with <code>@Wither</code>, a <code>YourRecordWither</code> interface is generated at compilation-time with all the methods having a default implementation (nothing needs to be implemented). The record class can add that interface using <code>implements YourRecordWither</code> which will expand it with the default <code>withProperty</code> copy style methods like <code>YourRecord withPropertyName(PropertyValue)</code>, calling those methods will create a copy of the record with a modified property.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Wither
+public record Walrus (
+    @NonNull
+    String name,
+    int age,
+    byte[] chipInfo
+) implements WalrusWither  {
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Example of different ways to use the copy methods:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Test
+public void test() throws Exception {
+    Walrus walrus = new Walrus("Abc", 123, new byte[]{56});
+
+    assertEquals(walrus.name(), "Abc");
+    assertEquals(walrus.age(), 123);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+
+    Walrus finalWalrus = walrus;
+    // The name property is annotated with @NonNull the `withName(null)` method should fail
+    assertThrowsExactly(NullPointerException.class, () -&gt; finalWalrus.withName(null));
+
+    walrus = walrus.withName("Xyz");
+
+    assertEquals(walrus.name(), "Xyz");
+    assertEquals(walrus.age(), 123);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+
+    walrus = walrus.withAge(99);
+
+    assertEquals(walrus.name(), "Xyz");
+    assertEquals(walrus.age(), 99);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+
+    walrus = walrus.withChipInfo(new byte[]{1, 2, 3});
+
+    assertEquals(walrus.name(), "Xyz");
+    assertEquals(walrus.age(), 99);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If your record is annotated with <a href="../api/io/micronaut/sourcegen/annotations/Builder.html">Builder</a> the wither interface will also include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>default YourRecordBuilder with() {&#8230;&#8203;}</code> method that will return the record builder populated with the current values of the record</p>
+</li>
+<li>
+<p><code>default YourRecord with(Consumer&lt;YourRecordBuilder&gt; consumer) {&#8230;&#8203;}</code> a method receiving a lambda that can modify the populated record builder with the current values of the record and producing a new instance of a record as a result</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Wither
+@Builder
+public record Walrus2(
+    String name,
+    int age,
+    byte[] chipInfo
+) implements Walrus2Wither  {
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Example of different ways to use the copy and builder methods:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Test
+public void testWitherAndBuilder() throws Exception {
+    Walrus2 walrus = new Walrus2("Abc", 123, new byte[]{56});
+
+    assertEquals(walrus.name(), "Abc");
+    assertEquals(walrus.age(), 123);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+
+    // The name property is NOT annotated with @NotNull so `withName(null)` method should NOT fail
+    walrus = walrus.withName(null);
+
+    assertNull(walrus.name());
+    assertEquals(walrus.age(), 123);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+
+    walrus = walrus.withName("Xyz");
+
+    assertEquals(walrus.name(), "Xyz");
+    assertEquals(walrus.age(), 123);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+
+    walrus = walrus.withAge(99);
+
+    assertEquals(walrus.name(), "Xyz");
+    assertEquals(walrus.age(), 99);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+
+    walrus = walrus.withChipInfo(new byte[]{1, 2, 3});
+
+    assertEquals(walrus.name(), "Xyz");
+    assertEquals(walrus.age(), 99);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+
+    walrus = walrus.with().build();
+
+    assertEquals(walrus.name(), "Xyz");
+    assertEquals(walrus.age(), 99);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+
+    walrus = walrus.with().name("Foobar").build();
+
+    assertEquals(walrus.name(), "Foobar");
+    assertEquals(walrus.age(), 99);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+
+    walrus = walrus.with().name("Abc").age(123).chipInfo(new byte[]{9, 8, 7}).build();
+
+    assertEquals(walrus.name(), "Abc");
+    assertEquals(walrus.age(), 123);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{9, 8, 7});
+
+    walrus = walrus.with(builder -&gt; builder.name("Denis"));
+
+    assertEquals(walrus.name(), "Denis");
+    assertEquals(walrus.age(), 123);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{9, 8, 7});
+
+    walrus = walrus.with(builder -&gt; builder.name("Kevin").age(1).chipInfo(new byte[]{123}));
+
+    assertEquals(walrus.name(), "Kevin");
+    assertEquals(walrus.age(), 1);
+    assertArrayEquals(walrus.chipInfo(), new byte[]{123});
+}</code></pre>
+</div>
 </div>
 
 <h1 id="repository"><a class="anchor" href="#repository"></a>4 Repository</h1>
