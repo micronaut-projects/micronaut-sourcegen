@@ -1,1 +1,2 @@
 io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor
+io.micronaut.sourcegen.generator.visitors.WitherAnnotationVisitor

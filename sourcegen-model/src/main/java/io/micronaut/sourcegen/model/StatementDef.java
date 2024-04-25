@@ -50,4 +50,16 @@ public interface StatementDef {
                   ExpressionDef expression) implements StatementDef {
     }
 
+    /**
+     * The local variable definition and assigment statement.
+     *
+     * @param variable   The local variable
+     * @param expression The expression
+     * @author Denis Stepanov
+     * @since 1.0
+     */
+    @Experimental
+    record DefineAndAssign(VariableDef.Local variable, ExpressionDef expression) implements StatementDef {
+    }
+
 }

@@ -4,29 +4,16 @@ To use them, you need the following dependency:
 
 dependency:micronaut-sourcegen-annotations[groupId=io.micronaut.sourcegen]
 
-dependency:micronaut-sourcegen-annotations[groupId=io.micronaut.sourcegen,scope=annotationProcessor]
-
 [options="header"]
 |===
 | Annotation | Description
 
 | api:sourcegen.annotations.Builder[]
 | Create a builder of the annotated type.
+| api:sourcegen.annotations.Wither[]
+| Create an interface with copy style method and possible builder style methods for a record
 |===
 
 
-If you annotate a Java Record with `@Builder`, a `PersonBuilder` class is generated at compliation-time.
 
-[source,java]
-----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Person.java[tags=clazz,indent=0]
-----
 
-You can use a https://blogs.oracle.com/javamagazine/post/exploring-joshua-blochs-builder-design-pattern-in-java[builder pattern] to create a `Person` instance:
-
-[source,java]
-----
-include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/PersonBuilderTest.java[tags=test,indent=0]
-----
-
-NOTE: The https://github.com/micronaut-projects/micronaut-sourcegen/blob/master/sourcegen-generator/src/main/java/io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.java[BuilderAnnotationVisitor] is an example of how to use the Micronaut SourceGen API.

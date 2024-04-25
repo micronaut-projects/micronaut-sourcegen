@@ -110,7 +110,6 @@ public sealed interface ExpressionDef
         );
     }
 
-
     /**
      * The call the instance method expression.
      *
@@ -185,7 +184,16 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record CallInstanceMethod(VariableDef instance, String name, List<ExpressionDef> parameters,
-                              TypeDef returning) implements ExpressionDef {
+                              TypeDef returning) implements ExpressionDef, StatementDef {
+
+        public CallInstanceMethod(VariableDef instance, MethodDef methodDef) {
+            this(instance, methodDef.name, methodDef.getParameters()
+                .stream()
+                .<ExpressionDef>map(ParameterDef::asExpression)
+                .toList(),
+                methodDef.getReturnType());
+        }
+
         @Override
         public TypeDef type() {
             return returning;
@@ -204,7 +212,7 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record CallStaticMethod(ClassTypeDef classDef, String name, List<ExpressionDef> parameters,
-                            TypeDef returning) implements ExpressionDef {
+                            TypeDef returning) implements ExpressionDef, StatementDef {
         @Override
         public TypeDef type() {
             return returning;

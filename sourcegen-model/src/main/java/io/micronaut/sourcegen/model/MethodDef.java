@@ -19,13 +19,13 @@ import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.annotation.Nullable;
 
-import java.util.Objects;
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * The method definition.
@@ -59,6 +59,29 @@ public final class MethodDef extends AbstractElement {
      */
     public static MethodDefBuilder constructor() {
         return MethodDef.builder(CONSTRUCTOR);
+    }
+
+    /**
+     * Create a new constructor with parameters assigned to fields with the same name.
+     *
+     * @param thisType      The type to be constructed
+     * @param parameterDefs The parameters of the body
+     * @return A new constructor with a body.
+     */
+    public static MethodDef constructor(ClassTypeDef thisType, Collection<ParameterDef> parameterDefs) {
+        MethodDefBuilder builder = MethodDef.builder(CONSTRUCTOR);
+        for (ParameterDef parameterDef : parameterDefs) {
+            builder.addParameter(parameterDef);
+            builder.addStatement(new StatementDef.Assign(
+                new VariableDef.Field(
+                    new VariableDef.This(thisType),
+                    parameterDef.getName(),
+                    parameterDef.getType()
+                ),
+                parameterDef.asExpression()
+            ));
+        }
+        return builder.build();
     }
 
     public TypeDef getReturnType() {
