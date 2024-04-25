@@ -1,6 +1,9 @@
 introduction:
   title: Introduction
 releaseHistory: Release History
-annotations: Annotations
+annotations:
+  title: Annotations
+  builder: Builder
+  wither: Wither
 repository: Repository
 
