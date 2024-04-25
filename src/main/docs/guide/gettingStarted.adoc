@@ -1,0 +1,14 @@
+To get started add Micronaut SourceGen to the annotation processor scope of your build configuration:
+
+For Java projects add:
+
+dependency:sourcegen-generator-java[scope="annotationProcessor", groupId="io.micronaut.sourcegen"]
+
+For Kotlin projects using KSP add:
+
+dependency:sourcegen-generator-kotlin[scope="ksp", groupId="io.micronaut.sourcegen"]
+
+or, for those using KAPT add:
+
+dependency:sourcegen-generator-kotlin[scope="kapt", groupId="io.micronaut.sourcegen"]
+

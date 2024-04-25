@@ -1,6 +1,7 @@
 introduction:
   title: Introduction
 releaseHistory: Release History
+gettingStarted: Quick Start
 annotations:
   title: Annotations
   builder: Builder
