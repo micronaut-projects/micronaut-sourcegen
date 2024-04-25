@@ -33,7 +33,7 @@ class WalrusTest {
         assertArrayEquals(walrus.chipInfo(), new byte[]{56});
 
         Walrus finalWalrus = walrus;
-        // The name property is annotated with @NotNull the `withName(null)` method should fail
+        // The name property is annotated with @NonNull the `withName(null)` method should fail
         assertThrowsExactly(NullPointerException.class, () -> finalWalrus.withName(null));
 
         walrus = walrus.withName("Xyz");
