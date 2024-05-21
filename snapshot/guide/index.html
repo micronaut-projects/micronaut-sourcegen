@@ -50,9 +50,11 @@
                                 
                                 <div class="toc-item" style="margin-left:0"><a href="#gettingStarted"><strong>3</strong><span>Quick Start</span></a></div>
                                 
-                                <div class="toc-item" style="margin-left:0"><a href="#annotations"><strong>4</strong><span>Annotations</span></a></div>
+                                <div class="toc-item" style="margin-left:0"><a href="#generators"><strong>4</strong><span>Writing a Source Generator</span></a></div>
                                 
-                                <div class="toc-item" style="margin-left:0"><a href="#repository"><strong>5</strong><span>Repository</span></a></div>
+                                <div class="toc-item" style="margin-left:0"><a href="#annotations"><strong>5</strong><span>Annotations</span></a></div>
+                                
+                                <div class="toc-item" style="margin-left:0"><a href="#repository"><strong>6</strong><span>Repository</span></a></div>
                                 
                             </div>
                         </div>
@@ -89,13 +91,15 @@
         
         <div class="toc-item" style="margin-left:0px" id="toc-item-gettingStarted"><a href="#gettingStarted"><strong>3</strong><span>Quick Start</span></a></div>
         
-        <div class="toc-item" style="margin-left:0px" id="toc-item-annotations"><a href="#annotations"><strong>4</strong><span>Annotations</span></a></div>
+        <div class="toc-item" style="margin-left:0px" id="toc-item-generators"><a href="#generators"><strong>4</strong><span>Writing a Source Generator</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-builder"><a href="#builder"><strong>4.1</strong><span>Builder</span></a></div>
+        <div class="toc-item" style="margin-left:0px" id="toc-item-annotations"><a href="#annotations"><strong>5</strong><span>Annotations</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-wither"><a href="#wither"><strong>4.2</strong><span>Wither</span></a></div>
+        <div class="toc-item" style="margin-left:10px" id="toc-item-builder"><a href="#builder"><strong>5.1</strong><span>Builder</span></a></div>
         
-        <div class="toc-item" style="margin-left:0px" id="toc-item-repository"><a href="#repository"><strong>5</strong><span>Repository</span></a></div>
+        <div class="toc-item" style="margin-left:10px" id="toc-item-wither"><a href="#wither"><strong>5.2</strong><span>Wither</span></a></div>
+        
+        <div class="toc-item" style="margin-left:0px" id="toc-item-repository"><a href="#repository"><strong>6</strong><span>Repository</span></a></div>
         
         </div>
     </div>
@@ -234,7 +238,174 @@
 </div></p>
 </div>
 
-<h1 id="annotations"><a class="anchor" href="#annotations"></a>4 Annotations</h1>
+<h1 id="generators"><a class="anchor" href="#generators"></a>4 Writing a Source Generator</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/generators.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>To write a source generator you have a few options. If you only wish to support Java you can use the <a href="https://github.com/square/javapoet">JavaPoet API</a> that is forked into the <code>io.micronaut.sourcegen.javapoet</code> package. Since JavaPoet is no longer being developed and maintained we recommending using this fork since it is maintained as part of the project and includes support for Java 17+ constructors like Records.</p>
+</div>
+<div class="paragraph">
+<p>Alternatively, you can also use the language neutral code generation API defined in the <code>io.micronaut.sourcegen.model</code> package that works with both Kotlin and Java adding the ability to write code generators that work cross language.</p>
+</div>
+<div class="paragraph">
+<p>To get started add dependency on the <code>micronaut-core-processor</code> module:</p>
+</div>
+<div class="paragraph">
+<p>        <div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-kotlin hljs" data-lang="gradle">implementation(<span class="hljs-string">"io.micronaut:micronaut-core-processor")</span></code></pre>
+</div>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="maven">&lt;dependency&gt;
+    &lt;groupId&gt;io.micronaut&lt;/groupId&gt;
+    &lt;artifactId&gt;micronaut-core-processor&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div></p>
+</div>
+<div class="paragraph">
+<p>And the <code>micronaut-sourcegen-model</code> module:</p>
+</div>
+<div class="paragraph">
+<p>        <div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-kotlin hljs" data-lang="gradle">implementation(<span class="hljs-string">"io.micronaut.sourcegen:micronaut-sourcegen-model")</span></code></pre>
+</div>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="maven">&lt;dependency&gt;
+    &lt;groupId&gt;io.micronaut.sourcegen&lt;/groupId&gt;
+    &lt;artifactId&gt;micronaut-sourcegen-model&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div></p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+The module you build will have to be placed on the annotation processor classpath of the target project. You CANNOT mix source generation code and application code is the same source tree. Typically you will have a separate project for your source generator a separate project for your application that uses the source generator. In addition the <code>micronaut-core-processor</code> module should NEVER be in the application classpath.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The following is an example of using the API:</p>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import io.micronaut.core.annotation.Internal;
+import io.micronaut.core.annotation.NonNull;
+import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.visitor.TypeElementVisitor;
+import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.custom.example.GenerateInterface;
+import io.micronaut.sourcegen.generator.SourceGenerator;
+import io.micronaut.sourcegen.generator.SourceGenerators;
+import io.micronaut.sourcegen.model.InterfaceDef;
+import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.TypeDef;
+
+import javax.lang.model.element.Modifier;
+import java.io.IOException;
+
+@Internal
+public final class GenerateInterfaceBuilder implements TypeElementVisitor&lt;GenerateInterface, Object&gt; { // <b class="conum">(1)</b>
+
+    @Override
+    public @NonNull VisitorKind getVisitorKind() {
+        return VisitorKind.ISOLATING;
+    } // <b class="conum">(2)</b>
+
+    @Override
+    public void visitClass(ClassElement element, VisitorContext context) {
+        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null); // <b class="conum">(3)</b>
+        if (sourceGenerator == null) {
+            return;
+        }
+
+        String builderClassName = element.getPackageName() + ".MyInterface1";
+
+        InterfaceDef interfaceDef = InterfaceDef.builder(builderClassName) // <b class="conum">(4)</b>
+            .addModifiers(Modifier.PUBLIC)
+
+            .addMethod(MethodDef.builder("findLong")
+                .addModifiers(Modifier.ABSTRACT, Modifier.PUBLIC)
+                .returns(Long.class)
+                .build())
+
+            .addMethod(MethodDef.builder("saveString")
+                .addModifiers(Modifier.ABSTRACT, Modifier.PUBLIC)
+                .addParameter("myString", String.class)
+                .returns(TypeDef.VOID)
+                .build())
+
+            .build();
+
+        context.visitGeneratedSourceFile(interfaceDef.getPackageName(), interfaceDef.getSimpleName(), element) // <b class="conum">(5)</b>
+            .ifPresent(generatedFile -&gt; {
+                try {
+                    generatedFile.write(writer -&gt; sourceGenerator.write(interfaceDef, writer));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>A source generator should implement <code>TypeElementVisitor</code>. The first type argument is the type-level annotation you want to visit in source code the second argument is the member level (field, method, constructor) level annotation. You can specify <code>Object</code> to visit all.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>VisitorKind</code> should typically be <code>ISOLATING</code> if you generate a single source file corresponding to a single originating source file (1-to-1 mapping). If you generate a source file that takes into account multiple other source files then change this to <code>AGGREGATING</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>You should obtain an instance of <a href="../api/io/micronaut/sourcegen/generator/SourceGenerator.html">SourceGenerator</a> from the context, in general this should never be <code>null</code> but you never know if a new language is added in the the future.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>You can use one of the <code>*Def</code> classes as a builder to build the source file. In this case we use <a href="../api/io/micronaut/sourcegen/model/InterfaceDef.html">InterfaceDef</a> but there are others like <a href="../api/io/micronaut/sourcegen/model/RecordDef.html">RecordDef</a>, <a href="../api/io/micronaut/sourcegen/model/ClassDef.html">ClassDef</a> etc.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Once you have built the model write it to a source file!</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+To see more examples take a look at some of the existing implementations like <a href="https://github.com/micronaut-projects/micronaut-sourcegen/blob/master/sourcegen-generator/src/main/java/io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.java">BuilderAnnotationVisitor</a> that powers the <a href="../api/io/micronaut/sourcegen/annotations/Builder.html">@Builder</a> annotation.
+</td>
+</tr>
+</table>
+</div>
+
+<h1 id="annotations"><a class="anchor" href="#annotations"></a>5 Annotations</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/annotations.adoc"'>
@@ -288,7 +459,7 @@
 </tbody>
 </table>
 
-<h2 id="builder"><a class="anchor" href="#builder"></a>4.1 Builder</h2>
+<h2 id="builder"><a class="anchor" href="#builder"></a>5.1 Builder</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/annotations/builder.adoc"'>
@@ -340,7 +511,7 @@ The <a href="https://github.com/micronaut-projects/micronaut-sourcegen/blob/mast
 </table>
 </div>
 
-<h2 id="wither"><a class="anchor" href="#wither"></a>4.2 Wither</h2>
+<h2 id="wither"><a class="anchor" href="#wither"></a>5.2 Wither</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/annotations/wither.adoc"'>
@@ -497,7 +668,7 @@ public void testWitherAndBuilder() throws Exception {
 </div>
 </div>
 
-<h1 id="repository"><a class="anchor" href="#repository"></a>5 Repository</h1>
+<h1 id="repository"><a class="anchor" href="#repository"></a>6 Repository</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/master/src/main/docs/guide/repository.adoc"'>
