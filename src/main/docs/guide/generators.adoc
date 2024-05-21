@@ -1,4 +1,4 @@
-To write a source generator you have a few options. If you only wish to support Java you can use the https://github.com/square/javapoet[JavaPoet API] that is forked into the `io.micronaut.sourcegen.javapoet` package. This fork includes support for Java 17+ constructors like Records.
+To write a source generator you have a few options. If you only wish to support Java you can use the https://github.com/square/javapoet[JavaPoet API] that is forked into the `io.micronaut.sourcegen.javapoet` package. Since JavaPoet is no longer being developed and maintained we recommending using this fork since it is maintained as part of the project and includes support for Java 17+ constructors like Records.
 
 Alternatively, you can also use the language neutral code generation API defined in the `io.micronaut.sourcegen.model` package that works with both Kotlin and Java adding the ability to write code generators that work cross language.
 
