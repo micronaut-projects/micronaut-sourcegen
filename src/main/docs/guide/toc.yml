@@ -2,6 +2,7 @@ introduction:
   title: Introduction
 releaseHistory: Release History
 gettingStarted: Quick Start
+generators: Writing a Source Generator
 annotations:
   title: Annotations
   builder: Builder

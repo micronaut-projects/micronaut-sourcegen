@@ -20,7 +20,7 @@ import io.micronaut.sourcegen.custom.example.GenerateMyBean1;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean2;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean3;
 import io.micronaut.sourcegen.custom.example.GenerateMyEnum1;
-import io.micronaut.sourcegen.custom.example.GenerateMyInterface1;
+import io.micronaut.sourcegen.custom.example.GenerateInterface;
 import io.micronaut.sourcegen.custom.example.GenerateMyRecord1;
 import io.micronaut.sourcegen.custom.example.GenerateMyRecord3;
 import io.micronaut.sourcegen.custom.example.GenerateMyRepository1;
@@ -31,7 +31,7 @@ import java.util.List;
 @GenerateMyBean3
 @GenerateMyRecord1
 @GenerateMyRecord3
-@GenerateMyInterface1
+@GenerateInterface
 @GenerateMyRepository1
 @GenerateMyEnum1
 public class Trigger {
