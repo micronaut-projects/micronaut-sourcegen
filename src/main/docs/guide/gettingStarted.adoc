@@ -11,4 +11,3 @@ dependency:sourcegen-generator-kotlin[scope="ksp", groupId="io.micronaut.sourceg
 or, for those using KAPT add:
 
 dependency:sourcegen-generator-kotlin[scope="kapt", groupId="io.micronaut.sourcegen"]
-

@@ -15,12 +15,13 @@
  */
 package io.micronaut.sourcegen.custom.visitor;
 
+// tag::class[]
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
-import io.micronaut.sourcegen.custom.example.GenerateMyInterface1;
+import io.micronaut.sourcegen.custom.example.GenerateInterface;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.InterfaceDef;
@@ -31,23 +32,23 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 
 @Internal
-public final class GenerateMyInterface1Visitor implements TypeElementVisitor<GenerateMyInterface1, Object> {
+public final class GenerateInterfaceBuilder implements TypeElementVisitor<GenerateInterface, Object> { // <1>
 
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
-    }
+    } // <2>
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
+        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null); // <3>
         if (sourceGenerator == null) {
             return;
         }
 
         String builderClassName = element.getPackageName() + ".MyInterface1";
 
-        InterfaceDef interfaceDef = InterfaceDef.builder(builderClassName)
+        InterfaceDef interfaceDef = InterfaceDef.builder(builderClassName) // <4>
             .addModifiers(Modifier.PUBLIC)
 
             .addMethod(MethodDef.builder("findLong")
@@ -63,7 +64,7 @@ public final class GenerateMyInterface1Visitor implements TypeElementVisitor<Gen
 
             .build();
 
-        context.visitGeneratedSourceFile(interfaceDef.getPackageName(), interfaceDef.getSimpleName(), element)
+        context.visitGeneratedSourceFile(interfaceDef.getPackageName(), interfaceDef.getSimpleName(), element) // <5>
             .ifPresent(generatedFile -> {
                 try {
                     generatedFile.write(writer -> sourceGenerator.write(interfaceDef, writer));
@@ -72,5 +73,5 @@ public final class GenerateMyInterface1Visitor implements TypeElementVisitor<Gen
                 }
             });
     }
-
 }
+// end::class[]

@@ -25,5 +25,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Documented
 @Retention(RUNTIME)
 @Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
-public @interface GenerateMyInterface1 {
+public @interface GenerateInterface {
 }

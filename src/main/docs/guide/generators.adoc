@@ -1,0 +1,25 @@
+To write a source generator you have a few options. If you only wish to support Java you can use the https://github.com/square/javapoet[JavaPoet API] that is forked into the `io.micronaut.sourcegen.javapoet` package. Since JavaPoet is no longer being developed and maintained we recommending using this fork since it is maintained as part of the project and includes support for Java 17+ constructors like Records.
+
+Alternatively, you can also use the language neutral code generation API defined in the `io.micronaut.sourcegen.model` package that works with both Kotlin and Java adding the ability to write code generators that work cross language.
+
+To get started add dependency on the `micronaut-core-processor` module:
+
+dependency:micronaut-core-processor[]
+
+And the `micronaut-sourcegen-model` module:
+
+dependency:io.micronaut.sourcegen:micronaut-sourcegen-model[]
+
+WARNING: The module you build will have to be placed on the annotation processor classpath of the target project. You CANNOT mix source generation code and application code is the same source tree. Typically you will have a separate project for your source generator a separate project for your application that uses the source generator. In addition the `micronaut-core-processor` module should NEVER be in the application classpath.
+
+The following is an example of using the API:
+
+snippet::io.micronaut.sourcegen.custom.visitor.GenerateInterfaceBuilder[tags="class", indent=0, project="test-suite-custom-generators", source=main]
+
+<1> A source generator should implement `TypeElementVisitor`. The first type argument is the type-level annotation you want to visit in source code the second argument is the member level (field, method, constructor) level annotation. You can specify `Object` to visit all.
+<2> The `VisitorKind` should typically be `ISOLATING` if you generate a single source file corresponding to a single originating source file (1-to-1 mapping). If you generate a source file that takes into account multiple other source files then change this to `AGGREGATING`
+<3> You should obtain an instance of api:sourcegen.generator.SourceGenerator[] from the context, in general this should never be `null` but you never know if a new language is added in the the future.
+<4> You can use one of the `*Def` classes as a builder to build the source file. In this case we use api:sourcegen.model.InterfaceDef[] but there are others like api:sourcegen.model.RecordDef[], api:sourcegen.model.ClassDef[] etc.
+<5> Once you have built the model write it to a source file!
+
+TIP: To see more examples take a look at some of the existing implementations like https://github.com/micronaut-projects/micronaut-sourcegen/blob/master/sourcegen-generator/src/main/java/io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.java[BuilderAnnotationVisitor] that powers the ann:sourcegen.annotations.Builder[] annotation.
