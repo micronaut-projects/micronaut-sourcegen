@@ -65,7 +65,7 @@ public final class RestResourceAnnotationVisitor implements TypeElementVisitor<R
     private static final String MEMBER_SAVE = "save";
     private static final String SLASH = "/";
     private static final String S = "s";
-    public static final String IO_MICRONAUT_DATA_REPOSITORY_CRUD_REPOSITORY = "io.micronaut.data.repository.CrudRepository";
+    private static final String IO_MICRONAUT_DATA_REPOSITORY_CRUD_REPOSITORY = "io.micronaut.data.repository.CrudRepository";
     private static final String GENERIC_ENTITY = "E";
     private static final String GENERIC_ID = "ID";
 
