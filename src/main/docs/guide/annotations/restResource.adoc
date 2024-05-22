@@ -1,0 +1,62 @@
+You can use the ann:sourcegen.annotations.RestResource[] annotation in combination with Micronaut Data `CrudRepository` to generate a REST controller.
+
+For example, for a `Book` entity:
+
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Book.java[tags=clazz,indent=0]
+----
+
+and a JDBC repository:
+
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/BookRepository.java[tags=clazz,indent=0]
+----
+
+And a class annotated with `@RestResource`:
+
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/BookRestResource.java[tags=clazz,indent=0]
+----
+
+Generates the following controller:
+
+[source,java]
+----
+@Controller("/books")
+@RolesAllowed("isAnonymous()")
+class BookController {
+  @Inject
+  BookRepository repository;
+
+  @Get
+  Iterable<Book> findAll() {
+    return this.repository.findAll();
+  }
+
+  @Get("/{id}")
+  Optional<Book> findById(Long id) {
+    return this.repository.findById(id);
+  }
+
+  @Delete("/{id}")
+  @Status(HttpStatus.NO_CONTENT)
+  void deleteById(Long id) {
+    this.repository.deleteById(id);
+  }
+
+  @Status(HttpStatus.CREATED)
+  @Post
+  void save(@Body Book entity) {
+    this.repository.save(entity);
+  }
+
+  @Put
+  @Status(HttpStatus.NO_CONTENT)
+  void update(@Body Book entity) {
+    this.repository.update(entity);
+  }
+}
+----

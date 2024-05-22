@@ -22,4 +22,6 @@ snippet::io.micronaut.sourcegen.custom.visitor.GenerateInterfaceBuilder[tags="cl
 <4> You can use one of the `*Def` classes as a builder to build the source file. In this case we use api:sourcegen.model.InterfaceDef[] but there are others like api:sourcegen.model.RecordDef[], api:sourcegen.model.ClassDef[] etc.
 <5> Once you have built the model write it to a source file!
 
-TIP: To see more examples take a look at some of the existing implementations like https://github.com/micronaut-projects/micronaut-sourcegen/blob/master/sourcegen-generator/src/main/java/io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.java[BuilderAnnotationVisitor] that powers the ann:sourcegen.annotations.Builder[] annotation.
+TIP: To see more examples take a look at some of the existing implementations like https://github.com/micronaut-projects/micronaut-sourcegen/blob/master/sourcegen-generator/src/main/java/io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.java[BuilderAnnotationVisitor] that powers the ann:sourcegen.annotations.Builder[] annotation or
+
+https://github.com/micronaut-projects/micronaut-sourcegen/blob/master/sourcegen-generator/src/main/java/io/micronaut/sourcegen/generator/visitors/RestResourceAnnotationVisitor.java[BuilderAnnotationVisitor] that powers the ann:sourcegen.annotations.RestResource[] annotation.
