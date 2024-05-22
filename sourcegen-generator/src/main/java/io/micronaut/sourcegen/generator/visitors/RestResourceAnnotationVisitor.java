@@ -75,27 +75,23 @@ public final class RestResourceAnnotationVisitor implements TypeElementVisitor<R
     public void visitClass(ClassElement element, VisitorContext context) {
         SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
         if (sourceGenerator == null) {
-            System.out.println("No source generator found for language: " + context.getLanguage());
             return;
         }
 
         Optional<AnnotationValue<RestResource>> restResourceAnnotationOptional = element.findAnnotation(RestResource.class);
         if (restResourceAnnotationOptional.isEmpty()) {
-            System.out.println("restResourceAnnotationOptional is empty");
             return;
         }
         AnnotationValue<RestResource> restResourceAnnotation = restResourceAnnotationOptional.get();
 
         Optional<AnnotationClassValue<?>> repositoryAnnotationClassValueOptional = restResourceAnnotation.annotationClassValue(MEMBER_REPOSITORY);
         if (repositoryAnnotationClassValueOptional.isEmpty()) {
-            System.out.println("repositoryAnnotationClassValueOptional is empty");
             return;
         }
 
         AnnotationClassValue<?> repositoryAnnotationClassValue = repositoryAnnotationClassValueOptional.get();
         Optional<ClassElement> repositoryClassElementOptional = context.getClassElement(repositoryAnnotationClassValue.getName());
        if (repositoryClassElementOptional.isEmpty()) {
-           System.out.println("repositoryClassElementOptional is empty");
            return;
        }
         ClassElement repositoryClassElement = repositoryClassElementOptional.get();
@@ -143,7 +139,6 @@ public final class RestResourceAnnotationVisitor implements TypeElementVisitor<R
                     try {
                         generatedFile.write(writer -> sourceGenerator.write(controllerDef, writer));
                     } catch (IOException e) {
-                        System.out.println("error writing source" +  e.getMessage());
                         throw new RuntimeException(e);
                     }
                 });
