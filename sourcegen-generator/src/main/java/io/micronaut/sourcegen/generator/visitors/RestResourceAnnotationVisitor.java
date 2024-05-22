@@ -65,6 +65,9 @@ public final class RestResourceAnnotationVisitor implements TypeElementVisitor<R
     private static final String MEMBER_SAVE = "save";
     private static final String SLASH = "/";
     private static final String S = "s";
+    public static final String IO_MICRONAUT_DATA_REPOSITORY_CRUD_REPOSITORY = "io.micronaut.data.repository.CrudRepository";
+    private static final String GENERIC_ENTITY = "E";
+    private static final String GENERIC_ID = "ID";
 
     @Override
     public @NonNull VisitorKind getVisitorKind() {
@@ -95,21 +98,16 @@ public final class RestResourceAnnotationVisitor implements TypeElementVisitor<R
            return;
        }
         ClassElement repositoryClassElement = repositoryClassElementOptional.get();
-        ClassElement entityClassElement = repositoryClassElement.getAllTypeArguments().get("io.micronaut.data.repository.CrudRepository").get("E");
-        ClassElement idClassElement = repositoryClassElement.getAllTypeArguments().get("io.micronaut.data.repository.CrudRepository").get("ID");
+        ClassElement entityClassElement = repositoryClassElement.getAllTypeArguments().get(IO_MICRONAUT_DATA_REPOSITORY_CRUD_REPOSITORY).get(GENERIC_ENTITY);
+        ClassElement idClassElement = repositoryClassElement.getAllTypeArguments().get(IO_MICRONAUT_DATA_REPOSITORY_CRUD_REPOSITORY).get(GENERIC_ID);
         String resourceName = resourceName(restResourceAnnotation, entityClassElement);
         String controllerBaseUri = controllerBaseUri(restResourceAnnotation, resourceName);
-
         String builderClassName = element.getPackageName() + "." + resourceName + CONTROLLER;
         ClassDef.ClassDefBuilder controllerBuilder = ClassDef.builder(builderClassName)
                 .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(Controller.class)).addMember(MEMBER_VALUE, controllerBaseUri).build());
         List<String> rolesAllowed = restResourceAnnotation.get(MEMBER_ROLES_ALLOWED, Argument.listOf(String.class))
                 .orElseGet(() -> List.of(IS_AUTHENTICATED));
-        if (rolesAllowed.size() == 1) {
-            controllerBuilder.addAnnotation(AnnotationDef.builder(ClassTypeDef.of(RolesAllowed.class)).addMember(MEMBER_VALUE, rolesAllowed.iterator().next()).build());
-        } else {
-            controllerBuilder.addAnnotation(AnnotationDef.builder(ClassTypeDef.of(RolesAllowed.class)).addMember(MEMBER_VALUE, rolesAllowed).build());
-        }
+        controllerBuilder.addAnnotation(AnnotationDef.builder(ClassTypeDef.of(RolesAllowed.class)).addMember(MEMBER_VALUE, rolesAllowed).build());
 
         FieldDef repository = FieldDef.builder(FIELD_REPOSITORY)
                 .ofType(TypeDef.of(repositoryClassElement))
@@ -119,21 +117,8 @@ public final class RestResourceAnnotationVisitor implements TypeElementVisitor<R
         ClassDef controllerDef = controllerBuilder.build();
         ClassElement controllerClassElement = ClassElement.of(controllerDef.getClass());
 
-        if (restResourceAnnotation.get(MEMBER_LIST, Argument.of(Boolean.class)).orElse(false)) {
-            controllerBuilder.addMethod(findAllMethod(controllerClassElement, repositoryClassElement, entityClassElement));
-        }
-        if (restResourceAnnotation.get(MEMBER_SHOW, Argument.of(Boolean.class)).orElse(false)) {
-            controllerBuilder.addMethod(findByIdMethod(controllerClassElement, repositoryClassElement, entityClassElement, idClassElement));
-        }
-        if (restResourceAnnotation.get(MEMBER_DELETE, Argument.of(Boolean.class)).orElse(false)) {
-            controllerBuilder.addMethod(deleteByIdMethod(controllerClassElement, repositoryClassElement, idClassElement));
-        }
-        if (restResourceAnnotation.get(MEMBER_SAVE, Argument.of(Boolean.class)).orElse(false)) {
-            controllerBuilder.addMethod(saveMethod(controllerClassElement, repositoryClassElement, entityClassElement));
-        }
-        if (restResourceAnnotation.get(MEMBER_UPDATE, Argument.of(Boolean.class)).orElse(false)) {
-            controllerBuilder.addMethod(updateMethod(controllerClassElement, repositoryClassElement, entityClassElement));
-        }
+        methods(restResourceAnnotation, controllerClassElement, repositoryClassElement, entityClassElement, idClassElement).forEach(controllerBuilder::addMethod);
+
         context.visitGeneratedSourceFile(controllerDef.getPackageName(), controllerDef.getSimpleName(), element)
                 .ifPresent(generatedFile -> {
                     try {
@@ -142,6 +127,30 @@ public final class RestResourceAnnotationVisitor implements TypeElementVisitor<R
                         throw new RuntimeException(e);
                     }
                 });
+    }
+
+    private static List<MethodDef> methods(AnnotationValue<RestResource> restResourceAnnotation,
+                                           ClassElement controllerClassElement,
+                                           ClassElement repositoryClassElement,
+                                           ClassElement entityClassElement,
+                                           ClassElement idClassElement) {
+        List<MethodDef> methods = new ArrayList<>();
+        if (restResourceAnnotation.get(MEMBER_LIST, Argument.of(Boolean.class)).orElse(false)) {
+            methods.add(findAllMethod(controllerClassElement, repositoryClassElement, entityClassElement));
+        }
+        if (restResourceAnnotation.get(MEMBER_SHOW, Argument.of(Boolean.class)).orElse(false)) {
+            methods.add(findByIdMethod(controllerClassElement, repositoryClassElement, entityClassElement, idClassElement));
+        }
+        if (restResourceAnnotation.get(MEMBER_DELETE, Argument.of(Boolean.class)).orElse(false)) {
+            methods.add(deleteByIdMethod(controllerClassElement, repositoryClassElement, idClassElement));
+        }
+        if (restResourceAnnotation.get(MEMBER_SAVE, Argument.of(Boolean.class)).orElse(false)) {
+            methods.add(saveMethod(controllerClassElement, repositoryClassElement, entityClassElement));
+        }
+        if (restResourceAnnotation.get(MEMBER_UPDATE, Argument.of(Boolean.class)).orElse(false)) {
+            methods.add(updateMethod(controllerClassElement, repositoryClassElement, entityClassElement));
+        }
+        return methods;
     }
 
     private static String resourceName(AnnotationValue<RestResource> restResourceAnnotation, ClassElement entityClassElement) {
