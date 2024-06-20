@@ -205,11 +205,11 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                     ),
                     ClassTypeDef.of(Object.class)
                 ),
-                ExpressionDef.instantiate(recordType, values).returning()
+                recordType.instantiate(values).returning()
             );
         }
         return List.of(
-            ExpressionDef.instantiate(recordType, values).returning()
+            recordType.instantiate(values).returning()
         );
     }
 
@@ -226,7 +226,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             );
             values.add(exp);
         }
-        return ExpressionDef.instantiate(builderType, values).returning();
+        return builderType.instantiate(values).returning();
     }
 
 }
