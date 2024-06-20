@@ -73,7 +73,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
             TypeDef fieldType = propertyTypeDef.makeNullable();
             if (!fieldType.isNullable()) {
-                throw  new IllegalStateException("Could not make the field nullable");
+                throw new IllegalStateException("Could not make the field nullable");
             }
             FieldDef.FieldDefBuilder fieldDef = FieldDef.builder(propertyName)
                 .ofType(fieldType)
@@ -104,7 +104,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         builder.addMethod(MethodDef.builder("builder")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(builderType)
-            .addStatement(builderMethod(builderType))
+            .addStatement(builderType.instantiate().returning())
             .build());
 
         element.getPrimaryConstructor().ifPresent(constructor -> {
@@ -142,26 +142,13 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     private List<StatementDef> propertyBuilderMethod(TypeDef builderType, TypeDef fieldType, PropertyElement propertyElement) {
         return List.of(
-            new StatementDef.Assign(
-                new VariableDef.Field(
-                    new VariableDef.This(builderType),
-                    propertyElement.getName(),
-                    fieldType
-                ),
-                new VariableDef.MethodParameter(
+            new VariableDef.This(builderType)
+                .field(propertyElement.getName(), fieldType)
+                .assign(new VariableDef.MethodParameter(
                     propertyElement.getName(),
                     TypeDef.of(propertyElement.getType())
-                )
-            ),
-            new StatementDef.Return(
-                new VariableDef.This(builderType)
-            )
-        );
-    }
-
-    private StatementDef builderMethod(ClassTypeDef builderType) {
-        return new StatementDef.Return(
-            ExpressionDef.instantiate(builderType, List.of())
+                )),
+            new VariableDef.This(builderType).returning()
         );
     }
 
@@ -172,17 +159,14 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         for (ParameterElement parameter : constructorElement.getParameters()) {
             // We need to convert it for the correct type in Kotlin
             values.add(
-                new ExpressionDef.Convert(
-                    TypeDef.of(parameter.getType()),
-                    new VariableDef.Field(
-                        new VariableDef.This(builderType),
+                new VariableDef.This(builderType)
+                    .field(
                         parameter.getName(),
                         TypeDef.of(parameter.getType()).makeNullable()
-                    )
-                )
+                    ).convert(TypeDef.of(parameter.getType()))
             );
         }
-        return new StatementDef.Return(ExpressionDef.instantiate(buildType, values));
+        return buildType.instantiate(values).returning();
     }
 
 }

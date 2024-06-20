@@ -54,6 +54,25 @@ public sealed interface ClassTypeDef extends TypeDef {
     ClassTypeDef makeNullable();
 
     /**
+     * Instantiate this class.
+     *
+     * @return The instantiate expression
+     */
+    default ExpressionDef instantiate() {
+        return ExpressionDef.instantiate(this);
+    }
+
+    /**
+     * Instantiate this class.
+     *
+     * @param values The constructor values
+     * @return The instantiate expression
+     */
+    default ExpressionDef instantiate(List<ExpressionDef> values) {
+        return ExpressionDef.instantiate(this, values);
+    }
+
+    /**
      * Create a new type definition.
      *
      * @param type The class

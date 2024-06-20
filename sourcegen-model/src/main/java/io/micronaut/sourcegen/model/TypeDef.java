@@ -19,13 +19,13 @@ import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
-
 import io.micronaut.inject.ast.GenericPlaceholderElement;
 import io.micronaut.inject.ast.WildcardElement;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * The type definition.
@@ -39,6 +39,10 @@ public sealed interface TypeDef permits ClassTypeDef,
     TypeDef.Primitive, TypeDef.TypeVariable, TypeDef.Wildcard, TypeDef.Array {
 
     TypeDef VOID = primitive("void");
+
+    TypeDef OBJECT = of(Object.class);
+
+    TypeDef BOOLEAN = of(boolean.class);
 
     /**
      * Creates new primitive type.
@@ -97,6 +101,50 @@ public sealed interface TypeDef permits ClassTypeDef,
     }
 
     /**
+     * Creates a new type with generic parameters.
+     *
+     * @param type              The type
+     * @param genericParameters The parameters
+     * @return a new type definition
+     */
+    static ClassTypeDef parameterized(Class<?> type, Class<?>... genericParameters) {
+        return parameterized(ClassTypeDef.of(type), Stream.of(genericParameters).map(TypeDef::of).toList());
+    }
+
+    /**
+     * Creates a new type with generic parameters.
+     *
+     * @param type              The type
+     * @param genericParameters The parameters
+     * @return a new type definition
+     */
+    static ClassTypeDef parameterized(Class<?> type, TypeDef... genericParameters) {
+        return parameterized(ClassTypeDef.of(type), genericParameters);
+    }
+
+    /**
+     * Creates a new type with generic parameters.
+     *
+     * @param type              The type
+     * @param genericParameters The parameters
+     * @return a new type definition
+     */
+    static ClassTypeDef parameterized(ClassTypeDef type, TypeDef... genericParameters) {
+        return parameterized(type, List.of(genericParameters));
+    }
+
+    /**
+     * Creates a new type with generic parameters.
+     *
+     * @param type              The type
+     * @param genericParameters The parameters
+     * @return a new type definition
+     */
+    static ClassTypeDef parameterized(ClassTypeDef type, List<TypeDef> genericParameters) {
+        return new ClassTypeDef.Parameterized(type, genericParameters);
+    }
+
+    /**
      * Creates a new type.
      *
      * @param classElement The class element
@@ -135,7 +183,7 @@ public sealed interface TypeDef permits ClassTypeDef,
         }
     }
 
-    private  static List<TypeDef> toTypeArguments(
+    private static List<TypeDef> toTypeArguments(
         List<? extends GenericPlaceholderElement> declaredTypeVariables,
         Map<String, ClassElement> typeArguments) {
         return declaredTypeVariables

@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.example;
 
 
+import io.micronaut.sourcegen.custom.example.GenerateIfsPredicate;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean1;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean2;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean3;
@@ -34,6 +35,7 @@ import java.util.List;
 @GenerateInterface
 @GenerateMyRepository1
 @GenerateMyEnum1
+@GenerateIfsPredicate
 public class Trigger {
     public List<String> copyAddresses;
 }

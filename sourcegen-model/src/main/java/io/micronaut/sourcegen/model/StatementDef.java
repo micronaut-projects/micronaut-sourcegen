@@ -62,4 +62,25 @@ public interface StatementDef {
     record DefineAndAssign(VariableDef.Local variable, ExpressionDef expression) implements StatementDef {
     }
 
+    /**
+     * The if statement.
+     *
+     * @param condition The condition
+     * @param statement The statement if the condition is true
+     */
+    @Experimental
+    record If(ExpressionDef condition, StatementDef statement) implements StatementDef {
+    }
+
+    /**
+     * The if-else statement.
+     *
+     * @param condition     The condition
+     * @param statement     The statement if the condition is true
+     * @param elseStatement The statement if the condition is false
+     */
+    @Experimental
+    record IfElse(ExpressionDef condition, StatementDef statement, StatementDef elseStatement) implements StatementDef {
+    }
+
 }

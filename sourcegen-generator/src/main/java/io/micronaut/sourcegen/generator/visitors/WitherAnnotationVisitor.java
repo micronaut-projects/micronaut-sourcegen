@@ -138,12 +138,10 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                 )
             );
             withConsumerMethodBuilder.addStatement(
-                new StatementDef.Return(
-                    new ExpressionDef.CallInstanceMethod(
-                        builderLocalVariable,
-                        "build", List.of(), recordType
-                    )
-                )
+                new ExpressionDef.CallInstanceMethod(
+                    builderLocalVariable,
+                    "build", List.of(), recordType
+                ).returning()
             );
 
             wither.addMethod(withConsumerMethodBuilder.build());
@@ -207,11 +205,11 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                     ),
                     ClassTypeDef.of(Object.class)
                 ),
-                new StatementDef.Return(ExpressionDef.instantiate(recordType, values))
+                ExpressionDef.instantiate(recordType, values).returning()
             );
         }
         return List.of(
-            new StatementDef.Return(ExpressionDef.instantiate(recordType, values))
+            ExpressionDef.instantiate(recordType, values).returning()
         );
     }
 
@@ -228,7 +226,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             );
             values.add(exp);
         }
-        return new StatementDef.Return(ExpressionDef.instantiate(builderType, values));
+        return ExpressionDef.instantiate(builderType, values).returning();
     }
 
 }

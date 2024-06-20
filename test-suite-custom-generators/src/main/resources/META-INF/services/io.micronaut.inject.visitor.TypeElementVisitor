@@ -8,3 +8,5 @@ io.micronaut.sourcegen.custom.visitor.GenerateMyRecord1Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyRecord2Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyRecord3Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyEnum1
+io.micronaut.sourcegen.custom.visitor.GenerateIfsPredicateVisitor
+
