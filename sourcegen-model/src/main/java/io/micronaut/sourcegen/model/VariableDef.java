@@ -24,7 +24,52 @@ import io.micronaut.core.annotation.Experimental;
  * @since 1.0
  */
 @Experimental
-public sealed interface VariableDef extends ExpressionDef {
+public sealed interface VariableDef extends ExpressionDef permits InstanceDef, VariableDef.Field, VariableDef.Local, VariableDef.MethodParameter, VariableDef.StaticField, VariableDef.This {
+
+    /**
+     * The condition of this variable.
+     *
+     * @param op         The operator
+     * @param expression The expression of this variable
+     * @return The condition expression
+     */
+    default ExpressionDef asCondition(String op, ExpressionDef expression) {
+        return new ExpressionDef.Condition(op, this, expression);
+    }
+
+    /**
+     * @return Is non-null expression
+     */
+    default ExpressionDef isNonNull() {
+        return asCondition(" != ", ExpressionDef.nullValue());
+    }
+
+    /**
+     * @return Is null expression
+     */
+    default ExpressionDef isNull() {
+        return asCondition(" == ", ExpressionDef.nullValue());
+    }
+
+    /**
+     * Convert this variable to a different type.
+     *
+     * @param typeDef The type
+     * @return the convert expression
+     */
+    default ExpressionDef convert(TypeDef typeDef) {
+        return new ExpressionDef.Convert(typeDef, this);
+    }
+
+    /**
+     * Assign this variable an expression.
+     *
+     * @param expression The expression.
+     * @return The statement
+     */
+    default StatementDef assign(ExpressionDef expression) {
+        return new StatementDef.Assign(this, expression);
+    }
 
     /**
      * The local variable.
@@ -54,8 +99,8 @@ public sealed interface VariableDef extends ExpressionDef {
      * The variable of a field.
      *
      * @param instanceVariable The instance variable
-     * @param name                The name
-     * @param type                The type
+     * @param name             The name
+     * @param type             The type
      * @author Denis Stepanov
      * @since 1.0
      */
@@ -69,8 +114,8 @@ public sealed interface VariableDef extends ExpressionDef {
      * The variable of a static field.
      *
      * @param ownerType The owner type of the static field
-     * @param name The field name
-     * @param type The type of the field
+     * @param name      The field name
+     * @param type      The type of the field
      * @author Andriy Dmytruk
      * @since 1.0
      */
@@ -88,7 +133,7 @@ public sealed interface VariableDef extends ExpressionDef {
      * @since 1.0
      */
     @Experimental
-    record This(TypeDef type) implements VariableDef {
+    record This(TypeDef type) implements VariableDef, InstanceDef {
     }
 
 }
