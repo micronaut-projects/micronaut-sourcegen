@@ -90,7 +90,7 @@ loadScripts(document, 'script');</script>
 <dd><a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></dd>
 </dl>
 <hr>
-<div class="type-signature"><span class="modifiers">public static record </span><span class="element-name type-name-label">ExpressionDef.Constant</span>(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;type, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;value)
+<div class="type-signature"><span class="modifiers">public static record </span><span class="element-name type-name-label">ExpressionDef.Constant</span>(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;type, @Nullable <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;value)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a>
 implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></span></div>
 <div class="block">The convert variable expression. (To support Kotlin's nullable -> not-null conversion)</div>
@@ -109,7 +109,7 @@ implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourceg
 <h2>Nested Class Summary</h2>
 <div class="inherited-list">
 <h2 id="nested-classes-inherited-from-class-io.micronaut.sourcegen.model.ExpressionDef">Nested classes/interfaces inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></h2>
-<code><a href="ExpressionDef.CallInstanceMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallInstanceMethod</a>, <a href="ExpressionDef.CallStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallStaticMethod</a>, <a href="ExpressionDef.Constant.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Constant</a>, <a href="ExpressionDef.Convert.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a>, <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
+<code><a href="ExpressionDef.CallInstanceMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallInstanceMethod</a>, <a href="ExpressionDef.CallStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallStaticMethod</a>, <a href="ExpressionDef.Condition.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Condition</a>, <a href="ExpressionDef.Constant.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Constant</a>, <a href="ExpressionDef.Convert.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a>, <a href="ExpressionDef.IfElse.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.IfElse</a>, <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
 </section>
 </li>
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
@@ -121,7 +121,7 @@ implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourceg
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.TypeDef,java.lang.Object)" class="member-name-link">Constant</a><wbr>(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;type,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;value)</code></div>
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;value)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Creates an instance of a <code>Constant</code> record class.</div>
 </div>
@@ -159,7 +159,7 @@ implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourceg
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-type"><code>type</code></a> record component.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>@Nullable <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#value()" class="member-name-link">value</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-value"><code>value</code></a> record component.</div>
@@ -170,6 +170,9 @@ implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourceg
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-java.lang.Object">Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></h3>
 <code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#clone()" title="class or interface in java.lang" class="external-link">clone</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#finalize()" title="class or interface in java.lang" class="external-link">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
+<div class="inherited-list">
+<h3 id="methods-inherited-from-class-io.micronaut.sourcegen.model.ExpressionDef">Methods inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></h3>
+<code><a href="ExpressionDef.html#asConditionIf(io.micronaut.sourcegen.model.StatementDef)">asConditionIf</a>, <a href="ExpressionDef.html#asConditionIfElse(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.ExpressionDef)">asConditionIfElse</a>, <a href="ExpressionDef.html#asConditionIfElse(io.micronaut.sourcegen.model.StatementDef,io.micronaut.sourcegen.model.StatementDef)">asConditionIfElse</a>, <a href="ExpressionDef.html#returning()">returning</a></code></div>
 </section>
 </li>
 </ul>
@@ -185,7 +188,8 @@ implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourceg
 <section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.TypeDef,java.lang.Object)">
 <h3>Constant</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">Constant</span><wbr><span class="parameters">(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;type,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;value)</span></div>
+ @Nullable
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;value)</span></div>
 <div class="block">Creates an instance of a <code>Constant</code> record class.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -259,7 +263,8 @@ implements <a href="ExpressionDef.html" title="interface in io.micronaut.sourceg
 <li>
 <section class="detail" id="value()">
 <h3>value</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span>&nbsp;<span class="element-name">value</span>()</div>
+<div class="member-signature"><span class="annotations">@Nullable
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">@Nullable <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span>&nbsp;<span class="element-name">value</span>()</div>
 <div class="block">Returns the value of the <a href="#param-value"><code>value</code></a> record component.</div>
 <dl class="notes">
 <dt>Returns:</dt>

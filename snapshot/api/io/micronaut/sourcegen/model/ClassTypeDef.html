@@ -130,7 +130,7 @@ extends <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model"
 <h2>Field Summary</h2>
 <div class="inherited-list">
 <h3 id="fields-inherited-from-class-io.micronaut.sourcegen.model.TypeDef">Fields inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></h3>
-<code><a href="TypeDef.html#VOID">VOID</a></code></div>
+<code><a href="TypeDef.html#BOOLEAN">BOOLEAN</a>, <a href="TypeDef.html#OBJECT">OBJECT</a>, <a href="TypeDef.html#VOID">VOID</a></code></div>
 </section>
 </li>
 <!-- ========== METHOD SUMMARY =========== -->
@@ -153,6 +153,16 @@ extends <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model"
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#getSimpleName()" class="member-name-link">getSimpleName</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate()" class="member-name-link">instantiate</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Instantiate this class.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.util.List)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Instantiate this class.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#makeNullable()" class="member-name-link">makeNullable</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
@@ -232,6 +242,30 @@ extends <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model"
 <dd><code><a href="TypeDef.html#makeNullable()">makeNullable</a></code>&nbsp;in interface&nbsp;<code><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></dd>
 <dt>Returns:</dt>
 <dd>A new nullable type</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="instantiate()">
+<h3>instantiate</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></span>&nbsp;<span class="element-name">instantiate</span>()</div>
+<div class="block">Instantiate this class.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>The instantiate expression</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="instantiate(java.util.List)">
+<h3>instantiate</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></span>&nbsp;<span class="element-name">instantiate</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</span></div>
+<div class="block">Instantiate this class.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>values</code> - The constructor values</dd>
+<dt>Returns:</dt>
+<dd>The instantiate expression</dd>
 </dl>
 </section>
 </li>
