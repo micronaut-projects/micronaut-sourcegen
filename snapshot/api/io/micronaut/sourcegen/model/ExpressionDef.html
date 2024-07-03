@@ -204,20 +204,25 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1">
 <div class="block">The call the instance method expression.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1"><code>static @NonNull <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1"><code><a href="#nullValue()" class="member-name-link">nullValue</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#returning()" class="member-name-link">returning</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="StatementDef.DefineAndAssign.html" title="class in io.micronaut.sourcegen.model">StatementDef.DefineAndAssign</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newLocal(java.lang.String)" class="member-name-link">newLocal</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Turn this expression into a new local variable.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static @NonNull <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#nullValue()" class="member-name-link">nullValue</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#returning()" class="member-name-link">returning</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">The statement returning this expression.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1"><code>static @NonNull <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1"><code><a href="#trueValue()" class="member-name-link">trueValue</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#type()" class="member-name-link">type</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static @NonNull <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#trueValue()" class="member-name-link">trueValue</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#type()" class="member-name-link">type</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">The type of the expression.</div>
 </div>
 </div>
@@ -318,6 +323,19 @@ loadScripts(document, 'script');</script>
 <dd><code>elseExpression</code> - The else expression</dd>
 <dt>Returns:</dt>
 <dd>The statement returning this expression</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="newLocal(java.lang.String)">
+<h3>newLocal</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="StatementDef.DefineAndAssign.html" title="class in io.micronaut.sourcegen.model">StatementDef.DefineAndAssign</a></span>&nbsp;<span class="element-name">newLocal</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</span></div>
+<div class="block">Turn this expression into a new local variable.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>name</code> - The local name</dd>
+<dt>Returns:</dt>
+<dd>A new local</dd>
 </dl>
 </section>
 </li>

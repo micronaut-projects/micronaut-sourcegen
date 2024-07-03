@@ -77,12 +77,12 @@ loadScripts(document, 'script');</script>
 </dl>
 <dl class="notes">
 <dt>All Known Implementing Classes:</dt>
-<dd><code><a href="ClassTypeDef.ClassName.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassName</a></code>, <code><a href="ClassTypeDef.JavaClass.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.JavaClass</a></code>, <code><a href="ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></code></dd>
+<dd><code><a href="ClassTypeDef.ClassDefType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassDefType</a></code>, <code><a href="ClassTypeDef.ClassElementType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassElementType</a></code>, <code><a href="ClassTypeDef.ClassName.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassName</a></code>, <code><a href="ClassTypeDef.JavaClass.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.JavaClass</a></code>, <code><a href="ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public sealed interface </span><span class="element-name type-name-label">ClassTypeDef</span><span class="extends-implements">
 extends <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></span>
-<span class="permits">permits <a href="ClassTypeDef.JavaClass.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.JavaClass</a>, <a href="ClassTypeDef.ClassName.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassName</a>, <a href="ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></span></div>
+<span class="permits">permits <a href="ClassTypeDef.JavaClass.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.JavaClass</a>, <a href="ClassTypeDef.ClassName.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassName</a>, <a href="ClassTypeDef.ClassElementType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassElementType</a>, <a href="ClassTypeDef.ClassDefType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassDefType</a>, <a href="ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></span></div>
 <div class="block">The class type definition.
  Not-null by default.</div>
 <dl class="notes">
@@ -103,6 +103,16 @@ extends <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model"
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Interface</div>
 <div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="ClassTypeDef.ClassDefType.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassDefType</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">The class def element type.</div>
+</div>
+<div class="col-first odd-row-color"><code>static final record&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="ClassTypeDef.ClassElementType.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassElementType</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">The class element type.</div>
+</div>
 <div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="ClassTypeDef.ClassName.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassName</a></code></div>
 <div class="col-last even-row-color">
