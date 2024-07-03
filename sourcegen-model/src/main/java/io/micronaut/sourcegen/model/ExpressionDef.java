@@ -101,6 +101,16 @@ public sealed interface ExpressionDef
     }
 
     /**
+     * Turn this expression into a new local variable.
+     *
+     * @param name The local name
+     * @return A new local
+     */
+    default StatementDef.DefineAndAssign newLocal(String name) {
+       return new VariableDef.Local(name, type()).assign(this);
+    }
+
+    /**
      * Resolve a constant for the given type from the string.
      *
      * @param type        The type

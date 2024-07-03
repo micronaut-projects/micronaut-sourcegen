@@ -38,6 +38,7 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
     private final List<PropertyDef> properties;
     private final List<TypeDef.TypeVariable> typeVariables;
     private final List<TypeDef> superinterfaces;
+    private final ClassTypeDef superclass;
 
     private ClassDef(String name,
                      EnumSet<Modifier> modifiers,
@@ -47,13 +48,15 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
                      List<AnnotationDef> annotations,
                      List<String> javadoc,
                      List<TypeDef.TypeVariable> typeVariables,
-                     List<TypeDef> superinterfaces) {
+                     List<TypeDef> superinterfaces,
+                     ClassTypeDef superclass) {
         super(name, modifiers, annotations, javadoc);
         this.fields = fields;
         this.methods = methods;
         this.properties = properties;
         this.typeVariables = typeVariables;
         this.superinterfaces = superinterfaces;
+        this.superclass = superclass;
     }
 
     public static ClassDefBuilder builder(String name) {
@@ -81,6 +84,11 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
     }
 
     @Nullable
+    public ClassTypeDef getSuperclass() {
+        return superclass;
+    }
+
+    @Nullable
     public FieldDef findField(String name) {
         for (FieldDef field : fields) {
             if (field.getName().equals(name)) {
@@ -99,6 +107,37 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
         return null;
     }
 
+    public boolean hasField(String name) {
+        FieldDef field = findField(name);
+        if (field != null) {
+            return true;
+        }
+        if (superclass != null) {
+            if (superclass instanceof ClassTypeDef.ClassElementType classElementType) {
+                return classElementType.classElement().findField(name).isPresent();
+            }
+            if (superclass instanceof ClassTypeDef.ClassDefType classDefType) {
+                return classDefType.classDef().hasField(name);
+            }
+            if (superclass instanceof ClassTypeDef.JavaClass javaClass) {
+                try {
+                    javaClass.type().getField(name);
+                    return true;
+                } catch (NoSuchFieldException e) {
+                    return false;
+                }
+            }
+            // We cannot properly validate if the field exists in the super class
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return "ClassDef{" + "name='" + name + '\'' + '}';
+    }
+
     /**
      * The class definition builder.
      *
@@ -113,9 +152,15 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
         private final List<PropertyDef> properties = new ArrayList<>();
         private final List<TypeDef.TypeVariable> typeVariables = new ArrayList<>();
         private final List<TypeDef> superinterfaces = new ArrayList<>();
+        private ClassTypeDef superclass;
 
         private ClassDefBuilder(String name) {
             super(name);
+        }
+
+        public ClassDefBuilder superclass(ClassTypeDef superclass) {
+            this.superclass = superclass;
+            return this;
         }
 
         public ClassDefBuilder addField(FieldDef field) {
@@ -144,7 +189,7 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
         }
 
         public ClassDef build() {
-            return new ClassDef(name, modifiers, fields, methods, properties, annotations, javadoc, typeVariables, superinterfaces);
+            return new ClassDef(name, modifiers, fields, methods, properties, annotations, javadoc, typeVariables, superinterfaces, superclass);
         }
 
     }

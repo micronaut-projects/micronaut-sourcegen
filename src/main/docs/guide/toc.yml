@@ -7,5 +7,6 @@ annotations:
   title: Annotations
   builder: Builder
   wither: Wither
+  superBuilder: Super Builder
 repository: Repository
 

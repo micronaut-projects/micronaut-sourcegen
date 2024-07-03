@@ -105,11 +105,7 @@ public sealed interface ClassTypeDef extends TypeDef {
         if (classElement.isPrimitive()) {
             throw new IllegalStateException("Primitive classes cannot be of type: " + ClassTypeDef.class.getName());
         }
-        String name = classElement.getName();
-        if (classElement.isInner()) {
-            name = name.replace("$", ".");
-        }
-        return new ClassName(name, classElement.isNullable());
+        return new ClassElementType(classElement, classElement.isNullable());
     }
 
     /**
@@ -119,7 +115,7 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @return type definition
      */
     static ClassTypeDef of(ClassDef classDef) {
-        return new ClassName(classDef.getName(), false);
+        return new ClassDefType(classDef, false);
     }
 
     /**
@@ -173,6 +169,66 @@ public sealed interface ClassTypeDef extends TypeDef {
         @Override
         public ClassTypeDef makeNullable() {
             return new ClassName(className, true);
+        }
+
+    }
+
+    /**
+     * The class element type.
+     *
+     * @param classElement The class element
+     * @param nullable     Is nullable
+     * @author Denis Stepanov
+     * @since 1.2
+     */
+    @Experimental
+    record ClassElementType(ClassElement classElement, boolean nullable) implements ClassTypeDef {
+
+        @Override
+        public String getName() {
+            String name = classElement.getName();
+            if (classElement.isInner()) {
+                return name.replace("$", ".");
+            }
+            return classElement.getName();
+        }
+
+        @Override
+        public boolean isNullable() {
+            return nullable;
+        }
+
+        @Override
+        public ClassTypeDef makeNullable() {
+            return new ClassElementType(classElement, true);
+        }
+
+    }
+
+    /**
+     * The class def element type.
+     *
+     * @param classDef The class def
+     * @param nullable Is nullable
+     * @author Denis Stepanov
+     * @since 1.2
+     */
+    @Experimental
+    record ClassDefType(ClassDef classDef, boolean nullable) implements ClassTypeDef {
+
+        @Override
+        public String getName() {
+            return classDef.getName();
+        }
+
+        @Override
+        public boolean isNullable() {
+            return nullable;
+        }
+
+        @Override
+        public ClassTypeDef makeNullable() {
+            return new ClassDefType(classDef, true);
         }
 
     }

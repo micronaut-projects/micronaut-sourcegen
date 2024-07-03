@@ -254,6 +254,11 @@ public sealed interface TypeDef permits ClassTypeDef,
      */
     @Experimental
     record TypeVariable(String name, List<TypeDef> bounds) implements TypeDef {
+
+        public TypeVariable(String name) {
+            this(name, List.of());
+        }
+
     }
 
     /**

@@ -16,6 +16,9 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
+import io.micronaut.inject.ast.MethodElement;
+
+import java.util.List;
 
 /**
  * The instance definition.
@@ -24,7 +27,7 @@ import io.micronaut.core.annotation.Experimental;
  * @since 1.2
  */
 @Experimental
-public sealed interface InstanceDef extends VariableDef permits ExpressionDef.NewInstance, VariableDef.This {
+public sealed interface InstanceDef extends VariableDef permits ExpressionDef.NewInstance, VariableDef.Local, VariableDef.This {
 
     /**
      * Reference the field of this variable.
@@ -35,6 +38,53 @@ public sealed interface InstanceDef extends VariableDef permits ExpressionDef.Ne
      */
     default VariableDef.Field field(String fieldName, TypeDef typeDef) {
         return new VariableDef.Field(this, fieldName, typeDef);
+    }
+
+    /**
+     * The call the instance method expression.
+     *
+     * @param name       The method name
+     * @param parameters The parameters
+     * @param returning  The returning
+     * @return The call to the instance method
+     */
+    @Experimental
+    default CallInstanceMethod invoke(String name, List<ExpressionDef> parameters, TypeDef returning) {
+        return new CallInstanceMethod(
+            this,
+            name,
+            parameters,
+            returning
+        );
+    }
+
+    /**
+     * The call the instance method expression.
+     *
+     * @param methodElement The method element
+     * @param parameters    The parameters
+     * @return The call to the instance method
+     */
+    @Experimental
+    default CallInstanceMethod invoke(MethodElement methodElement, ExpressionDef... parameters) {
+        return invoke(methodElement, List.of(parameters));
+    }
+
+    /**
+     * The call the instance method expression.
+     *
+     * @param methodElement The method element
+     * @param parameters    The parameters
+     * @return The call to the instance method
+     */
+    @Experimental
+    default CallInstanceMethod invoke(MethodElement methodElement, List<ExpressionDef> parameters) {
+        return new CallInstanceMethod(
+            this,
+            methodElement.getName(),
+            parameters,
+            TypeDef.of(methodElement.getReturnType())
+        );
     }
 
 }

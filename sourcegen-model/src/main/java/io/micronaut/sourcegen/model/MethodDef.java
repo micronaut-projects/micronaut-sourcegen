@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * The method definition.
@@ -171,9 +172,14 @@ public final class MethodDef extends AbstractElement {
         }
 
         public MethodDef build() {
+            return build(parameterDefs -> List.of());
+        }
+
+        public MethodDef build(Function<List<ParameterDef>, List<StatementDef>> bodyBuilder) {
             if (returnType == null && !name.equals(CONSTRUCTOR)) {
                 throw new IllegalStateException("Return type of method: " + name + " not specified!");
             }
+            bodyBuilder.apply(parameters).forEach(this::addStatement);
             return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc);
         }
 

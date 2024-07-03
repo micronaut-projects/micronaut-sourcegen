@@ -77,7 +77,6 @@ public final class AnnotationDef {
      * @param context The visitor context
      * @return The copy of given annotation
      *
-     * @author Andriy Dmytruk
      * @since 1.0
      */
     public static AnnotationDef of(AnnotationValue<?> annotation, VisitorContext context) {

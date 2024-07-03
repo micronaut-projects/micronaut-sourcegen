@@ -165,6 +165,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         classDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
         classDef.getSuperinterfaces().stream().map(this::asType).forEach(classBuilder::addSuperinterface);
         classDef.getJavadoc().forEach(classBuilder::addJavadoc);
+        if (classDef.getSuperclass() != null) {
+            classBuilder.superclass(asType(classDef.getSuperclass()));
+        }
 
         for (AnnotationDef annotation : classDef.getAnnotations()) {
             classBuilder.addAnnotation(asAnnotationSpec(annotation));
@@ -501,7 +504,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
-
     private CodeBlock renderConstantExpression(ExpressionDef.Constant constant) {
         TypeDef type = constant.type();
         if (type instanceof TypeDef.Primitive primitive) {
@@ -569,7 +571,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 throw new IllegalStateException("Accessing 'this' is not available");
             }
             if (objectDef instanceof ClassDef classDef) {
-                classDef.getField(field.name()); // Check if exists
+                if (!classDef.hasField(field.name())) {
+                    throw new IllegalStateException("Field " + field.name() + " is not available in [" + classDef + "]:" + classDef.getFields());
+                }
             } else {
                 throw new IllegalStateException("Field access no supported on the object definition: " + objectDef);
             }

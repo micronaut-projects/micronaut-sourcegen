@@ -19,6 +19,7 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean1;
@@ -81,8 +82,8 @@ public final class GenerateMyBean3Visitor implements TypeElementVisitor<Generate
             .ifPresent(generatedFile -> {
                 try {
                     generatedFile.write(writer -> sourceGenerator.write(beanDef, writer));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    throw new ProcessingException(element, e.getMessage(), e);
                 }
             });
     }

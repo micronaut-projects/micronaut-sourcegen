@@ -53,4 +53,22 @@ class PersonBuilderTest {
         assertEquals(20, person2.id());
         assertEquals(Person2.State.MARRIED, person2.state());
     }
+
+    @Test
+    public void buildsPerson3WithPrimitiveDefaults() {
+        var person = Person3Builder.builder()
+            .build();
+        assertEquals("Bob\"", person.getName());
+        assertEquals(10L, person.getId());
+        assertEquals(Person3.State.SINGLE, person.getState());
+
+        var person2 = Person3Builder.builder()
+            .id(20)
+            .name("Fred")
+            .state(Person3.State.MARRIED)
+            .build();
+        assertEquals("Fred", person2.getName());
+        assertEquals(20, person2.getId());
+        assertEquals(Person3.State.MARRIED, person2.getState());
+    }
 }
