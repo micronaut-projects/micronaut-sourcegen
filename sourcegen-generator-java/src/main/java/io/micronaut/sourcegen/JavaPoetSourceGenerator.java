@@ -55,6 +55,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Array;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -90,15 +91,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private void writeInterface(Writer writer, InterfaceDef interfaceDef) throws IOException {
         TypeSpec.Builder interfaceBuilder = TypeSpec.interfaceBuilder(interfaceDef.getSimpleName());
         interfaceBuilder.addModifiers(interfaceDef.getModifiersArray());
-        interfaceDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(interfaceBuilder::addTypeVariable);
-        interfaceDef.getSuperinterfaces().stream().map(this::asType).forEach(interfaceBuilder::addSuperinterface);
+        interfaceDef.getTypeVariables().stream().map(t -> asTypeVariable(t, interfaceDef)).forEach(interfaceBuilder::addTypeVariable);
+        interfaceDef.getSuperinterfaces().stream().map(typeDef -> asType(typeDef, interfaceDef)).forEach(interfaceBuilder::addSuperinterface);
         interfaceDef.getJavadoc().forEach(interfaceBuilder::addJavadoc);
 
         for (AnnotationDef annotation : interfaceDef.getAnnotations()) {
             interfaceBuilder.addAnnotation(asAnnotationSpec(annotation));
         }
         for (PropertyDef property : interfaceDef.getProperties()) {
-            TypeName propertyType = asType(property.getType());
+            TypeName propertyType = asType(property.getType(), interfaceDef);
             String propertyName = property.getName();
             FieldSpec.Builder fieldBuilder = FieldSpec.builder(
                 propertyType,
@@ -139,7 +140,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private void writeEnum(Writer writer, EnumDef enumDef) throws IOException {
         TypeSpec.Builder enumBuilder = TypeSpec.enumBuilder(enumDef.getSimpleName());
         enumBuilder.addModifiers(enumDef.getModifiersArray());
-        enumDef.getSuperinterfaces().stream().map(this::asType).forEach(enumBuilder::addSuperinterface);
+        enumDef.getSuperinterfaces().stream().map(typeDef -> asType(typeDef, enumDef)).forEach(enumBuilder::addSuperinterface);
         enumDef.getJavadoc().forEach(enumBuilder::addJavadoc);
 
         for (AnnotationDef annotation : enumDef.getAnnotations()) {
@@ -161,19 +162,20 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private void writeClass(Writer writer, ClassDef classDef) throws IOException {
         TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
+        TypeDef thisType = classDef.asTypeDef();
         classBuilder.addModifiers(classDef.getModifiersArray());
-        classDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
-        classDef.getSuperinterfaces().stream().map(this::asType).forEach(classBuilder::addSuperinterface);
+        classDef.getTypeVariables().stream().map(t -> asTypeVariable(t, classDef)).forEach(classBuilder::addTypeVariable);
+        classDef.getSuperinterfaces().stream().map(typeDef -> asType(typeDef, classDef)).forEach(classBuilder::addSuperinterface);
         classDef.getJavadoc().forEach(classBuilder::addJavadoc);
         if (classDef.getSuperclass() != null) {
-            classBuilder.superclass(asType(classDef.getSuperclass()));
+            classBuilder.superclass(asType(classDef.getSuperclass(), classDef));
         }
 
         for (AnnotationDef annotation : classDef.getAnnotations()) {
             classBuilder.addAnnotation(asAnnotationSpec(annotation));
         }
         for (PropertyDef property : classDef.getProperties()) {
-            TypeName propertyType = asType(property.getType());
+            TypeName propertyType = asType(property.getType(), classDef);
             String propertyName = property.getName();
             FieldSpec.Builder fieldBuilder = FieldSpec.builder(
                 propertyType,
@@ -203,7 +205,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         for (FieldDef field : classDef.getFields()) {
             FieldSpec.Builder fieldBuilder = FieldSpec.builder(
-                asType(field.getType()),
+                asType(field.getType(), classDef),
                 field.getName()
             ).addModifiers(field.getModifiersArray());
             field.getInitializer().ifPresent(init ->
@@ -236,15 +238,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private void writeRecord(Writer writer, RecordDef recordDef) throws IOException {
         TypeSpec.Builder classBuilder = TypeSpec.recordBuilder(recordDef.getSimpleName());
         classBuilder.addModifiers(recordDef.getModifiersArray());
-        recordDef.getTypeVariables().stream().map(this::asTypeVariable).forEach(classBuilder::addTypeVariable);
-        recordDef.getSuperinterfaces().stream().map(this::asType).forEach(classBuilder::addSuperinterface);
+        recordDef.getTypeVariables().stream().map(t -> asTypeVariable(t, recordDef)).forEach(classBuilder::addTypeVariable);
+        recordDef.getSuperinterfaces().stream().map(typeDef -> asType(typeDef, recordDef)).forEach(classBuilder::addSuperinterface);
         recordDef.getJavadoc().forEach(classBuilder::addJavadoc);
 
         for (AnnotationDef annotation : recordDef.getAnnotations()) {
             classBuilder.addAnnotation(asAnnotationSpec(annotation));
         }
         for (PropertyDef property : recordDef.getProperties()) {
-            TypeName propertyType = asType(property.getType());
+            TypeName propertyType = asType(property.getType(), recordDef);
             String propertyName = property.getName();
             ParameterSpec.Builder componentBuilder = ParameterSpec.builder(propertyType, propertyName);
             property.getJavadoc().forEach(componentBuilder::addJavadoc);
@@ -273,14 +275,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             .addParameters(
                 method.getParameters().stream()
                     .map(param -> ParameterSpec.builder(
-                        asType(param.getType()),
+                        asType(param.getType(), objectDef),
                         param.getName(),
                         param.getModifiersArray()
                     ).addAnnotations(param.getAnnotations().stream().map(this::asAnnotationSpec).toList()).build())
                     .toList()
             );
         if (!methodName.equals(MethodSpec.CONSTRUCTOR)) {
-            methodBuilder.returns(asType(method.getReturnType()));
+            methodBuilder.returns(asType(method.getReturnType(), objectDef));
         }
         method.getJavadoc().forEach(methodBuilder::addJavadoc);
         for (AnnotationDef annotation : method.getAnnotations()) {
@@ -295,10 +297,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         return methodBuilder.build();
     }
 
-    private TypeVariableName asTypeVariable(TypeDef.TypeVariable tv) {
+    private TypeVariableName asTypeVariable(TypeDef.TypeVariable tv, ObjectDef objectDef) {
         return TypeVariableName.get(
             tv.name(),
-            tv.bounds().stream().map(this::asType).toArray(TypeName[]::new)
+            tv.bounds().stream().map(t -> asType(t, objectDef)).toArray(TypeName[]::new)
         );
     }
 
@@ -332,9 +334,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
     }
 
-    private TypeName asType(TypeDef typeDef) {
+    private TypeName asType(TypeDef typeDef, ObjectDef objectDef) {
+        if (typeDef.equals(TypeDef.THIS)) {
+            if (objectDef == null) {
+                throw new IllegalStateException("This type is used outside of the instance scope!");
+            }
+            return asType(objectDef.asTypeDef(), null);
+        }
         if (typeDef instanceof TypeDef.Array array) {
-            TypeName arrayTypeName = ArrayTypeName.of(asType(array.componentType()));
+            TypeName arrayTypeName = ArrayTypeName.of(asType(array.componentType(), objectDef));
             for (int i = 1; i < array.dimensions(); ++i) {
                 arrayTypeName = ArrayTypeName.of(arrayTypeName);
             }
@@ -343,7 +351,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
             return ParameterizedTypeName.get(
                 asClassType(parameterized.rawType()),
-                parameterized.typeArguments().stream().map(this::asType).toArray(TypeName[]::new)
+                parameterized.typeArguments().stream().map(t -> asType(t, objectDef)).toArray(TypeName[]::new)
             );
         }
         if (typeDef instanceof TypeDef.Primitive primitive) {
@@ -368,18 +376,20 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             if (!wildcard.lowerBounds().isEmpty()) {
                 return WildcardTypeName.supertypeOf(
                     asType(
-                        wildcard.lowerBounds().get(0)
+                        wildcard.lowerBounds().get(0),
+                        objectDef
                     )
                 );
             }
             return WildcardTypeName.subtypeOf(
                 asType(
-                    wildcard.upperBounds().get(0)
+                    wildcard.upperBounds().get(0),
+                    objectDef
                 )
             );
         }
         if (typeDef instanceof TypeDef.TypeVariable typeVariable) {
-            return asTypeVariable(typeVariable);
+            return asTypeVariable(typeVariable, objectDef);
         }
         throw new IllegalStateException("Unrecognized type definition " + typeDef);
     }
@@ -389,6 +399,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private CodeBlock renderStatement(@Nullable ObjectDef objectDef, MethodDef methodDef, StatementDef statementDef) {
+        if (statementDef instanceof StatementDef.Throw aThrow) {
+            return CodeBlock.concat(
+                CodeBlock.of("throw "),
+                renderExpression(objectDef, methodDef, aThrow.variableDef())
+            );
+        }
         if (statementDef instanceof StatementDef.Return aReturn) {
             return CodeBlock.concat(
                 CodeBlock.of("return "),
@@ -404,7 +420,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         if (statementDef instanceof StatementDef.DefineAndAssign assign) {
             return CodeBlock.concat(
-                CodeBlock.of("$T $L", asType(assign.variable().type()), assign.variable().name()),
+                CodeBlock.of("$T $L", asType(assign.variable().type(), objectDef), assign.variable().name()),
                 CodeBlock.of(" = "),
                 renderExpression(objectDef, methodDef, assign.expression())
             );
@@ -416,24 +432,72 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private CodeBlock renderStatementCodeBlock(@Nullable ObjectDef objectDef, MethodDef methodDef, StatementDef statementDef) {
+        if (statementDef instanceof StatementDef.Multi statements) {
+            CodeBlock.Builder builder = CodeBlock.builder();
+            for (StatementDef statement : statements.statements()) {
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, statement));
+            }
+            return builder.build();
+        }
         if (statementDef instanceof StatementDef.If ifStatement) {
             CodeBlock.Builder builder = CodeBlock.builder();
             builder.add("if (");
             builder.add(renderExpression(objectDef, methodDef, ifStatement.condition()));
-            builder.add(") {");
-            builder.addStatement(renderStatement(objectDef, methodDef, ifStatement.statement()));
-            builder.add("}");
+            builder.add(") {\n");
+            builder.indent();
+            builder.add(renderStatementCodeBlock(objectDef, methodDef, ifStatement.statement()));
+            builder.unindent();
+            builder.add("}\n");
             return builder.build();
         }
         if (statementDef instanceof StatementDef.IfElse ifStatement) {
             CodeBlock.Builder builder = CodeBlock.builder();
             builder.add("if (");
             builder.add(renderExpression(objectDef, methodDef, ifStatement.condition()));
-            builder.add(") {");
-            builder.addStatement(renderStatement(objectDef, methodDef, ifStatement.statement()));
-            builder.add("} else {");
-            builder.addStatement(renderStatement(objectDef, methodDef, ifStatement.elseStatement()));
-            builder.add("}");
+            builder.add(") {\n");
+            builder.indent();
+            builder.add(renderStatementCodeBlock(objectDef, methodDef, ifStatement.statement()));
+            builder.unindent();
+            builder.add("} else {\n");
+            builder.indent();
+            builder.add(renderStatementCodeBlock(objectDef, methodDef, ifStatement.elseStatement()));
+            builder.unindent();
+            builder.add("}\n");
+            return builder.build();
+        }
+        if (statementDef instanceof StatementDef.Switch aSwitch) {
+            CodeBlock.Builder builder = CodeBlock.builder();
+            builder.add("switch (");
+            builder.add(renderExpression(objectDef, methodDef, aSwitch.expression()));
+            builder.add(") {\n");
+            builder.indent();
+            for (Map.Entry<ExpressionDef.Constant, StatementDef> e : aSwitch.cases().entrySet()) {
+                if (e.getKey() == null || e.getKey().value() == null) {
+                    builder.add("default");
+                } else {
+                    builder.add("case ");
+                    builder.add(renderConstantExpression(e.getKey()));
+                }
+                builder.add(": {\n");
+                builder.indent();
+                StatementDef statement = e.getValue();
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, statement));
+                builder.unindent();
+                builder.add("}\n");
+            }
+            builder.unindent();
+            builder.add("}\n");
+            return builder.build();
+        }
+        if (statementDef instanceof StatementDef.While aWhile) {
+            CodeBlock.Builder builder = CodeBlock.builder();
+            builder.add("while (");
+            builder.add(renderExpression(objectDef, methodDef, aWhile.expression()));
+            builder.add(") {\n");
+            builder.indent();
+            builder.add(renderStatementCodeBlock(objectDef, methodDef, aWhile.statement()));
+            builder.unindent();
+            builder.add("}\n");
             return builder.build();
         }
         return CodeBlock.builder()
@@ -445,7 +509,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private CodeBlock renderExpression(@Nullable ObjectDef objectDef, MethodDef methodDef, ExpressionDef expressionDef) {
         if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
             return CodeBlock.concat(
-                CodeBlock.of("new $L(", asType(newInstance.type())),
+                CodeBlock.of("new $L(", asType(newInstance.type(), objectDef)),
                 newInstance.values()
                     .stream()
                     .map(exp -> renderExpression(objectDef, methodDef, exp))
@@ -453,15 +517,31 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 CodeBlock.of(")")
             );
         }
+        if (expressionDef instanceof ExpressionDef.NewArrayOfSize newArray) {
+            return CodeBlock.of("new $T[$L]", asType(newArray.type().componentType(), objectDef), newArray.size());
+        }
+        if (expressionDef instanceof ExpressionDef.NewArrayInitialized newArray) {
+            CodeBlock.Builder builder = CodeBlock.builder();
+            builder.add("new $T[]{", asType(newArray.type().componentType(), objectDef));
+            for (Iterator<ExpressionDef> iterator = newArray.expressions().iterator(); iterator.hasNext(); ) {
+                ExpressionDef expression = iterator.next();
+                builder.add(renderExpression(objectDef, methodDef, expression));
+                if (iterator.hasNext()) {
+                    builder.add(",");
+                }
+            }
+            builder.add("}");
+            return builder.build();
+        }
         if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
-            return renderVariable(objectDef, methodDef, convertExpressionDef.variable());
+            return renderExpression(objectDef, methodDef, convertExpressionDef.expressionDef());
         }
         if (expressionDef instanceof ExpressionDef.Constant constant) {
             return renderConstantExpression(constant);
         }
         if (expressionDef instanceof ExpressionDef.CallInstanceMethod callInstanceMethod) {
             return CodeBlock.concat(
-                CodeBlock.of(renderVariable(objectDef, methodDef, callInstanceMethod.instance())
+                CodeBlock.of(renderExpression(objectDef, methodDef, callInstanceMethod.instance())
                     + "." + callInstanceMethod.name()
                     + "("),
                 callInstanceMethod.parameters()
@@ -473,8 +553,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         if (expressionDef instanceof ExpressionDef.CallStaticMethod staticMethod) {
             return CodeBlock.concat(
-                CodeBlock.of("$T." + staticMethod.name()
-                    + "(", asType(staticMethod.classDef())),
+                CodeBlock.of("$T." + staticMethod.name() + "(", asType(staticMethod.classDef(), objectDef)),
                 staticMethod.parameters()
                     .stream()
                     .map(exp -> renderExpression(objectDef, methodDef, exp))
@@ -498,29 +577,100 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 renderExpression(objectDef, methodDef, condition.elseExpression())
             );
         }
+        if (expressionDef instanceof ExpressionDef.Switch aSwitch) {
+            CodeBlock.Builder builder = CodeBlock.builder();
+            builder.add("switch (");
+            builder.add(renderExpression(objectDef, methodDef, aSwitch.expression()));
+            builder.add(") {\n");
+            builder.indent();
+            for (Map.Entry<ExpressionDef.Constant, ExpressionDef> e : aSwitch.cases().entrySet()) {
+                if (e.getKey() == null || e.getKey().value() == null) {
+                    builder.add("default");
+                } else {
+                    builder.add("case ");
+                    builder.add(renderConstantExpression(e.getKey()));
+                }
+                builder.add(" -> ");
+                ExpressionDef value = e.getValue();
+                builder.add(renderExpression(objectDef, methodDef, value));
+                if (value instanceof ExpressionDef.SwitchYieldCase) {
+                    builder.add("\n");
+                } else {
+                    builder.add(";\n");
+                }
+            }
+            builder.unindent();
+            builder.add("}");
+            return builder.build();
+        }
+        if (expressionDef instanceof ExpressionDef.SwitchYieldCase switchYieldCase) {
+            CodeBlock.Builder builder = CodeBlock.builder();
+            builder.add("{\n");
+            builder.indent();
+            StatementDef statement = switchYieldCase.statement();
+            if (statement instanceof StatementDef.Multi multi) {
+                Iterator<StatementDef> iterator = multi.statements().iterator();
+                while (iterator.hasNext()) {
+                    StatementDef statementDef = iterator.next();
+                    if (!iterator.hasNext()) {
+                        renderYield(builder, methodDef, statementDef, objectDef);
+                    } else {
+                        builder.add(renderStatementCodeBlock(objectDef, methodDef, statementDef));
+                    }
+                }
+            } else {
+                renderYield(builder, methodDef, statement, objectDef);
+            }
+            builder.unindent();
+            builder.add("}");
+            String str = builder.build().toString();
+            // Render the body to prevent nested statements
+            return CodeBlock.of(str);
+        }
         if (expressionDef instanceof VariableDef variableDef) {
             return renderVariable(objectDef, methodDef, variableDef);
         }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
+    private void renderYield(CodeBlock.Builder builder, MethodDef methodDef, StatementDef statementDef, ObjectDef objectDef) {
+        if (statementDef instanceof StatementDef.Return aReturn) {
+            builder.addStatement(
+                CodeBlock.concat(
+                    CodeBlock.of("yield "),
+                    renderExpression(objectDef, methodDef, aReturn.expression())
+                )
+            );
+        } else {
+            throw new IllegalStateException("The last statement of SwitchYieldCase should be a return.");
+        }
+    }
+
     private CodeBlock renderConstantExpression(ExpressionDef.Constant constant) {
         TypeDef type = constant.type();
+        Object value = constant.value();
+        if (value == null) {
+            return CodeBlock.of("null");
+        }
+        if (type instanceof ClassTypeDef classTypeDef && classTypeDef.isEnum()) {
+            return renderExpression(null, null, new VariableDef.StaticField(
+                type,
+                value instanceof Enum<?> anEnum ? anEnum.name() : value.toString(),
+                type
+            ));
+        }
         if (type instanceof TypeDef.Primitive primitive) {
             return switch (primitive.name()) {
-                case "long" -> CodeBlock.of(constant.value() + "l");
-                case "float" -> CodeBlock.of(constant.value() + "f");
-                case "double" -> CodeBlock.of(constant.value() + "d");
-                default -> CodeBlock.of("$L", constant.value());
+                case "long" -> CodeBlock.of(value + "l");
+                case "float" -> CodeBlock.of(value + "f");
+                case "double" -> CodeBlock.of(value + "d");
+                default -> CodeBlock.of("$L", value);
             };
         } else if (type instanceof TypeDef.Array arrayDef) {
-            if (constant.value().getClass().isArray()) {
-                final var array = constant.value();
+            if (value.getClass().isArray()) {
+                final var array = value;
                 final var values = IntStream.range(0, Array.getLength(array))
-                    .mapToObj(i -> {
-                        Object value = Array.get(array, i);
-                        return renderConstantExpression(new ExpressionDef.Constant(arrayDef.componentType(), value));
-                    })
+                    .mapToObj(i -> renderConstantExpression(new ExpressionDef.Constant(arrayDef.componentType(), Array.get(array, i))))
                     .collect(CodeBlock.joining(", "));
                 final String typeName;
                 if (arrayDef.componentType() instanceof ClassTypeDef arrayClassTypeDef) {
@@ -539,14 +689,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             String name = classTypeDef.getName();
             if (ClassUtils.isJavaLangType(name)) {
                 return switch (name) {
-                    case "java.lang.Long" -> CodeBlock.of(constant.value() + "l");
-                    case "java.lang.Float" -> CodeBlock.of(constant.value() + "f");
-                    case "java.lang.Double" -> CodeBlock.of(constant.value() + "d");
-                    case "java.lang.String" -> CodeBlock.of("$S", constant.value());
-                    default -> CodeBlock.of("$L", constant.value());
+                    case "java.lang.Long" -> CodeBlock.of(value + "l");
+                    case "java.lang.Float" -> CodeBlock.of(value + "f");
+                    case "java.lang.Double" -> CodeBlock.of(value + "d");
+                    case "java.lang.String" -> CodeBlock.of("$S", value);
+                    default -> CodeBlock.of("$L", value);
                 };
             } else {
-                return CodeBlock.of("$L", constant.value());
+                return CodeBlock.of("$L", value);
             }
         }
         throw new IllegalStateException("Unrecognized expression: " + constant);
@@ -564,7 +714,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return CodeBlock.of(parameterVariableDef.name());
         }
         if (variableDef instanceof VariableDef.StaticField staticField) {
-            return CodeBlock.of("$T.$L", asType(staticField.ownerType()), staticField.name());
+            return CodeBlock.of("$T.$L", asType(staticField.ownerType(), objectDef), staticField.name());
         }
         if (variableDef instanceof VariableDef.Field field) {
             if (objectDef == null) {
@@ -577,7 +727,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             } else {
                 throw new IllegalStateException("Field access no supported on the object definition: " + objectDef);
             }
-            return CodeBlock.of(renderExpression(objectDef, methodDef, field.instanceVariable()) + "." + field.name());
+            return CodeBlock.of(renderExpression(objectDef, methodDef, field.instance()) + "." + field.name());
         }
         if (variableDef instanceof VariableDef.This) {
             if (objectDef == null) {

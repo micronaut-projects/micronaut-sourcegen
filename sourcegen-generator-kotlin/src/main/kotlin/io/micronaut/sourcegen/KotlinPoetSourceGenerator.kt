@@ -101,9 +101,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     private fun writeInterface(writer: Writer, interfaceDef: InterfaceDef) {
         val interfaceBuilder = TypeSpec.interfaceBuilder(interfaceDef.simpleName)
         interfaceBuilder.addModifiers(asKModifiers(interfaceDef.modifiers))
-        interfaceDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> this.asTypeVariable(tv) }
+        interfaceDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> this.asTypeVariable(tv, interfaceDef) }
             .forEach { typeVariable: TypeVariableName -> interfaceBuilder.addTypeVariable(typeVariable) }
-        interfaceDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef) }
+        interfaceDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef, interfaceDef) }
             .forEach { it: TypeName ->
                 interfaceBuilder.addSuperinterface(
                     it
@@ -122,7 +122,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     property.modifiers,
                     property.annotations,
                     property.javadoc,
-                    null
+                    null,
+                    interfaceDef
                 )
             } else {
                 buildConstructorProperty(
@@ -130,7 +131,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     property.type,
                     property.modifiers,
                     property.annotations,
-                    property.javadoc
+                    property.javadoc,
+                    interfaceDef
                 )
             }
             interfaceBuilder.addProperty(
@@ -166,9 +168,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     private fun writeClass(writer: Writer, classDef: ClassDef) {
         val classBuilder = TypeSpec.classBuilder(classDef.simpleName)
         classBuilder.addModifiers(asKModifiers(classDef.modifiers))
-        classDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> this.asTypeVariable(tv) }
+        classDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> this.asTypeVariable(tv, classDef) }
             .forEach { typeVariable: TypeVariableName -> classBuilder.addTypeVariable(typeVariable) }
-        classDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef) }
+        classDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef, classDef) }
             .forEach { it: TypeName ->
                 classBuilder.addSuperinterface(
                     it
@@ -189,7 +191,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     property.modifiers,
                     property.annotations,
                     property.javadoc,
-                    null
+                    null,
+                    classDef
                 )
             } else {
                 propertySpec = buildConstructorProperty(
@@ -197,7 +200,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     property.type,
                     property.modifiers,
                     property.annotations,
-                    property.javadoc
+                    property.javadoc,
+                    classDef
                 )
                 notNullProperties.add(property)
             }
@@ -212,7 +216,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         .map { prop: PropertyDef ->
                             ParameterSpec.builder(
                                 prop.name,
-                                asType(prop.type)
+                                asType(prop.type, classDef)
                             ).build()
                         }.toList()
                 ).build()
@@ -225,11 +229,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     companionBuilder = TypeSpec.companionObjectBuilder()
                 }
                 companionBuilder.addProperty(
-                    buildNullableProperty(field, stripStatic(modifiers), field.javadoc)
+                    buildNullableProperty(field, stripStatic(modifiers), field.javadoc, classDef)
                 )
             } else {
                 classBuilder.addProperty(
-                    buildNullableProperty(field, modifiers, field.javadoc)
+                    buildNullableProperty(field, modifiers, field.javadoc, classDef)
                 )
             }
         }
@@ -264,9 +268,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         val classBuilder = TypeSpec.classBuilder(recordDef.simpleName)
         classBuilder.addModifiers(KModifier.DATA)
         classBuilder.addModifiers(asKModifiers(recordDef.modifiers))
-        recordDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> this.asTypeVariable(tv) }
+        recordDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> this.asTypeVariable(tv, recordDef) }
             .forEach { typeVariable: TypeVariableName -> classBuilder.addTypeVariable(typeVariable) }
-        recordDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef) }
+        recordDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef, recordDef) }
             .forEach { it: TypeName ->
                 classBuilder.addSuperinterface(
                     it,
@@ -286,7 +290,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     property.type,
                     extendModifiers(property.modifiers, Modifier.FINAL),
                     property.annotations,
-                    property.javadoc
+                    property.javadoc,
+                    recordDef
                 )
             )
         }
@@ -297,7 +302,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         .map { prop: PropertyDef ->
                             ParameterSpec.builder(
                                 prop.name,
-                                asType(prop.type)
+                                asType(prop.type, recordDef)
                             ).build()
                         }.toList()
                 ).build()
@@ -333,7 +338,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     private fun writeEnumDef(writer: Writer, enumDef: EnumDef) {
         val enumBuilder = TypeSpec.enumBuilder(enumDef.simpleName)
         enumBuilder.addModifiers(asKModifiers(enumDef.modifiers))
-        enumDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef) }
+        enumDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef, enumDef) }
             .forEach { it: TypeName -> enumBuilder.addSuperinterface(it) }
         enumDef.javadoc.forEach(Consumer { format: String -> enumBuilder.addKdoc(format) })
         enumDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
@@ -374,11 +379,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         typeDef: TypeDef,
         modifiers: Set<Modifier>,
         annotations: List<AnnotationDef>,
-        docs: List<String>, initializer: ExpressionDef?
+        docs: List<String>, initializer: ExpressionDef?,
+        objectDef: ObjectDef?
     ): PropertySpec {
         val propertyBuilder = PropertySpec.builder(
             name,
-            asType(typeDef),
+            asType(typeDef, objectDef),
             asKModifiers(modifiers)
         )
         docs.forEach(Consumer { format: String -> propertyBuilder.addKdoc(format) })
@@ -409,11 +415,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         typeDef: TypeDef,
         modifiers: Set<Modifier>,
         annotations: List<AnnotationDef>,
-        docs: List<String>
+        docs: List<String>,
+        objectDef: ObjectDef?
     ): PropertySpec {
         val propertyBuilder = PropertySpec.builder(
             name,
-            asType(typeDef),
+            asType(typeDef, objectDef),
             asKModifiers(modifiers)
         )
         docs.forEach(Consumer { format: String -> propertyBuilder.addKdoc(format) })
@@ -430,14 +437,15 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             .build()
     }
 
-    private fun buildNullableProperty(field: FieldDef, modifiers: Set<Modifier>, docs: List<String>): PropertySpec {
+    private fun buildNullableProperty(field: FieldDef, modifiers: Set<Modifier>, docs: List<String>, objectDef: ObjectDef?): PropertySpec {
         return buildNullableProperty(
             field.name,
             field.type,
             modifiers,
             field.annotations,
             docs,
-            field.initializer.orElse(null)
+            field.initializer.orElse(null),
+            objectDef
         )
     }
 
@@ -445,7 +453,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         var funBuilder = if (method.name == "<init>") {
             FunSpec.constructorBuilder()
         } else {
-            FunSpec.builder(method.name).returns(asType(method.returnType))
+            FunSpec.builder(method.name).returns(asType(method.returnType, objectDef))
         }
         funBuilder = funBuilder
             .addModifiers(asKModifiers(modifiers))
@@ -454,7 +462,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     .map { param: ParameterDef ->
                         ParameterSpec.builder(
                             param.name,
-                            asType(param.type)
+                            asType(param.type, objectDef)
                         ).build()
                     }
                     .toList()
@@ -472,12 +480,17 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     }
 
     @OptIn(KotlinPoetJavaPoetPreview::class)
-    private fun asType(typeDef: TypeDef): TypeName {
-        val result: TypeName = if (typeDef is TypeDef.Array) {
-            asArray(typeDef)
+    private fun asType(typeDef: TypeDef, objectDef: ObjectDef?): TypeName {
+        val result: TypeName = if (typeDef == TypeDef.THIS) {
+            if (objectDef == null) {
+                throw java.lang.IllegalStateException("This type is used outside of the instance scope!")
+            }
+            asType(objectDef.asTypeDef(), null)
+        } else if (typeDef is TypeDef.Array) {
+            asArray(typeDef, objectDef)
         } else if (typeDef is ClassTypeDef.Parameterized) {
             asClassName(typeDef.rawType).parameterizedBy(
-                typeDef.typeArguments.map { v: TypeDef -> this.asType(v) }
+                typeDef.typeArguments.map { v: TypeDef -> this.asType(v, objectDef) }
             )
         } else if (typeDef is TypeDef.Primitive) {
             when (typeDef.name) {
@@ -498,18 +511,20 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (typeDef.lowerBounds.isNotEmpty()) {
                 WildcardTypeName.consumerOf(
                     asType(
-                        typeDef.lowerBounds[0]
+                        typeDef.lowerBounds[0],
+                        objectDef
                     )
                 )
             } else {
                 WildcardTypeName.producerOf(
                     asType(
-                        typeDef.upperBounds[0]
+                        typeDef.upperBounds[0],
+                        objectDef
                     )
                 )
             }
         } else if (typeDef is TypeDef.TypeVariable) {
-            return asTypeVariable(typeDef)
+            return asTypeVariable(typeDef, objectDef)
         } else {
             throw IllegalStateException("Unrecognized type definition $typeDef")
         }
@@ -519,19 +534,19 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         return result
     }
 
-    private fun asArray(classType: TypeDef.Array): TypeName {
+    private fun asArray(classType: TypeDef.Array, objectDef: ObjectDef?): TypeName {
         var newDef = ClassTypeDef.Parameterized(
                 ClassTypeDef.of("kotlin.Array"), listOf(classType.componentType))
         for (i in 2.. classType.dimensions) {
             newDef = ClassTypeDef.Parameterized(ClassTypeDef.of("kotlin.Array"), listOf(newDef))
         }
-        return this.asType(newDef)
+        return this.asType(newDef, objectDef)
     }
 
-    private fun asTypeVariable(tv: TypeDef.TypeVariable): TypeVariableName {
+    private fun asTypeVariable(tv: TypeDef.TypeVariable, objectDef: ObjectDef?): TypeVariableName {
         return TypeVariableName(
             tv.name,
-            tv.bounds.stream().map { v: TypeDef -> this.asType(v) }.toList()
+            tv.bounds.stream().map { v: TypeDef -> this.asType(v, objectDef) }.toList()
         )
     }
 
@@ -657,7 +672,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 )
             }
             if (expressionDef is ExpressionDef.Convert) {
-                val expResult = renderVariable(objectDef, methodDef, expressionDef.variable)
+                val expResult = renderExpression(objectDef, methodDef, expressionDef.expressionDef)
                 val resultType = expressionDef.type
                 return ExpResult(
                     renderWithNotNullAssertion(expResult, resultType),
@@ -673,7 +688,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private fun renderVariable(
             objectDef: ObjectDef?,
             methodDef: MethodDef,
-            variableDef: VariableDef
+            variableDef: ExpressionDef
         ): ExpResult {
             if (variableDef is VariableDef.MethodParameter) {
                 methodDef.getParameter(variableDef.name) // Check if exists
@@ -686,7 +701,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 } else {
                     throw IllegalStateException("Field access no supported on the object definition: $objectDef")
                 }
-                val expResult = renderVariable(objectDef, methodDef, variableDef.instanceVariable)
+                val expResult = renderVariable(objectDef, methodDef, variableDef.instance)
                 val builder = expResult.rendered.toBuilder()
                 if (expResult.type.isNullable) {
                     builder.add("!!")

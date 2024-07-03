@@ -17,8 +17,6 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 
-import java.util.List;
-
 /**
  * The variable definition.
  *
@@ -26,42 +24,7 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public sealed interface VariableDef extends ExpressionDef permits InstanceDef, VariableDef.Field, VariableDef.Local, VariableDef.MethodParameter, VariableDef.StaticField, VariableDef.This {
-
-    /**
-     * The condition of this variable.
-     *
-     * @param op         The operator
-     * @param expression The expression of this variable
-     * @return The condition expression
-     */
-    default ExpressionDef asCondition(String op, ExpressionDef expression) {
-        return new ExpressionDef.Condition(op, this, expression);
-    }
-
-    /**
-     * @return Is non-null expression
-     */
-    default ExpressionDef isNonNull() {
-        return asCondition(" != ", ExpressionDef.nullValue());
-    }
-
-    /**
-     * @return Is null expression
-     */
-    default ExpressionDef isNull() {
-        return asCondition(" == ", ExpressionDef.nullValue());
-    }
-
-    /**
-     * Convert this variable to a different type.
-     *
-     * @param typeDef The type
-     * @return the convert expression
-     */
-    default ExpressionDef convert(TypeDef typeDef) {
-        return new ExpressionDef.Convert(typeDef, this);
-    }
+public sealed interface VariableDef extends ExpressionDef permits VariableDef.Field, VariableDef.Local, VariableDef.MethodParameter, VariableDef.StaticField, VariableDef.This {
 
     /**
      * Assign this variable an expression.
@@ -74,6 +37,19 @@ public sealed interface VariableDef extends ExpressionDef permits InstanceDef, V
     }
 
     /**
+     * Assign this variable a parameter value.
+     *
+     * @param parameterDef The parameterDef.
+     * @return The statement
+     */
+    default StatementDef assign(ParameterDef parameterDef) {
+        return new StatementDef.Assign(
+            this,
+            new MethodParameter(parameterDef.name, parameterDef.getType())
+        );
+    }
+
+    /**
      * The local variable.
      *
      * @param name The name
@@ -82,12 +58,19 @@ public sealed interface VariableDef extends ExpressionDef permits InstanceDef, V
      * @since 1.0
      */
     @Experimental
-    record Local(String name, TypeDef type) implements VariableDef, InstanceDef {
+    record Local(String name, TypeDef type) implements VariableDef {
 
-        @Override
-        public StatementDef.DefineAndAssign assign(ExpressionDef expression) {
+        /**
+         * Define and assign the variable.
+         *
+         * @param expression The expression to be assigned.
+         * @return The statement
+         * @since 1.2
+         */
+        public StatementDef.DefineAndAssign defineAndAssign(ExpressionDef expression) {
             return new StatementDef.DefineAndAssign(this, expression);
         }
+
     }
 
     /**
@@ -100,19 +83,23 @@ public sealed interface VariableDef extends ExpressionDef permits InstanceDef, V
      */
     @Experimental
     record MethodParameter(String name, TypeDef type) implements VariableDef {
+
+        public MethodParameter(ParameterDef parameterDef) {
+            this(parameterDef.name, parameterDef.getType());
+        }
     }
 
     /**
      * The variable of a field.
      *
-     * @param instanceVariable The instance variable
-     * @param name             The name
-     * @param type             The type
+     * @param instance The instance variable
+     * @param name     The name
+     * @param type     The type
      * @author Denis Stepanov
      * @since 1.0
      */
     @Experimental
-    record Field(VariableDef instanceVariable,
+    record Field(ExpressionDef instance,
                  String name,
                  TypeDef type) implements VariableDef {
     }
@@ -140,7 +127,7 @@ public sealed interface VariableDef extends ExpressionDef permits InstanceDef, V
      * @since 1.0
      */
     @Experimental
-    record This(TypeDef type) implements VariableDef, InstanceDef {
+    record This(TypeDef type) implements VariableDef {
     }
 
 }

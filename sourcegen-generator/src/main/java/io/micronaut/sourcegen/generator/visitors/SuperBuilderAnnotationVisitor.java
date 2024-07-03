@@ -17,7 +17,6 @@ package io.micronaut.sourcegen.generator.visitors;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
-import io.micronaut.core.bind.annotation.Bindable;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
@@ -28,16 +27,13 @@ import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
-import io.micronaut.sourcegen.model.ExpressionDef;
-import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
-import io.micronaut.sourcegen.model.ParameterDef;
-import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
-import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
 import java.util.List;
+
+import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor.createModifyPropertyMethod;
 
 /**
  * The visitor that is generation a builder.
@@ -96,32 +92,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 if (!beanProperty.getDeclaringType().equals(element)) {
                     continue;
                 }
-                String propertyName = beanProperty.getSimpleName();
-                TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-                TypeDef fieldType = propertyTypeDef.makeNullable();
-                if (!fieldType.isNullable()) {
-                    throw new IllegalStateException("Could not make the field nullable");
-                }
-                FieldDef.FieldDefBuilder fieldDef = FieldDef.builder(propertyName)
-                    .ofType(fieldType)
-                    .addModifiers(Modifier.PROTECTED);
-                try {
-                    beanProperty.stringValue(Bindable.class, "defaultValue").ifPresent(defaultValue ->
-                        fieldDef.initializer(ExpressionDef.constant(beanProperty.getType(), fieldType, defaultValue))
-                    );
-                } catch (IllegalArgumentException e) {
-                    throw new ProcessingException(beanProperty, "Invalid or unsupported default value specified: " + beanProperty.stringValue(Bindable.class, "defaultValue").orElse(null));
-                }
-                abstractBuilder.addField(fieldDef
-                    .build()
-                );
-                abstractBuilder.addMethod(
-                    MethodDef.builder(propertyName)
-                        .addModifiers(Modifier.PUBLIC)
-                        .returns(selfType)
-                        .addParameter(propertyName, propertyTypeDef)
-                        .build(parameterDefs -> propertyBuilderMethod(parameterDefs, selfType, fieldType, beanProperty))
-                );
+                createModifyPropertyMethod(abstractBuilder, beanProperty, self -> self.invoke("self", self.type()).convert(selfType).returning());
             }
 
             abstractBuilder.addMethod(MethodDef.builder("self").addModifiers(Modifier.ABSTRACT).returns(selfType).build());
@@ -164,19 +135,11 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                         )
                     );
 
-                builder.addMethod(MethodDef.builder("self")
-                    .addModifiers(Modifier.PUBLIC)
-                    .returns(builderType)
-                    .build(parameterDefs -> List.of(new VariableDef.This(builderType).returning())));
-
-                builder.addMethod(BuilderAnnotationVisitor.buildMethod(element, builderType));
+                builder.addMethod(createSelfMethod());
+                builder.addMethod(BuilderAnnotationVisitor.createBuildMethod(element));
 
                 ClassDef builderDef = builder.build();
-                context.visitGeneratedSourceFile(
-                    builderDef.getPackageName(),
-                    builderDef.getSimpleName(),
-                    element
-                ).ifPresent(sourceFile -> {
+                context.visitGeneratedSourceFile(builderDef.getPackageName(), builderDef.getSimpleName(), element).ifPresent(sourceFile -> {
                     try {
                         sourceFile.write(
                             writer -> sourceGenerator.write(builderDef, writer)
@@ -193,20 +156,14 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
         }
     }
 
-    private String getAbstractSuperBuilderName(ClassElement element) {
-        return element.getPackageName() + "." + "Abstract" + element.getSimpleName() + "SuperBuilder";
+    private MethodDef createSelfMethod() {
+        return MethodDef.builder("self")
+            .addModifiers(Modifier.PUBLIC)
+            .build((self, parameterDefs) -> self.returning());
     }
 
-    private List<StatementDef> propertyBuilderMethod(List<ParameterDef> parameterDefs, TypeDef builderType, TypeDef fieldType, PropertyElement propertyElement) {
-        return List.of(
-            new VariableDef.This(builderType)
-                .field(propertyElement.getName(), fieldType)
-                .assign(new VariableDef.MethodParameter(
-                    propertyElement.getName(),
-                    TypeDef.of(propertyElement.getType())
-                )),
-            new VariableDef.This(builderType).invoke("self", List.of(), builderType).returning()
-        );
+    private String getAbstractSuperBuilderName(ClassElement element) {
+        return element.getPackageName() + "." + "Abstract" + element.getSimpleName() + "SuperBuilder";
     }
 
 }

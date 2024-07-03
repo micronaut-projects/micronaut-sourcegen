@@ -57,6 +57,14 @@ public final class ParameterDef extends AbstractElement {
     }
 
     /**
+     * @return Return the parameter as a variable
+     * @since 1.2
+     */
+    public VariableDef asVariable() {
+        return new VariableDef.MethodParameter(name, type);
+    }
+
+    /**
      * The parameter definition builder.
      *
      * @author Denis Stepanov

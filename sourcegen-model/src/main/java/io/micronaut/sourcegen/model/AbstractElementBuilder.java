@@ -43,7 +43,6 @@ public sealed class AbstractElementBuilder<ThisType> permits ClassDef.ClassDefBu
     protected AbstractElementBuilder(String name) {
         this.name = name;
         this.thisInstance = (ThisType) this;
-
     }
 
     public final ThisType addModifiers(Modifier... modifiers) {

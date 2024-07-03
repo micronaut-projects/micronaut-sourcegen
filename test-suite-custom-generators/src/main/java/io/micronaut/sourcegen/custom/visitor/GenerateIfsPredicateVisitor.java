@@ -33,8 +33,6 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
-import java.io.IOException;
-import java.io.StringWriter;
 import java.util.function.Predicate;
 
 @Internal

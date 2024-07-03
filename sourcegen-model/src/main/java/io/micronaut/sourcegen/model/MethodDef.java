@@ -26,7 +26,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * The method definition.
@@ -137,6 +137,13 @@ public final class MethodDef extends AbstractElement {
             super(name);
         }
 
+        /**
+         * The return type of the method.
+         * In a case of missing return type it will be extracted from the statements.
+         *
+         * @param type The return type
+         * @return the current builder
+         */
         public MethodDefBuilder returns(TypeDef type) {
             this.returnType = type;
             return this;
@@ -162,7 +169,11 @@ public final class MethodDef extends AbstractElement {
         }
 
         public MethodDefBuilder addStatement(StatementDef statement) {
-            statements.add(statement);
+            if (statement instanceof StatementDef.Multi multi) {
+                multi.statements().forEach(this::addStatement);
+            } else {
+                statements.add(statement);
+            }
             return this;
         }
 
@@ -172,14 +183,23 @@ public final class MethodDef extends AbstractElement {
         }
 
         public MethodDef build() {
-            return build(parameterDefs -> List.of());
+            return build((self, parameterDefs) -> null);
         }
 
-        public MethodDef build(Function<List<ParameterDef>, List<StatementDef>> bodyBuilder) {
+        public MethodDef build(BiFunction<VariableDef.This, List<ParameterDef>, StatementDef> bodyBuilder) {
+            StatementDef statement = bodyBuilder.apply(new VariableDef.This(TypeDef.THIS), parameters);
+            if (statement != null) {
+                addStatement(statement);
+                if (returnType == null && !statements.isEmpty()) {
+                    StatementDef lastStatement = statements.get(statements.size() - 1);
+                    if (lastStatement instanceof StatementDef.Return aReturn) {
+                        returnType = aReturn.expression().type();
+                    }
+                }
+            }
             if (returnType == null && !name.equals(CONSTRUCTOR)) {
                 throw new IllegalStateException("Return type of method: " + name + " not specified!");
             }
-            bodyBuilder.apply(parameters).forEach(this::addStatement);
             return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc);
         }
 
