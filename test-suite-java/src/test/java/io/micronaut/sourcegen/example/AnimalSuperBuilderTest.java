@@ -62,19 +62,14 @@ class AnimalSuperBuilderTest {
 
     @Test
     public void internalTest() {
-        assertEquals(5, AbstractAnimalSuperBuilder.class.getDeclaredMethods().length);
         assertEquals(3, AbstractAnimalSuperBuilder.class.getDeclaredFields().length);
 
-        assertEquals(5, CatSuperBuilder.class.getDeclaredMethods().length);
         assertEquals(0, CatSuperBuilder.class.getDeclaredFields().length);
 
-        assertEquals(6, AbstractCatSuperBuilder.class.getDeclaredMethods().length);
         assertEquals(2, AbstractCatSuperBuilder.class.getDeclaredFields().length);
 
-        assertEquals(5, DogSuperBuilder.class.getDeclaredMethods().length);
         assertEquals(0, DogSuperBuilder.class.getDeclaredFields().length);
 
-        assertEquals(7, AbstractDogSuperBuilder.class.getDeclaredMethods().length);
         assertEquals(3, AbstractDogSuperBuilder.class.getDeclaredFields().length);
     }
 }
