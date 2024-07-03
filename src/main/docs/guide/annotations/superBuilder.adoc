@@ -1,0 +1,35 @@
+To use a builder pattern with types that are using inheritance you annotate a Java bean with `@SuperBuilder`:
+
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Animal.java[tags=clazz,indent=0]
+----
+
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Cat.java[tags=clazz,indent=0]
+----
+
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Dog.java[tags=clazz,indent=0]
+----
+
+For every class annotated with `@SuperBuilder` there going to be two builders generated at compilation-time, an abstract one intended to be inherited and second one to constructor the bean.
+
+In the previous example five classes are generated:
+
+- `AbstractAnimalSuperBuilder`
+- `AbstractCatSuperBuilder`
+- `CatSuperBuilder`
+- `AbstractDogSuperBuilder`
+- `DogSuperBuilder`
+
+NOTE: `@SuperBuilder` requires every super-class to be annotated with `@SuperBuilder`
+
+You can use a builder to create an instance:
+
+[source,java]
+----
+include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/AnimalSuperBuilderTest.java[tags=test,indent=0]
+----

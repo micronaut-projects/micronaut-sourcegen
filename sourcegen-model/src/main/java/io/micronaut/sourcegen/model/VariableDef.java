@@ -17,6 +17,8 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 
+import java.util.List;
+
 /**
  * The variable definition.
  *
@@ -80,7 +82,12 @@ public sealed interface VariableDef extends ExpressionDef permits InstanceDef, V
      * @since 1.0
      */
     @Experimental
-    record Local(String name, TypeDef type) implements VariableDef {
+    record Local(String name, TypeDef type) implements VariableDef, InstanceDef {
+
+        @Override
+        public StatementDef.DefineAndAssign assign(ExpressionDef expression) {
+            return new StatementDef.DefineAndAssign(this, expression);
+        }
     }
 
     /**

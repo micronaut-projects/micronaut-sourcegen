@@ -39,9 +39,9 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The visitor that is generation a builder.
@@ -59,85 +59,136 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        String simpleName = element.getSimpleName() + "Builder";
-        String builderClassName = element.getPackageName() + "." + simpleName;
+        try {
+            String simpleName = element.getSimpleName() + "Builder";
+            String builderClassName = element.getPackageName() + "." + simpleName;
 
-        ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
+            ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
 
-        ClassDef.ClassDefBuilder builder = ClassDef.builder(builderClassName)
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+            ClassDef.ClassDefBuilder builder = ClassDef.builder(builderClassName)
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
-        List<PropertyElement> properties = element.getBeanProperties();
-        for (PropertyElement beanProperty : properties) {
-            String propertyName = beanProperty.getSimpleName();
-            TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-            TypeDef fieldType = propertyTypeDef.makeNullable();
-            if (!fieldType.isNullable()) {
-                throw new IllegalStateException("Could not make the field nullable");
-            }
-            FieldDef.FieldDefBuilder fieldDef = FieldDef.builder(propertyName)
-                .ofType(fieldType)
-                .addModifiers(Modifier.PRIVATE);
-            try {
-                beanProperty.stringValue(Bindable.class, "defaultValue").ifPresent(defaultValue ->
-                    fieldDef.initializer(ExpressionDef.constant(beanProperty.getType(), fieldType, defaultValue))
-                );
-            } catch (IllegalArgumentException e) {
-                throw new ProcessingException(beanProperty, "Invalid or unsupported default value specified: " + beanProperty.stringValue(Bindable.class, "defaultValue").orElse(null));
-            }
-            builder.addField(fieldDef
-                .build()
-            );
-            builder.addMethod(
-                MethodDef.builder(propertyName)
-                    .addModifiers(Modifier.PUBLIC)
-                    .returns(builderType)
-                    .addParameter(propertyName, propertyTypeDef)
-                    .addStatements(propertyBuilderMethod(builderType, fieldType, beanProperty))
-                    .build()
-            );
-        }
-
-        builder.addMethod(MethodDef.constructor().build());
-        builder.addMethod(MethodDef.constructor(builderType, properties.stream().map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList()));
-
-        builder.addMethod(MethodDef.builder("builder")
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .returns(builderType)
-            .addStatement(builderType.instantiate().returning())
-            .build());
-
-        element.getPrimaryConstructor().ifPresent(constructor -> {
-            if (constructor.isPublic()) {
-                ClassTypeDef buildType = ClassTypeDef.of(element);
-                builder.addMethod(MethodDef.builder("build")
-                    .addModifiers(Modifier.PUBLIC)
-                    .returns(buildType)
-                    .addStatement(buildMethod(builderType, buildType, constructor))
+            List<PropertyElement> properties = element.getBeanProperties();
+            for (PropertyElement beanProperty : properties) {
+                String propertyName = beanProperty.getSimpleName();
+                TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
+                TypeDef fieldType = propertyTypeDef.makeNullable();
+                if (!fieldType.isNullable()) {
+                    throw new IllegalStateException("Could not make the field nullable");
+                }
+                FieldDef.FieldDefBuilder fieldDef = FieldDef.builder(propertyName)
+                    .ofType(fieldType)
+                    .addModifiers(Modifier.PRIVATE);
+                try {
+                    beanProperty.stringValue(Bindable.class, "defaultValue").ifPresent(defaultValue ->
+                        fieldDef.initializer(ExpressionDef.constant(beanProperty.getType(), fieldType, defaultValue))
+                    );
+                } catch (IllegalArgumentException e) {
+                    throw new ProcessingException(beanProperty, "Invalid or unsupported default value specified: " + beanProperty.stringValue(Bindable.class, "defaultValue").orElse(null));
+                }
+                builder.addField(fieldDef
                     .build()
                 );
+                builder.addMethod(
+                    MethodDef.builder(propertyName)
+                        .addModifiers(Modifier.PUBLIC)
+                        .returns(builderType)
+                        .addParameter(propertyName, propertyTypeDef)
+                        .addStatements(propertyBuilderMethod(builderType, fieldType, beanProperty))
+                        .build()
+                );
             }
-        });
 
-        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
-        if (sourceGenerator == null) {
-            return;
+            builder.addMethod(MethodDef.constructor().build());
+            builder.addMethod(MethodDef.constructor(builderType, properties.stream().map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList()));
+
+            builder.addMethod(MethodDef.builder("builder")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(builderType)
+                .addStatement(builderType.instantiate().returning())
+                .build());
+
+            builder.addMethod(buildMethod(element, builderType));
+
+            SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
+            if (sourceGenerator == null) {
+                return;
+            }
+
+            ClassDef builderDef = builder.build();
+            context.visitGeneratedSourceFile(
+                builderDef.getPackageName(),
+                builderDef.getSimpleName(),
+                element
+            ).ifPresent(sourceFile -> {
+                try {
+                    sourceFile.write(
+                        writer -> sourceGenerator.write(builderDef, writer)
+                    );
+                } catch (Exception e) {
+                    throw new ProcessingException(element, "Failed to generate a builder: " + e.getMessage(), e);
+                }
+            });
+        } catch (ProcessingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ProcessingException(element, "Failed to generate a builder: " + e.getMessage(), e);
+        }
+    }
+
+    static MethodDef buildMethod(ClassElement producedType, ClassTypeDef builderType) {
+        ClassTypeDef buildType = ClassTypeDef.of(producedType);
+
+        MethodElement constructorElement = producedType.getPrimaryConstructor()
+            .filter(c -> !c.isPrivate())
+            .or(producedType::getDefaultConstructor)
+            .orElse(null);
+
+        VariableDef.This thisVariable = new VariableDef.This(builderType);
+        List<PropertyElement> beanProperties = new ArrayList<>(producedType.getBeanProperties());
+        List<ExpressionDef> values = new ArrayList<>();
+        if (constructorElement != null) {
+            for (ParameterElement parameter : constructorElement.getParameters()) {
+                beanProperties.removeIf(propertyElement -> propertyElement.getName().equals(parameter.getName()));
+                // We need to convert it for the correct type in Kotlin
+                values.add(
+                    thisVariable
+                        .field(
+                            parameter.getName(),
+                            TypeDef.of(parameter.getType()).makeNullable()
+                        ).convert(TypeDef.of(parameter.getType()))
+                );
+            }
+        }
+        List<StatementDef> statementDefs;
+        if (beanProperties.isEmpty()) {
+            statementDefs = List.of(
+                buildType.instantiate(values).returning()
+            );
+        } else {
+            // Instantiate and set properties not assigned in the constructor
+            StatementDef.DefineAndAssign defineAndAssign = buildType.instantiate(values).newLocal("instance");
+            VariableDef.Local local = defineAndAssign.variable();
+            statementDefs = new ArrayList<>();
+            statementDefs.add(defineAndAssign);
+            for (PropertyElement beanProperty : beanProperties) {
+                Optional<MethodElement> writeMethod = beanProperty.getWriteMethod();
+                if (writeMethod.isPresent()) {
+                    String propertyName = beanProperty.getSimpleName();
+                    TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
+                    statementDefs.add(
+                        local.invoke(writeMethod.get(), thisVariable.field(propertyName, propertyTypeDef))
+                    );
+                }
+            }
+            statementDefs.add(local.returning());
         }
 
-        ClassDef builderDef = builder.build();
-        context.visitGeneratedSourceFile(
-            builderDef.getPackageName(),
-            builderDef.getSimpleName(),
-            element
-        ).ifPresent(sourceFile -> {
-            try {
-                sourceFile.write(
-                    writer -> sourceGenerator.write(builderDef, writer)
-                );
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        return MethodDef.builder("build")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(buildType)
+            .addStatements(statementDefs)
+            .build();
     }
 
     private List<StatementDef> propertyBuilderMethod(TypeDef builderType, TypeDef fieldType, PropertyElement propertyElement) {
@@ -150,23 +201,6 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 )),
             new VariableDef.This(builderType).returning()
         );
-    }
-
-    private StatementDef buildMethod(ClassTypeDef builderType,
-                                     ClassTypeDef buildType,
-                                     MethodElement constructorElement) {
-        List<ExpressionDef> values = new ArrayList<>();
-        for (ParameterElement parameter : constructorElement.getParameters()) {
-            // We need to convert it for the correct type in Kotlin
-            values.add(
-                new VariableDef.This(builderType)
-                    .field(
-                        parameter.getName(),
-                        TypeDef.of(parameter.getType()).makeNullable()
-                    ).convert(TypeDef.of(parameter.getType()))
-            );
-        }
-        return buildType.instantiate(values).returning();
     }
 
 }

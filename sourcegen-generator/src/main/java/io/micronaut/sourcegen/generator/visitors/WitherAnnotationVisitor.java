@@ -38,7 +38,6 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -61,112 +60,118 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
 
     @Override
     public void visitClass(ClassElement recordElement, VisitorContext context) {
-        if (!recordElement.isRecord()) {
-            throw new ProcessingException(recordElement, "Only records can be annotated with @Wither");
-        }
-        String simpleName = recordElement.getSimpleName() + "Wither";
-        String witherClassName = recordElement.getPackageName() + "." + simpleName;
-
-        ClassTypeDef witherType = ClassTypeDef.of(witherClassName);
-        ClassTypeDef recordType = ClassTypeDef.of(recordElement);
-
-        InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
-            .addModifiers(Modifier.PUBLIC);
-
-        List<PropertyElement> properties = recordElement.getBeanProperties();
-        Map<String, MethodDef> propertyAccessMethods = CollectionUtils.newHashMap(properties.size());
-        for (PropertyElement beanProperty : properties) {
-            MethodDef methodDef = MethodDef.builder(beanProperty.getSimpleName())
-                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                .returns(TypeDef.of(beanProperty.getType()))
-                .build();
-            wither.addMethod(
-                methodDef
-            );
-            propertyAccessMethods.put(beanProperty.getName(), methodDef);
-        }
-        for (PropertyElement beanProperty : properties) {
-            String propertyName = beanProperty.getSimpleName();
-            TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-            wither.addMethod(
-                MethodDef.builder("with" + NameUtils.capitalize(propertyName))
-                    .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-                    .returns(recordType)
-                    .addParameter(propertyName, propertyTypeDef)
-                    .addStatements(withPropertyMethodStatement(recordElement, recordType, witherType, propertyTypeDef, beanProperty, propertyAccessMethods))
-                    .build()
-            );
-        }
-
-        if (recordElement.hasStereotype(Builder.class)) {
-            String builderSimpleName = recordElement.getSimpleName() + "Builder";
-            String builderClassName = recordElement.getPackageName() + "." + builderSimpleName;
-            ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
-
-            MethodDef.MethodDefBuilder withMethodBuilder = MethodDef.builder("with")
-                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-                .returns(builderType);
-            MethodDef withMethod = withMethodBuilder
-                .addStatement(withMethodStatement(recordElement, builderType, witherType, propertyAccessMethods))
-                .build();
-
-            wither.addMethod(
-                withMethod
-            );
-
-            ClassTypeDef.Parameterized consumableType = new ClassTypeDef.Parameterized(ClassTypeDef.of(Consumer.class), List.of(builderType));
-            MethodDef.MethodDefBuilder withConsumerMethodBuilder = MethodDef.builder("with")
-                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-                .addParameter("consumer", consumableType)
-                .returns(recordType);
-
-            VariableDef.Local builderLocalVariable = new VariableDef.Local("builder", builderType);
-
-            withConsumerMethodBuilder.addStatement(
-                new StatementDef.DefineAndAssign(
-                    builderLocalVariable,
-                    new ExpressionDef.CallInstanceMethod(
-                        new VariableDef.This(witherType),
-                        withMethod
-                    )
-                )
-            );
-            withConsumerMethodBuilder.addStatement(
-                new ExpressionDef.CallInstanceMethod(
-                    new VariableDef.MethodParameter("consumer", consumableType),
-                    "accept", List.of(builderLocalVariable), TypeDef.VOID
-                )
-            );
-            withConsumerMethodBuilder.addStatement(
-                new ExpressionDef.CallInstanceMethod(
-                    builderLocalVariable,
-                    "build", List.of(), recordType
-                ).returning()
-            );
-
-            wither.addMethod(withConsumerMethodBuilder.build());
-
-        }
-
-        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
-        if (sourceGenerator == null) {
-            return;
-        }
-
-        InterfaceDef witherDef = wither.build();
-        context.visitGeneratedSourceFile(
-            witherDef.getPackageName(),
-            witherDef.getSimpleName(),
-            recordElement
-        ).ifPresent(sourceFile -> {
-            try {
-                sourceFile.write(
-                    writer -> sourceGenerator.write(witherDef, writer)
-                );
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+        try {
+            if (!recordElement.isRecord()) {
+                throw new ProcessingException(recordElement, "Only records can be annotated with @Wither");
             }
-        });
+            String simpleName = recordElement.getSimpleName() + "Wither";
+            String witherClassName = recordElement.getPackageName() + "." + simpleName;
+
+            ClassTypeDef witherType = ClassTypeDef.of(witherClassName);
+            ClassTypeDef recordType = ClassTypeDef.of(recordElement);
+
+            InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
+                .addModifiers(Modifier.PUBLIC);
+
+            List<PropertyElement> properties = recordElement.getBeanProperties();
+            Map<String, MethodDef> propertyAccessMethods = CollectionUtils.newHashMap(properties.size());
+            for (PropertyElement beanProperty : properties) {
+                MethodDef methodDef = MethodDef.builder(beanProperty.getSimpleName())
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .returns(TypeDef.of(beanProperty.getType()))
+                    .build();
+                wither.addMethod(
+                    methodDef
+                );
+                propertyAccessMethods.put(beanProperty.getName(), methodDef);
+            }
+            for (PropertyElement beanProperty : properties) {
+                String propertyName = beanProperty.getSimpleName();
+                TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
+                wither.addMethod(
+                    MethodDef.builder("with" + NameUtils.capitalize(propertyName))
+                        .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                        .returns(recordType)
+                        .addParameter(propertyName, propertyTypeDef)
+                        .addStatements(withPropertyMethodStatement(recordElement, recordType, witherType, propertyTypeDef, beanProperty, propertyAccessMethods))
+                        .build()
+                );
+            }
+
+            if (recordElement.hasStereotype(Builder.class)) {
+                String builderSimpleName = recordElement.getSimpleName() + "Builder";
+                String builderClassName = recordElement.getPackageName() + "." + builderSimpleName;
+                ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
+
+                MethodDef.MethodDefBuilder withMethodBuilder = MethodDef.builder("with")
+                    .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                    .returns(builderType);
+                MethodDef withMethod = withMethodBuilder
+                    .addStatement(withMethodStatement(recordElement, builderType, witherType, propertyAccessMethods))
+                    .build();
+
+                wither.addMethod(
+                    withMethod
+                );
+
+                ClassTypeDef.Parameterized consumableType = new ClassTypeDef.Parameterized(ClassTypeDef.of(Consumer.class), List.of(builderType));
+                MethodDef.MethodDefBuilder withConsumerMethodBuilder = MethodDef.builder("with")
+                    .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                    .addParameter("consumer", consumableType)
+                    .returns(recordType);
+
+                VariableDef.Local builderLocalVariable = new VariableDef.Local("builder", builderType);
+
+                withConsumerMethodBuilder.addStatement(
+                    new StatementDef.DefineAndAssign(
+                        builderLocalVariable,
+                        new ExpressionDef.CallInstanceMethod(
+                            new VariableDef.This(witherType),
+                            withMethod
+                        )
+                    )
+                );
+                withConsumerMethodBuilder.addStatement(
+                    new ExpressionDef.CallInstanceMethod(
+                        new VariableDef.MethodParameter("consumer", consumableType),
+                        "accept", List.of(builderLocalVariable), TypeDef.VOID
+                    )
+                );
+                withConsumerMethodBuilder.addStatement(
+                    new ExpressionDef.CallInstanceMethod(
+                        builderLocalVariable,
+                        "build", List.of(), recordType
+                    ).returning()
+                );
+
+                wither.addMethod(withConsumerMethodBuilder.build());
+
+            }
+
+            SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
+            if (sourceGenerator == null) {
+                return;
+            }
+
+            InterfaceDef witherDef = wither.build();
+            context.visitGeneratedSourceFile(
+                witherDef.getPackageName(),
+                witherDef.getSimpleName(),
+                recordElement
+            ).ifPresent(sourceFile -> {
+                try {
+                    sourceFile.write(
+                        writer -> sourceGenerator.write(witherDef, writer)
+                    );
+                } catch (Exception e) {
+                    throw new ProcessingException(recordElement, "Failed to generate a wither: " + e.getMessage(), e);
+                }
+            });
+        } catch (ProcessingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ProcessingException(recordElement, "Failed to generate a wither: " + e.getMessage(), e);
+        }
     }
 
     private List<StatementDef> withPropertyMethodStatement(ClassElement recordElement,
