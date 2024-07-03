@@ -147,16 +147,18 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         VariableDef.This thisVariable = new VariableDef.This(builderType);
         List<PropertyElement> beanProperties = new ArrayList<>(producedType.getBeanProperties());
         List<ExpressionDef> values = new ArrayList<>();
-        for (ParameterElement parameter : constructorElement.getParameters()) {
-            beanProperties.removeIf(propertyElement -> propertyElement.getName().equals(parameter.getName()));
-            // We need to convert it for the correct type in Kotlin
-            values.add(
-                thisVariable
-                    .field(
-                        parameter.getName(),
-                        TypeDef.of(parameter.getType()).makeNullable()
-                    ).convert(TypeDef.of(parameter.getType()))
-            );
+        if (constructorElement != null) {
+            for (ParameterElement parameter : constructorElement.getParameters()) {
+                beanProperties.removeIf(propertyElement -> propertyElement.getName().equals(parameter.getName()));
+                // We need to convert it for the correct type in Kotlin
+                values.add(
+                    thisVariable
+                        .field(
+                            parameter.getName(),
+                            TypeDef.of(parameter.getType()).makeNullable()
+                        ).convert(TypeDef.of(parameter.getType()))
+                );
+            }
         }
         List<StatementDef> statementDefs;
         if (beanProperties.isEmpty()) {
