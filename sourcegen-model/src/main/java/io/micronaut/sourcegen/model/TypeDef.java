@@ -35,14 +35,51 @@ import java.util.stream.Stream;
  * @since 1.0
  */
 @Experimental
-public sealed interface TypeDef permits ClassTypeDef,
-    TypeDef.Primitive, TypeDef.TypeVariable, TypeDef.Wildcard, TypeDef.Array {
+public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Primitive, TypeDef.TypeVariable, TypeDef.Wildcard {
 
     TypeDef VOID = primitive("void");
 
     TypeDef OBJECT = of(Object.class);
 
     TypeDef BOOLEAN = of(boolean.class);
+
+    /**
+     * A simple type representing a special this-type, in context of a class def, method or field the type will be replaced by the current type.
+     */
+    TypeDef THIS = of(ThisType.class);
+
+    /**
+     * Instantiate an array of this class.
+     *
+     * @param length The length of the array
+     * @return The instantiate expression
+     * @since 1.2
+     */
+    default ExpressionDef instantiateArray(int length) {
+        return new ExpressionDef.NewArrayOfSize((Array) this, length);
+    }
+
+    /**
+     * Instantiate an array of this class.
+     *
+     * @param expressions The items expressions
+     * @return The instantiate expression
+     * @since 1.2
+     */
+    default ExpressionDef instantiateArray(List<ExpressionDef> expressions) {
+        return new ExpressionDef.NewArrayInitialized((Array) this, expressions);
+    }
+
+    /**
+     * Instantiate an array of this class.
+     *
+     * @param expressions The items expressions
+     * @return The instantiate expression
+     * @since 1.2
+     */
+    default ExpressionDef instantiateArray(ExpressionDef... expressions) {
+        return instantiateArray(List.of(expressions));
+    }
 
     /**
      * Creates new primitive type.
@@ -96,6 +133,17 @@ public sealed interface TypeDef permits ClassTypeDef,
     static TypeDef of(Class<?> type) {
         if (type.isPrimitive()) {
             return primitive(type);
+        }
+        if (type.isArray()) {
+            Class<?> componentType = type.getComponentType();
+            TypeDef typeDef;
+            if (componentType.isArray()) {
+                TypeDef componentArray = of(componentType);
+                typeDef = array(componentArray, 1);
+            } else {
+                typeDef = of(componentType);
+            }
+            return new Array(typeDef, 1, false);
         }
         return ClassTypeDef.of(type);
     }

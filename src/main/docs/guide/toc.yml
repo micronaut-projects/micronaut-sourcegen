@@ -8,5 +8,6 @@ annotations:
   builder: Builder
   wither: Wither
   superBuilder: Super Builder
+  singular: Singular
 repository: Repository
 

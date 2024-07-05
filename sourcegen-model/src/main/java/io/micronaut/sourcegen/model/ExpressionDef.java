@@ -21,9 +21,12 @@ import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.convert.ConversionService;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.MethodElement;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * The expression definition.
@@ -33,29 +36,60 @@ import java.util.Objects;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.IfElse, ExpressionDef.NewInstance, VariableDef {
+    permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef {
+
+    /**
+     * The condition of this variable.
+     *
+     * @param op         The operator
+     * @param expression The expression of this variable
+     * @return The condition expression
+     * @since 1.2
+     */
+    default ExpressionDef asCondition(String op, ExpressionDef expression) {
+        return new ExpressionDef.Condition(op, this, expression);
+    }
+
+    /**
+     * @return Is non-null expression
+     * @since 1.2
+     */
+    default ExpressionDef isNonNull() {
+        return asCondition(" != ", ExpressionDef.nullValue());
+    }
+
+    /**
+     * @return Is null expression
+     * @since 1.2
+     */
+    default ExpressionDef isNull() {
+        return asCondition(" == ", ExpressionDef.nullValue());
+    }
 
     /**
      * @return The null value expression
+     * @since 1.2
      */
     @NonNull
-    static ExpressionDef nullValue() {
+    static ExpressionDef.Constant nullValue() {
         return new Constant(TypeDef.OBJECT, null);
     }
 
     /**
      * @return The true value expression
+     * @since 1.2
      */
     @NonNull
-    static ExpressionDef trueValue() {
+    static ExpressionDef.Constant trueValue() {
         return new Constant(TypeDef.BOOLEAN, true);
     }
 
     /**
      * @return The true value expression
+     * @since 1.2
      */
     @NonNull
-    static ExpressionDef falseValue() {
+    static ExpressionDef.Constant falseValue() {
         return new Constant(TypeDef.BOOLEAN, false);
     }
 
@@ -73,6 +107,7 @@ public sealed interface ExpressionDef
      *
      * @param statement The statement
      * @return The statement returning this expression
+     * @since 1.2
      */
     default StatementDef asConditionIf(StatementDef statement) {
         return new StatementDef.If(this, statement);
@@ -84,6 +119,7 @@ public sealed interface ExpressionDef
      * @param statement     The statement
      * @param elseStatement The else statement
      * @return The statement returning this expression
+     * @since 1.2
      */
     default StatementDef asConditionIfElse(StatementDef statement, StatementDef elseStatement) {
         return new StatementDef.IfElse(this, statement, elseStatement);
@@ -95,6 +131,7 @@ public sealed interface ExpressionDef
      * @param expression     The expression
      * @param elseExpression The else expression
      * @return The statement returning this expression
+     * @since 1.2
      */
     default ExpressionDef asConditionIfElse(ExpressionDef expression, ExpressionDef elseExpression) {
         return new ExpressionDef.IfElse(this, expression, elseExpression);
@@ -105,40 +142,220 @@ public sealed interface ExpressionDef
      *
      * @param name The local name
      * @return A new local
+     * @since 1.2
      */
     default StatementDef.DefineAndAssign newLocal(String name) {
-       return new VariableDef.Local(name, type()).assign(this);
+        return new VariableDef.Local(name, type()).defineAndAssign(this);
+    }
+
+    /**
+     * Turn this expression into a new local variable.
+     *
+     * @param name The local name
+     * @param fn   The contextual function
+     * @return A new local
+     * @since 1.2
+     */
+    default StatementDef newLocal(String name, Function<VariableDef, StatementDef> fn) {
+        StatementDef.DefineAndAssign defineAndAssign = newLocal(name);
+        return StatementDef.multi(
+            defineAndAssign,
+            fn.apply(defineAndAssign.variable())
+        );
+    }
+
+    /**
+     * Turn this expression into an expression switch.
+     *
+     * @param type  The expression type
+     * @param cases The cases
+     * @return A new switch expression
+     * @since 1.2
+     */
+    default ExpressionDef.Switch asExpressionSwitch(TypeDef type, Map<Constant, ExpressionDef> cases) {
+        return new Switch(this, type, cases);
+    }
+
+    /**
+     * Turn this expression into a statement switch.
+     *
+     * @param type  The expression type
+     * @param cases The cases
+     * @return A new switch expression
+     * @since 1.2
+     */
+    default StatementDef.Switch asStatementSwitch(TypeDef type, Map<Constant, StatementDef> cases) {
+        return new StatementDef.Switch(this, type, cases);
+    }
+
+    /**
+     * Turn this expression into a while statement.
+     *
+     * @param statement The statement
+     * @return A new switch expression
+     * @since 1.2
+     */
+    default StatementDef.While whileLoop(StatementDef statement) {
+        return new StatementDef.While(this, statement);
+    }
+
+    /**
+     * Convert this variable to a different type.
+     *
+     * @param typeDef The type
+     * @return the convert expression
+     * @since 1.2
+     */
+    default ExpressionDef convert(TypeDef typeDef) {
+        return new ExpressionDef.Convert(typeDef, this);
+    }
+
+    /**
+     * Reference the field of this variable.
+     *
+     * @param fieldName The field type
+     * @param typeDef   Teh field type
+     * @return The field variable
+     * @since 1.2
+     */
+    default VariableDef.Field field(String fieldName, TypeDef typeDef) {
+        return new VariableDef.Field(this, fieldName, typeDef);
+    }
+
+    /**
+     * Reference the field of this variable.
+     *
+     * @param fieldDef The field definition
+     * @return The field variable
+     * @since 1.2
+     */
+    default VariableDef.Field field(FieldDef fieldDef) {
+        return new VariableDef.Field(this, fieldDef.name, fieldDef.getType());
+    }
+
+    /**
+     * The call the instance method expression.
+     *
+     * @param methodDef The method
+     * @return The call to the instance method
+     * @since 1.2
+     */
+    default CallInstanceMethod invoke(MethodDef methodDef) {
+        return new CallInstanceMethod(this, methodDef);
+    }
+
+    /**
+     * The call the instance method expression.
+     *
+     * @param name       The method name
+     * @param parameters The parameters
+     * @param returning  The returning
+     * @return The call to the instance method
+     * @since 1.2
+     */
+    default CallInstanceMethod invoke(String name, TypeDef returning, ExpressionDef... parameters) {
+        return invoke(name, returning, List.of(parameters));
+    }
+
+    /**
+     * The call the instance method expression.
+     *
+     * @param name       The method name
+     * @param parameters The parameters
+     * @param returning  The returning
+     * @return The call to the instance method
+     * @since 1.2
+     */
+    default CallInstanceMethod invoke(String name, TypeDef returning, List<ExpressionDef> parameters) {
+        return new CallInstanceMethod(
+            this,
+            name,
+            parameters,
+            returning
+        );
+    }
+
+    /**
+     * The call the instance method expression.
+     *
+     * @param methodElement The method element
+     * @param parameters    The parameters
+     * @return The call to the instance method
+     * @since 1.2
+     */
+    default CallInstanceMethod invoke(MethodElement methodElement, ExpressionDef... parameters) {
+        return invoke(methodElement, List.of(parameters));
+    }
+
+    /**
+     * The call the instance method expression.
+     *
+     * @param methodElement The method element
+     * @param parameters    The parameters
+     * @return The call to the instance method
+     * @since 1.2
+     */
+    default CallInstanceMethod invoke(MethodElement methodElement, List<ExpressionDef> parameters) {
+        return new CallInstanceMethod(
+            this,
+            methodElement.getName(),
+            parameters,
+            TypeDef.of(methodElement.getReturnType())
+        );
+    }
+
+
+    /**
+     * Resolve a constant for the given type from the string.
+     *
+     * @param type    The type
+     * @param typeDef The type def
+     * @param value   The string value
+     * @return The constant
+     * @throws IllegalArgumentException if the constant is not supported.
+     */
+    @Experimental
+    @Nullable
+    static ExpressionDef constant(ClassElement type, TypeDef typeDef, @Nullable Object value) {
+        Objects.requireNonNull(type, "Type cannot be null");
+        if (value == null) {
+            return null;
+        }
+        if (type.isPrimitive()) {
+            return ClassUtils.getPrimitiveType(type.getName()).flatMap(t ->
+                ConversionService.SHARED.convert(value, t)
+            ).map(o -> new Constant(typeDef, o)).orElse(null);
+        } else if (ClassUtils.isJavaLangType(type.getName())) {
+            return ClassUtils.forName(type.getName(), ExpressionDef.class.getClassLoader())
+                .flatMap(t -> ConversionService.SHARED.convert(value, t))
+                .map(o -> new Constant(typeDef, o)).orElse(null);
+        } else if (type.isEnum()) {
+            String name;
+            if (value instanceof Enum<?> anEnum) {
+                name = anEnum.name();
+            } else {
+                name = value.toString();
+            }
+            return new VariableDef.StaticField(typeDef, name, typeDef);
+        }
+        return null;
     }
 
     /**
      * Resolve a constant for the given type from the string.
      *
-     * @param type        The type
-     * @param typeDef     The type def
-     * @param stringValue The string value
+     * @param value The string value
      * @return The constant
      * @throws IllegalArgumentException if the constant is not supported.
+     * @since 1.2
      */
     @Experimental
-    static @Nullable ExpressionDef constant(ClassElement type, TypeDef typeDef, @Nullable String stringValue) {
-        Objects.requireNonNull(type, "Type cannot be null");
-
-        if (type.isPrimitive()) {
-            return ClassUtils.getPrimitiveType(type.getName()).flatMap(t ->
-                ConversionService.SHARED.convert(stringValue, t)
-            ).map(o -> new Constant(typeDef, o)).orElse(null);
-        } else if (ClassUtils.isJavaLangType(type.getName())) {
-            return ClassUtils.forName(type.getName(), ExpressionDef.class.getClassLoader())
-                .flatMap(t -> ConversionService.SHARED.convert(stringValue, t))
-                .map(o -> new Constant(typeDef, o)).orElse(null);
-        } else if (type.isEnum()) {
-            return new VariableDef.StaticField(
-                typeDef,
-                stringValue,
-                typeDef
-            );
+    @Nullable
+    static ExpressionDef.Constant constant(@Nullable Object value) {
+        if (value == null) {
+            return null;
         }
-        return null;
+        return new Constant(TypeDef.of(value.getClass()), value);
     }
 
     /**
@@ -228,24 +445,24 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record NewInstance(ClassTypeDef type,
-                       List<ExpressionDef> values) implements ExpressionDef, InstanceDef {
+                       List<ExpressionDef> values) implements ExpressionDef {
     }
 
     /**
      * The convert variable expression. (To support Kotlin's nullable -> not-null conversion)
      *
-     * @param type     The type
-     * @param variable The variable reference
+     * @param type          The type
+     * @param expressionDef The expression reference
      * @author Denis Stepanov
      * @since 1.0
      */
     @Experimental
     record Convert(TypeDef type,
-                   VariableDef variable) implements ExpressionDef {
+                   ExpressionDef expressionDef) implements ExpressionDef {
     }
 
     /**
-     * The convert variable expression. (To support Kotlin's nullable -> not-null conversion)
+     * The constant expression.
      *
      * @param type  The type
      * @param value The value
@@ -269,12 +486,12 @@ public sealed interface ExpressionDef
      * @since 1.0
      */
     @Experimental
-    record CallInstanceMethod(VariableDef instance,
+    record CallInstanceMethod(ExpressionDef instance,
                               String name,
                               List<ExpressionDef> parameters,
                               TypeDef returningType) implements ExpressionDef, StatementDef {
 
-        public CallInstanceMethod(VariableDef instance, MethodDef methodDef) {
+        public CallInstanceMethod(ExpressionDef instance, MethodDef methodDef) {
             this(instance, methodDef.name, methodDef.getParameters()
                     .stream()
                     .<ExpressionDef>map(ParameterDef::asExpression)
@@ -328,7 +545,7 @@ public sealed interface ExpressionDef
     /**
      * The if-else expression.
      *
-     * @param condition     The condition
+     * @param condition      The condition
      * @param expression     The expression if the condition is true
      * @param elseExpression The expression if the condition is false
      */
@@ -339,5 +556,55 @@ public sealed interface ExpressionDef
         public TypeDef type() {
             return expression.type();
         }
+    }
+
+    /**
+     * The switch expression.
+     * Note: null constant or null value represents a default case.
+     *
+     * @param expression The switch expression
+     * @param type       The switch type
+     * @param cases      The cases
+     * @since 1.2
+     */
+    @Experimental
+    record Switch(ExpressionDef expression,
+                  TypeDef type,
+                  Map<Constant, ExpressionDef> cases) implements ExpressionDef {
+    }
+
+    /**
+     * The switch yield case expression.
+     *
+     * @param type The yield result
+     * @param statement The statement that should yield the result
+     * @since 1.2
+     */
+    @Experimental
+    record SwitchYieldCase(TypeDef type, StatementDef statement) implements ExpressionDef {
+    }
+
+    /**
+     * The new array expression.
+     *
+     * @param type The type
+     * @param size The array size
+     * @author Denis Stepanov
+     * @since 1.2
+     */
+    @Experimental
+    record NewArrayOfSize(TypeDef.Array type, int size) implements ExpressionDef {
+    }
+
+    /**
+     * The new array expression.
+     *
+     * @param type       The type
+     * @param expressions The items expression
+     * @author Denis Stepanov
+     * @since 1.2
+     */
+    @Experimental
+    record NewArrayInitialized(TypeDef.Array type, List<ExpressionDef> expressions) implements ExpressionDef {
     }
 }

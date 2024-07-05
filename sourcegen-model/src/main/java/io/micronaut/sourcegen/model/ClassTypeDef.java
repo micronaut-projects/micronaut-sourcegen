@@ -31,6 +31,8 @@ import java.util.List;
 @Experimental
 public sealed interface ClassTypeDef extends TypeDef {
 
+    ClassTypeDef OBJECT = of(Object.class);
+
     /**
      * @return The type name
      */
@@ -54,6 +56,14 @@ public sealed interface ClassTypeDef extends TypeDef {
     ClassTypeDef makeNullable();
 
     /**
+     * @return True if the class is an enum
+     * @since 1.2
+     */
+    default boolean isEnum() {
+        return false;
+    }
+
+    /**
      * Instantiate this class.
      *
      * @return The instantiate expression
@@ -63,13 +73,76 @@ public sealed interface ClassTypeDef extends TypeDef {
     }
 
     /**
+     * Throw an exception.
+     *
+     * @param parameters The exception constructor parameters
+     * @return The instantiate expression
+     * @since 1.2
+     */
+    default StatementDef doThrow(List<ExpressionDef> parameters) {
+        return new StatementDef.Throw(instantiate(parameters));
+    }
+
+    /**
+     * Throw an exception.
+     *
+     * @param parameters The exception constructor parameters
+     * @return The instantiate expression
+     * @since 1.2
+     */
+    default StatementDef doThrow(ExpressionDef... parameters) {
+        return new StatementDef.Throw(instantiate(parameters));
+    }
+
+    /**
+     * Instantiate this class.
+     *
+     * @param parameters The constructor parameters
+     * @return The instantiate expression
+     */
+    default ExpressionDef instantiate(List<ExpressionDef> parameters) {
+        return ExpressionDef.instantiate(this, parameters);
+    }
+
+    /**
      * Instantiate this class.
      *
      * @param values The constructor values
      * @return The instantiate expression
+     * @since 1.2
      */
-    default ExpressionDef instantiate(List<ExpressionDef> values) {
-        return ExpressionDef.instantiate(this, values);
+    default ExpressionDef instantiate(ExpressionDef... values) {
+        return instantiate(List.of(values));
+    }
+
+    /**
+     * Invoke static method.
+     *
+     * @param name          The method name
+     * @param parameters    The parameters
+     * @param returningType The return type
+     * @return the invoke static method expression
+     * @since 1.2
+     */
+    default ExpressionDef.CallStaticMethod invokeStatic(String name,
+                                                        TypeDef returningType,
+                                                        ExpressionDef... parameters) {
+        return invokeStatic(name, returningType, List.of(parameters));
+    }
+
+    /**
+     * Invoke static method.
+     *
+     * @param name          The method name
+     * @param parameters    The parameters
+     * @param returningType The return type
+     * @return the invoke static method expression
+     * @since 1.2
+     */
+    default ExpressionDef.CallStaticMethod invokeStatic(String name,
+                                                        TypeDef returningType,
+                                                        List<ExpressionDef> parameters) {
+        return new ExpressionDef.CallStaticMethod(this, name, parameters, returningType);
     }
 
     /**
@@ -143,6 +216,11 @@ public sealed interface ClassTypeDef extends TypeDef {
         public ClassTypeDef makeNullable() {
             return new JavaClass(type, true);
         }
+
+        @Override
+        public boolean isEnum() {
+            return type.isEnum();
+        }
     }
 
     /**
@@ -203,6 +281,10 @@ public sealed interface ClassTypeDef extends TypeDef {
             return new ClassElementType(classElement, true);
         }
 
+        @Override
+        public boolean isEnum() {
+            return classElement.isEnum();
+        }
     }
 
     /**
@@ -242,7 +324,8 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @since 1.0
      */
     @Experimental
-    record Parameterized(ClassTypeDef rawType, List<TypeDef> typeArguments) implements ClassTypeDef {
+    record Parameterized(ClassTypeDef rawType,
+                         List<TypeDef> typeArguments) implements ClassTypeDef {
         @Override
         public String getName() {
             return rawType.getName();

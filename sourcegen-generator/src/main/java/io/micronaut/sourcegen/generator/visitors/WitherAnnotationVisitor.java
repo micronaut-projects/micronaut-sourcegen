@@ -35,7 +35,6 @@ import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
-import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
@@ -67,7 +66,6 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             String simpleName = recordElement.getSimpleName() + "Wither";
             String witherClassName = recordElement.getPackageName() + "." + simpleName;
 
-            ClassTypeDef witherType = ClassTypeDef.of(witherClassName);
             ClassTypeDef recordType = ClassTypeDef.of(recordElement);
 
             InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
@@ -86,15 +84,8 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                 propertyAccessMethods.put(beanProperty.getName(), methodDef);
             }
             for (PropertyElement beanProperty : properties) {
-                String propertyName = beanProperty.getSimpleName();
-                TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
                 wither.addMethod(
-                    MethodDef.builder("with" + NameUtils.capitalize(propertyName))
-                        .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-                        .returns(recordType)
-                        .addParameter(propertyName, propertyTypeDef)
-                        .addStatements(withPropertyMethodStatement(recordElement, recordType, witherType, propertyTypeDef, beanProperty, propertyAccessMethods))
-                        .build()
+                    withMethod(recordElement, beanProperty, recordType, propertyAccessMethods)
                 );
             }
 
@@ -103,49 +94,9 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                 String builderClassName = recordElement.getPackageName() + "." + builderSimpleName;
                 ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
 
-                MethodDef.MethodDefBuilder withMethodBuilder = MethodDef.builder("with")
-                    .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-                    .returns(builderType);
-                MethodDef withMethod = withMethodBuilder
-                    .addStatement(withMethodStatement(recordElement, builderType, witherType, propertyAccessMethods))
-                    .build();
-
-                wither.addMethod(
-                    withMethod
-                );
-
-                ClassTypeDef.Parameterized consumableType = new ClassTypeDef.Parameterized(ClassTypeDef.of(Consumer.class), List.of(builderType));
-                MethodDef.MethodDefBuilder withConsumerMethodBuilder = MethodDef.builder("with")
-                    .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-                    .addParameter("consumer", consumableType)
-                    .returns(recordType);
-
-                VariableDef.Local builderLocalVariable = new VariableDef.Local("builder", builderType);
-
-                withConsumerMethodBuilder.addStatement(
-                    new StatementDef.DefineAndAssign(
-                        builderLocalVariable,
-                        new ExpressionDef.CallInstanceMethod(
-                            new VariableDef.This(witherType),
-                            withMethod
-                        )
-                    )
-                );
-                withConsumerMethodBuilder.addStatement(
-                    new ExpressionDef.CallInstanceMethod(
-                        new VariableDef.MethodParameter("consumer", consumableType),
-                        "accept", List.of(builderLocalVariable), TypeDef.VOID
-                    )
-                );
-                withConsumerMethodBuilder.addStatement(
-                    new ExpressionDef.CallInstanceMethod(
-                        builderLocalVariable,
-                        "build", List.of(), recordType
-                    ).returning()
-                );
-
-                wither.addMethod(withConsumerMethodBuilder.build());
-
+                MethodDef withMethod = createWithMethod(recordElement, builderType, propertyAccessMethods);
+                wither.addMethod(withMethod);
+                wither.addMethod(createWithConsumerMethod(recordType, builderType, withMethod));
             }
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
@@ -174,64 +125,65 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         }
     }
 
-    private List<StatementDef> withPropertyMethodStatement(ClassElement recordElement,
-                                                           ClassTypeDef recordType,
-                                                           ClassTypeDef witherType,
-                                                           TypeDef propertyTypeDef,
-                                                           PropertyElement propertyElement,
-                                                           Map<String, MethodDef> propertyAccessMethods) {
-
-        List<ExpressionDef> values = new ArrayList<>();
-        for (ParameterElement parameter : recordElement.getPrimaryConstructor().orElseThrow().getParameters()) {
-            ExpressionDef exp;
-            if (parameter.getName().equals(propertyElement.getName())) {
-                exp = new VariableDef.MethodParameter(
-                    propertyElement.getName(),
-                    propertyTypeDef
-                );
-            } else {
-                exp = new ExpressionDef.CallInstanceMethod(
-                    new VariableDef.This(witherType),
-                    propertyAccessMethods.get(parameter.getName())
-                );
-            }
-            values.add(exp);
-        }
-        if (propertyElement.isNonNull()) {
-            return List.of(
-                new ExpressionDef.CallStaticMethod(
-                    ClassTypeDef.of(Objects.class),
-                    "requireNonNull",
-                    List.of(
-                        new VariableDef.MethodParameter(
-                            propertyElement.getName(),
-                            propertyTypeDef
-                        )
-                    ),
-                    ClassTypeDef.of(Object.class)
-                ),
-                recordType.instantiate(values).returning()
+    private MethodDef createWithConsumerMethod(ClassTypeDef recordType, ClassTypeDef builderType, MethodDef withMethod) {
+        ClassTypeDef.Parameterized consumableType = new ClassTypeDef.Parameterized(ClassTypeDef.of(Consumer.class), List.of(builderType));
+        return MethodDef.builder("with")
+            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .addParameter("consumer", consumableType)
+            .returns(recordType).build((self, parameterDefs) ->
+                self.invoke(withMethod).newLocal("builder", builderVar ->
+                    parameterDefs.get(0).asExpression().invoke("accept", TypeDef.VOID, builderVar)
+                        .after(
+                            builderVar.invoke("build", recordType).returning()
+                        ))
             );
-        }
-        return List.of(
-            recordType.instantiate(values).returning()
-        );
     }
 
-    private StatementDef withMethodStatement(ClassElement recordElement,
-                                             ClassTypeDef builderType,
-                                             ClassTypeDef witherType,
-                                             Map<String, MethodDef> propertyAccessMethods) {
+    private MethodDef createWithMethod(ClassElement recordElement, ClassTypeDef builderType, Map<String, MethodDef> propertyAccessMethods) {
+        return MethodDef.builder("with")
+            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .returns(builderType)
+            .build((self, parameterDefs) -> {
+                List<ExpressionDef> expressions = new ArrayList<>();
+                for (ParameterElement parameter : recordElement.getPrimaryConstructor().orElseThrow().getParameters()) {
+                    expressions.add(
+                        self.invoke(propertyAccessMethods.get(parameter.getName()))
+                    );
+                }
+                return builderType.instantiate(expressions).returning();
+            });
+    }
 
-        List<ExpressionDef> values = new ArrayList<>();
-        for (ParameterElement parameter : recordElement.getPrimaryConstructor().orElseThrow().getParameters()) {
-            ExpressionDef exp = new ExpressionDef.CallInstanceMethod(
-                new VariableDef.This(witherType),
-                propertyAccessMethods.get(parameter.getName())
-            );
-            values.add(exp);
-        }
-        return builderType.instantiate(values).returning();
+    private MethodDef withMethod(ClassElement recordElement, PropertyElement beanProperty, ClassTypeDef recordType, Map<String, MethodDef> propertyAccessMethods) {
+        String propertyName = beanProperty.getSimpleName();
+        TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
+        return MethodDef.builder("with" + NameUtils.capitalize(propertyName))
+            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .returns(recordType)
+            .addParameter(propertyName, propertyTypeDef)
+            .build((self, parameterDefs) -> {
+                List<ExpressionDef> values = new ArrayList<>();
+                for (ParameterElement parameter : recordElement.getPrimaryConstructor().orElseThrow().getParameters()) {
+                    ExpressionDef exp;
+                    if (parameter.getName().equals(beanProperty.getName())) {
+                        exp = parameterDefs.get(0).asExpression();
+                    } else {
+                        exp = self.invoke(propertyAccessMethods.get(parameter.getName()));
+                    }
+                    values.add(exp);
+                }
+                if (beanProperty.isNonNull()) {
+                    return StatementDef.multi(
+                        ClassTypeDef.of(Objects.class).invokeStatic(
+                            "requireNonNull",
+                            ClassTypeDef.OBJECT,
+                            parameterDefs.get(0).asExpression()
+                        ),
+                        recordType.instantiate(values).returning()
+                    );
+                }
+                return recordType.instantiate(values).returning();
+            });
     }
 
 }

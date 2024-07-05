@@ -16,6 +16,11 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
+import io.micronaut.core.annotation.NonNull;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The statement definition.
@@ -24,7 +29,81 @@ import io.micronaut.core.annotation.Experimental;
  * @since 1.0
  */
 @Experimental
-public interface StatementDef {
+public sealed interface StatementDef permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, StatementDef.Assign, StatementDef.DefineAndAssign, StatementDef.If, StatementDef.IfElse, StatementDef.Multi, StatementDef.Return, StatementDef.Switch, StatementDef.Throw, StatementDef.While {
+
+    /**
+     * The helper method to turn this statement into a multi statement.
+     *
+     * @param statement statement
+     * @return statement
+     * @since 1.2
+     */
+    default StatementDef after(StatementDef statement) {
+        return multi(this, statement);
+    }
+
+    /**
+     * Flatten the collection.
+     *
+     * @return all the statements
+     * @since 1.2
+     */
+    default List<StatementDef> flatten() {
+        return List.of(this);
+    }
+
+    /**
+     * The multi line statement.
+     *
+     * @param statements statements
+     * @return statement
+     * @since 1.2
+     */
+    static StatementDef multi(@NonNull List<StatementDef> statements) {
+        return new Multi(statements);
+    }
+
+    /**
+     * The multi line statement.
+     *
+     * @param statements statements
+     * @return statement
+     * @since 1.2
+     */
+    static StatementDef multi(@NonNull StatementDef... statements) {
+        return multi(List.of(statements));
+    }
+
+    /**
+     * The multi statement.
+     *
+     * @param statements The statements
+     * @author Denis Stepanov
+     * @since 1.2
+     */
+    @Experimental
+    record Multi(@NonNull List<StatementDef> statements) implements StatementDef {
+
+        @Override
+        public List<StatementDef> flatten() {
+            List<StatementDef> result = new ArrayList<>(statements.size());
+            for (StatementDef statement : statements) {
+                result.addAll(statement.flatten());
+            }
+            return result;
+        }
+    }
+
+    /**
+     * The throw statement.
+     *
+     * @param variableDef The exception
+     * @author Denis Stepanov
+     * @since 1.2
+     */
+    @Experimental
+    record Throw(ExpressionDef variableDef) implements StatementDef {
+    }
 
     /**
      * The return statement.
@@ -59,7 +138,8 @@ public interface StatementDef {
      * @since 1.0
      */
     @Experimental
-    record DefineAndAssign(VariableDef.Local variable, ExpressionDef expression) implements StatementDef {
+    record DefineAndAssign(VariableDef.Local variable,
+                           ExpressionDef expression) implements StatementDef {
     }
 
     /**
@@ -80,7 +160,34 @@ public interface StatementDef {
      * @param elseStatement The statement if the condition is false
      */
     @Experimental
-    record IfElse(ExpressionDef condition, StatementDef statement, StatementDef elseStatement) implements StatementDef {
+    record IfElse(ExpressionDef condition, StatementDef statement,
+                  StatementDef elseStatement) implements StatementDef {
+    }
+
+    /**
+     * The switch statement.
+     * Note: null constant or null value represents a default case.
+     *
+     * @param expression The switch expression
+     * @param type       The switch type
+     * @param cases      The cases
+     * @since 1.2
+     */
+    @Experimental
+    record Switch(ExpressionDef expression,
+                  TypeDef type,
+                  Map<ExpressionDef.Constant, StatementDef> cases) implements StatementDef {
+    }
+
+    /**
+     * The while statement.
+     *
+     * @param expression The while expression
+     * @param statement  The while statement
+     * @since 1.2
+     */
+    @Experimental
+    record While(ExpressionDef expression, StatementDef statement) implements StatementDef {
     }
 
 }

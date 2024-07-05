@@ -17,10 +17,10 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 
-import java.util.Optional;
 import javax.lang.model.element.Modifier;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The field definition.

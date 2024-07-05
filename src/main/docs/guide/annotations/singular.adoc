@@ -1,0 +1,31 @@
+The `@Singular` annotation is used together with `@Builder` or `@SuperBuilder` on a collection property.
+
+The property annotated as singular will have the following:
+
+- A method with a singular name to add a single element to a collection
+- A method with a plural name and a collection parameter to include all the elements from that collection
+- A `clear+PropertyName` to clean all the items of the collection.
+
+The annotation only following collection types:
+
+- `java.lang.Iterable`
+- `java.util.Collection`
+- `java.util.List`
+- `java.util.Set`
+- `java.util.SortedSet`
+- `java.util.Map`
+- `java.util.SortedMap`
+
+NOTE: The final collection is always immutable
+
+.An example of a bean with two properties annotated as singular
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/User.java[tags=clazz,indent=0]
+----
+
+.A test case with different examples how new methods can be used
+[source,java]
+----
+include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/UserTest.java[tags=test,indent=0]
+----
