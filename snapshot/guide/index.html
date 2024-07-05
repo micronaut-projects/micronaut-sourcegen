@@ -101,6 +101,8 @@
         
         <div class="toc-item" style="margin-left:10px" id="toc-item-superBuilder"><a href="#superBuilder"><strong>5.3</strong><span>Super Builder</span></a></div>
         
+        <div class="toc-item" style="margin-left:10px" id="toc-item-singular"><a href="#singular"><strong>5.4</strong><span>Singular</span></a></div>
+        
         <div class="toc-item" style="margin-left:0px" id="toc-item-repository"><a href="#repository"><strong>6</strong><span>Repository</span></a></div>
         
         </div>
@@ -797,6 +799,147 @@ public void testDog() {
     assertEquals(dog.getBarkLevel(), 20);
     assertEquals(dog.getColor(), "Blue");
     assertTrue(dog.isBig());
+}</code></pre>
+</div>
+</div>
+
+<h2 id="singular"><a class="anchor" href="#singular"></a>5.4 Singular</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/annotations/singular.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The <code>@Singular</code> annotation is used together with <code>@Builder</code> or <code>@SuperBuilder</code> on a collection property.</p>
+</div>
+<div class="paragraph">
+<p>The property annotated as singular will have the following:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A method with a singular name to add a single element to a collection</p>
+</li>
+<li>
+<p>A method with a plural name and a collection parameter to include all the elements from that collection</p>
+</li>
+<li>
+<p>A <code>clear+PropertyName</code> to clean all the items of the collection.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The annotation only following collection types:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>java.lang.Iterable</code></p>
+</li>
+<li>
+<p><code>java.util.Collection</code></p>
+</li>
+<li>
+<p><code>java.util.List</code></p>
+</li>
+<li>
+<p><code>java.util.Set</code></p>
+</li>
+<li>
+<p><code>java.util.SortedSet</code></p>
+</li>
+<li>
+<p><code>java.util.Map</code></p>
+</li>
+<li>
+<p><code>java.util.SortedMap</code></p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The final collection is always immutable
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="title">An example of a bean with two properties annotated as singular</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import io.micronaut.sourcegen.annotations.Singular;
+import io.micronaut.sourcegen.annotations.SuperBuilder;
+
+import java.util.List;
+import java.util.Map;
+
+@SuperBuilder
+public record User(Long id,
+                   String name,
+                   @Singular List&lt;String&gt; roles,
+                   @Singular("property") Map&lt;String, Object&gt; properties) {
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">A test case with different examples how new methods can be used</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Test
+public void testSimple() {
+    User user = new UserSuperBuilder()
+        .id(123L)
+        .name("Denis")
+        .role("READ")
+        .role("WRITE")
+        .property("key", "value")
+        .build();
+    assertEquals(123L, user.id());
+    assertEquals("Denis", user.name());
+    assertEquals(List.of("READ", "WRITE"), user.roles());
+    assertEquals(Map.of("key", "value"), user.properties());
+}
+
+@Test
+public void testAddAll() {
+    User user = new UserSuperBuilder()
+        .id(123L)
+        .name("Denis")
+        .role("READ")
+        .role("WRITE")
+        .roles(List.of("ROLES_ADMIN", "ROLES_USER"))
+        .property("key", "value")
+        .properties(Map.of("key1", "value1", "key2", "value2"))
+        .build();
+    assertEquals(123L, user.id());
+    assertEquals("Denis", user.name());
+    assertEquals(List.of("READ", "WRITE", "ROLES_ADMIN", "ROLES_USER"), user.roles());
+    assertEquals(Map.of("key", "value", "key1", "value1", "key2", "value2"), user.properties());
+}
+
+@Test
+public void testClear() {
+    User user = new UserSuperBuilder()
+        .id(123L)
+        .name("Denis")
+        .role("READ")
+        .role("WRITE")
+        .clearRoles()
+        .roles(List.of("ROLES_ADMIN", "ROLES_USER"))
+        .property("key", "value")
+        .clearProperties()
+        .properties(Map.of("key1", "value1", "key2", "value2"))
+        .build();
+    assertEquals(123L, user.id());
+    assertEquals("Denis", user.name());
+    assertEquals(List.of("ROLES_ADMIN", "ROLES_USER"), user.roles());
+    assertEquals(Map.of("key1", "value1", "key2", "value2"), user.properties());
 }</code></pre>
 </div>
 </div>
