@@ -301,7 +301,9 @@ public sealed interface ExpressionDef
     @Nullable
     static ExpressionDef constant(ClassElement type, TypeDef typeDef, @Nullable Object value) {
         Objects.requireNonNull(type, "Type cannot be null");
-
+        if (value == null) {
+            return null;
+        }
         if (type.isPrimitive()) {
             return ClassUtils.getPrimitiveType(type.getName()).flatMap(t ->
                 ConversionService.SHARED.convert(value, t)
