@@ -1,0 +1,56 @@
+#Based on https://github.com/projectlombok/lombok/blob/eb4722c59ffc9e43e73bcf12fb52b2f8ad92ffef/src/core/lombok/core/handlers/singulars.txt
+
+quizzes = quiz
+matrices = matrix
+indices = index
+vertices = vertex
+statuses = status
+aliases = alias
+alias = !
+species = !
+Axes = !
+-axes = axe
+sexes = sex
+Testes = testis
+movies = movie
+octopodes = octopus
+buses = bus
+Mice = mouse
+Lice = louse
+News = !
+# We could add more detail (axemen, boatsmen, boogymen, cavemen, gentlemen, etc, but (A) there's stuff like 'cerumen', and (B) the 'men' ending is common in singulars and other languages.)
+# Therefore, the odds of a mistake are too high, so other than these 2 well known cases, force the explicit singular.
+Men = man
+Women = woman
+minutiae = minutia
+shoes = shoe
+synopses = synopsis
+prognoses = prognosis
+theses = thesis
+diagnoses = diagnosis
+bases = base
+analyses = analysis
+Crises = crisis
+children = child
+moves = move
+zombies = zombie
+-quies = quy
+-us = !
+-is = !
+series = !
+-ies = y
+-oes = o
+hives = hive
+-tives = tive
+-sses = ss
+-ches = ch
+-xes = x
+-shes = sh
+-lves = lf
+-rves = rf
+saves = save
+Leaves = leaf
+-ves = !
+-ss = !
+-us = !
+-s =

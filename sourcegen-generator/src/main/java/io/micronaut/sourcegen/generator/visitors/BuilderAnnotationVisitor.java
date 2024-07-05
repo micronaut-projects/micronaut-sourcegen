@@ -58,6 +58,8 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Function;
 
+import static io.micronaut.sourcegen.generator.visitors.Singulars.singularize;
+
 /**
  * The visitor that is generation a builder.
  *
@@ -240,9 +242,8 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         String propertyName = beanProperty.getSimpleName();
         String singularName = beanProperty.stringValue(Singular.class).orElse(null);
         if (singularName == null) {
-            if (propertyName.endsWith("s")) {
-                singularName = propertyName.substring(0, propertyName.length() - 1);
-            } else {
+            singularName = singularize(propertyName);
+            if (singularName == null) {
                 throw new IllegalStateException("Cannot determine singular name for property: " + beanProperty.getName() + ". Please specify a singular name: @Singular(\"singularName\")");
             }
         }
