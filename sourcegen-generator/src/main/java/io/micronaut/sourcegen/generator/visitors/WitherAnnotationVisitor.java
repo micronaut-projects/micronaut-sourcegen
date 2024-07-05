@@ -130,15 +130,13 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         return MethodDef.builder("with")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter("consumer", consumableType)
-            .returns(recordType).build((self, parameterDefs) -> {
-                var builderDefined = self.invoke(withMethod).newLocal("builder");
-                var builderLocalVariable = builderDefined.variable();
-                return StatementDef.multi(
-                    builderDefined,
-                    parameterDefs.get(0).asExpression().invoke("accept", TypeDef.VOID, builderLocalVariable),
-                    builderLocalVariable.invoke("build", recordType).returning()
-                );
-            });
+            .returns(recordType).build((self, parameterDefs) ->
+                self.invoke(withMethod).newLocal("builder", builderVar ->
+                    parameterDefs.get(0).asExpression().invoke("accept", TypeDef.VOID, builderVar)
+                        .after(
+                            builderVar.invoke("build", recordType).returning()
+                        ))
+            );
     }
 
     private MethodDef createWithMethod(ClassElement recordElement, ClassTypeDef builderType, Map<String, MethodDef> propertyAccessMethods) {

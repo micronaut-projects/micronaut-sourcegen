@@ -56,6 +56,7 @@ import java.io.Writer;
 import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -608,19 +609,16 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             builder.add("{\n");
             builder.indent();
             StatementDef statement = switchYieldCase.statement();
-            if (statement instanceof StatementDef.Multi multi) {
-                Iterator<StatementDef> iterator = multi.statements().iterator();
-                while (iterator.hasNext()) {
-                    StatementDef statementDef = iterator.next();
-                    if (!iterator.hasNext()) {
-                        renderYield(builder, methodDef, statementDef, objectDef);
-                    } else {
-                        builder.add(renderStatementCodeBlock(objectDef, methodDef, statementDef));
-                    }
-                }
-            } else {
-                renderYield(builder, methodDef, statement, objectDef);
+            List<StatementDef> flatten = statement.flatten();
+            if (flatten.isEmpty()) {
+                throw new IllegalStateException("SwitchYieldCase did not return any statements");
             }
+            StatementDef last = flatten.get(flatten.size() - 1);
+            List<StatementDef> rest = flatten.subList(0, flatten.size() - 1);
+            for (StatementDef statementDef : rest) {
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, statementDef));
+            }
+            renderYield(builder, methodDef, last, objectDef);
             builder.unindent();
             builder.add("}");
             String str = builder.build().toString();
@@ -642,7 +640,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 )
             );
         } else {
-            throw new IllegalStateException("The last statement of SwitchYieldCase should be a return.");
+            throw new IllegalStateException("The last statement of SwitchYieldCase should be a return. Found: " + statementDef);
         }
     }
 

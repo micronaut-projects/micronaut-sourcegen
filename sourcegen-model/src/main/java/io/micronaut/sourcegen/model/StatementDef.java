@@ -18,9 +18,9 @@ package io.micronaut.sourcegen.model;
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.annotation.NonNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 /**
  * The statement definition.
@@ -32,14 +32,24 @@ import java.util.function.Supplier;
 public sealed interface StatementDef permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, StatementDef.Assign, StatementDef.DefineAndAssign, StatementDef.If, StatementDef.IfElse, StatementDef.Multi, StatementDef.Return, StatementDef.Switch, StatementDef.Throw, StatementDef.While {
 
     /**
-     * The statement supplier for a better code flow.
+     * The helper method to turn this statement into a multi statement.
      *
-     * @param statementSupplier The statement supplier
+     * @param statement statement
      * @return statement
      * @since 1.2
      */
-    static StatementDef of(@NonNull Supplier<StatementDef> statementSupplier) {
-        return statementSupplier.get();
+    default StatementDef after(StatementDef statement) {
+        return multi(this, statement);
+    }
+
+    /**
+     * Flatten the collection.
+     *
+     * @return all the statements
+     * @since 1.2
+     */
+    default List<StatementDef> flatten() {
+        return List.of(this);
     }
 
     /**
@@ -73,6 +83,15 @@ public sealed interface StatementDef permits ExpressionDef.CallInstanceMethod, E
      */
     @Experimental
     record Multi(@NonNull List<StatementDef> statements) implements StatementDef {
+
+        @Override
+        public List<StatementDef> flatten() {
+            List<StatementDef> result = new ArrayList<>(statements.size());
+            for (StatementDef statement : statements) {
+                result.addAll(statement.flatten());
+            }
+            return result;
+        }
     }
 
     /**

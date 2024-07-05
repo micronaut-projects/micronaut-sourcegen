@@ -153,25 +153,21 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
     }
 
     private StatementDef iterableToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
-        StatementDef.DefineAndAssign arrayListDefined = ClassTypeDef.of(ArrayList.class)
+        return ClassTypeDef.of(ArrayList.class)
             .instantiate()
-            .newLocal(parameterDef.getName() + "ArrayList");
-        StatementDef.DefineAndAssign iteratorDefined = parameterDef.asExpression()
-            .invoke("iterator", ClassTypeDef.of(Iterator.class))
-            .newLocal(parameterDef.getName() + "Iterator");
-        VariableDef.Local arrayListVar = arrayListDefined.variable();
-        VariableDef.Local iteratorVar = iteratorDefined.variable();
-        return parameterDef.asExpression().isNonNull().asConditionIf(
-            StatementDef.multi(
-                arrayListDefined,
-                iteratorDefined,
-                iteratorVar.invoke("hasNext", TypeDef.primitive(boolean.class))
-                    .whileLoop(
-                        arrayListVar.invoke("add", TypeDef.of(boolean.class), iteratorVar.invoke("next", ClassTypeDef.OBJECT))
-                    ),
-                self.field(parameterDef.getName(), parameterDef.getType()).assign(arrayListVar)
-            )
-        );
+            .newLocal(parameterDef.getName() + "ArrayList", arrayListVar ->
+                parameterDef.asExpression()
+                    .invoke("iterator", ClassTypeDef.of(Iterator.class))
+                    .newLocal(parameterDef.getName() + "Iterator", iteratorVar ->
+                        parameterDef.asExpression().isNonNull().asConditionIf(
+                                iteratorVar.invoke("hasNext", TypeDef.primitive(boolean.class))
+                                    .whileLoop(
+                                        arrayListVar.invoke("add", TypeDef.of(boolean.class), iteratorVar.invoke("next", ClassTypeDef.OBJECT))
+                                    )
+                            )
+                            .after(
+                                self.field(parameterDef.getName(), parameterDef.getType()).assign(arrayListVar)
+                            )));
     }
 
     private StatementDef mapToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
@@ -373,23 +369,22 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 if (beanProperties.isEmpty()) {
                     return buildType.instantiate(values).returning();
                 }
-                List<StatementDef> statements = new ArrayList<>();
                 // Instantiate and set properties not assigned in the constructor
-                StatementDef.DefineAndAssign defineAndAssign = buildType.instantiate(values).newLocal("instance");
-                VariableDef.Local instanceVar = defineAndAssign.variable();
-                statements.add(defineAndAssign);
-                for (PropertyElement beanProperty : beanProperties) {
-                    Optional<MethodElement> writeMethod = beanProperty.getWriteMethod();
-                    if (writeMethod.isPresent()) {
-                        String propertyName = beanProperty.getSimpleName();
-                        TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-                        statements.add(
-                            instanceVar.invoke(writeMethod.get(), valueExpression(beanProperty, self.field(propertyName, propertyTypeDef)))
-                        );
+                return buildType.instantiate(values).newLocal("instance", instanceVar -> {
+                    List<StatementDef> statements = new ArrayList<>();
+                    for (PropertyElement beanProperty : beanProperties) {
+                        Optional<MethodElement> writeMethod = beanProperty.getWriteMethod();
+                        if (writeMethod.isPresent()) {
+                            String propertyName = beanProperty.getSimpleName();
+                            TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
+                            statements.add(
+                                instanceVar.invoke(writeMethod.get(), valueExpression(beanProperty, self.field(propertyName, propertyTypeDef)))
+                            );
+                        }
                     }
-                }
-                statements.add(instanceVar.returning());
-                return StatementDef.multi(statements);
+                    statements.add(instanceVar.returning());
+                    return StatementDef.multi(statements);
+                });
             });
     }
 
@@ -486,37 +481,24 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         ClassElement propertyType = propertyElement.getType();
         TypeDef keyType = propertyType.getFirstTypeArgument().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
         TypeDef valueType = propertyType.getTypeArguments().values().stream().skip(1).findFirst().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
-        var mapDefined = TypeDef.parameterized(mapClass, keyType, valueType)
-            .instantiate()
-            .newLocal(field.name() + "Map");
         ClassTypeDef entryType = TypeDef.parameterized(Map.Entry.class, keyType, valueType);
-        var iterator = field
-            .invoke("iterator", TypeDef.parameterized(Iterator.class, entryType))
-            .newLocal(field.name() + "Iterator");
-        var mapVar = mapDefined.variable();
-        var iteratorVar = iterator.variable();
+        return TypeDef.parameterized(mapClass, keyType, valueType)
+            .instantiate()
+            .newLocal(field.name() + "Map", mapVar ->
+                field.invoke("iterator", TypeDef.parameterized(Iterator.class, entryType))
+                    .newLocal(field.name() + "Iterator", iteratorVar ->
+                        iteratorVar.invoke("hasNext", TypeDef.primitive(boolean.class)).whileLoop(
+                            iteratorVar.invoke("next", entryType).newLocal(field.name() + "Entry", entryVar ->
+                                mapVar.invoke("put", TypeDef.of(boolean.class),
+                                    entryVar.invoke("getKey", keyType),
+                                    entryVar.invoke("getValue", valueType)
+                                ))
+                        ).after(
+                            ClassTypeDef.of(Collections.class).invokeStatic(unmodifiableMethodName, ClassTypeDef.of(propertyType), mapVar)
+                                .returning()
+                        )
+                    ));
 
-        return StatementDef.multi(
-            mapDefined,
-            iterator,
-            new StatementDef.While(
-                iteratorVar.invoke("hasNext", TypeDef.primitive(boolean.class)),
-                StatementDef.of(() -> {
-                        var entryDefined = iteratorVar.invoke("next", entryType).newLocal(field.name() + "Entry");
-                        var entryVar = entryDefined.variable();
-                        return StatementDef.multi(
-                            entryDefined,
-                            mapVar.invoke("put", TypeDef.of(boolean.class),
-                                entryVar.invoke("getKey", keyType),
-                                entryVar.invoke("getValue", valueType)
-                            )
-                        );
-                    }
-                )
-            ),
-            ClassTypeDef.of(Collections.class).invokeStatic(unmodifiableMethodName, ClassTypeDef.of(propertyType), mapVar)
-                .returning()
-        );
     }
 
 }

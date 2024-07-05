@@ -26,6 +26,7 @@ import io.micronaut.inject.ast.MethodElement;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * The expression definition.
@@ -145,6 +146,22 @@ public sealed interface ExpressionDef
      */
     default StatementDef.DefineAndAssign newLocal(String name) {
         return new VariableDef.Local(name, type()).defineAndAssign(this);
+    }
+
+    /**
+     * Turn this expression into a new local variable.
+     *
+     * @param name The local name
+     * @param fn   The contextual function
+     * @return A new local
+     * @since 1.2
+     */
+    default StatementDef newLocal(String name, Function<VariableDef, StatementDef> fn) {
+        StatementDef.DefineAndAssign defineAndAssign = newLocal(name);
+        return StatementDef.multi(
+            defineAndAssign,
+            fn.apply(defineAndAssign.variable())
+        );
     }
 
     /**
