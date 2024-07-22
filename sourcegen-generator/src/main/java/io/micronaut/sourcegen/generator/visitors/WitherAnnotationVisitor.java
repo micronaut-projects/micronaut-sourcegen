@@ -37,6 +37,8 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
+import java.util.HashSet;
+import java.util.Set;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,13 +56,23 @@ import java.util.function.Consumer;
 @Internal
 public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither, Object> {
 
+    private final Set<String> processed = new HashSet<>();
+
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
     }
 
     @Override
+    public void start(VisitorContext visitorContext) {
+        processed.clear();
+    }
+
+    @Override
     public void visitClass(ClassElement recordElement, VisitorContext context) {
+        if (processed.contains(recordElement.getName())) {
+            return;
+        }
         if (!recordElement.isRecord()) {
             throw new ProcessingException(recordElement, "Only records can be annotated with @Wither");
         }
@@ -154,6 +166,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         }
 
         InterfaceDef witherDef = wither.build();
+        processed.add(recordElement.getName());
         context.visitGeneratedSourceFile(
             witherDef.getPackageName(),
             witherDef.getSimpleName(),
