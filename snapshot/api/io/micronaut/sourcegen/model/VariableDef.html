@@ -76,13 +76,17 @@ loadScripts(document, 'script');</script>
 <dd><code><a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></dd>
 </dl>
 <dl class="notes">
+<dt>All Known Subinterfaces:</dt>
+<dd><code><a href="InstanceDef.html" title="interface in io.micronaut.sourcegen.model">InstanceDef</a></code></dd>
+</dl>
+<dl class="notes">
 <dt>All Known Implementing Classes:</dt>
-<dd><code><a href="VariableDef.Field.html" title="class in io.micronaut.sourcegen.model">VariableDef.Field</a></code>, <code><a href="VariableDef.Local.html" title="class in io.micronaut.sourcegen.model">VariableDef.Local</a></code>, <code><a href="VariableDef.MethodParameter.html" title="class in io.micronaut.sourcegen.model">VariableDef.MethodParameter</a></code>, <code><a href="VariableDef.StaticField.html" title="class in io.micronaut.sourcegen.model">VariableDef.StaticField</a></code>, <code><a href="VariableDef.This.html" title="class in io.micronaut.sourcegen.model">VariableDef.This</a></code></dd>
+<dd><code><a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code>, <code><a href="VariableDef.Field.html" title="class in io.micronaut.sourcegen.model">VariableDef.Field</a></code>, <code><a href="VariableDef.Local.html" title="class in io.micronaut.sourcegen.model">VariableDef.Local</a></code>, <code><a href="VariableDef.MethodParameter.html" title="class in io.micronaut.sourcegen.model">VariableDef.MethodParameter</a></code>, <code><a href="VariableDef.StaticField.html" title="class in io.micronaut.sourcegen.model">VariableDef.StaticField</a></code>, <code><a href="VariableDef.This.html" title="class in io.micronaut.sourcegen.model">VariableDef.This</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public sealed interface </span><span class="element-name type-name-label">VariableDef</span><span class="extends-implements">
 extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></span>
-<span class="permits">permits <a href="VariableDef.Field.html" title="class in io.micronaut.sourcegen.model">VariableDef.Field</a>, <a href="VariableDef.Local.html" title="class in io.micronaut.sourcegen.model">VariableDef.Local</a>, <a href="VariableDef.MethodParameter.html" title="class in io.micronaut.sourcegen.model">VariableDef.MethodParameter</a>, <a href="VariableDef.StaticField.html" title="class in io.micronaut.sourcegen.model">VariableDef.StaticField</a>, <a href="VariableDef.This.html" title="class in io.micronaut.sourcegen.model">VariableDef.This</a></span></div>
+<span class="permits">permits <a href="InstanceDef.html" title="interface in io.micronaut.sourcegen.model">InstanceDef</a>, <a href="VariableDef.Field.html" title="class in io.micronaut.sourcegen.model">VariableDef.Field</a>, <a href="VariableDef.Local.html" title="class in io.micronaut.sourcegen.model">VariableDef.Local</a>, <a href="VariableDef.MethodParameter.html" title="class in io.micronaut.sourcegen.model">VariableDef.MethodParameter</a>, <a href="VariableDef.StaticField.html" title="class in io.micronaut.sourcegen.model">VariableDef.StaticField</a>, <a href="VariableDef.This.html" title="class in io.micronaut.sourcegen.model">VariableDef.This</a></span></div>
 <div class="block">The variable definition.</div>
 <dl class="notes">
 <dt>Since:</dt>
@@ -130,7 +134,7 @@ extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.
 </div>
 <div class="inherited-list">
 <h2 id="nested-classes-inherited-from-class-io.micronaut.sourcegen.model.ExpressionDef">Nested classes/interfaces inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></h2>
-<code><a href="ExpressionDef.CallInstanceMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallInstanceMethod</a>, <a href="ExpressionDef.CallStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallStaticMethod</a>, <a href="ExpressionDef.Condition.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Condition</a>, <a href="ExpressionDef.Constant.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Constant</a>, <a href="ExpressionDef.Convert.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a>, <a href="ExpressionDef.IfElse.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.IfElse</a>, <a href="ExpressionDef.NewArrayInitialized.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewArrayInitialized</a>, <a href="ExpressionDef.NewArrayOfSize.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewArrayOfSize</a>, <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a>, <a href="ExpressionDef.Switch.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Switch</a>, <a href="ExpressionDef.SwitchYieldCase.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.SwitchYieldCase</a></code></div>
+<code><a href="ExpressionDef.CallInstanceMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallInstanceMethod</a>, <a href="ExpressionDef.CallStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.CallStaticMethod</a>, <a href="ExpressionDef.Condition.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Condition</a>, <a href="ExpressionDef.Constant.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Constant</a>, <a href="ExpressionDef.Convert.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Convert</a>, <a href="ExpressionDef.IfElse.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.IfElse</a>, <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
 </section>
 </li>
 <!-- ========== METHOD SUMMARY =========== -->
@@ -144,22 +148,34 @@ extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#assign(io.micronaut.sourcegen.model.ExpressionDef)" class="member-name-link">assign</a><wbr>(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;expression)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#asCondition(java.lang.String,io.micronaut.sourcegen.model.ExpressionDef)" class="member-name-link">asCondition</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;op,
+ <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;expression)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Assign this variable an expression.</div>
+<div class="block">The condition of this variable.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#assign(io.micronaut.sourcegen.model.ParameterDef)" class="member-name-link">assign</a><wbr>(<a href="ParameterDef.html" title="class in io.micronaut.sourcegen.model">ParameterDef</a>&nbsp;parameterDef)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#assign(io.micronaut.sourcegen.model.ExpressionDef)" class="member-name-link">assign</a><wbr>(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;expression)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Assign this variable a parameter value.</div>
+<div class="block">Assign this variable an expression.</div>
 </div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#convert(io.micronaut.sourcegen.model.TypeDef)" class="member-name-link">convert</a><wbr>(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Convert this variable to a different type.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isNonNull()" class="member-name-link">isNonNull</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isNull()" class="member-name-link">isNull</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
 </div>
 </div>
 </div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-io.micronaut.sourcegen.model.ExpressionDef">Methods inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></h3>
-<code><a href="ExpressionDef.html#asCondition(java.lang.String,io.micronaut.sourcegen.model.ExpressionDef)">asCondition</a>, <a href="ExpressionDef.html#asConditionIf(io.micronaut.sourcegen.model.StatementDef)">asConditionIf</a>, <a href="ExpressionDef.html#asConditionIfElse(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.ExpressionDef)">asConditionIfElse</a>, <a href="ExpressionDef.html#asConditionIfElse(io.micronaut.sourcegen.model.StatementDef,io.micronaut.sourcegen.model.StatementDef)">asConditionIfElse</a>, <a href="ExpressionDef.html#asExpressionSwitch(io.micronaut.sourcegen.model.TypeDef,java.util.Map)">asExpressionSwitch</a>, <a href="ExpressionDef.html#asStatementSwitch(io.micronaut.sourcegen.model.TypeDef,java.util.Map)">asStatementSwitch</a>, <a href="ExpressionDef.html#convert(io.micronaut.sourcegen.model.TypeDef)">convert</a>, <a href="ExpressionDef.html#field(io.micronaut.sourcegen.model.FieldDef)">field</a>, <a href="ExpressionDef.html#field(java.lang.String,io.micronaut.sourcegen.model.TypeDef)">field</a>, <a href="ExpressionDef.html#invoke(io.micronaut.inject.ast.MethodElement,io.micronaut.sourcegen.model.ExpressionDef...)">invoke</a>, <a href="ExpressionDef.html#invoke(io.micronaut.inject.ast.MethodElement,java.util.List)">invoke</a>, <a href="ExpressionDef.html#invoke(io.micronaut.sourcegen.model.MethodDef)">invoke</a>, <a href="ExpressionDef.html#invoke(java.lang.String,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ExpressionDef...)">invoke</a>, <a href="ExpressionDef.html#invoke(java.lang.String,io.micronaut.sourcegen.model.TypeDef,java.util.List)">invoke</a>, <a href="ExpressionDef.html#isNonNull()">isNonNull</a>, <a href="ExpressionDef.html#isNull()">isNull</a>, <a href="ExpressionDef.html#newLocal(java.lang.String)">newLocal</a>, <a href="ExpressionDef.html#newLocal(java.lang.String,java.util.function.Function)">newLocal</a>, <a href="ExpressionDef.html#returning()">returning</a>, <a href="ExpressionDef.html#type()">type</a>, <a href="ExpressionDef.html#whileLoop(io.micronaut.sourcegen.model.StatementDef)">whileLoop</a></code></div>
+<code><a href="ExpressionDef.html#asConditionIf(io.micronaut.sourcegen.model.StatementDef)">asConditionIf</a>, <a href="ExpressionDef.html#asConditionIfElse(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.ExpressionDef)">asConditionIfElse</a>, <a href="ExpressionDef.html#asConditionIfElse(io.micronaut.sourcegen.model.StatementDef,io.micronaut.sourcegen.model.StatementDef)">asConditionIfElse</a>, <a href="ExpressionDef.html#returning()">returning</a>, <a href="ExpressionDef.html#type()">type</a></code></div>
 </section>
 </li>
 </ul>
@@ -172,6 +188,54 @@ extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
+<section class="detail" id="asCondition(java.lang.String,io.micronaut.sourcegen.model.ExpressionDef)">
+<h3>asCondition</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></span>&nbsp;<span class="element-name">asCondition</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;op,
+ <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;expression)</span></div>
+<div class="block">The condition of this variable.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>op</code> - The operator</dd>
+<dd><code>expression</code> - The expression of this variable</dd>
+<dt>Returns:</dt>
+<dd>The condition expression</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="isNonNull()">
+<h3>isNonNull</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></span>&nbsp;<span class="element-name">isNonNull</span>()</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>Is non-null expression</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="isNull()">
+<h3>isNull</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></span>&nbsp;<span class="element-name">isNull</span>()</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>Is null expression</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="convert(io.micronaut.sourcegen.model.TypeDef)">
+<h3>convert</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></span>&nbsp;<span class="element-name">convert</span><wbr><span class="parameters">(<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef)</span></div>
+<div class="block">Convert this variable to a different type.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>typeDef</code> - The type</dd>
+<dt>Returns:</dt>
+<dd>the convert expression</dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="assign(io.micronaut.sourcegen.model.ExpressionDef)">
 <h3>assign</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></span>&nbsp;<span class="element-name">assign</span><wbr><span class="parameters">(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;expression)</span></div>
@@ -179,19 +243,6 @@ extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>expression</code> - The expression.</dd>
-<dt>Returns:</dt>
-<dd>The statement</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="assign(io.micronaut.sourcegen.model.ParameterDef)">
-<h3>assign</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></span>&nbsp;<span class="element-name">assign</span><wbr><span class="parameters">(<a href="ParameterDef.html" title="class in io.micronaut.sourcegen.model">ParameterDef</a>&nbsp;parameterDef)</span></div>
-<div class="block">Assign this variable a parameter value.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>parameterDef</code> - The parameterDef.</dd>
 <dt>Returns:</dt>
 <dd>The statement</dd>
 </dl>

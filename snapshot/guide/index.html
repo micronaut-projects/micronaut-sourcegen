@@ -99,10 +99,6 @@
         
         <div class="toc-item" style="margin-left:10px" id="toc-item-wither"><a href="#wither"><strong>5.2</strong><span>Wither</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-superBuilder"><a href="#superBuilder"><strong>5.3</strong><span>Super Builder</span></a></div>
-        
-        <div class="toc-item" style="margin-left:10px" id="toc-item-singular"><a href="#singular"><strong>5.4</strong><span>Singular</span></a></div>
-        
         <div class="toc-item" style="margin-left:0px" id="toc-item-repository"><a href="#repository"><strong>6</strong><span>Repository</span></a></div>
         
         </div>
@@ -119,7 +115,7 @@
 <h1 id="introduction"><a class="anchor" href="#introduction"></a>1 Introduction</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/introduction.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.1.x/src/main/docs/guide/introduction.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -154,7 +150,7 @@
 <h1 id="releaseHistory"><a class="anchor" href="#releaseHistory"></a>2 Release History</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/releaseHistory.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.1.x/src/main/docs/guide/releaseHistory.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -170,7 +166,7 @@
 <h1 id="gettingStarted"><a class="anchor" href="#gettingStarted"></a>3 Quick Start</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/gettingStarted.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.1.x/src/main/docs/guide/gettingStarted.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -245,7 +241,7 @@
 <h1 id="generators"><a class="anchor" href="#generators"></a>4 Writing a Source Generator</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/generators.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.1.x/src/main/docs/guide/generators.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -315,7 +311,6 @@ The module you build will have to be placed on the annotation processor classpat
 <pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
-import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.example.GenerateInterface;
@@ -365,8 +360,8 @@ public final class GenerateInterfaceBuilder implements TypeElementVisitor&lt;Gen
             .ifPresent(generatedFile -&gt; {
                 try {
                     generatedFile.write(writer -&gt; sourceGenerator.write(interfaceDef, writer));
-                } catch (Exception e) {
-                    throw new ProcessingException(element, e.getMessage(), e);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             });
     }
@@ -413,7 +408,7 @@ To see more examples take a look at some of the existing implementations like <a
 <h1 id="annotations"><a class="anchor" href="#annotations"></a>5 Annotations</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/annotations.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.1.x/src/main/docs/guide/annotations.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -467,7 +462,7 @@ To see more examples take a look at some of the existing implementations like <a
 <h2 id="builder"><a class="anchor" href="#builder"></a>5.1 Builder</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/annotations/builder.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.1.x/src/main/docs/guide/annotations/builder.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -519,7 +514,7 @@ The <a href="https://github.com/micronaut-projects/micronaut-sourcegen/blob/mast
 <h2 id="wither"><a class="anchor" href="#wither"></a>5.2 Wither</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/annotations/wither.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.1.x/src/main/docs/guide/annotations/wither.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -673,281 +668,10 @@ public void testWitherAndBuilder() throws Exception {
 </div>
 </div>
 
-<h2 id="superBuilder"><a class="anchor" href="#superBuilder"></a>5.3 Super Builder</h2>
-
-<div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/annotations/superBuilder.adoc"'>
-        <i class='fa fa-pencil-square-o'></i> Improve this doc
-    </button>
-</div>
-
-
-<div class="paragraph">
-<p>To use a builder pattern with types that are using inheritance you annotate a Java bean with <code>@SuperBuilder</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@SuperBuilder
-public abstract class Animal {
-
-    private String name;
-    private int age;
-    private String color;
-
-    // Getters / Setters
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@SuperBuilder
-public class Cat extends Animal {
-
-    private int meowLevel;
-    private String bread;
-
-    // Getters / Setters
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@SuperBuilder
-public class Dog extends Animal {
-
-    private int barkLevel;
-    private String bread;
-    private boolean big;
-
-    // Getters / Setters
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>For every class annotated with <code>@SuperBuilder</code> there going to be two builders generated at compilation-time, an abstract one intended to be inherited and second one to constructor the bean.</p>
-</div>
-<div class="paragraph">
-<p>In the previous example five classes are generated:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>AbstractAnimalSuperBuilder</code></p>
-</li>
-<li>
-<p><code>AbstractCatSuperBuilder</code></p>
-</li>
-<li>
-<p><code>CatSuperBuilder</code></p>
-</li>
-<li>
-<p><code>AbstractDogSuperBuilder</code></p>
-</li>
-<li>
-<p><code>DogSuperBuilder</code></p>
-</li>
-</ul>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<code>@SuperBuilder</code> requires every super-class to be annotated with <code>@SuperBuilder</code>
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>You can use a builder to create an instance:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Test
-public void testCat() {
-    Cat cat = new CatSuperBuilder()
-        .name("MrPurr")
-        .age(2)
-        .bread("British")
-        .meowLevel(100)
-        .color("Red")
-        .build();
-
-    assertEquals(cat.getName(), "MrPurr");
-    assertEquals(cat.getAge(), 2);
-    assertEquals(cat.getBread(), "British");
-    assertEquals(cat.getMeowLevel(), 100);
-    assertEquals(cat.getColor(), "Red");
-}
-
-@Test
-public void testDog() {
-    Dog dog = new DogSuperBuilder()
-        .name("MrDog")
-        .age(3)
-        .bread("JackR")
-        .barkLevel(20)
-        .color("Blue")
-        .big(true)
-        .build();
-
-    assertEquals(dog.getName(), "MrDog");
-    assertEquals(dog.getAge(), 3);
-    assertEquals(dog.getBread(), "JackR");
-    assertEquals(dog.getBarkLevel(), 20);
-    assertEquals(dog.getColor(), "Blue");
-    assertTrue(dog.isBig());
-}</code></pre>
-</div>
-</div>
-
-<h2 id="singular"><a class="anchor" href="#singular"></a>5.4 Singular</h2>
-
-<div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/annotations/singular.adoc"'>
-        <i class='fa fa-pencil-square-o'></i> Improve this doc
-    </button>
-</div>
-
-
-<div class="paragraph">
-<p>The <code>@Singular</code> annotation is used together with <code>@Builder</code> or <code>@SuperBuilder</code> on a collection property.</p>
-</div>
-<div class="paragraph">
-<p>The property annotated as singular will have the following:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>A method with a singular name to add a single element to a collection</p>
-</li>
-<li>
-<p>A method with a plural name and a collection parameter to include all the elements from that collection</p>
-</li>
-<li>
-<p>A <code>clear+PropertyName</code> to clean all the items of the collection.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The annotation only following collection types:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>java.lang.Iterable</code></p>
-</li>
-<li>
-<p><code>java.util.Collection</code></p>
-</li>
-<li>
-<p><code>java.util.List</code></p>
-</li>
-<li>
-<p><code>java.util.Set</code></p>
-</li>
-<li>
-<p><code>java.util.SortedSet</code></p>
-</li>
-<li>
-<p><code>java.util.Map</code></p>
-</li>
-<li>
-<p><code>java.util.SortedMap</code></p>
-</li>
-</ul>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-The final collection is always immutable
-</td>
-</tr>
-</table>
-</div>
-<div class="listingblock">
-<div class="title">An example of a bean with two properties annotated as singular</div>
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import io.micronaut.sourcegen.annotations.Singular;
-import io.micronaut.sourcegen.annotations.SuperBuilder;
-
-import java.util.List;
-import java.util.Map;
-
-@SuperBuilder
-public record User(Long id,
-                   String name,
-                   @Singular List&lt;String&gt; roles,
-                   @Singular("property") Map&lt;String, Object&gt; properties) {
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="title">A test case with different examples how new methods can be used</div>
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Test
-public void testSimple() {
-    User user = new UserSuperBuilder()
-        .id(123L)
-        .name("Denis")
-        .role("READ")
-        .role("WRITE")
-        .property("key", "value")
-        .build();
-    assertEquals(123L, user.id());
-    assertEquals("Denis", user.name());
-    assertEquals(List.of("READ", "WRITE"), user.roles());
-    assertEquals(Map.of("key", "value"), user.properties());
-}
-
-@Test
-public void testAddAll() {
-    User user = new UserSuperBuilder()
-        .id(123L)
-        .name("Denis")
-        .role("READ")
-        .role("WRITE")
-        .roles(List.of("ROLES_ADMIN", "ROLES_USER"))
-        .property("key", "value")
-        .properties(Map.of("key1", "value1", "key2", "value2"))
-        .build();
-    assertEquals(123L, user.id());
-    assertEquals("Denis", user.name());
-    assertEquals(List.of("READ", "WRITE", "ROLES_ADMIN", "ROLES_USER"), user.roles());
-    assertEquals(Map.of("key", "value", "key1", "value1", "key2", "value2"), user.properties());
-}
-
-@Test
-public void testClear() {
-    User user = new UserSuperBuilder()
-        .id(123L)
-        .name("Denis")
-        .role("READ")
-        .role("WRITE")
-        .clearRoles()
-        .roles(List.of("ROLES_ADMIN", "ROLES_USER"))
-        .property("key", "value")
-        .clearProperties()
-        .properties(Map.of("key1", "value1", "key2", "value2"))
-        .build();
-    assertEquals(123L, user.id());
-    assertEquals("Denis", user.name());
-    assertEquals(List.of("ROLES_ADMIN", "ROLES_USER"), user.roles());
-    assertEquals(Map.of("key1", "value1", "key2", "value2"), user.properties());
-}</code></pre>
-</div>
-</div>
-
 <h1 id="repository"><a class="anchor" href="#repository"></a>6 Repository</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.2.x/src/main/docs/guide/repository.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.1.x/src/main/docs/guide/repository.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>

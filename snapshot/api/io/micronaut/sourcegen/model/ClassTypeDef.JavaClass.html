@@ -109,7 +109,7 @@ implements <a href="ClassTypeDef.html" title="interface in io.micronaut.sourcege
 <h2>Nested Class Summary</h2>
 <div class="inherited-list">
 <h2 id="nested-classes-inherited-from-class-io.micronaut.sourcegen.model.ClassTypeDef">Nested classes/interfaces inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></h2>
-<code><a href="ClassTypeDef.ClassDefType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassDefType</a>, <a href="ClassTypeDef.ClassElementType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassElementType</a>, <a href="ClassTypeDef.ClassName.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassName</a>, <a href="ClassTypeDef.JavaClass.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.JavaClass</a>, <a href="ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></code></div>
+<code><a href="ClassTypeDef.ClassName.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassName</a>, <a href="ClassTypeDef.JavaClass.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.JavaClass</a>, <a href="ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></code></div>
 <div class="inherited-list">
 <h2 id="nested-classes-inherited-from-class-io.micronaut.sourcegen.model.TypeDef">Nested classes/interfaces inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></h2>
 <code><a href="TypeDef.Array.html" title="class in io.micronaut.sourcegen.model">TypeDef.Array</a>, <a href="TypeDef.Primitive.html" title="class in io.micronaut.sourcegen.model">TypeDef.Primitive</a>, <a href="TypeDef.TypeVariable.html" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a>, <a href="TypeDef.Wildcard.html" title="class in io.micronaut.sourcegen.model">TypeDef.Wildcard</a></code></div>
@@ -120,11 +120,8 @@ implements <a href="ClassTypeDef.html" title="interface in io.micronaut.sourcege
 <section class="field-summary" id="field-summary">
 <h2>Field Summary</h2>
 <div class="inherited-list">
-<h3 id="fields-inherited-from-class-io.micronaut.sourcegen.model.ClassTypeDef">Fields inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></h3>
-<code><a href="ClassTypeDef.html#OBJECT">OBJECT</a></code></div>
-<div class="inherited-list">
 <h3 id="fields-inherited-from-class-io.micronaut.sourcegen.model.TypeDef">Fields inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></h3>
-<code><a href="TypeDef.html#BOOLEAN">BOOLEAN</a>, <a href="TypeDef.html#THIS">THIS</a>, <a href="TypeDef.html#VOID">VOID</a></code></div>
+<code><a href="TypeDef.html#BOOLEAN">BOOLEAN</a>, <a href="TypeDef.html#OBJECT">OBJECT</a>, <a href="TypeDef.html#VOID">VOID</a></code></div>
 </section>
 </li>
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
@@ -168,27 +165,24 @@ implements <a href="ClassTypeDef.html" title="interface in io.micronaut.sourcege
 <div class="block">Returns a hash code value for this object.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isEnum()" class="member-name-link">isEnum</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isNullable()" class="member-name-link">isNullable</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isNullable()" class="member-name-link">isNullable</a>()</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#makeNullable()" class="member-name-link">makeNullable</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#makeNullable()" class="member-name-link">makeNullable</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nullable()" class="member-name-link">nullable</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nullable()" class="member-name-link">nullable</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-nullable"><code>nullable</code></a> record component.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a string representation of this record class.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;?&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#type()" class="member-name-link">type</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;?&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#type()" class="member-name-link">type</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-type"><code>type</code></a> record component.</div>
 </div>
 </div>
@@ -199,10 +193,7 @@ implements <a href="ClassTypeDef.html" title="interface in io.micronaut.sourcege
 <code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#clone()" title="class or interface in java.lang" class="external-link">clone</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#finalize()" title="class or interface in java.lang" class="external-link">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-io.micronaut.sourcegen.model.ClassTypeDef">Methods inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></h3>
-<code><a href="ClassTypeDef.html#doThrow(io.micronaut.sourcegen.model.ExpressionDef...)">doThrow</a>, <a href="ClassTypeDef.html#doThrow(java.util.List)">doThrow</a>, <a href="ClassTypeDef.html#getPackageName()">getPackageName</a>, <a href="ClassTypeDef.html#getSimpleName()">getSimpleName</a>, <a href="ClassTypeDef.html#instantiate()">instantiate</a>, <a href="ClassTypeDef.html#instantiate(io.micronaut.sourcegen.model.ExpressionDef...)">instantiate</a>, <a href="ClassTypeDef.html#instantiate(java.util.List)">instantiate</a>, <a href="ClassTypeDef.html#invokeStatic(java.lang.String,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ExpressionDef...)">invokeStatic</a>, <a href="ClassTypeDef.html#invokeStatic(java.lang.String,io.micronaut.sourcegen.model.TypeDef,java.util.List)">invokeStatic</a></code></div>
-<div class="inherited-list">
-<h3 id="methods-inherited-from-class-io.micronaut.sourcegen.model.TypeDef">Methods inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></h3>
-<code><a href="TypeDef.html#instantiateArray(int)">instantiateArray</a>, <a href="TypeDef.html#instantiateArray(io.micronaut.sourcegen.model.ExpressionDef...)">instantiateArray</a>, <a href="TypeDef.html#instantiateArray(java.util.List)">instantiateArray</a></code></div>
+<code><a href="ClassTypeDef.html#getPackageName()">getPackageName</a>, <a href="ClassTypeDef.html#getSimpleName()">getSimpleName</a>, <a href="ClassTypeDef.html#instantiate()">instantiate</a>, <a href="ClassTypeDef.html#instantiate(java.util.List)">instantiate</a></code></div>
 </section>
 </li>
 </ul>
@@ -270,18 +261,6 @@ implements <a href="ClassTypeDef.html" title="interface in io.micronaut.sourcege
 <dd><code><a href="TypeDef.html#makeNullable()">makeNullable</a></code>&nbsp;in interface&nbsp;<code><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></dd>
 <dt>Returns:</dt>
 <dd>A new nullable type</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="isEnum()">
-<h3>isEnum</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isEnum</span>()</div>
-<dl class="notes">
-<dt>Specified by:</dt>
-<dd><code><a href="ClassTypeDef.html#isEnum()">isEnum</a></code>&nbsp;in interface&nbsp;<code><a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></code></dd>
-<dt>Returns:</dt>
-<dd>True if the class is an enum</dd>
 </dl>
 </section>
 </li>
