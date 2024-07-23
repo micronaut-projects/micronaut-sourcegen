@@ -38,6 +38,8 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
+import java.util.HashSet;
+import java.util.Set;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -52,13 +54,23 @@ import java.util.List;
 @Internal
 public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builder, Object> {
 
+    private final Set<String> processed = new HashSet<>();
+
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
     }
 
     @Override
+    public void start(VisitorContext visitorContext) {
+        processed.clear();
+    }
+
+    @Override
     public void visitClass(ClassElement element, VisitorContext context) {
+        if (processed.contains(element.getName())) {
+            return;
+        }
         String simpleName = element.getSimpleName() + "Builder";
         String builderClassName = element.getPackageName() + "." + simpleName;
 
@@ -125,6 +137,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         }
 
         ClassDef builderDef = builder.build();
+        processed.add(element.getName());
         context.visitGeneratedSourceFile(
             builderDef.getPackageName(),
             builderDef.getSimpleName(),
