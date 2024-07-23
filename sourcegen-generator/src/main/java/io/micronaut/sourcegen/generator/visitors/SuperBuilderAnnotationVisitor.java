@@ -30,6 +30,8 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
+import java.util.HashSet;
+import java.util.Set;
 import javax.lang.model.element.Modifier;
 import java.util.List;
 
@@ -44,6 +46,13 @@ import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor
 @Internal
 public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<SuperBuilder, Object> {
 
+    private final Set<String> processed = new HashSet<>();
+
+    @Override
+    public void start(VisitorContext visitorContext) {
+        processed.clear();
+    }
+
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
@@ -51,6 +60,9 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
+        if (processed.contains(element.getName())) {
+            return;
+        }
         try {
             String abstractBuilderClassName = getAbstractSuperBuilderName(element);
 
@@ -105,6 +117,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 return;
             }
 
+            processed.add(element.getName());
             context.visitGeneratedSourceFile(
                 abstractBuilderDef.getPackageName(),
                 abstractBuilderDef.getSimpleName(),
