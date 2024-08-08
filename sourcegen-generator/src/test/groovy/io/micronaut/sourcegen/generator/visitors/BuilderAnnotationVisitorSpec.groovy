@@ -29,4 +29,22 @@ class BuilderAnnotationVisitorSpec extends AbstractTypeElementSpec {
         walrus.age == 1
     }
 
+    void "test empty builder"() {
+        given:
+        var classLoader = buildClassLoader("test.Walrus", """
+        package test;
+        import io.micronaut.sourcegen.annotations.Builder;
+
+        @Builder
+        public record Walrus() {
+        }
+        """)
+        var walrusBuilderClass = classLoader.loadClass("test.WalrusBuilder")
+
+        expect:
+        var walrusBuilder = walrusBuilderClass.newInstance(new Object[]{})
+        var walrus = walrusBuilder.build()
+        walrus != null
+    }
+
 }
