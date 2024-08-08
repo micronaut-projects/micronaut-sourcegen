@@ -139,6 +139,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
 
                 ClassDef.ClassDefBuilder builder = ClassDef.builder(builderClassName)
+                    .addModifiers(Modifier.PUBLIC)
                     .superclass(new ClassTypeDef.Parameterized(
                             ClassTypeDef.of(abstractBuilderDef),
                             List.of(
@@ -165,7 +166,15 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
         } catch (ProcessingException e) {
             throw e;
         } catch (Exception e) {
-            throw new ProcessingException(element, "Failed to generate a super builder: " + e.getMessage(), e);
+            SourceGenerators.handleFatalException(
+                element,
+                SuperBuilder.class,
+                e,
+                (exception -> {
+                    processed.remove(element.getName());
+                    throw exception;
+                })
+            );
         }
     }
 

@@ -12,3 +12,10 @@ dependencies {
     testImplementation(libs.junit.jupiter.engine)
     testAnnotationProcessor(mn.micronaut.inject.java)
 }
+//
+//tasks {
+//    compileJava {
+//        options.isFork = true
+//        options.forkOptions.jvmArgs = listOf("-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005")
+//    }
+//}

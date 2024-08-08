@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.example;
 
+import java.lang.reflect.Modifier;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,6 +63,7 @@ class AnimalSuperBuilderTest {
 
     @Test
     public void internalTest() {
+        assertTrue(Modifier.isPublic(CatSuperBuilder.class.getModifiers()));
         assertEquals(3, AbstractAnimalSuperBuilder.class.getDeclaredFields().length);
 
         assertEquals(0, CatSuperBuilder.class.getDeclaredFields().length);

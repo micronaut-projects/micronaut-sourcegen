@@ -19,10 +19,14 @@ import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.io.service.SoftServiceLoader;
+import io.micronaut.inject.ast.Element;
+import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.VisitorContext;
 
+import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * The source generators.
@@ -49,6 +53,27 @@ public final class SourceGenerators {
     @Nullable
     public static Optional<SourceGenerator> findByLanguage(VisitorContext.Language language) {
         return getAll().stream().filter(s -> s.getLanguage() == language).findAny();
+    }
+
+    /**
+     * Utility method for handling exceptions.
+     *
+     * @param originatingElement The originating element.
+     * @param annotation The annotation
+     * @param exception The exception
+     * @param postponeCallback A call back if compilation needs to be delayed to the next round
+     */
+    public static void handleFatalException(
+        @NonNull Element originatingElement,
+        @NonNull Class<? extends Annotation> annotation,
+        @NonNull Exception exception,
+        Consumer<RuntimeException> postponeCallback)  {
+        if (exception.getClass().getSimpleName().equals("PostponeToNextRoundException") && exception instanceof RuntimeException runtimeException) {
+            postponeCallback.accept(runtimeException);
+        } else {
+            String message = exception.getMessage() != null ? exception.getMessage() : exception.getClass().getSimpleName();
+            throw new ProcessingException(originatingElement, "Failed to generate a @" + annotation.getSimpleName() + ": " + message, exception);
+        }
     }
 
 }
