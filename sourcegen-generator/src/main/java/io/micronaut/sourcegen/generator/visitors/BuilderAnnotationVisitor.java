@@ -108,7 +108,9 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             }
 
             builder.addMethod(MethodDef.constructor().build());
-            builder.addMethod(createAllPropertiesConstructor(builderType, properties));
+            if (!properties.isEmpty()) {
+                builder.addMethod(createAllPropertiesConstructor(builderType, properties));
+            }
 
             builder.addMethod(createBuilderMethod(builderType));
             builder.addMethod(createBuildMethod(element));
