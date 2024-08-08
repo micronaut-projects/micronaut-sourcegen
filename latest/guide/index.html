@@ -113,7 +113,7 @@
         <h1>Compilation time source code generators</h1>
         <p></p>
         <p>Micronaut SourceGen exposes a language-neutral API for source code generation.</p>
-        <p><strong>Version:</strong> 1.2.0 </p>
+        <p><strong>Version:</strong> 1.2.1 </p>
     </div>
     
 <h1 id="introduction"><a class="anchor" href="#introduction"></a>1 Introduction</h1>
@@ -707,6 +707,11 @@ public class Cat extends Animal {
     private String bread;
 
     // Getters / Setters
+
+    @Vetoed // vetoed is currently required.
+    public static CatSuperBuilder builder() {
+        return new CatSuperBuilder();
+    }
 }</code></pre>
 </div>
 </div>
