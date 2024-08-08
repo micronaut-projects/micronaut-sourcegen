@@ -151,6 +151,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
 
                 builder.addMethod(createSelfMethod());
                 builder.addMethod(BuilderAnnotationVisitor.createBuildMethod(element));
+                builder.addMethod(createBuilderMethod(builderType));
 
                 ClassDef builderDef = builder.build();
                 context.visitGeneratedSourceFile(builderDef.getPackageName(), builderDef.getSimpleName(), element).ifPresent(sourceFile -> {
@@ -176,6 +177,14 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 })
             );
         }
+    }
+
+    private MethodDef createBuilderMethod(ClassTypeDef builderType) {
+        return MethodDef.builder("builder")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .returns(builderType)
+            .addStatement(builderType.instantiate().returning())
+            .build();
     }
 
     private MethodDef createSelfMethod() {

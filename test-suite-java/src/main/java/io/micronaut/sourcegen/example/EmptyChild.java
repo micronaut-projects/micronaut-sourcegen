@@ -15,8 +15,9 @@
  */
 package io.micronaut.sourcegen.example;
 
-import io.micronaut.sourcegen.annotations.Builder;
 
-@Builder
-public class EmptyThing {
+import io.micronaut.sourcegen.annotations.SuperBuilder;
+
+@SuperBuilder
+public class EmptyChild extends EmptyParent {
 }
