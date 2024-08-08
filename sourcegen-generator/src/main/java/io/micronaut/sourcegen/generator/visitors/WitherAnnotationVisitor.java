@@ -134,7 +134,15 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         } catch (ProcessingException e) {
             throw e;
         } catch (Exception e) {
-            throw new ProcessingException(recordElement, "Failed to generate a wither: " + e.getMessage(), e);
+            SourceGenerators.handleFatalException(
+                recordElement,
+                Wither.class,
+                e,
+                (exception -> {
+                    processed.remove(recordElement.getName());
+                    throw exception;
+                })
+            );
         }
     }
 

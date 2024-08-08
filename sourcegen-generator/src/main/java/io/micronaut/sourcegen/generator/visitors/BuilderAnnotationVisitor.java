@@ -41,6 +41,7 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
+import java.lang.annotation.Annotation;
 import java.util.HashSet;
 import java.util.Set;
 import javax.lang.model.element.Modifier;
@@ -80,6 +81,11 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
     @Override
     public void start(VisitorContext visitorContext) {
         processed.clear();
+    }
+
+    @Override
+    public Set<String> getSupportedAnnotationNames() {
+        return Set.of(Builder.class.getName());
     }
 
     @Override
@@ -130,7 +136,15 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         } catch (ProcessingException e) {
             throw e;
         } catch (Exception e) {
-            throw new ProcessingException(element, "Failed to generate a builder: " + e.getMessage(), e);
+            SourceGenerators.handleFatalException(
+                element,
+                Builder.class,
+                e,
+                (exception -> {
+                    processed.remove(element.getName());
+                    throw exception;
+                })
+            );
         }
     }
 

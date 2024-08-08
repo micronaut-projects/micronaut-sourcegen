@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.example;
 
+import io.micronaut.core.annotation.Vetoed;
 import io.micronaut.sourcegen.annotations.SuperBuilder;
 
 //tag::clazz[]
@@ -44,5 +45,10 @@ public class Cat extends Animal {
         this.bread = bread;
     }
     //tag::clazz[]
+
+    @Vetoed // vetoed is currently required.
+    public static CatSuperBuilder builder() {
+        return new CatSuperBuilder();
+    }
 }
 //end::clazz[]
