@@ -1,0 +1,6 @@
+io.micronaut.sourcegen
+io.micronaut.sourcegen.annotations
+io.micronaut.sourcegen.generator
+io.micronaut.sourcegen.generator.visitors
+io.micronaut.sourcegen.javapoet
+io.micronaut.sourcegen.model
