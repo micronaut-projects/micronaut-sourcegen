@@ -68,7 +68,8 @@ class AnimalSuperBuilderTest {
     public void dogIntrospection() {
         var introspection = BeanIntrospection.getIntrospection(DogSuperBuilder.class);
         assertNotNull(introspection);
-        assertEquals(6, introspection.getBeanProperties().size());
+        assertEquals(0, introspection.getBeanProperties().size());
+        assertEquals(6, introspection.getConstructorArguments().length);
     }
 
     @Test

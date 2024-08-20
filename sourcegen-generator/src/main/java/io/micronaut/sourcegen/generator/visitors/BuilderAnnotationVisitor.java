@@ -157,7 +157,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         }
     }
 
-    private MethodDef createAllPropertiesConstructor(ClassTypeDef builderType, List<PropertyElement> properties) {
+    static MethodDef createAllPropertiesConstructor(ClassTypeDef builderType, List<PropertyElement> properties) {
         MethodDef.MethodDefBuilder builder = MethodDef.constructor()
             .addAnnotation(Creator.class);
         VariableDef.This self = new VariableDef.This(builderType);
@@ -188,7 +188,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         return builder.build();
     }
 
-    private StatementDef iterableToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
+    private static StatementDef iterableToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
         return ClassTypeDef.of(ArrayList.class)
             .instantiate()
             .newLocal(parameterDef.getName() + "ArrayList", arrayListVar ->
@@ -206,7 +206,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                             )));
     }
 
-    private StatementDef mapToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
+    private static StatementDef mapToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
         return self.field(parameterDef.getName(), parameterDef.getType())
             .assign(
                 ClassTypeDef.of(ArrayList.class)

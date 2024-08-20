@@ -153,8 +153,12 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                         )
                     );
                 if (element.booleanValue(SuperBuilder.class, SUPER_BUILDER_INTROSPECTED_MEMBER).orElse(true)) {
-                    builder.addAnnotation(AnnotationDef.builder(Introspected.class)
-                        .addMember("withPrefix", "").build());
+                    builder.addAnnotation(Introspected.class);
+                }
+
+                builder.addMethod(MethodDef.constructor().build());
+                if (!properties.isEmpty()) {
+                    builder.addMethod(BuilderAnnotationVisitor.createAllPropertiesConstructor(builderType, properties));
                 }
 
                 builder.addMethod(createSelfMethod());
