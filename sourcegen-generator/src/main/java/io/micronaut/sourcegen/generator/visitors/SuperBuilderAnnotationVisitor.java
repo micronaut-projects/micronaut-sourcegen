@@ -26,7 +26,6 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.annotations.SuperBuilder;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
-import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.MethodDef;

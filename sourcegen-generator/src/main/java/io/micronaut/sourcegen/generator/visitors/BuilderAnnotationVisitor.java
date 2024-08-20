@@ -43,7 +43,6 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
-import java.lang.annotation.Annotation;
 import java.util.HashSet;
 import java.util.Set;
 import javax.lang.model.element.Modifier;
