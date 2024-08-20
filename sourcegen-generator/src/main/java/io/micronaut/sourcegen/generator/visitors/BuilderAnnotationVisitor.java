@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.generator.visitors;
 
 import io.micronaut.core.annotation.Internal;
+import io.micronaut.core.annotation.Introspected;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.bind.annotation.Bindable;
@@ -71,6 +72,8 @@ import static io.micronaut.sourcegen.generator.visitors.Singulars.singularize;
 @Internal
 public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builder, Object> {
 
+    public static final String BUILDER_INTROSPECTED_MEMBER = "introspected";
+
     private final Set<String> processed = new HashSet<>();
 
     @Override
@@ -101,6 +104,9 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
             ClassDef.ClassDefBuilder builder = ClassDef.builder(builderClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+            if (element.booleanValue(Builder.class, BUILDER_INTROSPECTED_MEMBER).orElse(true)) {
+                builder.addAnnotation(Introspected.class);
+            }
 
             List<PropertyElement> properties = element.getBeanProperties();
             for (PropertyElement beanProperty : properties) {

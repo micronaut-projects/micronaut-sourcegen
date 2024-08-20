@@ -16,9 +16,12 @@
 package io.micronaut.sourcegen.example;
 
 import java.lang.reflect.Modifier;
+
+import io.micronaut.core.beans.BeanIntrospection;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AnimalSuperBuilderTest {
@@ -60,6 +63,12 @@ class AnimalSuperBuilderTest {
         assertTrue(dog.isBig());
     }
 //end::test[]
+
+    @Test
+    public void dogIntrospection() {
+        var introspection = BeanIntrospection.getIntrospection(DogSuperBuilder.class);
+        assertNotNull(introspection);
+    }
 
     @Test
     public void internalTest() {

@@ -33,4 +33,13 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
 public @interface SuperBuilder {
+
+    /**
+     * If true, an {@link io.micronaut.core.annotation.Introspected} annotation will be added
+     * on the builder so that introspection can be created for it.
+     *
+     * @return Whether the builder needs to be introspected
+     */
+    boolean introspected() default true;
+
 }

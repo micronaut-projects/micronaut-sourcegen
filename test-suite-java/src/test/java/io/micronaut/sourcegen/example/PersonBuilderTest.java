@@ -15,10 +15,12 @@
  */
 package io.micronaut.sourcegen.example;
 
+import io.micronaut.core.beans.BeanIntrospection;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class PersonBuilderTest {
 
@@ -35,6 +37,12 @@ class PersonBuilderTest {
         assertEquals(123L, person.id());
     }
 //end::test[]
+
+    @Test
+    public void personIntrospection() {
+        var introspection = BeanIntrospection.getIntrospection(PersonBuilder.class);
+        assertNotNull(introspection);
+    }
 
     @Test
     public void buildsPersonWithPrimitiveDefaults() {
