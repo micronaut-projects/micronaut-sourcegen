@@ -26,6 +26,7 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.annotations.SuperBuilder;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
+import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -152,7 +153,8 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                         )
                     );
                 if (element.booleanValue(SuperBuilder.class, SUPER_BUILDER_INTROSPECTED_MEMBER).orElse(true)) {
-                    builder.addAnnotation(Introspected.class);
+                    builder.addAnnotation(AnnotationDef.builder(Introspected.class)
+                        .addMember("withPrefix", "").build());
                 }
 
                 builder.addMethod(createSelfMethod());

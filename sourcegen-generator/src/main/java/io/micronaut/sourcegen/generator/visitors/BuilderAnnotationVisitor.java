@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.generator.visitors;
 
+import io.micronaut.core.annotation.Creator;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.Introspected;
 import io.micronaut.core.annotation.NonNull;
@@ -157,7 +158,8 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
     }
 
     private MethodDef createAllPropertiesConstructor(ClassTypeDef builderType, List<PropertyElement> properties) {
-        MethodDef.MethodDefBuilder builder = MethodDef.constructor();
+        MethodDef.MethodDefBuilder builder = MethodDef.constructor()
+            .addAnnotation(Creator.class);
         VariableDef.This self = new VariableDef.This(builderType);
         for (PropertyElement parameter : properties) {
             ParameterDef parameterDef = ParameterDef.of(parameter.getName(), TypeDef.of(parameter.getType()));

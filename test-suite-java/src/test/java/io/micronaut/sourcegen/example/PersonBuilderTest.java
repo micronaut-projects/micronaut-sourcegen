@@ -42,6 +42,8 @@ class PersonBuilderTest {
     public void personIntrospection() {
         var introspection = BeanIntrospection.getIntrospection(PersonBuilder.class);
         assertNotNull(introspection);
+        assertEquals(0, introspection.getBeanProperties().size());
+        assertEquals(3, introspection.getConstructorArguments().length);
     }
 
     @Test
