@@ -15,7 +15,11 @@
  */
 package io.micronaut.sourcegen.generator.visitors;
 
+import io.micronaut.core.annotation.AnnotationClassValue;
+import io.micronaut.core.annotation.AnnotationValue;
+import io.micronaut.core.annotation.Creator;
 import io.micronaut.core.annotation.Internal;
+import io.micronaut.core.annotation.Introspected;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.bind.annotation.Bindable;
@@ -32,6 +36,7 @@ import io.micronaut.sourcegen.annotations.Singular;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.ClassDef.ClassDefBuilder;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
@@ -41,7 +46,6 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
-import java.lang.annotation.Annotation;
 import java.util.HashSet;
 import java.util.Set;
 import javax.lang.model.element.Modifier;
@@ -70,6 +74,8 @@ import static io.micronaut.sourcegen.generator.visitors.Singulars.singularize;
  */
 @Internal
 public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builder, Object> {
+
+    public static final String BUILDER_ANNOTATED_WITH_MEMBER = "annotatedWith";
 
     private final Set<String> processed = new HashSet<>();
 
@@ -101,6 +107,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
             ClassDef.ClassDefBuilder builder = ClassDef.builder(builderClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+            addAnnotations(builder, element.getAnnotation(Builder.class));
 
             List<PropertyElement> properties = element.getBeanProperties();
             for (PropertyElement beanProperty : properties) {
@@ -150,8 +157,22 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         }
     }
 
-    private MethodDef createAllPropertiesConstructor(ClassTypeDef builderType, List<PropertyElement> properties) {
-        MethodDef.MethodDefBuilder builder = MethodDef.constructor();
+    static void addAnnotations(ClassDefBuilder builder, AnnotationValue<?> annotation) {
+        Optional<AnnotationClassValue[]> annotatedWith = annotation.getConvertibleValues()
+            .get(BUILDER_ANNOTATED_WITH_MEMBER, AnnotationClassValue[].class);
+        if (annotatedWith.isEmpty()) {
+            // Apply the default annotation
+            builder.addAnnotation(Introspected.class);
+        } else {
+            for (AnnotationClassValue<?> value: annotatedWith.get()) {
+                builder.addAnnotation(value.getName());
+            }
+        }
+    }
+
+    static MethodDef createAllPropertiesConstructor(ClassTypeDef builderType, List<PropertyElement> properties) {
+        MethodDef.MethodDefBuilder builder = MethodDef.constructor()
+            .addAnnotation(Creator.class);
         VariableDef.This self = new VariableDef.This(builderType);
         for (PropertyElement parameter : properties) {
             ParameterDef parameterDef = ParameterDef.of(parameter.getName(), TypeDef.of(parameter.getType()));
@@ -180,7 +201,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         return builder.build();
     }
 
-    private StatementDef iterableToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
+    private static StatementDef iterableToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
         return ClassTypeDef.of(ArrayList.class)
             .instantiate()
             .newLocal(parameterDef.getName() + "ArrayList", arrayListVar ->
@@ -198,7 +219,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                             )));
     }
 
-    private StatementDef mapToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
+    private static StatementDef mapToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
         return self.field(parameterDef.getName(), parameterDef.getType())
             .assign(
                 ClassTypeDef.of(ArrayList.class)

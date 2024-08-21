@@ -10,7 +10,7 @@ class BuilderAnnotationVisitorSpec extends AbstractTypeElementSpec {
         package test;
         import io.micronaut.sourcegen.annotations.Builder;
 
-        @Builder
+        @Builder(annotatedWith = {})
         public record Walrus(
               String name,
               int age,
@@ -35,7 +35,7 @@ class BuilderAnnotationVisitorSpec extends AbstractTypeElementSpec {
         package test;
         import io.micronaut.sourcegen.annotations.Builder;
 
-        @Builder
+        @Builder(annotatedWith = {})
         public record Walrus() {
         }
         """)

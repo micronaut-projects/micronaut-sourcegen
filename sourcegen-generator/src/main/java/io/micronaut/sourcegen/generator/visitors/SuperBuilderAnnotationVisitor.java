@@ -30,11 +30,12 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
-import java.util.HashSet;
-import java.util.Set;
 import javax.lang.model.element.Modifier;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor.addAnnotations;
 import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor.createModifyPropertyMethod;
 
 /**
@@ -148,6 +149,12 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                             )
                         )
                     );
+                addAnnotations(builder, element.getAnnotation(SuperBuilder.class));
+
+                builder.addMethod(MethodDef.constructor().build());
+                if (!properties.isEmpty()) {
+                    builder.addMethod(BuilderAnnotationVisitor.createAllPropertiesConstructor(builderType, properties));
+                }
 
                 builder.addMethod(createSelfMethod());
                 builder.addMethod(BuilderAnnotationVisitor.createBuildMethod(element));
