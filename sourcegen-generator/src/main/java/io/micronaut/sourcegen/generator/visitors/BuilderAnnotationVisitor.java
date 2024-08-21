@@ -15,6 +15,8 @@
  */
 package io.micronaut.sourcegen.generator.visitors;
 
+import io.micronaut.core.annotation.AnnotationClassValue;
+import io.micronaut.core.annotation.AnnotationValue;
 import io.micronaut.core.annotation.Creator;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.Introspected;
@@ -34,6 +36,7 @@ import io.micronaut.sourcegen.annotations.Singular;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.ClassDef.ClassDefBuilder;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
@@ -72,7 +75,7 @@ import static io.micronaut.sourcegen.generator.visitors.Singulars.singularize;
 @Internal
 public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builder, Object> {
 
-    public static final String BUILDER_INTROSPECTED_MEMBER = "introspected";
+    public static final String BUILDER_ANNOTATED_WITH_MEMBER = "annotatedWith";
 
     private final Set<String> processed = new HashSet<>();
 
@@ -104,9 +107,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
             ClassDef.ClassDefBuilder builder = ClassDef.builder(builderClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-            if (element.booleanValue(Builder.class, BUILDER_INTROSPECTED_MEMBER).orElse(true)) {
-                builder.addAnnotation(Introspected.class);
-            }
+            addAnnotations(builder, element.getAnnotation(Builder.class));
 
             List<PropertyElement> properties = element.getBeanProperties();
             for (PropertyElement beanProperty : properties) {
@@ -153,6 +154,19 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     throw exception;
                 })
             );
+        }
+    }
+
+    static void addAnnotations(ClassDefBuilder builder, AnnotationValue<?> annotation) {
+        Optional<AnnotationClassValue[]> annotatedWith = annotation.getConvertibleValues()
+            .get(BUILDER_ANNOTATED_WITH_MEMBER, AnnotationClassValue[].class);
+        if (annotatedWith.isEmpty()) {
+            // Apply the default annotation
+            builder.addAnnotation(Introspected.class);
+        } else {
+            for (AnnotationClassValue<?> value: annotatedWith.get()) {
+                builder.addAnnotation(value.getName());
+            }
         }
     }
 

@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.generator.visitors;
 
 import io.micronaut.core.annotation.Internal;
-import io.micronaut.core.annotation.Introspected;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.PropertyElement;
@@ -31,11 +30,12 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
-import java.util.HashSet;
-import java.util.Set;
 import javax.lang.model.element.Modifier;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor.addAnnotations;
 import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor.createModifyPropertyMethod;
 
 /**
@@ -46,8 +46,6 @@ import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor
  */
 @Internal
 public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<SuperBuilder, Object> {
-
-    public static final String SUPER_BUILDER_INTROSPECTED_MEMBER = "introspected";
 
     private final Set<String> processed = new HashSet<>();
 
@@ -151,9 +149,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                             )
                         )
                     );
-                if (element.booleanValue(SuperBuilder.class, SUPER_BUILDER_INTROSPECTED_MEMBER).orElse(true)) {
-                    builder.addAnnotation(Introspected.class);
-                }
+                addAnnotations(builder, element.getAnnotation(SuperBuilder.class));
 
                 builder.addMethod(MethodDef.constructor().build());
                 if (!properties.isEmpty()) {

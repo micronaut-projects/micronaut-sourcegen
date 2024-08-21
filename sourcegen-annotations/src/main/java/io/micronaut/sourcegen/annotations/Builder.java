@@ -15,6 +15,9 @@
  */
 package io.micronaut.sourcegen.annotations;
 
+import io.micronaut.core.annotation.Introspected;
+
+import java.lang.annotation.Annotation;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -34,11 +37,12 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 public @interface Builder {
 
     /**
-     * If true, an {@link io.micronaut.core.annotation.Introspected} annotation will be added
-     * on the builder so that introspection can be created for it.
+     * Define what annotations should be added to the generated builder. By default,
+     * the builder will have {@link io.micronaut.core.annotation.Introspected} annotation
+     * so that introspection can be created for it.
      *
-     * @return Whether the builder needs to be introspected
+     * @return Array of annotations to apply on the builder
      */
-    boolean introspected() default true;
+    Class<? extends Annotation>[] annotatedWith() default Introspected.class;
 
 }
