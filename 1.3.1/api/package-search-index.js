@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"io.micronaut.sourcegen"},{"l":"io.micronaut.sourcegen.annotations"},{"l":"io.micronaut.sourcegen.generator"},{"l":"io.micronaut.sourcegen.generator.visitors"},{"l":"io.micronaut.sourcegen.javapoet"},{"l":"io.micronaut.sourcegen.model"}];updateSearchResults();
