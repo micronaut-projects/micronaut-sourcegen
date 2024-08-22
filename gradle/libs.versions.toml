@@ -1,7 +1,10 @@
 [versions]
 micronaut = "4.6.1"
+micronaut-platform = "4.5.0"
 micronaut-docs = "2.0.0"
 micronaut-test = "4.1.0"
+micronaut-data = "4.9.0"
+micronaut-gradle-plugin = "4.4.0"
 managed-kotlinpoet = "1.18.1"
 google-truth = "1.4.4"
 google-compile-testing = "0.21.0"
@@ -12,6 +15,7 @@ ksp = '1.9.24-1.0.20'
 [libraries]
 # Core
 micronaut-core = { module = 'io.micronaut:micronaut-core-bom', version.ref = 'micronaut' }
+micronaut-data = { module = 'io.micronaut.data:micronaut-data-bom', version.ref = 'micronaut-data' }
 
 managed-kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "managed-kotlinpoet" }
 managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", version.ref = "managed-kotlinpoet" }
@@ -22,5 +26,6 @@ google-compile-testing = { module = "com.google.testing.compile:compile-testing"
 google-jimfs = { module = "com.google.jimfs:jimfs", version.ref = "google-jimfs" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine" }
 
+micronaut-gradle-plugin = { module = "io.micronaut.gradle:micronaut-gradle-plugin", version.ref="micronaut-gradle-plugin" }
 kotlin-gradle-plugin = { module = 'org.jetbrains.kotlin:kotlin-gradle-plugin', version.ref = 'kotlin' }
 kotlin-gradle-allopen = { module = 'org.jetbrains.kotlin:kotlin-allopen', version.ref = 'kotlin' }
