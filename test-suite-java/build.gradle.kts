@@ -27,3 +27,12 @@ dependencies {
 //        options.forkOptions.jvmArgs = listOf("-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005")
 //    }
 //}
+
+tasks {
+    nativeCompile {
+        enabled = false
+    }
+    nativeTestCompile {
+        enabled = false
+    }
+}
