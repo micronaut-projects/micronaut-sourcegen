@@ -3,6 +3,7 @@ package io.micronaut.sourcegen.javapoet.write;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.ExpressionDef.Cast;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.junit.Test;
@@ -77,5 +78,27 @@ public class ExpressionWriteTest extends AbstractWriteTest {
         String result = writeMethodWithExpression(integerArray);
 
         assertEquals("new int[] {1, 2}", result);
+    }
+
+    @Test
+    public void returnCastedValue() throws IOException {
+        ExpressionDef castedExpression = new Cast(
+            TypeDef.primitive("float"),
+            ExpressionDef.constant(ClassElement.of(Double.TYPE), TypeDef.primitive("double"), 10.5)
+        );
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(float) 10.5d", result);
+    }
+
+    @Test
+    public void returnCastedValue2() throws IOException {
+        ExpressionDef castedExpression = new Cast(
+            TypeDef.of(Object.class),
+            ExpressionDef.constant(ClassElement.of(String.class), TypeDef.of(String.class), "hello")
+        );
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(Object) \"hello\"", result);
     }
 }

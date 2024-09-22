@@ -36,7 +36,10 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef {
+    permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod,
+    ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.Cast,
+    ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize,
+    ExpressionDef.NewInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef {
 
     /**
      * The condition of this variable.
@@ -459,6 +462,19 @@ public sealed interface ExpressionDef
     @Experimental
     record Convert(TypeDef type,
                    ExpressionDef expressionDef) implements ExpressionDef {
+    }
+
+    /**
+     * The cast expression. No checks are performed on the types and casting expression is
+     * always generated.
+     *
+     * @param type          The type to cast to
+     * @param expressionDef The expression to cast
+     * @author Andriy Dmytruk
+     * @since 1.3
+     */
+    @Experimental
+    record Cast(TypeDef type, ExpressionDef expressionDef) implements ExpressionDef {
     }
 
     /**

@@ -22,24 +22,20 @@ import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
-import io.micronaut.sourcegen.custom.example.GenerateMyBean1;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean3;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
-import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ParameterDef;
-import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
-import java.io.IOException;
-import java.util.List;
 
 @Internal
 public final class GenerateMyBean3Visitor implements TypeElementVisitor<GenerateMyBean3, Object> {
@@ -69,6 +65,20 @@ public final class GenerateMyBean3Visitor implements TypeElementVisitor<Generate
                         "otherName", ClassTypeDef.of(String.class)
                     ),
                     new VariableDef.MethodParameter("name", ClassTypeDef.of(String.class))
+                ))
+                .build()
+            )
+            .addMethod(MethodDef.builder("castPrimitive")
+                .addParameter(ParameterDef.of("value", TypeDef.primitive(Double.TYPE)))
+                .returns(TypeDef.primitive(Float.TYPE))
+                .addStatement(new StatementDef.Return(
+                    new ExpressionDef.Cast(
+                        TypeDef.primitive(Float.TYPE),
+                        new VariableDef.MethodParameter(
+                            "value",
+                            TypeDef.primitive(Double.TYPE)
+                        )
+                    )
                 ))
                 .build()
             )
