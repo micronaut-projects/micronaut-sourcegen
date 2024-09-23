@@ -101,9 +101,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     private fun writeInterface(writer: Writer, interfaceDef: InterfaceDef) {
         val interfaceBuilder = TypeSpec.interfaceBuilder(interfaceDef.simpleName)
         interfaceBuilder.addModifiers(asKModifiers(interfaceDef.modifiers))
-        interfaceDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> this.asTypeVariable(tv, interfaceDef) }
+        interfaceDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, interfaceDef) }
             .forEach { typeVariable: TypeVariableName -> interfaceBuilder.addTypeVariable(typeVariable) }
-        interfaceDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef, interfaceDef) }
+        interfaceDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, interfaceDef) }
             .forEach { it: TypeName ->
                 interfaceBuilder.addSuperinterface(
                     it
@@ -168,9 +168,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     private fun writeClass(writer: Writer, classDef: ClassDef) {
         val classBuilder = TypeSpec.classBuilder(classDef.simpleName)
         classBuilder.addModifiers(asKModifiers(classDef.modifiers))
-        classDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> this.asTypeVariable(tv, classDef) }
+        classDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, classDef) }
             .forEach { typeVariable: TypeVariableName -> classBuilder.addTypeVariable(typeVariable) }
-        classDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef, classDef) }
+        classDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, classDef) }
             .forEach { it: TypeName ->
                 classBuilder.addSuperinterface(
                     it
@@ -268,9 +268,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         val classBuilder = TypeSpec.classBuilder(recordDef.simpleName)
         classBuilder.addModifiers(KModifier.DATA)
         classBuilder.addModifiers(asKModifiers(recordDef.modifiers))
-        recordDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> this.asTypeVariable(tv, recordDef) }
+        recordDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, recordDef) }
             .forEach { typeVariable: TypeVariableName -> classBuilder.addTypeVariable(typeVariable) }
-        recordDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef, recordDef) }
+        recordDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, recordDef) }
             .forEach { it: TypeName ->
                 classBuilder.addSuperinterface(
                     it,
@@ -338,7 +338,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     private fun writeEnumDef(writer: Writer, enumDef: EnumDef) {
         val enumBuilder = TypeSpec.enumBuilder(enumDef.simpleName)
         enumBuilder.addModifiers(asKModifiers(enumDef.modifiers))
-        enumDef.superinterfaces.stream().map { typeDef: TypeDef -> this.asType(typeDef, enumDef) }
+        enumDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, enumDef) }
             .forEach { it: TypeName -> enumBuilder.addSuperinterface(it) }
         enumDef.javadoc.forEach(Consumer { format: String -> enumBuilder.addKdoc(format) })
         enumDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
@@ -479,77 +479,6 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         return funBuilder.build()
     }
 
-    @OptIn(KotlinPoetJavaPoetPreview::class)
-    private fun asType(typeDef: TypeDef, objectDef: ObjectDef?): TypeName {
-        val result: TypeName = if (typeDef == TypeDef.THIS) {
-            if (objectDef == null) {
-                throw java.lang.IllegalStateException("This type is used outside of the instance scope!")
-            }
-            asType(objectDef.asTypeDef(), null)
-        } else if (typeDef is TypeDef.Array) {
-            asArray(typeDef, objectDef)
-        } else if (typeDef is ClassTypeDef.Parameterized) {
-            asClassName(typeDef.rawType).parameterizedBy(
-                typeDef.typeArguments.map { v: TypeDef -> this.asType(v, objectDef) }
-            )
-        } else if (typeDef is TypeDef.Primitive) {
-            when (typeDef.name) {
-                "void" -> UNIT
-                "byte" -> com.squareup.javapoet.TypeName.BYTE.toKTypeName()
-                "short" -> com.squareup.javapoet.TypeName.SHORT.toKTypeName()
-                "char" -> com.squareup.javapoet.TypeName.CHAR.toKTypeName()
-                "int" -> com.squareup.javapoet.TypeName.INT.toKTypeName()
-                "long" -> com.squareup.javapoet.TypeName.LONG.toKTypeName()
-                "float" -> com.squareup.javapoet.TypeName.FLOAT.toKTypeName()
-                "double" -> com.squareup.javapoet.TypeName.DOUBLE.toKTypeName()
-                "boolean" -> com.squareup.javapoet.TypeName.BOOLEAN.toKTypeName()
-                else -> throw IllegalStateException("Unrecognized primitive name: " + typeDef.name)
-            }
-        } else if (typeDef is ClassTypeDef) {
-            asClassName(typeDef)
-        } else if (typeDef is TypeDef.Wildcard) {
-            if (typeDef.lowerBounds.isNotEmpty()) {
-                WildcardTypeName.consumerOf(
-                    asType(
-                        typeDef.lowerBounds[0],
-                        objectDef
-                    )
-                )
-            } else {
-                WildcardTypeName.producerOf(
-                    asType(
-                        typeDef.upperBounds[0],
-                        objectDef
-                    )
-                )
-            }
-        } else if (typeDef is TypeDef.TypeVariable) {
-            return asTypeVariable(typeDef, objectDef)
-        } else {
-            throw IllegalStateException("Unrecognized type definition $typeDef")
-        }
-        if (typeDef.isNullable) {
-            return asNullable(result)
-        }
-        return result
-    }
-
-    private fun asArray(classType: TypeDef.Array, objectDef: ObjectDef?): TypeName {
-        var newDef = ClassTypeDef.Parameterized(
-                ClassTypeDef.of("kotlin.Array"), listOf(classType.componentType))
-        for (i in 2.. classType.dimensions) {
-            newDef = ClassTypeDef.Parameterized(ClassTypeDef.of("kotlin.Array"), listOf(newDef))
-        }
-        return this.asType(newDef, objectDef)
-    }
-
-    private fun asTypeVariable(tv: TypeDef.TypeVariable, objectDef: ObjectDef?): TypeVariableName {
-        return TypeVariableName(
-            tv.name,
-            tv.bounds.stream().map { v: TypeDef -> this.asType(v, objectDef) }.toList()
-        )
-    }
-
     @JvmRecord
     private data class ExpResult(val rendered: CodeBlock, val type: TypeDef)
     companion object {
@@ -594,6 +523,77 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     else -> throw IllegalStateException("Not supported modifier: $m")
                 }
             }.toList()
+        }
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asType(typeDef: TypeDef, objectDef: ObjectDef?): TypeName {
+            val result: TypeName = if (typeDef == TypeDef.THIS) {
+                if (objectDef == null) {
+                    throw java.lang.IllegalStateException("This type is used outside of the instance scope!")
+                }
+                asType(objectDef.asTypeDef(), null)
+            } else if (typeDef is TypeDef.Array) {
+                asArray(typeDef, objectDef)
+            } else if (typeDef is ClassTypeDef.Parameterized) {
+                asClassName(typeDef.rawType).parameterizedBy(
+                    typeDef.typeArguments.map { v: TypeDef -> this.asType(v, objectDef) }
+                )
+            } else if (typeDef is TypeDef.Primitive) {
+                when (typeDef.name) {
+                    "void" -> UNIT
+                    "byte" -> com.squareup.javapoet.TypeName.BYTE.toKTypeName()
+                    "short" -> com.squareup.javapoet.TypeName.SHORT.toKTypeName()
+                    "char" -> com.squareup.javapoet.TypeName.CHAR.toKTypeName()
+                    "int" -> com.squareup.javapoet.TypeName.INT.toKTypeName()
+                    "long" -> com.squareup.javapoet.TypeName.LONG.toKTypeName()
+                    "float" -> com.squareup.javapoet.TypeName.FLOAT.toKTypeName()
+                    "double" -> com.squareup.javapoet.TypeName.DOUBLE.toKTypeName()
+                    "boolean" -> com.squareup.javapoet.TypeName.BOOLEAN.toKTypeName()
+                    else -> throw IllegalStateException("Unrecognized primitive name: " + typeDef.name)
+                }
+            } else if (typeDef is ClassTypeDef) {
+                asClassName(typeDef)
+            } else if (typeDef is TypeDef.Wildcard) {
+                if (typeDef.lowerBounds.isNotEmpty()) {
+                    WildcardTypeName.consumerOf(
+                        asType(
+                            typeDef.lowerBounds[0],
+                            objectDef
+                        )
+                    )
+                } else {
+                    WildcardTypeName.producerOf(
+                        asType(
+                            typeDef.upperBounds[0],
+                            objectDef
+                        )
+                    )
+                }
+            } else if (typeDef is TypeDef.TypeVariable) {
+                return asTypeVariable(typeDef, objectDef)
+            } else {
+                throw IllegalStateException("Unrecognized type definition $typeDef")
+            }
+            if (typeDef.isNullable) {
+                return asNullable(result)
+            }
+            return result
+        }
+
+        private fun asTypeVariable(tv: TypeDef.TypeVariable, objectDef: ObjectDef?): TypeVariableName {
+            return TypeVariableName(
+                tv.name,
+                tv.bounds.stream().map { v: TypeDef -> asType(v, objectDef) }.toList()
+            )
+        }
+
+        private fun asArray(classType: TypeDef.Array, objectDef: ObjectDef?): TypeName {
+            var newDef = ClassTypeDef.Parameterized(
+                ClassTypeDef.of("kotlin.Array"), listOf(classType.componentType))
+            for (i in 2.. classType.dimensions) {
+                newDef = ClassTypeDef.Parameterized(ClassTypeDef.of("kotlin.Array"), listOf(newDef))
+            }
+            return asType(newDef, objectDef)
         }
 
         private fun renderStatement(
@@ -677,6 +677,15 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return ExpResult(
                     renderWithNotNullAssertion(expResult, resultType),
                     resultType
+                )
+            }
+            if (expressionDef is ExpressionDef.Cast) {
+                val codeBuilder = CodeBlock.builder()
+                codeBuilder.add(renderExpression(objectDef, methodDef, expressionDef.expressionDef).rendered)
+                codeBuilder.add(" as %T", KotlinPoetSourceGenerator.asType(expressionDef.type, objectDef))
+                return ExpResult(
+                    codeBuilder.build(),
+                    expressionDef.type
                 )
             }
             if (expressionDef is VariableDef) {
