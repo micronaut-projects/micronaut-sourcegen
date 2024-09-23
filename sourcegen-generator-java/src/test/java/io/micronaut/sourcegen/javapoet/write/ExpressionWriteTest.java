@@ -82,10 +82,9 @@ public class ExpressionWriteTest extends AbstractWriteTest {
 
     @Test
     public void returnCastedValue() throws IOException {
-        ExpressionDef castedExpression = new Cast(
-            TypeDef.primitive("float"),
-            ExpressionDef.constant(ClassElement.of(Double.TYPE), TypeDef.primitive("double"), 10.5)
-        );
+        ExpressionDef castedExpression = ExpressionDef
+            .constant(ClassElement.of(Double.TYPE), TypeDef.primitive("double"), 10.5)
+            .cast(TypeDef.primitive("float"));
         String result = writeMethodWithExpression(castedExpression);
 
         assertEquals("(float) 10.5d", result);

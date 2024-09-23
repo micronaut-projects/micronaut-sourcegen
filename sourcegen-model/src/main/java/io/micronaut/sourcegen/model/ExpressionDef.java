@@ -106,6 +106,17 @@ public sealed interface ExpressionDef
     }
 
     /**
+     * Cast expression to a different type.
+     *
+     * @param type The type to cast to
+     * @return The cast expression
+     */
+    @NonNull
+    default ExpressionDef.Cast cast(TypeDef type) {
+        return new Cast(type, this);
+    }
+
+    /**
      * The conditional statement based on this expression.
      *
      * @param statement The statement
