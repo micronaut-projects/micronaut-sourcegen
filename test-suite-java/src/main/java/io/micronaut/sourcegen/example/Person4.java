@@ -17,11 +17,15 @@ package io.micronaut.sourcegen.example;
 
 
 //tag::clazz[]
-import io.micronaut.sourcegen.annotations.Utils;
+import io.micronaut.sourcegen.annotations.Equals;
+import io.micronaut.sourcegen.annotations.HashCode;
+import io.micronaut.sourcegen.annotations.ToString;
 
 import java.util.Arrays;
 
-@Utils
+@ToString
+@Equals
+@HashCode
 public class Person4 {
     private long id;
     private String name;

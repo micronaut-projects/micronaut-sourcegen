@@ -30,7 +30,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @Retention(RUNTIME)
 @Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
-public @interface Utils {
+public @interface ToString {
 
     /**
      * @return Array of annotations to apply on the utils

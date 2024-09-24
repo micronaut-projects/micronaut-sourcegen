@@ -22,8 +22,9 @@ import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
-import io.micronaut.sourcegen.annotations.Singular;
-import io.micronaut.sourcegen.annotations.Utils;
+import io.micronaut.sourcegen.annotations.Equals;
+import io.micronaut.sourcegen.annotations.HashCode;
+import io.micronaut.sourcegen.annotations.ToString;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.*;
@@ -32,7 +33,6 @@ import java.util.*;
 import javax.lang.model.element.Modifier;
 
 import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor.*;
-import static io.micronaut.sourcegen.generator.visitors.Singulars.singularize;
 
 /**
  * The visitor that generates the util functions of a bean.
@@ -42,13 +42,13 @@ import static io.micronaut.sourcegen.generator.visitors.Singulars.singularize;
  */
 
 @Internal
-public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, Object> {
+public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, Object> {
 
+    private static final int NULL_HASH_VALUE = 43;
+    private static final int TRUE_HASH_VALUE = 79;
+    private static final int FALSE_HASH_VALUE = 97;
+    private static final int HASH_MULTIPLIER = 59;
     private final Set<String> processed = new HashSet<>();
-    private final static int NULL_HASH_VALUE = 43;
-    private final static int TRUE_HASH_VALUE = 79;
-    private final static int FALSE_HASH_VALUE = 97;
-    private final static int HASH_MULTIPLIER = 59;
 
     @Override
     public @NonNull VisitorKind getVisitorKind() {
@@ -62,7 +62,9 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        // TODO: collect annotations, change TypeElementVisitor Utils -> Object
+        if (!(element.hasStereotype(ToString.class) || element.hasStereotype(Equals.class) || element.hasStereotype(HashCode.class))) {
+            return;
+        }
 
         if (processed.contains(element.getName())) {
             return;
@@ -71,20 +73,23 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
             String simpleName = element.getSimpleName() + "Utils";
             String utilsClassName = element.getPackageName() + "." + simpleName;
 
-            ClassTypeDef builderType = ClassTypeDef.of(utilsClassName);
-
             // class def and annotations
             ClassDef.ClassDefBuilder utilsBuilder = ClassDef.builder(utilsClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-            addAnnotations(utilsBuilder, element.getAnnotation(Utils.class));
 
             // TODO: should I check for properties that have getters?
             List<PropertyElement> properties = element.getBeanProperties();
 
             // create the utils functions
-            createToStringMethod(utilsBuilder, simpleName, properties);
-            createEqualsMethod(utilsBuilder, simpleName, properties);
-            createHashCodeMethod(utilsBuilder, simpleName, properties);
+            if (element.hasStereotype(ToString.class)) {
+                createToStringMethod(utilsBuilder, element.getSimpleName(), properties);
+            }
+            if (element.hasStereotype(Equals.class)) {
+                createEqualsMethod(utilsBuilder, element.getSimpleName(), properties);
+            }
+            if (element.hasStereotype(HashCode.class)) {
+                createHashCodeMethod(utilsBuilder, element.getSimpleName(), properties);
+            }
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
             if (sourceGenerator == null) {
@@ -111,7 +116,7 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
         } catch (Exception e) {
             SourceGenerators.handleFatalException(
                 element,
-                Utils.class,
+                ToString.class,
                 e,
                 (exception -> {
                     processed.remove(element.getName());
@@ -121,33 +126,19 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
         }
     }
 
-    static void addAnnotations(ClassDef.ClassDefBuilder builder, AnnotationValue<?> annotation) {
-        Optional<AnnotationClassValue[]> annotatedWith = annotation.getConvertibleValues()
-            .get(BUILDER_ANNOTATED_WITH_MEMBER, AnnotationClassValue[].class);
-        if (annotatedWith.isEmpty()) {
-            // Apply the default annotation
-            builder.addAnnotation(Introspected.class);
-        } else {
-            for (AnnotationClassValue<?> value: annotatedWith.get()) {
-                builder.addAnnotation(value.getName());
-            }
-        }
-    }
-
-    /* TODO: complete toString method
-            - Added with @ToString annotation
+    /* toString method
      */
-    private static void createToStringMethod(ClassDef.ClassDefBuilder classDefBuilder, String simpleName, List<PropertyElement> properties) {
+    private static void createToStringMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
         List<StatementDef> statements = new ArrayList<>();
         VariableDef.Local strBuilder = new VariableDef.Local("strBuilder", ClassTypeDef.of(StringBuilder.class));
         VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
-        VariableDef thisVariable = new VariableDef.MethodParameter("object", ClassTypeDef.of(simpleName.substring(0, simpleName.length() - 5)));
+        VariableDef thisVariable = new VariableDef.MethodParameter("object", ClassTypeDef.of(objectName));
 
         statements.add(strBuilder.defineAndAssign(ClassTypeDef.of(StringBuilder.class).instantiate()));
         statements.add(strBuilder.invoke(
             "append",
             ClassTypeDef.of(strBuilder.getClass()),
-            ExpressionDef.constant(simpleName.substring(0, simpleName.length() - 5) + "[")
+            ExpressionDef.constant(objectName + "[")
         ));
         for (int i = 0; i < properties.size(); i++) {
             PropertyElement beanProperty = properties.get(i);
@@ -183,16 +174,15 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
         MethodDef method = MethodDef.builder("toString")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(String.class)
-            .addParameter("object", ClassTypeDef.of(simpleName.substring(0, simpleName.length() - 5)))
+            .addParameter("object", ClassTypeDef.of(objectName))
             .addStatements(statements)
             .build();
         classDefBuilder.addMethod(method);
     }
 
-    /* TODO: complete equals method
-            - Added with @Equals annotation
+    /* complete equals method
      */
-    private static void createEqualsMethod(ClassDef.ClassDefBuilder classDefBuilder, String simpleName, List<PropertyElement> properties) {
+    private static void createEqualsMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
         MethodDef method = MethodDef.builder("equals")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(boolean.class)
@@ -200,7 +190,7 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
             .addParameter("secondObject", TypeDef.of(Object.class))
             .build((self, parameterDef) -> {
                 // local variables needed
-                VariableDef classname = new VariableDef.Local(simpleName.substring(0, simpleName.length() - 5), ClassTypeDef.of(simpleName.substring(0, simpleName.length() - 5)));
+                VariableDef classname = new VariableDef.Local(objectName, ClassTypeDef.of(objectName));
                 VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
                 List<StatementDef> statements = new ArrayList<>();
                 VariableDef.Local firstObject = new VariableDef.Local("first", classname.type());
@@ -297,13 +287,12 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
         classDefBuilder.addMethod(method);
     }
 
-    /* TODO: complete hashCode method
-            - Added with @HashCode annotation
+    /* complete hashCode method
      */
-    private static void createHashCodeMethod(ClassDef.ClassDefBuilder classDefBuilder, String simpleName, List<PropertyElement> properties) {
+    private static void createHashCodeMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
         MethodDef method = MethodDef.builder("hashCode")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter("object", ClassTypeDef.of(simpleName.substring(0, simpleName.length() - 5)))
+            .addParameter("object", ClassTypeDef.of(objectName))
             .returns(int.class)
             .build((self, parameterDef) -> {
                 List<StatementDef> statements = new ArrayList<>();
