@@ -87,7 +87,7 @@ public class ExpressionWriteTest extends AbstractWriteTest {
             .cast(TypeDef.primitive("float"));
         String result = writeMethodWithExpression(castedExpression);
 
-        assertEquals("(float) 10.5d", result);
+        assertEquals("(float) (10.5d)", result);
     }
 
     @Test
@@ -98,6 +98,6 @@ public class ExpressionWriteTest extends AbstractWriteTest {
         );
         String result = writeMethodWithExpression(castedExpression);
 
-        assertEquals("(Object) \"hello\"", result);
+        assertEquals("(Object) (\"hello\")", result);
     }
 }

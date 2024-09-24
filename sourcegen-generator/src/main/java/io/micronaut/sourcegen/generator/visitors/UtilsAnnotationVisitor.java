@@ -44,6 +44,10 @@ import static io.micronaut.sourcegen.generator.visitors.Singulars.singularize;
 public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, Object> {
 
     private final Set<String> processed = new HashSet<>();
+    private final static int NULL_HASH_VALUE = 43;
+    private final static int TRUE_HASH_VALUE = 79;
+    private final static int FALSE_HASH_VALUE = 97;
+    private final static int HASH_MULTIPLIER = 59;
 
     @Override
     public @NonNull VisitorKind getVisitorKind() {
@@ -175,7 +179,6 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
         }
     }
 
-
     /* TODO: complete toString method
             - Added with @ToString annotation
             - change method signature
@@ -273,7 +276,7 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
                 // property equal checks
                 for (PropertyElement beanProperty : properties) {
                     TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-                    if (propertyTypeDef instanceof TypeDef.Primitive){
+                    if (propertyTypeDef instanceof TypeDef.Primitive) {
                         // ==, primitives do not need null check
                         statements.add(new StatementDef.If(
                             new ExpressionDef.Condition(" != ",
@@ -354,52 +357,57 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
                 for (PropertyElement beanProperty : properties) {
                     TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
                     VariableDef thisProperty = new VariableDef.Field(thisVar, beanProperty.getSimpleName(), propertyTypeDef);
-                    propertyHashExpression = ExpressionDef.constant(0);
 
-                    // calculate new property value
+                    // calculate new property hash value
                     if (propertyTypeDef instanceof TypeDef.Array) {
                         String methodName = (((TypeDef.Array) propertyTypeDef).dimensions() > 1) ?  "deepHashCode" : "hashCode";
                         propertyHashExpression = arrays.invoke(methodName, TypeDef.of(int.class), thisProperty);
                     } else if (propertyTypeDef instanceof TypeDef.Primitive) {
+                        String typeName = ((TypeDef.Primitive) propertyTypeDef).name();
                         if (propertyTypeDef == TypeDef.BOOLEAN) {
                             propertyHashExpression = new ExpressionDef.IfElse(
                                 thisProperty,
-                                ExpressionDef.constant(79),
-                                ExpressionDef.constant(97)
+                                ExpressionDef.constant(TRUE_HASH_VALUE),
+                                ExpressionDef.constant(FALSE_HASH_VALUE)
                             );
-                        } else if (propertyTypeDef == TypeDef.of(double.class)) {
-                            VariableDef mathClass = new VariableDef.Local("Math", ClassTypeDef.of(Math.class));
-                            propertyHashExpression = mathClass.invoke("round", TypeDef.of(int.class), thisProperty);
-                        } else if (propertyTypeDef == TypeDef.of(float.class)) {
+                        } else if (typeName.equals("float")) {
                             VariableDef floatClass = new VariableDef.Local("Float", ClassTypeDef.of(float.class));
                             propertyHashExpression = floatClass.invoke("floatToIntBits", TypeDef.of(int.class), thisProperty);
-                        } else if (propertyTypeDef == TypeDef.of(long.class)) {
-                            // TODO: cast to int
+                        } else if (typeName.equals("double")) {
+                            // double -> long -> int
+                            VariableDef mathClass = new VariableDef.Local("Double", ClassTypeDef.of(Double.class));
+                            propertyHashExpression = mathClass.invoke("doubleToLongBits", TypeDef.of(int.class), thisProperty);
+                            propertyHashExpression = new ExpressionDef.Condition(
+                                " >>> ",
+                                propertyHashExpression,
+                                new ExpressionDef.Condition(" ^ ", ExpressionDef.constant(32), propertyHashExpression));
+                            propertyHashExpression = new ExpressionDef.Cast(TypeDef.of(int.class), propertyHashExpression);
+                        } else if (typeName.equals("long")) {
                             propertyHashExpression = new ExpressionDef.Condition(
                                 " >>> ",
                                 thisProperty,
                                 new ExpressionDef.Condition(" ^ ", ExpressionDef.constant(32), thisProperty));
-                        } else if (propertyTypeDef == TypeDef.of(char.class)){
+                            propertyHashExpression = new ExpressionDef.Cast(TypeDef.of(int.class), propertyHashExpression);
+                        } else if (typeName.equals("char")) {
                             propertyHashExpression = new ExpressionDef.Condition(" - ", thisProperty, ExpressionDef.constant('0'));
-                        } else if (propertyTypeDef == TypeDef.of(short.class)){
+                        } else if (typeName.equals("short")) {
                             propertyHashExpression = new ExpressionDef.Condition(" & ", thisProperty, ExpressionDef.constant(0xffff));
                         } else { // for int and byte, return itself as an int
                             propertyHashExpression = thisProperty;
                         }
-                    }
-                    else { // OBJECT
+                    } else { // OBJECT
                         propertyHashExpression = new ExpressionDef.IfElse(
                             thisProperty.isNull(),
-                            ExpressionDef.constant(43),
+                            ExpressionDef.constant(NULL_HASH_VALUE),
                             thisProperty.invoke("hashCode", TypeDef.of(int.class), List.of())
                             );
                     }
 
                     // hash update
-                    statements.add( StatementDef.multi(
+                    statements.add(StatementDef.multi(
                         new StatementDef.Assign(propertyHashValue, propertyHashExpression),
                         new StatementDef.Assign(hashValue, new ExpressionDef.Condition(" * ", hashValue,
-                            new ExpressionDef.Condition(" + ", ExpressionDef.constant(59), propertyHashValue))))
+                            new ExpressionDef.Condition(" + ", ExpressionDef.constant(HASH_MULTIPLIER), propertyHashValue))))
                     );
                 }
                 statements.add(hashValue.returning());

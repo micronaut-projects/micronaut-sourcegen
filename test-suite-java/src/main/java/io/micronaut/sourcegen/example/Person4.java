@@ -20,6 +20,6 @@ package io.micronaut.sourcegen.example;
 import io.micronaut.sourcegen.annotations.Utils;
 
 @Utils
-public record Person4(Long id, String name, int age, byte[] bytes) {
+public record Person4(long id, String name, int age, byte[] bytes) {
 }
 //end::clazz[]

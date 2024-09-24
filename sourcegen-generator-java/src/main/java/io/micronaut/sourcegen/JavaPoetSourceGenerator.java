@@ -538,8 +538,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         if (expressionDef instanceof ExpressionDef.Cast castExpressionDef) {
             return CodeBlock.concat(
-                CodeBlock.of("($T) ", asType(castExpressionDef.type(), objectDef)),
-                renderExpression(objectDef, methodDef, castExpressionDef.expressionDef())
+                CodeBlock.of("($T) (", asType(castExpressionDef.type(), objectDef)),
+                renderExpression(objectDef, methodDef, castExpressionDef.expressionDef()),
+                CodeBlock.of(")")
             );
         }
         if (expressionDef instanceof ExpressionDef.Constant constant) {
