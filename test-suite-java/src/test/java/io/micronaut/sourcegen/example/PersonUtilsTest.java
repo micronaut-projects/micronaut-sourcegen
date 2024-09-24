@@ -25,34 +25,34 @@ public class PersonUtilsTest {
 
     @Test
     public void testToString() {
-        var person = new Person4Utils(123L, "Cédric", 20, new byte[]{1,2,3});
-        assertNotNull(person.toString());
-        assertTrue(person.toString().contains("Person4Utils["));
+        var person = new Person4(123L, "Cédric", new byte[]{1,2,3});
+        assertNotNull(Person4Utils.toString(person));
+        assertTrue(Person4Utils.toString(person).contains("Person4["));
     }
 
 
     @Test
     public void testEquals() {
-        var person = new Person4Utils(123L, "Cédric", 20, new byte[]{1,2,3});
-        var personSame = new Person4Utils(123L, "Cédric", 20, new byte[]{1,2,3});
-        var personDiffAll = new Person4Utils(124L, "Cédric 2", 21, new byte[]{1,2,3, 4});
-        var personDiffPrimitive = new Person4Utils(123L, "Cédric", 21, new byte[]{1,2,3});
-        var personDiffObject = new Person4Utils(123L, "Cédric", 20, new byte[]{1,2,3, 4});
+        var person = new Person4(123L, "Cédric", new byte[]{1,2,3});
+        var personSame = new Person4(123L, "Cédric", new byte[]{1,2,3});
+        var personDiffAll = new Person4(124L, "Cédric 2", new byte[]{1,2,3, 4});
+        var personDiffPrimitive = new Person4(124L, "Cédric", new byte[]{1,2,3});
+        var personDiffObject = new Person4(123L, "Cédric", new byte[]{1,2,3, 4});
 
-        assertTrue(person.equals(personSame));
-        assertTrue(person.equals(person));
-        assertFalse(person.equals(personDiffAll));
-        assertFalse(person.equals(personDiffPrimitive));
-        assertFalse(person.equals(personDiffObject));
+        assertTrue(Person4Utils.equals(person, personSame));
+        assertTrue(Person4Utils.equals(person, person));
+        assertFalse(Person4Utils.equals(person, personDiffAll));
+        assertFalse(Person4Utils.equals(person, personDiffPrimitive));
+        assertFalse(Person4Utils.equals(person, personDiffObject));
     }
 
     @Test
     public void testHashCode() {
-        var person = new Person4Utils(123L, "Cédric", 20, new byte[]{1,2,3});
-        var personSame = new Person4Utils(123L, "Cédric", 20, new byte[]{1,2,3});
-        var personDiffAll = new Person4Utils(124L, "Cédric 2", 21, new byte[]{1,2,3, 4});
-        assertEquals(person.hashCode(), personSame.hashCode());
-        assertNotEquals(person.hashCode(), personDiffAll.hashCode());
+        var person = new Person4(123L, "Cédric", new byte[]{1,2,3});
+        var personSame = new Person4(123L, "Cédric", new byte[]{1,2,3});
+        var personDiffAll = new Person4(124L, "Cédric 2", new byte[]{1,2,3, 4});
+        assertEquals(Person4Utils.hashCode(person), Person4Utils.hashCode(personSame));
+        assertNotEquals(Person4Utils.hashCode(person), Person4Utils.hashCode(personDiffAll));
     }
 
 }

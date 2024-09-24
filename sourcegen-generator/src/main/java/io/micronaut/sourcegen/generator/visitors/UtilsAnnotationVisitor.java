@@ -78,17 +78,8 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
             addAnnotations(utilsBuilder, element.getAnnotation(Utils.class));
 
-            // create all fields
+            // TODO: should I check for properties that have getters?
             List<PropertyElement> properties = element.getBeanProperties();
-            for (PropertyElement beanProperty : properties) {
-                createPropertyField(utilsBuilder, beanProperty);
-            }
-
-            // constructors and builders needed
-            utilsBuilder.addMethod(MethodDef.constructor().build());
-            if (!properties.isEmpty()) {
-                utilsBuilder.addMethod(createAllPropertiesConstructor(builderType, properties));
-            }
 
             // create the utils functions
             createToStringMethod(utilsBuilder, simpleName, properties);
@@ -143,46 +134,8 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
         }
     }
 
-    private static void createPropertyField(ClassDef.ClassDefBuilder classDefBuilder,
-                                            PropertyElement beanProperty) {
-        if (beanProperty.hasAnnotation(Singular.class)) {
-            String propertyName = beanProperty.getSimpleName();
-            String singularName = beanProperty.stringValue(Singular.class).orElse(null);
-            if (singularName == null) {
-                singularName = singularize(propertyName);
-                if (singularName == null) {
-                    throw new IllegalStateException("Cannot determine singular name for property: " + beanProperty.getName() + ". Please specify a singular name: @Singular(\"singularName\")");
-                }
-            }
-            if (beanProperty.getType().isAssignable(Iterable.class)) {
-                TypeDef singularTypeDef = beanProperty.getType().getFirstTypeArgument().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
-                TypeDef fieldType = TypeDef.parameterized(ArrayList.class, singularTypeDef);
-                FieldDef field = createField(beanProperty, fieldType);
-                classDefBuilder.addField(field);
-            } else if (beanProperty.getType().isAssignable(Map.class)) {
-                TypeDef keyType = beanProperty.getType().getFirstTypeArgument().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
-                TypeDef valueType = beanProperty.getType().getTypeArguments().values().stream().skip(1).findFirst().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
-                ClassTypeDef mapEntryType = TypeDef.parameterized(
-                    Map.Entry.class,
-                    keyType,
-                    valueType
-                );
-                ClassTypeDef fieldType = TypeDef.parameterized(ArrayList.class, mapEntryType);
-                FieldDef field = createField(beanProperty, fieldType);
-                classDefBuilder.addField(field);
-            }  else {
-                throw new IllegalStateException("Unsupported singular collection type [" + beanProperty.getType().getName() + "] for property: " + beanProperty.getName());
-            }
-        } else {
-            TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-            FieldDef field = createField(beanProperty, propertyTypeDef);
-            classDefBuilder.addField(field);
-        }
-    }
-
     /* TODO: complete toString method
             - Added with @ToString annotation
-            - change method signature
      */
     private static void createToStringMethod(ClassDef.ClassDefBuilder classDefBuilder, String simpleName, List<PropertyElement> properties) {
         List<StatementDef> statements = new ArrayList<>();
@@ -194,7 +147,7 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
         statements.add(strBuilder.invoke(
             "append",
             ClassTypeDef.of(strBuilder.getClass()),
-            ExpressionDef.constant(simpleName + "[")
+            ExpressionDef.constant(simpleName.substring(0, simpleName.length() - 5) + "[")
         ));
         for (int i = 0; i < properties.size(); i++) {
             PropertyElement beanProperty = properties.get(i);

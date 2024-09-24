@@ -19,7 +19,30 @@ package io.micronaut.sourcegen.example;
 //tag::clazz[]
 import io.micronaut.sourcegen.annotations.Utils;
 
+import java.util.Arrays;
+
 @Utils
-public record Person4(long id, String name, int age, byte[] bytes) {
+public class Person4 {
+    private long id;
+    private String name;
+    private byte[] bytes;
+
+    public Person4(long id, String name, byte[] bytes) {
+        this.id = id;
+        this.name = name;
+        this.bytes = Arrays.copyOf(bytes, bytes.length);
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public byte[] getBytes() {
+        return bytes;
+    }
 }
 //end::clazz[]
