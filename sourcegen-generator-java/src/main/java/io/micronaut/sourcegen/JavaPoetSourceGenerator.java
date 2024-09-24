@@ -163,7 +163,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private void writeClass(Writer writer, ClassDef classDef) throws IOException {
         TypeSpec.Builder classBuilder = TypeSpec.classBuilder(classDef.getSimpleName());
-        TypeDef thisType = classDef.asTypeDef();
         classBuilder.addModifiers(classDef.getModifiersArray());
         classDef.getTypeVariables().stream().map(t -> asTypeVariable(t, classDef)).forEach(classBuilder::addTypeVariable);
         classDef.getSuperinterfaces().stream().map(typeDef -> asType(typeDef, classDef)).forEach(classBuilder::addSuperinterface);
@@ -536,6 +535,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
             return renderExpression(objectDef, methodDef, convertExpressionDef.expressionDef());
+        }
+        if (expressionDef instanceof ExpressionDef.Cast castExpressionDef) {
+            return CodeBlock.concat(
+                CodeBlock.of("($T) ", asType(castExpressionDef.type(), objectDef)),
+                renderExpression(objectDef, methodDef, castExpressionDef.expressionDef())
+            );
         }
         if (expressionDef instanceof ExpressionDef.Constant constant) {
             return renderConstantExpression(constant);
