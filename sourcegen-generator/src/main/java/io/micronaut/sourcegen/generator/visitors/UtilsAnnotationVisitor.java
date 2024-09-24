@@ -32,10 +32,13 @@ import io.micronaut.sourcegen.model.*;
 import java.util.*;
 import javax.lang.model.element.Modifier;
 
-import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor.*;
-
 /**
- * The visitor that generates the util functions of a bean.
+ * The visitor that generates the Utils class of a bean.
+ * The Utils class can have functions substituting toString, equals, and hashcode.
+ * However, each method needs to be annotated to be generated.
+ *      \@ToString annotation for toString function
+ *      \@Equals annotation for equals function
+ *      \@HashCode annotation for hashCode function
  *
  * @author Elif Kurtay
  * @since 1.3
@@ -77,10 +80,10 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
             ClassDef.ClassDefBuilder utilsBuilder = ClassDef.builder(utilsClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
-            // TODO: should I check for properties that have getters?
+            // TODO: add checks for properties that have getters?
             List<PropertyElement> properties = element.getBeanProperties();
 
-            // create the utils functions
+            // create the utils functions if they are annotated
             if (element.hasStereotype(ToString.class)) {
                 createToStringMethod(utilsBuilder, element.getSimpleName(), properties);
             }
@@ -126,7 +129,9 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
         }
     }
 
-    /* toString method
+    /*
+    Creates a toString method with signature:
+        public static String BeanNameUtils.toString(BeanName object)
      */
     private static void createToStringMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
         List<StatementDef> statements = new ArrayList<>();
@@ -180,20 +185,22 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
         classDefBuilder.addMethod(method);
     }
 
-    /* complete equals method
+    /*
+    Creates an equals method with signature:
+        public static boolean BeanNameUtils.equals(BeanName object1, Object object2)
      */
     private static void createEqualsMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
         MethodDef method = MethodDef.builder("equals")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(boolean.class)
-            .addParameter("firstObject", TypeDef.of(Object.class))
+            .addParameter("first", ClassTypeDef.of(objectName))
             .addParameter("secondObject", TypeDef.of(Object.class))
             .build((self, parameterDef) -> {
                 // local variables needed
                 VariableDef classname = new VariableDef.Local(objectName, ClassTypeDef.of(objectName));
                 VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
                 List<StatementDef> statements = new ArrayList<>();
-                VariableDef.Local firstObject = new VariableDef.Local("first", classname.type());
+                VariableDef firstObject = parameterDef.get(0).asVariable();
                 VariableDef.Local secondObject = new VariableDef.Local("second", classname.type());
                 VariableDef.Local bothNullCondition = new VariableDef.Local("bothNullCondition", TypeDef.of(boolean.class));
                 VariableDef.Local equalsCondition = new VariableDef.Local("equalsCondition", TypeDef.of(boolean.class));
@@ -207,15 +214,12 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
                         .asConditionIf(ExpressionDef.constant(true).returning()),
                     new StatementDef.DefineAndAssign(
                         isCorrectInstance,
-                        new ExpressionDef.Condition(" && ",
-                            parameterDef.get(0).asVariable().asCondition(" instanceof ", classname),
-                            parameterDef.get(1).asVariable().asCondition(" instanceof ", classname))
+                        parameterDef.get(1).asVariable().asCondition(" instanceof ", classname)
                     ),
                     new StatementDef.If(
                         new ExpressionDef.Condition(" == ", isCorrectInstance, ExpressionDef.constant(false)),
                         ExpressionDef.constant(false).returning()
                     ),
-                    new StatementDef.DefineAndAssign(firstObject, new ExpressionDef.Cast(classname.type(), parameterDef.get(0).asVariable())),
                     new StatementDef.DefineAndAssign(secondObject, new ExpressionDef.Cast(classname.type(), parameterDef.get(1).asVariable())),
                     new StatementDef.DefineAndAssign(bothNullCondition, ExpressionDef.constant(false)),
                     new StatementDef.DefineAndAssign(equalsCondition, ExpressionDef.constant(false)),
@@ -287,7 +291,9 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
         classDefBuilder.addMethod(method);
     }
 
-    /* complete hashCode method
+    /*
+    Creates a hashCode method with signature:
+        public static int BeanNameUtils.hashCode(BeanName object)
      */
     private static void createHashCodeMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
         MethodDef method = MethodDef.builder("hashCode")

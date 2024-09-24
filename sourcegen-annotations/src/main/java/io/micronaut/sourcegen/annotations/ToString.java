@@ -15,14 +15,14 @@
  */
 package io.micronaut.sourcegen.annotations;
 
-import io.micronaut.core.annotation.Introspected;
-
 import java.lang.annotation.*;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * The Utils annotation on a bean should generate toString, equals and hashCode implementations.
+ * The ToString annotation on a bean should generate a toString method.
+ * The method will be created in [BeanName]Utils class as a static method:
+ *      public static String BeanNameUtils.toString(BeanName object)
  *
  * @author Elif Kurtay
  * @since 1.3
@@ -31,10 +31,4 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
 public @interface ToString {
-
-    /**
-     * @return Array of annotations to apply on the utils
-     */
-    Class<? extends Annotation>[] annotatedWith() default Introspected.class;
-
 }

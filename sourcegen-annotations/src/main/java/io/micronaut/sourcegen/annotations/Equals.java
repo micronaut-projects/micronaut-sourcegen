@@ -15,14 +15,14 @@
  */
 package io.micronaut.sourcegen.annotations;
 
-import io.micronaut.core.annotation.Introspected;
-
 import java.lang.annotation.*;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * The Utils annotation on a bean should generate toString, equals and hashCode implementations.
+ * The Equals annotation on a bean should generate an equals method.
+ * The method will be created in [BeanName]Utils class as a static method:
+ *      public static boolean BeanNameUtils.equals(BeanName this, Object other)
  *
  * @author Elif Kurtay
  * @since 1.3
@@ -31,10 +31,4 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
 public @interface Equals {
-
-    /**
-     * @return Array of annotations to apply on the utils
-     */
-    Class<? extends Annotation>[] annotatedWith() default Introspected.class;
-
 }

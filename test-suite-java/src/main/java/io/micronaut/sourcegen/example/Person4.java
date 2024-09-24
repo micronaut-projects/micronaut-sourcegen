@@ -15,7 +15,6 @@
  */
 package io.micronaut.sourcegen.example;
 
-
 //tag::clazz[]
 import io.micronaut.sourcegen.annotations.Equals;
 import io.micronaut.sourcegen.annotations.HashCode;
@@ -27,18 +26,30 @@ import java.util.Arrays;
 @Equals
 @HashCode
 public class Person4 {
+    public enum Title {
+        MRS,
+        MR,
+        MS
+    }
+
     private long id;
+    private Title title;
     private String name;
     private byte[] bytes;
 
-    public Person4(long id, String name, byte[] bytes) {
+    public Person4(long id, Title title, String name, byte[] bytes) {
         this.id = id;
+        this.title = title;
         this.name = name;
-        this.bytes = Arrays.copyOf(bytes, bytes.length);
+        this.bytes = (bytes != null) ? Arrays.copyOf(bytes, bytes.length) : null;
     }
 
     public long getId() {
         return id;
+    }
+
+    public Title getTitle() {
+        return title;
     }
 
     public String getName() {
@@ -47,6 +58,21 @@ public class Person4 {
 
     public byte[] getBytes() {
         return bytes;
+    }
+
+    @Override
+    public String toString() {
+        return Person4Utils.toString(this);
+    }
+
+    @Override
+    public int hashCode() {
+        return Person4Utils.hashCode(this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return Person4Utils.equals(this, obj);
     }
 }
 //end::clazz[]
