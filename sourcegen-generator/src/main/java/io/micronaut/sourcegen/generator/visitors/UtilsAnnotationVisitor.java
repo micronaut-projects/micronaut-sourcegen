@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.generator.visitors;
 
 import io.micronaut.core.annotation.*;
+import io.micronaut.core.util.StringUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
@@ -187,7 +188,7 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
         List<StatementDef> statements = new ArrayList<>();
         VariableDef.Local strBuilder = new VariableDef.Local("strBuilder", ClassTypeDef.of(StringBuilder.class));
         VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
-        VariableDef thisVariable = new VariableDef.This(ClassTypeDef.of(simpleName));
+        VariableDef thisVariable = new VariableDef.MethodParameter("object", ClassTypeDef.of(simpleName.substring(0, simpleName.length() - 5)));
 
         statements.add(strBuilder.defineAndAssign(ClassTypeDef.of(StringBuilder.class).instantiate()));
         statements.add(strBuilder.invoke(
@@ -198,6 +199,12 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
         for (int i = 0; i < properties.size(); i++) {
             PropertyElement beanProperty = properties.get(i);
             TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
+            ExpressionDef.CallInstanceMethod thisProperty = thisVariable
+                .invoke(
+                    "get" + StringUtils.capitalize(beanProperty.getSimpleName()),
+                    propertyTypeDef,
+                    List.of()
+                );
             statements.add(strBuilder.invoke(
                 "append",
                 ClassTypeDef.of(strBuilder.getClass()),
@@ -209,9 +216,9 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
                     arrays.invoke(
                         "toString",
                         TypeDef.of(String.class),
-                        new VariableDef.Field(thisVariable, beanProperty.getSimpleName(), propertyTypeDef))
+                        thisProperty)
                     :
-                    new VariableDef.Field(thisVariable, beanProperty.getSimpleName(), propertyTypeDef)
+                    thisProperty
             ).invoke(
                 "append",
                 ClassTypeDef.of(strBuilder.getClass()),
@@ -221,9 +228,9 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
         statements.add(new StatementDef.Return(strBuilder.invoke("toString", TypeDef.of(String.class))));
 
         MethodDef method = MethodDef.builder("toString")
-            .addAnnotation(Override.class)
-            .addModifiers(Modifier.PUBLIC)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(String.class)
+            .addParameter("object", ClassTypeDef.of(simpleName.substring(0, simpleName.length() - 5)))
             .addStatements(statements)
             .build();
         classDefBuilder.addMethod(method);
@@ -233,83 +240,88 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
             - Added with @Equals annotation
      */
     private static void createEqualsMethod(ClassDef.ClassDefBuilder classDefBuilder, String simpleName, List<PropertyElement> properties) {
-        // local variables needed
-        VariableDef thisVar = new VariableDef.This(ClassTypeDef.of(simpleName));
-        VariableDef thisInstance = new VariableDef.Local(simpleName, ClassTypeDef.of(simpleName));
-        VariableDef.Local isCorrectInstance = new VariableDef.Local("isCorrectInstance", TypeDef.of(boolean.class));
-        VariableDef.Local other = new VariableDef.Local("other", ClassTypeDef.of(simpleName));
-        VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
-
         MethodDef method = MethodDef.builder("equals")
-            .addAnnotation(Override.class)
-            .addModifiers(Modifier.PUBLIC)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(boolean.class)
-            .addParameter("object", TypeDef.of(Object.class))
+            .addParameter("firstObject", TypeDef.of(Object.class))
+            .addParameter("secondObject", TypeDef.of(Object.class))
             .build((self, parameterDef) -> {
+                // local variables needed
+                VariableDef classname = new VariableDef.Local(simpleName.substring(0, simpleName.length() - 5), ClassTypeDef.of(simpleName.substring(0, simpleName.length() - 5)));
+                VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
                 List<StatementDef> statements = new ArrayList<>();
-                // early exist scenarios: object references match, objects are not the same instance
-                statements.add(StatementDef.multi(
-                    parameterDef.get(0).asExpression().asCondition(" == ", thisVar).asConditionIf(
-                        ExpressionDef.constant(true).returning()),
-                    new StatementDef.DefineAndAssign(isCorrectInstance, parameterDef.get(0).asExpression().asCondition(" instanceof ", thisInstance)),
-                    new StatementDef.If(
-                        new ExpressionDef.Condition(" == ", isCorrectInstance, ExpressionDef.constant(false)),
-                        ExpressionDef.constant(false).returning()
-                    )
-                ));
-
-                // local variables for property checks
+                VariableDef.Local firstObject = new VariableDef.Local("first", classname.type());
+                VariableDef.Local secondObject = new VariableDef.Local("second", classname.type());
                 VariableDef.Local bothNullCondition = new VariableDef.Local("bothNullCondition", TypeDef.of(boolean.class));
                 VariableDef.Local equalsCondition = new VariableDef.Local("equalsCondition", TypeDef.of(boolean.class));
                 VariableDef.Local isPropertyEqual = new VariableDef.Local("isPropertyEqual", TypeDef.of(boolean.class));
-                statements.add(
-                    StatementDef.multi(
-                        new StatementDef.DefineAndAssign(other,
-                            (new ExpressionDef.Condition(".", thisInstance, new VariableDef.Local("class", TypeDef.of(Class.class))))
-                                .invoke("cast", ClassTypeDef.of(simpleName), parameterDef.get(0).asExpression())),
-                        new StatementDef.DefineAndAssign(bothNullCondition, ExpressionDef.constant(false)),
-                        new StatementDef.DefineAndAssign(equalsCondition, ExpressionDef.constant(false)),
-                        new StatementDef.DefineAndAssign(isPropertyEqual, ExpressionDef.constant(false))
-                    )
-                );
+                VariableDef.Local isCorrectInstance = new VariableDef.Local("isCorrectInstance", TypeDef.of(boolean.class));
+
+                // early exist scenarios: object references match, objects are not the correct instance
+                // if not returned, cast objects to the correct class and define local parameters
+                statements.add(StatementDef.multi(
+                    parameterDef.get(0).asVariable().asCondition(" == ", parameterDef.get(1).asVariable())
+                        .asConditionIf(ExpressionDef.constant(true).returning()),
+                    new StatementDef.DefineAndAssign(
+                        isCorrectInstance,
+                        new ExpressionDef.Condition(" && ",
+                            parameterDef.get(0).asVariable().asCondition(" instanceof ", classname),
+                            parameterDef.get(1).asVariable().asCondition(" instanceof ", classname))
+                    ),
+                    new StatementDef.If(
+                        new ExpressionDef.Condition(" == ", isCorrectInstance, ExpressionDef.constant(false)),
+                        ExpressionDef.constant(false).returning()
+                    ),
+                    new StatementDef.DefineAndAssign(firstObject, new ExpressionDef.Cast(classname.type(), parameterDef.get(0).asVariable())),
+                    new StatementDef.DefineAndAssign(secondObject, new ExpressionDef.Cast(classname.type(), parameterDef.get(1).asVariable())),
+                    new StatementDef.DefineAndAssign(bothNullCondition, ExpressionDef.constant(false)),
+                    new StatementDef.DefineAndAssign(equalsCondition, ExpressionDef.constant(false)),
+                    new StatementDef.DefineAndAssign(isPropertyEqual, ExpressionDef.constant(false))
+                ));
 
                 // property equal checks
                 for (PropertyElement beanProperty : properties) {
                     TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
+                    ExpressionDef.CallInstanceMethod firstProperty = firstObject
+                        .invoke(
+                            "get" + StringUtils.capitalize(beanProperty.getSimpleName()),
+                            propertyTypeDef,
+                            List.of()
+                        );
+                    ExpressionDef.CallInstanceMethod secondProperty = secondObject
+                        .invoke(
+                            "get" + StringUtils.capitalize(beanProperty.getSimpleName()),
+                            propertyTypeDef,
+                            List.of()
+                        );
+
                     if (propertyTypeDef instanceof TypeDef.Primitive) {
                         // ==, primitives do not need null check
                         statements.add(new StatementDef.If(
-                            new ExpressionDef.Condition(" != ",
-                                new VariableDef.Field(thisVar, beanProperty.getSimpleName(), propertyTypeDef),
-                                new VariableDef.Field(other, beanProperty.getSimpleName(), propertyTypeDef)
-                            ),
+                            new ExpressionDef.Condition(" != ", firstProperty, secondProperty),
                             ExpressionDef.constant(false).returning()
                         ));
                     } else {
                         // .equals, check for double null or equal objects
                         statements.add(new StatementDef.Assign(bothNullCondition,
                                 new ExpressionDef.Condition(" && ",
-                                    new VariableDef.Field(thisVar, beanProperty.getSimpleName(), propertyTypeDef).isNull(),
-                                    new VariableDef.Field(other, beanProperty.getSimpleName(), propertyTypeDef).isNull())
+                                    firstProperty.isNull(),
+                                    secondProperty.isNull())
                             )
                         );
                         if (propertyTypeDef instanceof TypeDef.Array) {
                             statements.add(new StatementDef.Assign(equalsCondition,
                                     new ExpressionDef.Condition(" && ",
-                                        new VariableDef.Field(thisVar, beanProperty.getSimpleName(), propertyTypeDef).isNonNull(),
-                                        arrays.invoke("equals", TypeDef.BOOLEAN, Arrays.asList(
-                                            new VariableDef.Field(thisVar, beanProperty.getSimpleName(), propertyTypeDef),
-                                            new VariableDef.Field(other, beanProperty.getSimpleName(), propertyTypeDef))
-                                        )
+                                        firstProperty.isNonNull(),
+                                        arrays.invoke("equals", TypeDef.BOOLEAN, Arrays.asList(firstProperty, secondProperty))
                                     )
                                 )
                             );
                         } else {
                             statements.add(new StatementDef.Assign(equalsCondition,
                                     new ExpressionDef.Condition(" && ",
-                                        new VariableDef.Field(thisVar, beanProperty.getSimpleName(), propertyTypeDef).isNonNull(),
-                                        new VariableDef.Field(thisVar, beanProperty.getSimpleName(), propertyTypeDef)
-                                            .invoke("equals", TypeDef.BOOLEAN, new VariableDef.Field(other, beanProperty.getSimpleName(), propertyTypeDef))
+                                        firstProperty.isNonNull(),
+                                        firstProperty.invoke("equals", TypeDef.BOOLEAN, secondProperty)
                                     )
                                 )
                             );
@@ -336,27 +348,28 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
             - Added with @HashCode annotation
      */
     private static void createHashCodeMethod(ClassDef.ClassDefBuilder classDefBuilder, String simpleName, List<PropertyElement> properties) {
-        VariableDef.Local hashValue = new VariableDef.Local("hashValue", TypeDef.of(int.class));
-        VariableDef.Local propertyHashValue = new VariableDef.Local("propertyHashValue", TypeDef.of(int.class));
-        VariableDef thisVar = new VariableDef.This(ClassTypeDef.of(simpleName));
-        VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
-
         MethodDef method = MethodDef.builder("hashCode")
-            .addAnnotation(Override.class)
-            .addModifiers(Modifier.PUBLIC)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addParameter("object", ClassTypeDef.of(simpleName.substring(0, simpleName.length() - 5)))
             .returns(int.class)
             .build((self, parameterDef) -> {
                 List<StatementDef> statements = new ArrayList<>();
                 ExpressionDef propertyHashExpression;
+                VariableDef.Local hashValue = new VariableDef.Local("hashValue", TypeDef.of(int.class));
+                VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
+
                 // initialise local properties
-                statements.add(StatementDef.multi(
-                    new StatementDef.DefineAndAssign(hashValue, ExpressionDef.constant(1)),
-                    new StatementDef.DefineAndAssign(propertyHashValue, ExpressionDef.constant(0))
-                ));
+                statements.add(new StatementDef.DefineAndAssign(hashValue, ExpressionDef.constant(1)));
+
                 // add all property hash calculations
                 for (PropertyElement beanProperty : properties) {
                     TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-                    VariableDef thisProperty = new VariableDef.Field(thisVar, beanProperty.getSimpleName(), propertyTypeDef);
+                    ExpressionDef.CallInstanceMethod thisProperty = parameterDef.get(0).asVariable()
+                        .invoke(
+                            "get" + StringUtils.capitalize(beanProperty.getSimpleName()),
+                            propertyTypeDef,
+                            List.of()
+                        );
 
                     // calculate new property hash value
                     if (propertyTypeDef instanceof TypeDef.Array) {
@@ -381,13 +394,11 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
                                 " >>> ",
                                 propertyHashExpression,
                                 new ExpressionDef.Condition(" ^ ", ExpressionDef.constant(32), propertyHashExpression));
-                            propertyHashExpression = new ExpressionDef.Cast(TypeDef.of(int.class), propertyHashExpression);
                         } else if (typeName.equals("long")) {
                             propertyHashExpression = new ExpressionDef.Condition(
                                 " >>> ",
                                 thisProperty,
                                 new ExpressionDef.Condition(" ^ ", ExpressionDef.constant(32), thisProperty));
-                            propertyHashExpression = new ExpressionDef.Cast(TypeDef.of(int.class), propertyHashExpression);
                         } else if (typeName.equals("char")) {
                             propertyHashExpression = new ExpressionDef.Condition(" - ", thisProperty, ExpressionDef.constant('0'));
                         } else if (typeName.equals("short")) {
@@ -404,10 +415,12 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Utils, O
                     }
 
                     // hash update
-                    statements.add(StatementDef.multi(
-                        new StatementDef.Assign(propertyHashValue, propertyHashExpression),
-                        new StatementDef.Assign(hashValue, new ExpressionDef.Condition(" * ", hashValue,
-                            new ExpressionDef.Condition(" + ", ExpressionDef.constant(HASH_MULTIPLIER), propertyHashValue))))
+                    statements.add(
+                        new StatementDef.Assign(hashValue,
+                            new ExpressionDef.Condition(" * ", hashValue,
+                            new ExpressionDef.Condition(" + ",
+                                ExpressionDef.constant(HASH_MULTIPLIER),
+                                new ExpressionDef.Cast(TypeDef.of(int.class), propertyHashExpression))))
                     );
                 }
                 statements.add(hashValue.returning());
