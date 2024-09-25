@@ -21,7 +21,7 @@ import static org.junit.Assert.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-public class PersonUtilsTest {
+public class UtilsTest {
 
     @Test
     public void testToString() {
@@ -30,6 +30,15 @@ public class PersonUtilsTest {
         assertNotNull(Person4Utils.toString(person));
         assertTrue(person.toString().contains("Person4["));
         assertEquals("Person4[id=123, title=MR, name=Cédric, bytes=[1, 2, 3]]", person.toString());
+    }
+
+    @Test
+    public void testToStringWithSecret() {
+        var elephant = new Elephant("Daisy");
+
+        assertNotNull(ElephantUtils.toString(elephant));
+        assertTrue(elephant.toString().contains("Elephant["));
+        assertEquals("Elephant[name=******]", elephant.toString());
     }
 
     @Test

@@ -24,6 +24,7 @@ import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.annotations.Equals;
 import io.micronaut.sourcegen.annotations.HashCode;
+import io.micronaut.sourcegen.annotations.Secret;
 import io.micronaut.sourcegen.annotations.ToString;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
@@ -36,9 +37,9 @@ import javax.lang.model.element.Modifier;
  * The visitor that generates the Utils class of a bean.
  * The Utils class can have functions substituting toString, equals, and hashcode.
  * However, each method needs to be annotated to be generated.
- *      \@ToString annotation for toString function
- *      \@Equals annotation for equals function
- *      \@HashCode annotation for hashCode function
+ *      @link ToString annotation for toString function
+ *      @link Equals annotation for equals function
+ *      @link HashCode annotation for hashCode function
  *
  * @author Elif Kurtay
  * @since 1.3
@@ -148,7 +149,8 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
         for (int i = 0; i < properties.size(); i++) {
             PropertyElement beanProperty = properties.get(i);
             TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-            ExpressionDef.CallInstanceMethod thisProperty = thisVariable
+            ExpressionDef thisProperty = (beanProperty.hasAnnotation(Secret.class)) ?
+                ExpressionDef.constant("******") : thisVariable
                 .invoke(
                     "get" + StringUtils.capitalize(beanProperty.getSimpleName()),
                     propertyTypeDef,
