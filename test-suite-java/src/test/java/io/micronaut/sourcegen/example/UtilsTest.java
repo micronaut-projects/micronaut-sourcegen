@@ -34,11 +34,10 @@ public class UtilsTest {
 
     @Test
     public void testToStringWithSecret() {
-        var elephant = new Elephant("Daisy");
+        var elephant = new Elephant("Daisy", 5, false);
 
         assertNotNull(ElephantUtils.toString(elephant));
-        assertTrue(elephant.toString().contains("Elephant["));
-        assertEquals("Elephant[name=******]", elephant.toString());
+        assertEquals("Elephant[name=******, hasSibling=false]", elephant.toString());
     }
 
     @Test

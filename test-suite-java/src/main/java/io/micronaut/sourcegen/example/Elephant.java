@@ -22,6 +22,14 @@ import io.micronaut.sourcegen.annotations.ToString;
 public class Elephant {
     @Secret
     private String name;
+    public int age;
+    private boolean hasSibling;
+
+    public Elephant(String name, int age, boolean hasSibling) {
+        this.name = name;
+        this.age = age;
+        this.hasSibling = hasSibling;
+    }
 
     public Elephant(String name) {
         this.name = name;
@@ -29,6 +37,10 @@ public class Elephant {
 
     public String getName() {
         return name;
+    }
+
+    public boolean isHasSibling() {
+        return hasSibling;
     }
 
     public String toString() {

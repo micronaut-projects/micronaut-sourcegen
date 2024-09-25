@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.generator.visitors;
 
 import io.micronaut.core.annotation.*;
-import io.micronaut.core.util.StringUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
@@ -37,9 +36,9 @@ import javax.lang.model.element.Modifier;
  * The visitor that generates the Utils class of a bean.
  * The Utils class can have functions substituting toString, equals, and hashcode.
  * However, each method needs to be annotated to be generated.
- *      @link ToString annotation for toString function
- *      @link Equals annotation for equals function
- *      @link HashCode annotation for hashCode function
+ *      {@link ToString} annotation for toString function
+ *      {@link Equals} annotation for equals function
+ *      {@link HashCode} annotation for hashCode function
  *
  * @author Elif Kurtay
  * @since 1.3
@@ -81,7 +80,6 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
             ClassDef.ClassDefBuilder utilsBuilder = ClassDef.builder(utilsClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
-            // TODO: add checks for properties that have getters?
             List<PropertyElement> properties = element.getBeanProperties();
 
             // create the utils functions if they are annotated
@@ -135,55 +133,65 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
         public static String BeanNameUtils.toString(BeanName object)
      */
     private static void createToStringMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
-        List<StatementDef> statements = new ArrayList<>();
-        VariableDef.Local strBuilder = new VariableDef.Local("strBuilder", ClassTypeDef.of(StringBuilder.class));
-        VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
-        VariableDef thisVariable = new VariableDef.MethodParameter("object", ClassTypeDef.of(objectName));
-
-        statements.add(strBuilder.defineAndAssign(ClassTypeDef.of(StringBuilder.class).instantiate()));
-        statements.add(strBuilder.invoke(
-            "append",
-            ClassTypeDef.of(strBuilder.getClass()),
-            ExpressionDef.constant(objectName + "[")
-        ));
-        for (int i = 0; i < properties.size(); i++) {
-            PropertyElement beanProperty = properties.get(i);
-            TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-            ExpressionDef thisProperty = (beanProperty.hasAnnotation(Secret.class)) ?
-                ExpressionDef.constant("******") : thisVariable
-                .invoke(
-                    "get" + StringUtils.capitalize(beanProperty.getSimpleName()),
-                    propertyTypeDef,
-                    List.of()
-                );
-            statements.add(strBuilder.invoke(
-                "append",
-                ClassTypeDef.of(strBuilder.getClass()),
-                ExpressionDef.constant(beanProperty.getSimpleName() + "=")
-            ).invoke(
-                "append",
-                ClassTypeDef.of(strBuilder.getClass()),
-                (TypeDef.of(beanProperty.getType()) instanceof TypeDef.Array) ?
-                    arrays.invoke(
-                        "toString",
-                        TypeDef.of(String.class),
-                        thisProperty)
-                    :
-                    thisProperty
-            ).invoke(
-                "append",
-                ClassTypeDef.of(strBuilder.getClass()),
-                ExpressionDef.constant((i == properties.size() - 1) ? "]" : ", ")
-            ));
-        }
-        statements.add(new StatementDef.Return(strBuilder.invoke("toString", TypeDef.of(String.class))));
-
         MethodDef method = MethodDef.builder("toString")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(String.class)
             .addParameter("object", ClassTypeDef.of(objectName))
-            .addStatements(statements)
-            .build();
+            .build((self, parameterDef) -> {
+                List<StatementDef> statements = new ArrayList<>();
+                VariableDef.Local strBuilder = new VariableDef.Local("strBuilder", ClassTypeDef.of(StringBuilder.class));
+
+                statements.add(strBuilder.defineAndAssign(ClassTypeDef.of(StringBuilder.class).instantiate()));
+                statements.add(strBuilder.invoke(
+                    "append",
+                    ClassTypeDef.of(strBuilder.getClass()),
+                    ExpressionDef.constant(objectName + "[")
+                ));
+
+                PropertyElement beanProperty;
+                TypeDef propertyTypeDef;
+                ExpressionDef thisProperty;
+                for (int i = 0; i < properties.size(); i++) {
+                    beanProperty = properties.get(i);
+                    propertyTypeDef = TypeDef.of(beanProperty.getType());
+
+                    // get property value
+                    if (beanProperty.hasAnnotation(Secret.class)) {
+                        thisProperty = ExpressionDef.constant("******");
+                    } else if (beanProperty.getReadMethod().isPresent()) {
+                        thisProperty = parameterDef.get(0).asVariable().invoke(
+                            beanProperty.getReadMethod().get().getSimpleName(),
+                            propertyTypeDef,
+                            List.of()
+                        );
+                    } else {
+                        continue;
+                    }
+
+                    statements.add(strBuilder.invoke(
+                        "append",
+                        ClassTypeDef.of(strBuilder.getClass()),
+                        ExpressionDef.constant(beanProperty.getSimpleName() + "=")
+                    ).invoke(
+                        "append",
+                        ClassTypeDef.of(strBuilder.getClass()),
+                        (TypeDef.of(beanProperty.getType()) instanceof TypeDef.Array) ?
+                            new ExpressionDef.CallStaticMethod(
+                                ClassTypeDef.of(Arrays.class),
+                                "toString",
+                                List.of(thisProperty),
+                                TypeDef.of(String.class))
+                            :
+                            thisProperty
+                    ).invoke(
+                        "append",
+                        ClassTypeDef.of(strBuilder.getClass()),
+                        ExpressionDef.constant((i == properties.size() - 1) ? "]" : ", ")
+                    ));
+                }
+                statements.add(new StatementDef.Return(strBuilder.invoke("toString", TypeDef.of(String.class))));
+                return StatementDef.multi(statements);
+            });
         classDefBuilder.addMethod(method);
     }
 
@@ -200,7 +208,6 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
             .build((self, parameterDef) -> {
                 // local variables needed
                 VariableDef classname = new VariableDef.Local(objectName, ClassTypeDef.of(objectName));
-                VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
                 List<StatementDef> statements = new ArrayList<>();
                 VariableDef firstObject = parameterDef.get(0).asVariable();
                 VariableDef.Local secondObject = new VariableDef.Local("second", classname.type());
@@ -229,21 +236,29 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
                 ));
 
                 // property equal checks
+                TypeDef propertyTypeDef;
+                ExpressionDef.CallInstanceMethod firstProperty;
+                ExpressionDef.CallInstanceMethod secondProperty;
                 for (PropertyElement beanProperty : properties) {
-                    TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-                    ExpressionDef.CallInstanceMethod firstProperty = firstObject
-                        .invoke(
-                            "get" + StringUtils.capitalize(beanProperty.getSimpleName()),
-                            propertyTypeDef,
-                            List.of()
-                        );
-                    ExpressionDef.CallInstanceMethod secondProperty = secondObject
-                        .invoke(
-                            "get" + StringUtils.capitalize(beanProperty.getSimpleName()),
-                            propertyTypeDef,
-                            List.of()
-                        );
+                    propertyTypeDef = TypeDef.of(beanProperty.getType());
+                    if (beanProperty.getReadMethod().isPresent()) {
+                        firstProperty = firstObject
+                            .invoke(
+                                beanProperty.getReadMethod().get().getSimpleName(),
+                                propertyTypeDef,
+                                List.of()
+                            );
+                        secondProperty = secondObject
+                            .invoke(
+                                beanProperty.getReadMethod().get().getSimpleName(),
+                                propertyTypeDef,
+                                List.of()
+                            );
+                    } else {
+                        continue;
+                    }
 
+                    // equal check according to the properties' type
                     if (propertyTypeDef instanceof TypeDef.Primitive) {
                         // ==, primitives do not need null check
                         statements.add(new StatementDef.If(
@@ -262,7 +277,11 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
                             statements.add(new StatementDef.Assign(equalsCondition,
                                     new ExpressionDef.Condition(" && ",
                                         firstProperty.isNonNull(),
-                                        arrays.invoke("equals", TypeDef.BOOLEAN, Arrays.asList(firstProperty, secondProperty))
+                                        new ExpressionDef.CallStaticMethod(
+                                            ClassTypeDef.of(Arrays.class),
+                                            "equals",
+                                            Arrays.asList(firstProperty, secondProperty),
+                                            TypeDef.BOOLEAN)
                                     )
                                 )
                             );
@@ -308,18 +327,23 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
                 VariableDef.Local hashValue = new VariableDef.Local("hashValue", TypeDef.of(int.class));
                 VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
 
-                // initialise local properties
+                // initialize hash value at 1
                 statements.add(new StatementDef.DefineAndAssign(hashValue, ExpressionDef.constant(1)));
 
-                // add all property hash calculations
+                // add all property values to hash calculations
+                TypeDef propertyTypeDef;
+                ExpressionDef thisProperty;
                 for (PropertyElement beanProperty : properties) {
-                    TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-                    ExpressionDef.CallInstanceMethod thisProperty = parameterDef.get(0).asVariable()
-                        .invoke(
-                            "get" + StringUtils.capitalize(beanProperty.getSimpleName()),
+                    propertyTypeDef = TypeDef.of(beanProperty.getType());
+                    if (beanProperty.getReadMethod().isPresent()) {
+                        thisProperty = parameterDef.get(0).asVariable().invoke(
+                            beanProperty.getReadMethod().get().getSimpleName(),
                             propertyTypeDef,
                             List.of()
                         );
+                    } else {
+                        continue;
+                    }
 
                     // calculate new property hash value
                     if (propertyTypeDef instanceof TypeDef.Array) {
