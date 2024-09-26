@@ -100,4 +100,15 @@ public class ExpressionWriteTest extends AbstractWriteTest {
 
         assertEquals("(Object) (\"hello\")", result);
     }
+
+    @Test
+    public void returnCastedVariable() throws IOException {
+        ExpressionDef castedExpression = new Cast(
+            TypeDef.of(Object.class),
+            new VariableDef.Local("field", TypeDef.of(Object.class))
+        );
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(Object) field", result);
+    }
 }

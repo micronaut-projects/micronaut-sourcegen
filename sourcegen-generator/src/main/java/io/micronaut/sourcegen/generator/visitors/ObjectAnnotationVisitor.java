@@ -44,6 +44,10 @@ import javax.lang.model.element.Modifier;
 @Internal
 public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object, Object> {
 
+    private static final int NULL_HASH_VALUE = 43;
+    private static final int TRUE_HASH_VALUE = 79;
+    private static final int FALSE_HASH_VALUE = 97;
+    private static final int HASH_MULTIPLIER = 59;
     private final Set<String> processed = new HashSet<>();
 
     @Override
@@ -194,7 +198,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                         ExpressionDef.CallInstanceMethod secondProperty;
                         for (PropertyElement beanProperty : properties) {
                             propertyTypeDef = TypeDef.of(beanProperty.getType());
-                            if (beanProperty.getReadMethod().isPresent()) {
+                            if ( !beanProperty.hasAnnotation(EqualsAndHashCode.Exclude.class) && beanProperty.getReadMethod().isPresent()) {
                                 firstProperty = thisObject.invoke(beanProperty.getReadMethod().get(), List.of());
                                 secondProperty = variableDef.invoke(beanProperty.getReadMethod().get(), List.of());
                             } else {
@@ -228,13 +232,15 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             .addParameter("object", ClassTypeDef.of(objectName))
             .returns(int.class)
             .build((self, parameterDef) -> {
-                List<ExpressionDef> parameters = new ArrayList<>();
+                List<StatementDef> hashUpdates = new ArrayList<>();
+                VariableDef.Local hashValue = new VariableDef.Local("hashValue", TypeDef.of(int.class));
                 TypeDef propertyTypeDef;
                 ExpressionDef thisProperty;
+                ExpressionDef propertyHashCalculation;
 
                 for (PropertyElement beanProperty : properties) {
                     propertyTypeDef = TypeDef.of(beanProperty.getType());
-                    if (beanProperty.getReadMethod().isPresent()) {
+                    if (!beanProperty.hasAnnotation(EqualsAndHashCode.Exclude.class) && beanProperty.getReadMethod().isPresent()) {
                         thisProperty = parameterDef.get(0).asVariable()
                             .invoke(beanProperty.getReadMethod().get(), List.of());
                     } else {
@@ -244,11 +250,47 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                     // calculate new property hash value
                     if (propertyTypeDef instanceof TypeDef.Array) {
                         String methodName = (((TypeDef.Array) propertyTypeDef).dimensions() > 1) ?  "deepHashCode" : "hashCode";
-                        thisProperty = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.of(int.class), thisProperty);
+                        propertyHashCalculation = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.of(int.class), thisProperty);
+                    } else if (propertyTypeDef instanceof TypeDef.Primitive) {
+                        String typeName = ((TypeDef.Primitive) propertyTypeDef).name();
+                        if (propertyTypeDef == TypeDef.BOOLEAN) {
+                            propertyHashCalculation = thisProperty.asConditionIfElse(
+                                ExpressionDef.constant(TRUE_HASH_VALUE),
+                                ExpressionDef.constant(FALSE_HASH_VALUE)
+                            );
+                        } else if (typeName.equals("float")) {
+                            propertyHashCalculation = ClassTypeDef.of(Float.class).invokeStatic("floatToIntBits", TypeDef.of(int.class), thisProperty);
+                        } else if (typeName.equals("double")) {
+                            // double -> long -> int
+                            propertyHashCalculation = ClassTypeDef.of(Double.class).invokeStatic("doubleToLongBits", TypeDef.of(int.class), thisProperty);
+                            propertyHashCalculation = propertyHashCalculation.asCondition(" >>> ",
+                                ExpressionDef.constant(32).asCondition(" ^ ", propertyHashCalculation));
+                        } else if (typeName.equals("long")) {
+                            propertyHashCalculation = thisProperty.asCondition(" >>> ",
+                                ExpressionDef.constant(32).asCondition(" ^ ", thisProperty));
+                        } else if (typeName.equals("char")) {
+                            propertyHashCalculation = thisProperty.asCondition(" - ", ExpressionDef.constant('0'));
+                        } else if (typeName.equals("short")) {
+                            propertyHashCalculation = thisProperty.asCondition(" & ", ExpressionDef.constant(0xffff));
+                        } else { // for int and byte, return itself as an int
+                            propertyHashCalculation = thisProperty;
+                        }
+                    } else { // OBJECT
+                        propertyHashCalculation = thisProperty.isNull().asConditionIfElse(
+                            ExpressionDef.constant(NULL_HASH_VALUE),
+                            thisProperty.invoke("hashCode", TypeDef.of(int.class), List.of())
+                        );
                     }
-                    parameters.add(thisProperty);
+                    hashUpdates.add(new StatementDef.Assign(hashValue,
+                        hashValue.asCondition(" * ", ExpressionDef.constant(HASH_MULTIPLIER)
+                            .asCondition(" + ", propertyHashCalculation.cast(TypeDef.of(int.class))))));
                 }
-                return ClassTypeDef.of(Objects.class).invokeStatic("hash", TypeDef.of(int.class), parameters).returning();
+                return StatementDef.multi(
+                    parameterDef.get(0).asExpression().isNull().asConditionIf(ExpressionDef.constant(0).returning()),
+                    hashValue.defineAndAssign(ExpressionDef.constant(1)),
+                    StatementDef.multi(hashUpdates),
+                    hashValue.returning()
+                );
             });
         classDefBuilder.addMethod(method);
     }
