@@ -21,9 +21,7 @@ import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
-import io.micronaut.sourcegen.annotations.Builder;
 import io.micronaut.sourcegen.annotations.EqualsAndHashCode;
-import io.micronaut.sourcegen.annotations.Secret;
 import io.micronaut.sourcegen.annotations.ToString;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
@@ -135,55 +133,37 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(String.class)
             .addParameter("object", ClassTypeDef.of(objectName))
-            .build((self, parameterDef) -> {
-                List<StatementDef> statements = new ArrayList<>();
-                VariableDef.Local strBuilder = new VariableDef.Local("strBuilder", ClassTypeDef.of(StringBuilder.class));
+            .build((self, parameterDef) ->
+                ClassTypeDef.of(StringBuilder.class).instantiate(ExpressionDef.constant(objectName + "[")).newLocal("strBuilder", variableDef -> {
+                    ExpressionDef exp = variableDef;
+                    for (int i = 0; i < properties.size(); i++) {
+                        var beanProperty = properties.get(i);
+                        ExpressionDef propertyValue;
+                        // get property value
+                        if (beanProperty.hasAnnotation(ToString.Exclude.class)) {
+                            propertyValue = ExpressionDef.constant("******");
+                        } else if (beanProperty.getReadMethod().isPresent()) {
+                            propertyValue = parameterDef.get(0).asVariable().invoke(
+                                beanProperty.getReadMethod().get().getSimpleName(),
+                                TypeDef.of(beanProperty.getType()),
+                                List.of()
+                            );
+                        } else {
+                            continue;
+                        }
 
-                statements.add(strBuilder.defineAndAssign(ClassTypeDef.of(StringBuilder.class).instantiate(ExpressionDef.constant(objectName + "["))));
-
-                PropertyElement beanProperty;
-                TypeDef propertyTypeDef;
-                ExpressionDef thisProperty;
-                for (int i = 0; i < properties.size(); i++) {
-                    beanProperty = properties.get(i);
-                    propertyTypeDef = TypeDef.of(beanProperty.getType());
-
-                    // get property value
-                    if (beanProperty.hasAnnotation(Secret.class)) {
-                        thisProperty = ExpressionDef.constant("******");
-                    } else if (beanProperty.getReadMethod().isPresent()) {
-                        thisProperty = parameterDef.get(0).asVariable().invoke(
-                            beanProperty.getReadMethod().get().getSimpleName(),
-                            propertyTypeDef,
-                            List.of()
-                        );
-                    } else {
-                        continue;
+                        exp = exp.invoke("append", variableDef.type(),
+                                ExpressionDef.constant(beanProperty.getName() + "="))
+                            .invoke("append", variableDef.type(),
+                                (TypeDef.of(beanProperty.getType()) instanceof TypeDef.Array) ?
+                                    ClassTypeDef.of(Arrays.class).invokeStatic("toString",
+                                        TypeDef.of(String.class), List.of(propertyValue)) : propertyValue)
+                            .invoke("append", variableDef.type(),
+                                ExpressionDef.constant((i == properties.size() - 1) ? "]" : ", "));
                     }
-
-                    statements.add(strBuilder.invoke(
-                        "append",
-                        ClassTypeDef.of(strBuilder.getClass()),
-                        ExpressionDef.constant(beanProperty.getSimpleName() + "=")
-                    ).invoke(
-                        "append",
-                        ClassTypeDef.of(strBuilder.getClass()),
-                        (TypeDef.of(beanProperty.getType()) instanceof TypeDef.Array) ?
-                            ClassTypeDef.of(Arrays.class).invokeStatic(
-                                "toString",
-                                TypeDef.of(String.class),
-                                List.of(thisProperty))
-                            :
-                            thisProperty
-                    ).invoke(
-                        "append",
-                        ClassTypeDef.of(strBuilder.getClass()),
-                        ExpressionDef.constant((i == properties.size() - 1) ? "]" : ", ")
-                    ));
-                }
-                statements.add(strBuilder.invoke("toString", TypeDef.of(String.class)).returning());
-                return StatementDef.multi(statements);
-            });
+                    return exp.invoke("toString", TypeDef.of(String.class)).returning();
+                })
+            );
         classDefBuilder.addMethod(method);
     }
 
@@ -198,53 +178,41 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             .addParameter("thisObject", ClassTypeDef.of(objectName))
             .addParameter("o", TypeDef.of(Object.class))
             .build((self, parameterDef) -> {
-                // local variables needed
                 VariableDef thisObject = parameterDef.get(0).asVariable();
                 VariableDef o = parameterDef.get(1).asVariable();
-                VariableDef.Local other = new VariableDef.Local("otherObject", ClassTypeDef.of(objectName));
-
-                // property equal checks
-                TypeDef propertyTypeDef;
-                ExpressionDef.CallInstanceMethod firstProperty;
-                ExpressionDef.CallInstanceMethod secondProperty;
-                ExpressionDef propertyConditions = null;
-                for (PropertyElement beanProperty : properties) {
-                    propertyTypeDef = TypeDef.of(beanProperty.getType());
-                    if (beanProperty.getReadMethod().isPresent()) {
-                        firstProperty = thisObject.invoke(beanProperty.getReadMethod().get(), List.of());
-                        secondProperty = other.invoke(beanProperty.getReadMethod().get(), List.of());
-                    } else {
-                        continue;
-                    }
-
-                    // equal check according to the properties' type
-                    if (propertyTypeDef instanceof TypeDef.Primitive) {
-                        if (propertyConditions == null) {
-                            propertyConditions = firstProperty.asCondition(" == ", secondProperty);
-                        } else {
-                            propertyConditions = propertyConditions.asCondition(" && ", firstProperty.asCondition(" == ", secondProperty));
-                        }
-                    } else {
-                        String methodName = (propertyTypeDef instanceof TypeDef.Array) ? "deepEquals" : "equals";
-                        if (propertyConditions == null) {
-                            propertyConditions = ClassTypeDef.of(Objects.class)
-                                .invokeStatic(methodName, TypeDef.BOOLEAN, Arrays.asList(firstProperty, secondProperty));
-                        } else {
-                            propertyConditions = propertyConditions.asCondition(" && ", ClassTypeDef.of(Objects.class)
-                                .invokeStatic(methodName, TypeDef.BOOLEAN, Arrays.asList(firstProperty, secondProperty)));
-                        }
-                    }
-                }
-
                 return StatementDef.multi(
                     thisObject.asCondition(" == ", o)
-                        .asConditionIf(ExpressionDef.constant(true).returning()),
+                        .asConditionIf(ExpressionDef.trueValue().returning()),
                     o.isNull().asCondition(" || ",
                         thisObject.invoke("getClass", ClassTypeDef.of("Class"))
-                            .asCondition(" != ", o.invoke("getClass", ClassTypeDef.of("Class")))
-                    ).asConditionIf(ExpressionDef.constant(false).returning()),
-                    other.defineAndAssign(o.cast(ClassTypeDef.of(objectName))),
-                    Objects.requireNonNullElseGet(propertyConditions, () -> ExpressionDef.constant(true)).returning()
+                            .asCondition(" != ", o.invoke("getClass", ClassTypeDef.of("Class"))))
+                        .asConditionIf(ExpressionDef.falseValue().returning()),
+                    o.cast(ClassTypeDef.of(objectName)).newLocal("other", variableDef -> {
+                        ExpressionDef exp = null;
+                        TypeDef propertyTypeDef;
+                        ExpressionDef.CallInstanceMethod firstProperty;
+                        ExpressionDef.CallInstanceMethod secondProperty;
+                        for (PropertyElement beanProperty : properties) {
+                            propertyTypeDef = TypeDef.of(beanProperty.getType());
+                            if (beanProperty.getReadMethod().isPresent()) {
+                                firstProperty = thisObject.invoke(beanProperty.getReadMethod().get(), List.of());
+                                secondProperty = variableDef.invoke(beanProperty.getReadMethod().get(), List.of());
+                            } else {
+                                continue;
+                            }
+                            ExpressionDef newEqualsExpression = (propertyTypeDef instanceof TypeDef.Primitive) ?
+                                firstProperty.asCondition(" == ", secondProperty)
+                                : ClassTypeDef.of(Objects.class).invokeStatic(
+                                    (propertyTypeDef instanceof TypeDef.Array) ? "deepEquals" : "equals",
+                                TypeDef.BOOLEAN, Arrays.asList(firstProperty, secondProperty));
+                            if (exp == null) {
+                                exp = newEqualsExpression;
+                            } else {
+                                exp = exp.asCondition(" && ", newEqualsExpression);
+                            }
+                        }
+                        return Objects.requireNonNullElseGet(exp, ExpressionDef::trueValue).returning();
+                    })
                 );
             });
         classDefBuilder.addMethod(method);

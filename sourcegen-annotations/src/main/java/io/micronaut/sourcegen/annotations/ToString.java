@@ -17,6 +17,8 @@ package io.micronaut.sourcegen.annotations;
 
 import java.lang.annotation.*;
 
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
@@ -31,4 +33,14 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
 public @interface ToString {
+    /**
+     * The annotation to be used with {@link ToString} on a property to hide the value from being printed.
+     *
+     * @author Elif Kurtay
+     * @since 1.3
+     */
+    @Retention(RUNTIME)
+    @Target({FIELD, PARAMETER})
+    public @interface Exclude {
+    }
 }

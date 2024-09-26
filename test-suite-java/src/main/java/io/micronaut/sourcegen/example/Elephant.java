@@ -15,12 +15,11 @@
  */
 package io.micronaut.sourcegen.example;
 
-import io.micronaut.sourcegen.annotations.Secret;
 import io.micronaut.sourcegen.annotations.ToString;
 
 @ToString
 public class Elephant {
-    @Secret
+    @ToString.Exclude
     private String name;
     public int age;
     private boolean hasSibling;

@@ -263,7 +263,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             )));
     }
 
-    static FieldDef createField(PropertyElement beanProperty, TypeDef type) {
+    private static FieldDef createField(PropertyElement beanProperty, TypeDef type) {
         TypeDef fieldType = type.makeNullable();
         if (!fieldType.isNullable()) {
             throw new IllegalStateException("Could not make the field nullable");
