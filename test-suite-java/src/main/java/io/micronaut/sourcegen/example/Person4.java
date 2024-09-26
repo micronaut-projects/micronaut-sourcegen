@@ -16,16 +16,13 @@
 package io.micronaut.sourcegen.example;
 
 //tag::clazz[]
-import io.micronaut.sourcegen.annotations.Equals;
-import io.micronaut.sourcegen.annotations.HashCode;
+import io.micronaut.sourcegen.annotations.EqualsAndHashCode;
 import io.micronaut.sourcegen.annotations.ToString;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 @ToString
-@Equals
-@HashCode
+@EqualsAndHashCode
 public class Person4 {
     public enum Title {
         MRS,
@@ -73,7 +70,7 @@ public class Person4 {
 
     @Override
     public int hashCode() {
-        return Objects.hash(getId(), getTitle(), getName(), Arrays.hashCode(getBytes()));
+        return Person4Object.hashCode(this);
     }
 }
 //end::clazz[]

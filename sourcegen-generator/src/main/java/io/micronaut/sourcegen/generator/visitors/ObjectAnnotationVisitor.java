@@ -21,8 +21,8 @@ import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
-import io.micronaut.sourcegen.annotations.Equals;
-import io.micronaut.sourcegen.annotations.HashCode;
+import io.micronaut.sourcegen.annotations.Builder;
+import io.micronaut.sourcegen.annotations.EqualsAndHashCode;
 import io.micronaut.sourcegen.annotations.Secret;
 import io.micronaut.sourcegen.annotations.ToString;
 import io.micronaut.sourcegen.generator.SourceGenerator;
@@ -37,8 +37,7 @@ import javax.lang.model.element.Modifier;
  * The Object class can have functions substituting toString, equals, and hashcode.
  * However, each method needs to be annotated to be generated.
  *      {@link ToString} annotation for toString function
- *      {@link Equals} annotation for equals function
- *      {@link HashCode} annotation for hashCode function
+ *      {@link EqualsAndHashCode} annotation for equals and hashCode functions
  *
  * @author Elif Kurtay
  * @since 1.3
@@ -47,10 +46,6 @@ import javax.lang.model.element.Modifier;
 @Internal
 public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object, Object> {
 
-    private static final int NULL_HASH_VALUE = 43;
-    private static final int TRUE_HASH_VALUE = 79;
-    private static final int FALSE_HASH_VALUE = 97;
-    private static final int HASH_MULTIPLIER = 59;
     private final Set<String> processed = new HashSet<>();
 
     @Override
@@ -64,8 +59,13 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
     }
 
     @Override
+    public Set<String> getSupportedAnnotationNames() {
+        return Set.of(ToString.class.getName(), EqualsAndHashCode.class.getName());
+    }
+
+    @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        if (!(element.hasStereotype(ToString.class) || element.hasStereotype(Equals.class) || element.hasStereotype(HashCode.class))) {
+        if (!(element.hasStereotype(ToString.class) || element.hasStereotype(EqualsAndHashCode.class))) {
             return;
         }
 
@@ -86,10 +86,8 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             if (element.hasStereotype(ToString.class)) {
                 createToStringMethod(objectBuilder, element.getSimpleName(), properties);
             }
-            if (element.hasStereotype(Equals.class)) {
+            if (element.hasStereotype(EqualsAndHashCode.class)) {
                 createEqualsMethod(objectBuilder, element.getSimpleName(), properties);
-            }
-            if (element.hasStereotype(HashCode.class)) {
                 createHashCodeMethod(objectBuilder, element.getSimpleName(), properties);
             }
 
@@ -171,11 +169,10 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                         "append",
                         ClassTypeDef.of(strBuilder.getClass()),
                         (TypeDef.of(beanProperty.getType()) instanceof TypeDef.Array) ?
-                            new ExpressionDef.CallStaticMethod(
-                                ClassTypeDef.of(Arrays.class),
+                            ClassTypeDef.of(Arrays.class).invokeStatic(
                                 "toString",
-                                List.of(thisProperty),
-                                TypeDef.of(String.class))
+                                TypeDef.of(String.class),
+                                List.of(thisProperty))
                             :
                             thisProperty
                     ).invoke(
@@ -184,7 +181,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                         ExpressionDef.constant((i == properties.size() - 1) ? "]" : ", ")
                     ));
                 }
-                statements.add(new StatementDef.Return(strBuilder.invoke("toString", TypeDef.of(String.class))));
+                statements.add(strBuilder.invoke("toString", TypeDef.of(String.class)).returning());
                 return StatementDef.multi(statements);
             });
         classDefBuilder.addMethod(method);
@@ -202,23 +199,9 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             .addParameter("o", TypeDef.of(Object.class))
             .build((self, parameterDef) -> {
                 // local variables needed
-                List<StatementDef> statements = new ArrayList<>();
-                VariableDef classname = new VariableDef.Local(objectName, ClassTypeDef.of(objectName));
                 VariableDef thisObject = parameterDef.get(0).asVariable();
                 VariableDef o = parameterDef.get(1).asVariable();
-                VariableDef.Local other = new VariableDef.Local("otherObject", classname.type());
-
-                // early exist scenarios: object references match, objects are not the correct instance
-                // if not returned, cast objects to the correct class and define local parameters
-                statements.add(StatementDef.multi(
-                    thisObject.asCondition(" == ", o)
-                        .asConditionIf(ExpressionDef.constant(true).returning()),
-                    o.isNull().asCondition(" || ",
-                        thisObject.invoke("getClass", ClassTypeDef.of("Class"))
-                            .asCondition(" != ", o.invoke("getClass", ClassTypeDef.of("Class")))
-                        ).asConditionIf(ExpressionDef.constant(false).returning()),
-                    other.defineAndAssign(o.cast(classname.type()))
-                ));
+                VariableDef.Local other = new VariableDef.Local("otherObject", ClassTypeDef.of(objectName));
 
                 // property equal checks
                 TypeDef propertyTypeDef;
@@ -252,8 +235,17 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                         }
                     }
                 }
-                statements.add(new StatementDef.Return(propertyConditions));
-                return StatementDef.multi(statements);
+
+                return StatementDef.multi(
+                    thisObject.asCondition(" == ", o)
+                        .asConditionIf(ExpressionDef.constant(true).returning()),
+                    o.isNull().asCondition(" || ",
+                        thisObject.invoke("getClass", ClassTypeDef.of("Class"))
+                            .asCondition(" != ", o.invoke("getClass", ClassTypeDef.of("Class")))
+                    ).asConditionIf(ExpressionDef.constant(false).returning()),
+                    other.defineAndAssign(o.cast(ClassTypeDef.of(objectName))),
+                    Objects.requireNonNullElseGet(propertyConditions, () -> ExpressionDef.constant(true)).returning()
+                );
             });
         classDefBuilder.addMethod(method);
     }
@@ -268,24 +260,15 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             .addParameter("object", ClassTypeDef.of(objectName))
             .returns(int.class)
             .build((self, parameterDef) -> {
-                List<StatementDef> statements = new ArrayList<>();
-                ExpressionDef propertyHashExpression;
-                VariableDef.Local hashValue = new VariableDef.Local("hashValue", TypeDef.of(int.class));
-                VariableDef arrays = new VariableDef.Local("java.util.Arrays", ClassTypeDef.of(java.util.Arrays.class));
-
-                // initialize hash value at 1
-                statements.add(new StatementDef.DefineAndAssign(hashValue, ExpressionDef.constant(1)));
-
-                // add all property values to hash calculations
+                List<ExpressionDef> parameters = new ArrayList<>();
                 TypeDef propertyTypeDef;
                 ExpressionDef thisProperty;
+
                 for (PropertyElement beanProperty : properties) {
                     propertyTypeDef = TypeDef.of(beanProperty.getType());
                     if (beanProperty.getReadMethod().isPresent()) {
-                        thisProperty = parameterDef.get(0).asVariable().invoke(
-                            beanProperty.getReadMethod().get(),
-                            List.of()
-                        );
+                        thisProperty = parameterDef.get(0).asVariable()
+                            .invoke(beanProperty.getReadMethod().get(), List.of());
                     } else {
                         continue;
                     }
@@ -293,59 +276,12 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                     // calculate new property hash value
                     if (propertyTypeDef instanceof TypeDef.Array) {
                         String methodName = (((TypeDef.Array) propertyTypeDef).dimensions() > 1) ?  "deepHashCode" : "hashCode";
-                        propertyHashExpression = arrays.invoke(methodName, TypeDef.of(int.class), thisProperty);
-                    } else if (propertyTypeDef instanceof TypeDef.Primitive) {
-                        String typeName = ((TypeDef.Primitive) propertyTypeDef).name();
-                        if (propertyTypeDef == TypeDef.BOOLEAN) {
-                            propertyHashExpression = new ExpressionDef.IfElse(
-                                thisProperty,
-                                ExpressionDef.constant(TRUE_HASH_VALUE),
-                                ExpressionDef.constant(FALSE_HASH_VALUE)
-                            );
-                        } else if (typeName.equals("float")) {
-                            VariableDef floatClass = new VariableDef.Local("Float", ClassTypeDef.of(float.class));
-                            propertyHashExpression = floatClass.invoke("floatToIntBits", TypeDef.of(int.class), thisProperty);
-                        } else if (typeName.equals("double")) {
-                            // double -> long -> int
-                            VariableDef mathClass = new VariableDef.Local("Double", ClassTypeDef.of(Double.class));
-                            propertyHashExpression = mathClass.invoke("doubleToLongBits", TypeDef.of(int.class), thisProperty);
-                            propertyHashExpression = new ExpressionDef.Condition(
-                                " >>> ",
-                                propertyHashExpression,
-                                new ExpressionDef.Condition(" ^ ", ExpressionDef.constant(32), propertyHashExpression));
-                        } else if (typeName.equals("long")) {
-                            propertyHashExpression = new ExpressionDef.Condition(
-                                " >>> ",
-                                thisProperty,
-                                new ExpressionDef.Condition(" ^ ", ExpressionDef.constant(32), thisProperty));
-                        } else if (typeName.equals("char")) {
-                            propertyHashExpression = new ExpressionDef.Condition(" - ", thisProperty, ExpressionDef.constant('0'));
-                        } else if (typeName.equals("short")) {
-                            propertyHashExpression = new ExpressionDef.Condition(" & ", thisProperty, ExpressionDef.constant(0xffff));
-                        } else { // for int and byte, return itself as an int
-                            propertyHashExpression = thisProperty;
-                        }
-                    } else { // OBJECT
-                        propertyHashExpression = new ExpressionDef.IfElse(
-                            thisProperty.isNull(),
-                            ExpressionDef.constant(NULL_HASH_VALUE),
-                            thisProperty.invoke("hashCode", TypeDef.of(int.class), List.of())
-                            );
+                        thisProperty = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.of(int.class), thisProperty);
                     }
-
-                    // hash update
-                    statements.add(
-                        new StatementDef.Assign(hashValue,
-                            new ExpressionDef.Condition(" * ", hashValue,
-                            new ExpressionDef.Condition(" + ",
-                                ExpressionDef.constant(HASH_MULTIPLIER),
-                                new ExpressionDef.Cast(TypeDef.of(int.class), propertyHashExpression))))
-                    );
+                    parameters.add(thisProperty);
                 }
-                statements.add(hashValue.returning());
-                return StatementDef.multi(statements);
+                return ClassTypeDef.of(Objects.class).invokeStatic("hash", TypeDef.of(int.class), parameters).returning();
             });
         classDefBuilder.addMethod(method);
     }
-
 }

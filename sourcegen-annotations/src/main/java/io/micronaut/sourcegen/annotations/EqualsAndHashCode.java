@@ -20,8 +20,11 @@ import java.lang.annotation.*;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * The HashCode annotation on a bean should generate a hashCode method.
- * The method will be created in [BeanName]Utils class as a static method:
+ * The EqualsAndHashCode annotation on a bean should generate an equals and a hashCode methods.
+ * The equals method will be created in [BeanName]Utils class as a static method:
+ *      public static boolean BeanNameUtils.equals(BeanName this, Object other)
+ *
+ * The hashCode method will be created in [BeanName]Utils class as a static method:
  *      public static int BeanNameUtils.hashCode(BeanName object)
  *
  * @author Elif Kurtay
@@ -30,5 +33,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @Retention(RUNTIME)
 @Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
-public @interface HashCode {
+public @interface EqualsAndHashCode {
 }
