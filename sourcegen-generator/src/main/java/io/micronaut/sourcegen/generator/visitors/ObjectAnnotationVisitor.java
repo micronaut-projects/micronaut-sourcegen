@@ -33,8 +33,8 @@ import java.util.*;
 import javax.lang.model.element.Modifier;
 
 /**
- * The visitor that generates the Utils class of a bean.
- * The Utils class can have functions substituting toString, equals, and hashcode.
+ * The visitor that generates the Object class of a bean.
+ * The Object class can have functions substituting toString, equals, and hashcode.
  * However, each method needs to be annotated to be generated.
  *      {@link ToString} annotation for toString function
  *      {@link Equals} annotation for equals function
@@ -45,7 +45,7 @@ import javax.lang.model.element.Modifier;
  */
 
 @Internal
-public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, Object> {
+public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object, Object> {
 
     private static final int NULL_HASH_VALUE = 43;
     private static final int TRUE_HASH_VALUE = 79;
@@ -73,24 +73,24 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
             return;
         }
         try {
-            String simpleName = element.getSimpleName() + "Utils";
-            String utilsClassName = element.getPackageName() + "." + simpleName;
+            String simpleName = element.getSimpleName() + "Object";
+            String objectClassName = element.getPackageName() + "." + simpleName;
 
             // class def and annotations
-            ClassDef.ClassDefBuilder utilsBuilder = ClassDef.builder(utilsClassName)
+            ClassDef.ClassDefBuilder objectBuilder = ClassDef.builder(objectClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
             List<PropertyElement> properties = element.getBeanProperties();
 
             // create the utils functions if they are annotated
             if (element.hasStereotype(ToString.class)) {
-                createToStringMethod(utilsBuilder, element.getSimpleName(), properties);
+                createToStringMethod(objectBuilder, element.getSimpleName(), properties);
             }
             if (element.hasStereotype(Equals.class)) {
-                createEqualsMethod(utilsBuilder, element.getSimpleName(), properties);
+                createEqualsMethod(objectBuilder, element.getSimpleName(), properties);
             }
             if (element.hasStereotype(HashCode.class)) {
-                createHashCodeMethod(utilsBuilder, element.getSimpleName(), properties);
+                createHashCodeMethod(objectBuilder, element.getSimpleName(), properties);
             }
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
@@ -98,19 +98,19 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
                 return;
             }
 
-            ClassDef utilsDef = utilsBuilder.build();
+            ClassDef objectDef = objectBuilder.build();
             processed.add(element.getName());
             context.visitGeneratedSourceFile(
-                utilsDef.getPackageName(),
-                utilsDef.getSimpleName(),
+                objectDef.getPackageName(),
+                objectDef.getSimpleName(),
                 element
             ).ifPresent(sourceFile -> {
                 try {
                     sourceFile.write(
-                        writer -> sourceGenerator.write(utilsDef, writer)
+                        writer -> sourceGenerator.write(objectDef, writer)
                     );
                 } catch (Exception e) {
-                    throw new ProcessingException(element, "Failed to generate a utilsBuilder: " + e.getMessage(), e);
+                    throw new ProcessingException(element, "Failed to generate a ObjectBuilder: " + e.getMessage(), e);
                 }
             });
         } catch (ProcessingException e) {
@@ -130,7 +130,7 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
 
     /*
     Creates a toString method with signature:
-        public static String BeanNameUtils.toString(BeanName object)
+        public static String BeanNameObject.toString(BeanName object)
      */
     private static void createToStringMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
         MethodDef method = MethodDef.builder("toString")
@@ -141,12 +141,7 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
                 List<StatementDef> statements = new ArrayList<>();
                 VariableDef.Local strBuilder = new VariableDef.Local("strBuilder", ClassTypeDef.of(StringBuilder.class));
 
-                statements.add(strBuilder.defineAndAssign(ClassTypeDef.of(StringBuilder.class).instantiate()));
-                statements.add(strBuilder.invoke(
-                    "append",
-                    ClassTypeDef.of(strBuilder.getClass()),
-                    ExpressionDef.constant(objectName + "[")
-                ));
+                statements.add(strBuilder.defineAndAssign(ClassTypeDef.of(StringBuilder.class).instantiate(ExpressionDef.constant(objectName + "["))));
 
                 PropertyElement beanProperty;
                 TypeDef propertyTypeDef;
@@ -197,116 +192,67 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
 
     /*
     Creates an equals method with signature:
-        public static boolean BeanNameUtils.equals(BeanName object1, Object object2)
+        public static boolean BeanNameObject.equals(BeanName object1, Object object2)
      */
     private static void createEqualsMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
         MethodDef method = MethodDef.builder("equals")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(boolean.class)
-            .addParameter("first", ClassTypeDef.of(objectName))
-            .addParameter("secondObject", TypeDef.of(Object.class))
+            .addParameter("thisObject", ClassTypeDef.of(objectName))
+            .addParameter("o", TypeDef.of(Object.class))
             .build((self, parameterDef) -> {
                 // local variables needed
-                VariableDef classname = new VariableDef.Local(objectName, ClassTypeDef.of(objectName));
                 List<StatementDef> statements = new ArrayList<>();
-                VariableDef firstObject = parameterDef.get(0).asVariable();
-                VariableDef.Local secondObject = new VariableDef.Local("second", classname.type());
-                VariableDef.Local bothNullCondition = new VariableDef.Local("bothNullCondition", TypeDef.of(boolean.class));
-                VariableDef.Local equalsCondition = new VariableDef.Local("equalsCondition", TypeDef.of(boolean.class));
-                VariableDef.Local isPropertyEqual = new VariableDef.Local("isPropertyEqual", TypeDef.of(boolean.class));
-                VariableDef.Local isCorrectInstance = new VariableDef.Local("isCorrectInstance", TypeDef.of(boolean.class));
+                VariableDef classname = new VariableDef.Local(objectName, ClassTypeDef.of(objectName));
+                VariableDef thisObject = parameterDef.get(0).asVariable();
+                VariableDef o = parameterDef.get(1).asVariable();
+                VariableDef.Local other = new VariableDef.Local("otherObject", classname.type());
 
                 // early exist scenarios: object references match, objects are not the correct instance
                 // if not returned, cast objects to the correct class and define local parameters
                 statements.add(StatementDef.multi(
-                    parameterDef.get(0).asVariable().asCondition(" == ", parameterDef.get(1).asVariable())
+                    thisObject.asCondition(" == ", o)
                         .asConditionIf(ExpressionDef.constant(true).returning()),
-                    new StatementDef.DefineAndAssign(
-                        isCorrectInstance,
-                        parameterDef.get(1).asVariable().asCondition(" instanceof ", classname)
-                    ),
-                    new StatementDef.If(
-                        new ExpressionDef.Condition(" == ", isCorrectInstance, ExpressionDef.constant(false)),
-                        ExpressionDef.constant(false).returning()
-                    ),
-                    new StatementDef.DefineAndAssign(secondObject, new ExpressionDef.Cast(classname.type(), parameterDef.get(1).asVariable())),
-                    new StatementDef.DefineAndAssign(bothNullCondition, ExpressionDef.constant(false)),
-                    new StatementDef.DefineAndAssign(equalsCondition, ExpressionDef.constant(false)),
-                    new StatementDef.DefineAndAssign(isPropertyEqual, ExpressionDef.constant(false))
+                    o.isNull().asCondition(" || ",
+                        thisObject.invoke("getClass", ClassTypeDef.of("Class"))
+                            .asCondition(" != ", o.invoke("getClass", ClassTypeDef.of("Class")))
+                        ).asConditionIf(ExpressionDef.constant(false).returning()),
+                    other.defineAndAssign(o.cast(classname.type()))
                 ));
 
                 // property equal checks
                 TypeDef propertyTypeDef;
                 ExpressionDef.CallInstanceMethod firstProperty;
                 ExpressionDef.CallInstanceMethod secondProperty;
+                ExpressionDef propertyConditions = null;
                 for (PropertyElement beanProperty : properties) {
                     propertyTypeDef = TypeDef.of(beanProperty.getType());
                     if (beanProperty.getReadMethod().isPresent()) {
-                        firstProperty = firstObject
-                            .invoke(
-                                beanProperty.getReadMethod().get().getSimpleName(),
-                                propertyTypeDef,
-                                List.of()
-                            );
-                        secondProperty = secondObject
-                            .invoke(
-                                beanProperty.getReadMethod().get().getSimpleName(),
-                                propertyTypeDef,
-                                List.of()
-                            );
+                        firstProperty = thisObject.invoke(beanProperty.getReadMethod().get(), List.of());
+                        secondProperty = other.invoke(beanProperty.getReadMethod().get(), List.of());
                     } else {
                         continue;
                     }
 
                     // equal check according to the properties' type
                     if (propertyTypeDef instanceof TypeDef.Primitive) {
-                        // ==, primitives do not need null check
-                        statements.add(new StatementDef.If(
-                            new ExpressionDef.Condition(" != ", firstProperty, secondProperty),
-                            ExpressionDef.constant(false).returning()
-                        ));
-                    } else {
-                        // .equals, check for double null or equal objects
-                        statements.add(new StatementDef.Assign(bothNullCondition,
-                                new ExpressionDef.Condition(" && ",
-                                    firstProperty.isNull(),
-                                    secondProperty.isNull())
-                            )
-                        );
-                        if (propertyTypeDef instanceof TypeDef.Array) {
-                            statements.add(new StatementDef.Assign(equalsCondition,
-                                    new ExpressionDef.Condition(" && ",
-                                        firstProperty.isNonNull(),
-                                        new ExpressionDef.CallStaticMethod(
-                                            ClassTypeDef.of(Arrays.class),
-                                            "equals",
-                                            Arrays.asList(firstProperty, secondProperty),
-                                            TypeDef.BOOLEAN)
-                                    )
-                                )
-                            );
+                        if (propertyConditions == null) {
+                            propertyConditions = firstProperty.asCondition(" == ", secondProperty);
                         } else {
-                            statements.add(new StatementDef.Assign(equalsCondition,
-                                    new ExpressionDef.Condition(" && ",
-                                        firstProperty.isNonNull(),
-                                        firstProperty.invoke("equals", TypeDef.BOOLEAN, secondProperty)
-                                    )
-                                )
-                            );
+                            propertyConditions = propertyConditions.asCondition(" && ", firstProperty.asCondition(" == ", secondProperty));
                         }
-                        statements.add(new StatementDef.Assign(isPropertyEqual,
-                                new ExpressionDef.Condition(" || ", bothNullCondition, equalsCondition)
-                            )
-                        );
-                        statements.add(
-                            new StatementDef.If(
-                                new ExpressionDef.Condition(" == ", isPropertyEqual, ExpressionDef.constant(false)),
-                                ExpressionDef.constant(false).returning()
-                            )
-                        );
+                    } else {
+                        String methodName = (propertyTypeDef instanceof TypeDef.Array) ? "deepEquals" : "equals";
+                        if (propertyConditions == null) {
+                            propertyConditions = ClassTypeDef.of(Objects.class)
+                                .invokeStatic(methodName, TypeDef.BOOLEAN, Arrays.asList(firstProperty, secondProperty));
+                        } else {
+                            propertyConditions = propertyConditions.asCondition(" && ", ClassTypeDef.of(Objects.class)
+                                .invokeStatic(methodName, TypeDef.BOOLEAN, Arrays.asList(firstProperty, secondProperty)));
+                        }
                     }
                 }
-                statements.add(new StatementDef.Return(ExpressionDef.constant(true)));
+                statements.add(new StatementDef.Return(propertyConditions));
                 return StatementDef.multi(statements);
             });
         classDefBuilder.addMethod(method);
@@ -314,7 +260,7 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
 
     /*
     Creates a hashCode method with signature:
-        public static int BeanNameUtils.hashCode(BeanName object)
+        public static int BeanNameObject.hashCode(BeanName object)
      */
     private static void createHashCodeMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
         MethodDef method = MethodDef.builder("hashCode")
@@ -337,8 +283,7 @@ public final class UtilsAnnotationVisitor implements TypeElementVisitor<Object, 
                     propertyTypeDef = TypeDef.of(beanProperty.getType());
                     if (beanProperty.getReadMethod().isPresent()) {
                         thisProperty = parameterDef.get(0).asVariable().invoke(
-                            beanProperty.getReadMethod().get().getSimpleName(),
-                            propertyTypeDef,
+                            beanProperty.getReadMethod().get(),
                             List.of()
                         );
                     } else {

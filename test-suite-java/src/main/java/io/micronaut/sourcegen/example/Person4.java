@@ -21,6 +21,7 @@ import io.micronaut.sourcegen.annotations.HashCode;
 import io.micronaut.sourcegen.annotations.ToString;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 @ToString
 @Equals
@@ -62,17 +63,17 @@ public class Person4 {
 
     @Override
     public String toString() {
-        return Person4Utils.toString(this);
+        return Person4Object.toString(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return Person4Object.equals(this, o);
     }
 
     @Override
     public int hashCode() {
-        return Person4Utils.hashCode(this);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return Person4Utils.equals(this, obj);
+        return Objects.hash(getId(), getTitle(), getName(), Arrays.hashCode(getBytes()));
     }
 }
 //end::clazz[]

@@ -44,6 +44,6 @@ public class Elephant {
     }
 
     public String toString() {
-        return ElephantUtils.toString(this);
+        return ElephantObject.toString(this);
     }
 }

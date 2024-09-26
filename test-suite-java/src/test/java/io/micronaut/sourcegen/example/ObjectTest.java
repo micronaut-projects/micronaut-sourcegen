@@ -21,13 +21,13 @@ import static org.junit.Assert.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-public class UtilsTest {
+public class ObjectTest {
 
     @Test
     public void testToString() {
         var person = new Person4(123L, Person4.Title.MR,"Cédric", new byte[]{1,2,3});
 
-        assertNotNull(Person4Utils.toString(person));
+        assertNotNull(Person4Object.toString(person));
         assertTrue(person.toString().contains("Person4["));
         assertEquals("Person4[id=123, title=MR, name=Cédric, bytes=[1, 2, 3]]", person.toString());
     }
@@ -36,7 +36,7 @@ public class UtilsTest {
     public void testToStringWithSecret() {
         var elephant = new Elephant("Daisy", 5, false);
 
-        assertNotNull(ElephantUtils.toString(elephant));
+        assertNotNull(ElephantObject.toString(elephant));
         assertEquals("Elephant[name=******, hasSibling=false]", elephant.toString());
     }
 
@@ -49,7 +49,7 @@ public class UtilsTest {
         var personDiffObject = new Person4(123L, Person4.Title.MR,"Cédric Jr.", new byte[]{1,2,3});
         var personDiffArray = new Person4(123L, Person4.Title.MR,"Cédric", new byte[]{1,2,4});
 
-        assertNotNull(Person4Utils.equals(person, personSame));
+        assertNotNull(Person4Object.equals(person, personSame));
 
         assertTrue(person.equals(person));
         assertTrue(person.equals(personSame));
@@ -84,7 +84,7 @@ public class UtilsTest {
         var personDiffObject = new Person4(123L, Person4.Title.MR,"Cédric Jr.", new byte[]{1,2,3});
         var personDiffArray = new Person4(123L, Person4.Title.MR,"Cédric", new byte[]{1,2,4});
 
-        assertNotNull(Person4Utils.hashCode(person));
+        assertNotNull(Person4Object.hashCode(person));
         assertEquals(person.hashCode(), person.hashCode());
         assertEquals(person.hashCode(), personSame.hashCode());
         assertNotEquals(person.hashCode(), personDiffPrimitive.hashCode());
