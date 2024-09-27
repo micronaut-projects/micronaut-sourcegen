@@ -589,8 +589,8 @@ public sealed interface ExpressionDef
     }
 
     /**
-     * The and (&&) condition. When expressions are not a VariableDef,
-     * parentheses is put around each expression by default.
+     * The and (&&) condition. The expression which is a type of Condition,
+     * gets parentheses put around.
      *
      * @param left     The left expression
      * @param right    The right expression
@@ -606,8 +606,8 @@ public sealed interface ExpressionDef
     }
 
     /**
-     * The or (||) condition. When expressions are not a VariableDef,
-     * parentheses is put around each expression by default.
+     * The or (||) condition. The expression which is a type of Condition,
+     *      * gets parentheses put around.
      *
      * @param left     The left expression
      * @param right    The right expression

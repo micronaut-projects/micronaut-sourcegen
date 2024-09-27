@@ -54,10 +54,7 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Array;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.IntStream;
 
 /**
@@ -582,25 +579,33 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             );
         }
         if (expressionDef instanceof ExpressionDef.And andExpressionDef) {
+            boolean isLeftCondition = andExpressionDef.left() instanceof ExpressionDef.Condition ||
+                andExpressionDef.left() instanceof ExpressionDef.And || andExpressionDef.left() instanceof ExpressionDef.Or;
+            boolean isRightCondition = andExpressionDef.right() instanceof ExpressionDef.Condition ||
+                andExpressionDef.right() instanceof ExpressionDef.And || andExpressionDef.right() instanceof ExpressionDef.Or;
             return CodeBlock.concat(
-                (andExpressionDef.left() instanceof ExpressionDef.Condition) ? CodeBlock.of("(") : CodeBlock.of(""),
+                (isLeftCondition) ? CodeBlock.of("(") : CodeBlock.of(""),
                 renderExpression(objectDef, methodDef, andExpressionDef.left()),
-                (andExpressionDef.left() instanceof ExpressionDef.Condition) ? CodeBlock.of(")") : CodeBlock.of(""),
+                (isLeftCondition) ? CodeBlock.of(")") : CodeBlock.of(""),
                 CodeBlock.of(" && "),
-                (andExpressionDef.right() instanceof ExpressionDef.Condition) ? CodeBlock.of("(") : CodeBlock.of(""),
+                (isRightCondition) ? CodeBlock.of("(") : CodeBlock.of(""),
                 renderExpression(objectDef, methodDef, andExpressionDef.right()),
-                (andExpressionDef.right() instanceof ExpressionDef.Condition) ? CodeBlock.of(")") : CodeBlock.of("")
+                (isRightCondition) ? CodeBlock.of(")") : CodeBlock.of("")
             );
         }
         if (expressionDef instanceof ExpressionDef.Or orExpressionDef) {
+            boolean isLeftCondition = orExpressionDef.left() instanceof ExpressionDef.Condition ||
+                orExpressionDef.left() instanceof ExpressionDef.And || orExpressionDef.left() instanceof ExpressionDef.Or;
+            boolean isRightCondition = orExpressionDef.right() instanceof ExpressionDef.Condition ||
+                orExpressionDef.right() instanceof ExpressionDef.And || orExpressionDef.right() instanceof ExpressionDef.Or;
             return CodeBlock.concat(
-                (orExpressionDef.left() instanceof ExpressionDef.Condition) ? CodeBlock.of("(") : CodeBlock.of(""),
+                (isLeftCondition) ? CodeBlock.of("(") : CodeBlock.of(""),
                 renderExpression(objectDef, methodDef, orExpressionDef.left()),
-                (orExpressionDef.left() instanceof ExpressionDef.Condition) ? CodeBlock.of(")") : CodeBlock.of(""),
+                (isLeftCondition) ? CodeBlock.of(")") : CodeBlock.of(""),
                 CodeBlock.of(" || "),
-                (orExpressionDef.right() instanceof ExpressionDef.Condition) ? CodeBlock.of("(") : CodeBlock.of(""),
+                (isRightCondition) ? CodeBlock.of("(") : CodeBlock.of(""),
                 renderExpression(objectDef, methodDef, orExpressionDef.right()),
-                (orExpressionDef.right() instanceof ExpressionDef.Condition) ? CodeBlock.of(")") : CodeBlock.of("")
+                (isRightCondition) ? CodeBlock.of(")") : CodeBlock.of("")
             );
         }
         if (expressionDef instanceof ExpressionDef.IfElse condition) {

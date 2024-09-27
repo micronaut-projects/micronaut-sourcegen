@@ -206,13 +206,16 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                             }
                             ExpressionDef newEqualsExpression = (propertyTypeDef instanceof TypeDef.Primitive) ?
                                 firstProperty.asCondition(" == ", secondProperty)
-                                : ClassTypeDef.of(Objects.class).invokeStatic(
-                                    (propertyTypeDef instanceof TypeDef.Array) ? "deepEquals" : "equals",
-                                TypeDef.BOOLEAN, Arrays.asList(firstProperty, secondProperty));
+                                : firstProperty.asCondition(" == ", secondProperty)
+                                .asConditionOr(firstProperty.isNonNull().asConditionAnd(
+                                    (propertyTypeDef instanceof TypeDef.Array) ?
+                                        ClassTypeDef.of(Arrays.class).invokeStatic("equals", TypeDef.BOOLEAN, Arrays.asList(firstProperty, secondProperty))
+                                        : firstProperty.invoke("equals", TypeDef.BOOLEAN, secondProperty)
+                                ));
                             if (exp == null) {
                                 exp = newEqualsExpression;
                             } else {
-                                exp = exp.asCondition(" && ", newEqualsExpression);
+                                exp = exp.asConditionAnd(newEqualsExpression);
                             }
                         }
                         return Objects.requireNonNullElseGet(exp, ExpressionDef::trueValue).returning();
@@ -233,7 +236,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             .returns(int.class)
             .build((self, parameterDef) -> {
                 List<StatementDef> hashUpdates = new ArrayList<>();
-                VariableDef.Local hashValue = new VariableDef.Local("hashValue", TypeDef.of(int.class));
+                VariableDef hashValue = new VariableDef.Local("hashValue", TypeDef.of(int.class));
                 TypeDef propertyTypeDef;
                 ExpressionDef thisProperty;
                 ExpressionDef propertyHashCalculation;
@@ -281,13 +284,13 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                             thisProperty.invoke("hashCode", TypeDef.of(int.class), List.of())
                         );
                     }
-                    hashUpdates.add(new StatementDef.Assign(hashValue,
+                    hashUpdates.add(hashValue.assign(
                         hashValue.asCondition(" * ", ExpressionDef.constant(HASH_MULTIPLIER)
                             .asCondition(" + ", propertyHashCalculation.cast(TypeDef.of(int.class))))));
                 }
                 return StatementDef.multi(
                     parameterDef.get(0).asExpression().isNull().asConditionIf(ExpressionDef.constant(0).returning()),
-                    hashValue.defineAndAssign(ExpressionDef.constant(1)),
+                    ((VariableDef.Local) hashValue).defineAndAssign(ExpressionDef.constant(1)),
                     StatementDef.multi(hashUpdates),
                     hashValue.returning()
                 );
