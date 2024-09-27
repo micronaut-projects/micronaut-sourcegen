@@ -54,7 +54,7 @@ public sealed interface ExpressionDef
      * The and condition of this variable.
      *
      * @param expression The expression of this variable
-     * @return The "and" (&&) condition expression
+     * @return The "and" condition expression
      * @since 1.3
      */
     default ExpressionDef asConditionAnd(ExpressionDef expression) {
@@ -65,7 +65,7 @@ public sealed interface ExpressionDef
      * The or condition of this variable.
      *
      * @param expression The expression of this variable
-     * @return The "or" (||) condition expression
+     * @return The "or" condition expression
      * @since 1.3
      */
     default ExpressionDef asConditionOr(ExpressionDef expression) {
@@ -589,7 +589,7 @@ public sealed interface ExpressionDef
     }
 
     /**
-     * The and (&&) condition. The expression which is a type of Condition,
+     * The and condition. The expression which is a type of Condition,
      * gets parentheses put around.
      *
      * @param left     The left expression
@@ -606,7 +606,7 @@ public sealed interface ExpressionDef
     }
 
     /**
-     * The or (||) condition. The expression which is a type of Condition,
+     * The or condition. The expression which is a type of Condition,
      *      * gets parentheses put around.
      *
      * @param left     The left expression
