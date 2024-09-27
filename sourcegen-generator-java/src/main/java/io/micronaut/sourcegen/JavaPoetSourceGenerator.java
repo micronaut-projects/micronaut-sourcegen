@@ -581,6 +581,28 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 renderExpression(objectDef, methodDef, condition.right())
             );
         }
+        if (expressionDef instanceof ExpressionDef.And andExpressionDef) {
+            return CodeBlock.concat(
+                (andExpressionDef.left() instanceof ExpressionDef.Condition) ? CodeBlock.of("(") : CodeBlock.of(""),
+                renderExpression(objectDef, methodDef, andExpressionDef.left()),
+                (andExpressionDef.left() instanceof ExpressionDef.Condition) ? CodeBlock.of(")") : CodeBlock.of(""),
+                CodeBlock.of(" && "),
+                (andExpressionDef.right() instanceof ExpressionDef.Condition) ? CodeBlock.of("(") : CodeBlock.of(""),
+                renderExpression(objectDef, methodDef, andExpressionDef.right()),
+                (andExpressionDef.right() instanceof ExpressionDef.Condition) ? CodeBlock.of(")") : CodeBlock.of("")
+            );
+        }
+        if (expressionDef instanceof ExpressionDef.Or orExpressionDef) {
+            return CodeBlock.concat(
+                (orExpressionDef.left() instanceof ExpressionDef.Condition) ? CodeBlock.of("(") : CodeBlock.of(""),
+                renderExpression(objectDef, methodDef, orExpressionDef.left()),
+                (orExpressionDef.left() instanceof ExpressionDef.Condition) ? CodeBlock.of(")") : CodeBlock.of(""),
+                CodeBlock.of(" || "),
+                (orExpressionDef.right() instanceof ExpressionDef.Condition) ? CodeBlock.of("(") : CodeBlock.of(""),
+                renderExpression(objectDef, methodDef, orExpressionDef.right()),
+                (orExpressionDef.right() instanceof ExpressionDef.Condition) ? CodeBlock.of(")") : CodeBlock.of("")
+            );
+        }
         if (expressionDef instanceof ExpressionDef.IfElse condition) {
             return CodeBlock.concat(
                 renderExpression(objectDef, methodDef, condition.condition()),

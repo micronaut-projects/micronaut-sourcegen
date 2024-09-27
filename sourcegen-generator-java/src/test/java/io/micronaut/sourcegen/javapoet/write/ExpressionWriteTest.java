@@ -111,4 +111,48 @@ public class ExpressionWriteTest extends AbstractWriteTest {
 
         assertEquals("(Object) field", result);
     }
+
+    @Test
+    public void returnAndCondition() throws IOException {
+        ExpressionDef andExpression = new ExpressionDef.And(
+            ExpressionDef.trueValue(),
+            new VariableDef.Local("field", TypeDef.of(Object.class))
+        );
+        String result = writeMethodWithExpression(andExpression);
+
+        assertEquals("true && field", result);
+    }
+
+    @Test
+    public void returnAndConditionWithParentheses() throws IOException {
+        ExpressionDef andExpression = new ExpressionDef.And(
+            ExpressionDef.trueValue().asCondition("==", ExpressionDef.falseValue()),
+            new VariableDef.Local("field", TypeDef.of(Object.class)).isNonNull()
+        );
+        String result = writeMethodWithExpression(andExpression);
+
+        assertEquals("(true==false) && (field != null)", result);
+    }
+
+    @Test
+    public void returnOrCondition() throws IOException {
+        ExpressionDef orExpression = new ExpressionDef.Or(
+            ExpressionDef.trueValue(),
+            new VariableDef.Local("field", TypeDef.of(Object.class))
+        );
+        String result = writeMethodWithExpression(orExpression);
+
+        assertEquals("true || field", result);
+    }
+
+    @Test
+    public void returnAOrConditionWithParentheses() throws IOException {
+        ExpressionDef orExpression = new ExpressionDef.Or(
+            ExpressionDef.trueValue().asCondition("==", ExpressionDef.falseValue()),
+            new VariableDef.Local("field", TypeDef.of(Object.class)).isNonNull()
+        );
+        String result = writeMethodWithExpression(orExpression);
+
+        assertEquals("(true==false) || (field != null)", result);
+    }
 }

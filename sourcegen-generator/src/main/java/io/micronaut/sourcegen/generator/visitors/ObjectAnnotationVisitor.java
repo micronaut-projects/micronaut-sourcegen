@@ -179,16 +179,16 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
         MethodDef method = MethodDef.builder("equals")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(boolean.class)
-            .addParameter("thisObject", ClassTypeDef.of(objectName))
+            .addParameter("instance", ClassTypeDef.of(objectName))
             .addParameter("o", TypeDef.of(Object.class))
             .build((self, parameterDef) -> {
-                VariableDef thisObject = parameterDef.get(0).asVariable();
+                VariableDef instance = parameterDef.get(0).asVariable();
                 VariableDef o = parameterDef.get(1).asVariable();
                 return StatementDef.multi(
-                    thisObject.asCondition(" == ", o)
+                    instance.asCondition(" == ", o)
                         .asConditionIf(ExpressionDef.trueValue().returning()),
                     o.isNull().asCondition(" || ",
-                        thisObject.invoke("getClass", ClassTypeDef.of("Class"))
+                        instance.invoke("getClass", ClassTypeDef.of("Class"))
                             .asCondition(" != ", o.invoke("getClass", ClassTypeDef.of("Class"))))
                         .asConditionIf(ExpressionDef.falseValue().returning()),
                     o.cast(ClassTypeDef.of(objectName)).newLocal("other", variableDef -> {
@@ -199,7 +199,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                         for (PropertyElement beanProperty : properties) {
                             propertyTypeDef = TypeDef.of(beanProperty.getType());
                             if ( !beanProperty.hasAnnotation(EqualsAndHashCode.Exclude.class) && beanProperty.getReadMethod().isPresent()) {
-                                firstProperty = thisObject.invoke(beanProperty.getReadMethod().get(), List.of());
+                                firstProperty = instance.invoke(beanProperty.getReadMethod().get(), List.of());
                                 secondProperty = variableDef.invoke(beanProperty.getReadMethod().get(), List.of());
                             } else {
                                 continue;
@@ -229,7 +229,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
     private static void createHashCodeMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
         MethodDef method = MethodDef.builder("hashCode")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter("object", ClassTypeDef.of(objectName))
+            .addParameter("instance", ClassTypeDef.of(objectName))
             .returns(int.class)
             .build((self, parameterDef) -> {
                 List<StatementDef> hashUpdates = new ArrayList<>();
