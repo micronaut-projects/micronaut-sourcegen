@@ -37,7 +37,7 @@ public class ObjectTest {
         var elephant = new Elephant("Daisy", 5, false);
 
         assertNotNull(ElephantObject.toString(elephant));
-        assertEquals("Elephant[name=******, hasSibling=false]", elephant.toString());
+        assertEquals("Elephant[hasSibling=false]", elephant.toString());
     }
 
     @Test

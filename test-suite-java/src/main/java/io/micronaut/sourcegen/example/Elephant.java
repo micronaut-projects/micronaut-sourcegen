@@ -20,7 +20,7 @@ import io.micronaut.sourcegen.annotations.ToString;
 @ToString
 public class Elephant {
     @ToString.Exclude
-    private String name;
+    public String name;
     public int age;
     private boolean hasSibling;
 

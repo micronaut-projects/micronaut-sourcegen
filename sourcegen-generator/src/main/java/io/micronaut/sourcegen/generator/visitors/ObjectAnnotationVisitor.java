@@ -86,6 +86,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
 
             // create the utils functions if they are annotated
             if (element.hasStereotype(ToString.class)) {
+                context.warn("@ToString annotation will only print out bean properties.", element);
                 createToStringMethod(objectBuilder, element.getSimpleName(), properties);
             }
             if (element.hasStereotype(EqualsAndHashCode.class)) {
@@ -136,7 +137,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
         MethodDef method = MethodDef.builder("toString")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(String.class)
-            .addParameter("object", ClassTypeDef.of(objectName))
+            .addParameter("instance", ClassTypeDef.of(objectName))
             .build((self, parameterDef) ->
                 ClassTypeDef.of(StringBuilder.class).instantiate(ExpressionDef.constant(objectName + "[")).newLocal("strBuilder", variableDef -> {
                     ExpressionDef exp = variableDef;
@@ -144,9 +145,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                         var beanProperty = properties.get(i);
                         ExpressionDef propertyValue;
                         // get property value
-                        if (beanProperty.hasAnnotation(ToString.Exclude.class)) {
-                            propertyValue = ExpressionDef.constant("******");
-                        } else if (beanProperty.getReadMethod().isPresent()) {
+                        if ((!beanProperty.hasAnnotation(ToString.Exclude.class)) && beanProperty.getReadMethod().isPresent()) {
                             propertyValue = parameterDef.get(0).asVariable().invoke(
                                 beanProperty.getReadMethod().get().getSimpleName(),
                                 TypeDef.of(beanProperty.getType()),
@@ -165,6 +164,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                             .invoke("append", variableDef.type(),
                                 ExpressionDef.constant((i == properties.size() - 1) ? "]" : ", "));
                     }
+
                     return exp.invoke("toString", TypeDef.of(String.class)).returning();
                 })
             );
