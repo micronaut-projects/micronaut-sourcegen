@@ -236,7 +236,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             .returns(int.class)
             .build((self, parameterDef) -> {
                 List<StatementDef> hashUpdates = new ArrayList<>();
-                VariableDef hashValue = new VariableDef.Local("hashValue", TypeDef.of(int.class));
+                VariableDef.Local hashValue = new VariableDef.Local("hashValue", TypeDef.of(int.class));
                 TypeDef propertyTypeDef;
                 ExpressionDef thisProperty;
                 ExpressionDef propertyHashCalculation;
@@ -290,7 +290,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                 }
                 return StatementDef.multi(
                     parameterDef.get(0).asExpression().isNull().asConditionIf(ExpressionDef.constant(0).returning()),
-                    ((VariableDef.Local) hashValue).defineAndAssign(ExpressionDef.constant(1)),
+                    hashValue.defineAndAssign(ExpressionDef.constant(1)),
                     StatementDef.multi(hashUpdates),
                     hashValue.returning()
                 );
