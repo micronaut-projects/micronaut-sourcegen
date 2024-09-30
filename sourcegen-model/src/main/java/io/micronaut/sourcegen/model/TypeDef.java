@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
@@ -254,6 +255,16 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
      */
     default TypeDef makeNullable() {
         return this;
+    }
+
+    /**
+     * Instantiate this class.
+     *
+     * @param value The initial value
+     * @return The instantiate expression
+     */
+    default ExpressionDef initialize(ExpressionDef value) {
+        return ExpressionDef.initialize(this, value);
     }
 
     /**

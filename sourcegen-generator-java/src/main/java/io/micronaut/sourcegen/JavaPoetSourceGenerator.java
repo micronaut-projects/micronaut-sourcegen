@@ -517,6 +517,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 CodeBlock.of(")")
             );
         }
+        if (expressionDef instanceof ExpressionDef.PrimitiveInstance primitiveInstance) {
+            return renderExpression(objectDef, methodDef, primitiveInstance.value());
+        }
         if (expressionDef instanceof ExpressionDef.NewArrayOfSize newArray) {
             return CodeBlock.of("new $T[$L]", asType(newArray.type().componentType(), objectDef), newArray.size());
         }
@@ -586,15 +589,39 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 andExpressionDef.left() instanceof ExpressionDef.And || andExpressionDef.left() instanceof ExpressionDef.Or;
             boolean isRightCondition = andExpressionDef.right() instanceof ExpressionDef.Condition ||
                 andExpressionDef.right() instanceof ExpressionDef.And || andExpressionDef.right() instanceof ExpressionDef.Or;
-            return CodeBlock.concat(
-                (isLeftCondition) ? CodeBlock.of("(") : CodeBlock.of(""),
-                renderExpression(objectDef, methodDef, andExpressionDef.left()),
-                (isLeftCondition) ? CodeBlock.of(")") : CodeBlock.of(""),
-                CodeBlock.of(" && "),
-                (isRightCondition) ? CodeBlock.of("(") : CodeBlock.of(""),
-                renderExpression(objectDef, methodDef, andExpressionDef.right()),
-                (isRightCondition) ? CodeBlock.of(")") : CodeBlock.of("")
-            );
+            if (isLeftCondition && isRightCondition) {
+                return CodeBlock.concat(
+                    CodeBlock.of("("),
+                    renderExpression(objectDef, methodDef, andExpressionDef.left()),
+                    CodeBlock.of(")"),
+                    CodeBlock.of(" && "),
+                    CodeBlock.of("("),
+                    renderExpression(objectDef, methodDef, andExpressionDef.right()),
+                    CodeBlock.of(")")
+                );
+            } else if (isLeftCondition) {
+                return CodeBlock.concat(
+                    CodeBlock.of("("),
+                    renderExpression(objectDef, methodDef, andExpressionDef.left()),
+                    CodeBlock.of(")"),
+                    CodeBlock.of(" && "),
+                    renderExpression(objectDef, methodDef, andExpressionDef.right())
+                );
+            } else if (isRightCondition) {
+                return CodeBlock.concat(
+                    renderExpression(objectDef, methodDef, andExpressionDef.left()),
+                    CodeBlock.of(" && "),
+                    CodeBlock.of("("),
+                    renderExpression(objectDef, methodDef, andExpressionDef.right()),
+                    CodeBlock.of(")")
+                );
+            } else {
+                return CodeBlock.concat(
+                    renderExpression(objectDef, methodDef, andExpressionDef.left()),
+                    CodeBlock.of(" && "),
+                    renderExpression(objectDef, methodDef, andExpressionDef.right())
+                    );
+            }
         }
         if (expressionDef instanceof ExpressionDef.Or orExpressionDef) {
             boolean isLeftCondition = orExpressionDef.left() instanceof ExpressionDef.Condition ||

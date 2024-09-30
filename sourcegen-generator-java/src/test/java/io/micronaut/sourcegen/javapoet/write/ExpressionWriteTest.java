@@ -146,7 +146,7 @@ public class ExpressionWriteTest extends AbstractWriteTest {
     }
 
     @Test
-    public void returnAOrConditionWithParentheses() throws IOException {
+    public void returnOrConditionWithParentheses() throws IOException {
         ExpressionDef orExpression = new ExpressionDef.Or(
             ExpressionDef.trueValue().asCondition("==", ExpressionDef.falseValue()),
             new VariableDef.Local("field", TypeDef.of(Object.class)).isNonNull()
@@ -154,5 +154,13 @@ public class ExpressionWriteTest extends AbstractWriteTest {
         String result = writeMethodWithExpression(orExpression);
 
         assertEquals("(true==false) || (field != null)", result);
+    }
+
+    @Test
+    public void returnPrimitiveInitialization() throws IOException {
+        ExpressionDef intExpression = TypeDef.of(int.class).initialize(ExpressionDef.constant(0));
+        String result = writeMethodWithExpression(intExpression);
+
+        assertEquals("0", result);
     }
 }

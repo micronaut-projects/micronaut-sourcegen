@@ -234,67 +234,75 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addParameter("instance", ClassTypeDef.of(objectName))
             .returns(int.class)
-            .build((self, parameterDef) -> {
-                List<StatementDef> hashUpdates = new ArrayList<>();
-                VariableDef.Local hashValue = new VariableDef.Local("hashValue", TypeDef.of(int.class));
-                TypeDef propertyTypeDef;
-                ExpressionDef thisProperty;
-                ExpressionDef propertyHashCalculation;
-
-                for (PropertyElement beanProperty : properties) {
-                    propertyTypeDef = TypeDef.of(beanProperty.getType());
-                    if (!beanProperty.hasAnnotation(EqualsAndHashCode.Exclude.class) && beanProperty.getReadMethod().isPresent()) {
-                        thisProperty = parameterDef.get(0).asVariable()
-                            .invoke(beanProperty.getReadMethod().get(), List.of());
-                    } else {
-                        continue;
-                    }
-
-                    // calculate new property hash value
-                    if (propertyTypeDef instanceof TypeDef.Array) {
-                        String methodName = (((TypeDef.Array) propertyTypeDef).dimensions() > 1) ?  "deepHashCode" : "hashCode";
-                        propertyHashCalculation = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.of(int.class), thisProperty);
-                    } else if (propertyTypeDef instanceof TypeDef.Primitive) {
-                        String typeName = ((TypeDef.Primitive) propertyTypeDef).name();
-                        if (propertyTypeDef == TypeDef.BOOLEAN) {
-                            propertyHashCalculation = thisProperty.asConditionIfElse(
-                                ExpressionDef.constant(TRUE_HASH_VALUE),
-                                ExpressionDef.constant(FALSE_HASH_VALUE)
-                            );
-                        } else if (typeName.equals("float")) {
-                            propertyHashCalculation = ClassTypeDef.of(Float.class).invokeStatic("floatToIntBits", TypeDef.of(int.class), thisProperty);
-                        } else if (typeName.equals("double")) {
-                            // double -> long -> int
-                            propertyHashCalculation = ClassTypeDef.of(Double.class).invokeStatic("doubleToLongBits", TypeDef.of(int.class), thisProperty);
-                            propertyHashCalculation = propertyHashCalculation.asCondition(" >>> ",
-                                ExpressionDef.constant(32).asCondition(" ^ ", propertyHashCalculation));
-                        } else if (typeName.equals("long")) {
-                            propertyHashCalculation = thisProperty.asCondition(" >>> ",
-                                ExpressionDef.constant(32).asCondition(" ^ ", thisProperty));
-                        } else if (typeName.equals("char")) {
-                            propertyHashCalculation = thisProperty.asCondition(" - ", ExpressionDef.constant('0'));
-                        } else if (typeName.equals("short")) {
-                            propertyHashCalculation = thisProperty.asCondition(" & ", ExpressionDef.constant(0xffff));
-                        } else { // for int and byte, return itself as an int
-                            propertyHashCalculation = thisProperty;
-                        }
-                    } else { // OBJECT
-                        propertyHashCalculation = thisProperty.isNull().asConditionIfElse(
-                            ExpressionDef.constant(NULL_HASH_VALUE),
-                            thisProperty.invoke("hashCode", TypeDef.of(int.class), List.of())
-                        );
-                    }
-                    hashUpdates.add(hashValue.assign(
-                        hashValue.asCondition(" * ", ExpressionDef.constant(HASH_MULTIPLIER)
-                            .asCondition(" + ", propertyHashCalculation.cast(TypeDef.of(int.class))))));
-                }
-                return StatementDef.multi(
+            .build((self, parameterDef) -> StatementDef.multi(
                     parameterDef.get(0).asExpression().isNull().asConditionIf(ExpressionDef.constant(0).returning()),
-                    hashValue.defineAndAssign(ExpressionDef.constant(1)),
-                    StatementDef.multi(hashUpdates),
-                    hashValue.returning()
-                );
-            });
+                    TypeDef.of(int.class).initialize(ExpressionDef.constant(1)).newLocal("hashValue", hashValue -> {
+                        List<StatementDef> hashUpdates = new ArrayList<>();
+                        TypeDef propertyTypeDef;
+                        ExpressionDef propertyGetter;
+                        ExpressionDef propertyHashCalculation;
+
+                        for (PropertyElement beanProperty : properties) {
+                            propertyTypeDef = TypeDef.of(beanProperty.getType());
+                            if (!beanProperty.hasAnnotation(EqualsAndHashCode.Exclude.class) && beanProperty.getReadMethod().isPresent()) {
+                                propertyGetter = parameterDef.get(0).asVariable()
+                                    .invoke(beanProperty.getReadMethod().get(), List.of());
+                            } else {
+                                continue;
+                            }
+
+                            propertyHashCalculation = getPropertyHashValue(propertyTypeDef, propertyGetter);
+                            hashUpdates.add(hashValue.assign(
+                                hashValue.asCondition(" * ", ExpressionDef.constant(HASH_MULTIPLIER)
+                                    .asCondition(" + ", propertyHashCalculation.cast(TypeDef.of(int.class))))));
+                        }
+                        hashUpdates.add(hashValue.returning());
+                        return StatementDef.multi(hashUpdates);
+                    })
+                )
+            );
         classDefBuilder.addMethod(method);
+    }
+
+    /*
+
+     */
+    private static ExpressionDef getPropertyHashValue(TypeDef propertyTypeDef, ExpressionDef thisProperty) {
+        ExpressionDef propertyHashCalculation;
+        // calculate new property hash value
+        if (propertyTypeDef instanceof TypeDef.Array) {
+            String methodName = (((TypeDef.Array) propertyTypeDef).dimensions() > 1) ?  "deepHashCode" : "hashCode";
+            propertyHashCalculation = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.of(int.class), thisProperty);
+        } else if (propertyTypeDef instanceof TypeDef.Primitive) {
+            String typeName = ((TypeDef.Primitive) propertyTypeDef).name();
+            if (propertyTypeDef == TypeDef.BOOLEAN) {
+                propertyHashCalculation = thisProperty.asConditionIfElse(
+                    ExpressionDef.constant(TRUE_HASH_VALUE),
+                    ExpressionDef.constant(FALSE_HASH_VALUE)
+                );
+            } else if (typeName.equals("float")) {
+                propertyHashCalculation = ClassTypeDef.of(Float.class).invokeStatic("floatToIntBits", TypeDef.of(int.class), thisProperty);
+            } else if (typeName.equals("double")) {
+                // double -> long -> int
+                propertyHashCalculation = ClassTypeDef.of(Double.class).invokeStatic("doubleToLongBits", TypeDef.of(int.class), thisProperty);
+                propertyHashCalculation = propertyHashCalculation.asCondition(" >>> ",
+                    ExpressionDef.constant(32).asCondition(" ^ ", propertyHashCalculation));
+            } else if (typeName.equals("long")) {
+                propertyHashCalculation = thisProperty.asCondition(" >>> ",
+                    ExpressionDef.constant(32).asCondition(" ^ ", thisProperty));
+            } else if (typeName.equals("char")) {
+                propertyHashCalculation = thisProperty.asCondition(" - ", ExpressionDef.constant('0'));
+            } else if (typeName.equals("short")) {
+                propertyHashCalculation = thisProperty.asCondition(" & ", ExpressionDef.constant(0xffff));
+            } else { // for int and byte, return itself as an int
+                propertyHashCalculation = thisProperty;
+            }
+        } else { // OBJECT
+            propertyHashCalculation = thisProperty.isNull().asConditionIfElse(
+                ExpressionDef.constant(NULL_HASH_VALUE),
+                thisProperty.invoke("hashCode", TypeDef.of(int.class), List.of())
+            );
+        }
+        return propertyHashCalculation;
     }
 }
