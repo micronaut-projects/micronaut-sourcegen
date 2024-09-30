@@ -28,8 +28,14 @@ import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.*;
 
-import java.util.*;
 import javax.lang.model.element.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * The visitor that generates the Object class of a bean.
@@ -83,15 +89,15 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             ClassDef.ClassDefBuilder objectBuilder = ClassDef.builder(objectClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
-            List<PropertyElement> properties = element.getBeanProperties();
-
             // create the utils functions if they are annotated
             if (element.hasStereotype(ToString.class)) {
                 context.warn("@ToString annotation will only print out bean properties.", element);
-                List<PropertyElement> filteredProperties = properties.stream().filter(property -> !property.hasAnnotation(ToString.Exclude.class)).toList();
-                createToStringMethod(objectBuilder, element.getSimpleName(), filteredProperties);
+                List<PropertyElement> filteredProperties = element.getBeanProperties().stream()
+                    .filter(property -> !property.hasAnnotation(ToString.Exclude.class)).toList();
+                createToStringMethod(objectBuilder, ClassTypeDef.of(element), filteredProperties);
             }
             if (element.hasStereotype(EqualsAndHashCode.class)) {
+                List<PropertyElement> properties = element.getBeanProperties();
                 createEqualsMethod(objectBuilder, ClassTypeDef.of(element), properties);
                 createHashCodeMethod(objectBuilder, ClassTypeDef.of(element), properties);
             }
@@ -135,13 +141,15 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
     Creates a toString method with signature:
         public static String BeanNameObject.toString(BeanName object)
      */
-    private static void createToStringMethod(ClassDef.ClassDefBuilder classDefBuilder, String objectName, List<PropertyElement> properties) {
+    private static void createToStringMethod(ClassDef.ClassDefBuilder classDefBuilder, ClassTypeDef selfType, List<PropertyElement> properties) {
         MethodDef method = MethodDef.builder("toString")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(TypeDef.STRING)
-            .addParameter("instance", ClassTypeDef.of(objectName))
+            .addParameter("instance", selfType)
             .build((self, parameterDef) ->
-                ClassTypeDef.of(StringBuilder.class).instantiate(ExpressionDef.constant(objectName + "[")).newLocal("strBuilder", variableDef -> {
+                ClassTypeDef.of(StringBuilder.class).instantiate(
+                    ExpressionDef.constant(selfType.getSimpleName() + "["))
+                    .newLocal("strBuilder", variableDef -> {
                     ExpressionDef exp = variableDef;
                     for (int i = 0; i < properties.size(); i++) {
                         var beanProperty = properties.get(i);
@@ -156,7 +164,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                                 ExpressionDef.constant(beanProperty.getName() + "="))
                             .invoke("append", variableDef.type(),
                                 TypeDef.of(beanProperty.getType()).isArray() ?
-                                    ClassTypeDef.of(Arrays.class).invokeStatic("toString", TypeDef.STRING, List.of(propertyValue))
+                                    ClassTypeDef.of(Arrays.class).invokeStatic("toString", TypeDef.STRING, propertyValue)
                                     : propertyValue
                             ).invoke("append", variableDef.type(),
                                 ExpressionDef.constant((i == properties.size() - 1) ? "]" : ", "));
