@@ -264,43 +264,46 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
         classDefBuilder.addMethod(method);
     }
 
-    /*
-
+    /** Calculate property hash value according to its type
+     *
+     * @param propertyTypeDef TypeDef of the property
+     * @param property the expression that gets the value of the property
+     * @return expression that calculates the hash value
      */
-    private static ExpressionDef getPropertyHashValue(TypeDef propertyTypeDef, ExpressionDef thisProperty) {
+    private static ExpressionDef getPropertyHashValue(TypeDef propertyTypeDef, ExpressionDef property) {
         ExpressionDef propertyHashCalculation;
         // calculate new property hash value
         if (propertyTypeDef.isArray()) {
             String methodName = (((TypeDef.Array) propertyTypeDef).dimensions() > 1) ?  "deepHashCode" : "hashCode";
-            propertyHashCalculation = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.of(int.class), thisProperty);
+            propertyHashCalculation = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.of(int.class), property);
         } else if (propertyTypeDef.isPrimitive()) {
             String typeName = ((TypeDef.Primitive) propertyTypeDef).name();
             if (propertyTypeDef == TypeDef.BOOLEAN) {
-                propertyHashCalculation = thisProperty.asConditionIfElse(
+                propertyHashCalculation = property.asConditionIfElse(
                     ExpressionDef.constant(TRUE_HASH_VALUE),
                     ExpressionDef.constant(FALSE_HASH_VALUE)
                 );
             } else if (typeName.equals("float")) {
-                propertyHashCalculation = ClassTypeDef.of(Float.class).invokeStatic("floatToIntBits", TypeDef.of(int.class), thisProperty);
+                propertyHashCalculation = ClassTypeDef.of(Float.class).invokeStatic("floatToIntBits", TypeDef.of(int.class), property);
             } else if (typeName.equals("double")) {
                 // double -> long -> int
-                propertyHashCalculation = ClassTypeDef.of(Double.class).invokeStatic("doubleToLongBits", TypeDef.of(int.class), thisProperty);
+                propertyHashCalculation = ClassTypeDef.of(Double.class).invokeStatic("doubleToLongBits", TypeDef.of(int.class), property);
                 propertyHashCalculation = propertyHashCalculation.asCondition(" >>> ",
                     ExpressionDef.constant(32).asCondition(" ^ ", propertyHashCalculation));
             } else if (typeName.equals("long")) {
-                propertyHashCalculation = thisProperty.asCondition(" >>> ",
-                    ExpressionDef.constant(32).asCondition(" ^ ", thisProperty));
+                propertyHashCalculation = property.asCondition(" >>> ",
+                    ExpressionDef.constant(32).asCondition(" ^ ", property));
             } else if (typeName.equals("char")) {
-                propertyHashCalculation = thisProperty.asCondition(" - ", ExpressionDef.constant('0'));
+                propertyHashCalculation = property.asCondition(" - ", ExpressionDef.constant('0'));
             } else if (typeName.equals("short")) {
-                propertyHashCalculation = thisProperty.asCondition(" & ", ExpressionDef.constant(0xffff));
+                propertyHashCalculation = property.asCondition(" & ", ExpressionDef.constant(0xffff));
             } else { // for int and byte, return itself as an int
-                propertyHashCalculation = thisProperty;
+                propertyHashCalculation = property;
             }
         } else { // OBJECT
-            propertyHashCalculation = thisProperty.isNull().asConditionIfElse(
+            propertyHashCalculation = property.isNull().asConditionIfElse(
                 ExpressionDef.constant(NULL_HASH_VALUE),
-                thisProperty.invoke("hashCode", TypeDef.of(int.class), List.of())
+                property.invoke("hashCode", TypeDef.of(int.class), List.of())
             );
         }
         return propertyHashCalculation;
