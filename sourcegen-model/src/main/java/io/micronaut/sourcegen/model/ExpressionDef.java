@@ -36,7 +36,7 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.PrimitiveInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef {
+    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
 
     /**
      * The condition of this variable.
@@ -103,7 +103,7 @@ public sealed interface ExpressionDef
      */
     @NonNull
     static ExpressionDef.Constant trueValue() {
-        return new Constant(TypeDef.BOOLEAN, true);
+        return new Constant(TypeDef.Primitive.BOOLEAN, true);
     }
 
     /**
@@ -112,7 +112,7 @@ public sealed interface ExpressionDef
      */
     @NonNull
     static ExpressionDef.Constant falseValue() {
-        return new Constant(TypeDef.BOOLEAN, false);
+        return new Constant(TypeDef.Primitive.BOOLEAN, false);
     }
 
     /**
@@ -423,19 +423,6 @@ public sealed interface ExpressionDef
     }
 
     /**
-     * The new instance expression for primitives.
-     *
-     * @param type   The type
-     * @param value The initial value
-     * @return The new instance
-     */
-    @Experimental
-    static PrimitiveInstance initialize(TypeDef type,
-                                   ExpressionDef value) {
-        return new PrimitiveInstance(type, value);
-    }
-
-    /**
      * The call the instance method expression.
      *
      * @param instance   The instance
@@ -492,19 +479,6 @@ public sealed interface ExpressionDef
     @Experimental
     record NewInstance(ClassTypeDef type,
                        List<ExpressionDef> values) implements ExpressionDef {
-    }
-
-    /**
-     * The new instance expression.
-     *
-     * @param type   The type
-     * @param value The initial value
-     * @author Denis Stepanov
-     * @since 1.0
-     */
-    @Experimental
-    record PrimitiveInstance(TypeDef type,
-                       ExpressionDef value) implements ExpressionDef {
     }
 
     /**
@@ -610,7 +584,7 @@ public sealed interface ExpressionDef
                      ExpressionDef right) implements ExpressionDef {
         @Override
         public TypeDef type() {
-            return TypeDef.of(boolean.class);
+            return TypeDef.Primitive.BOOLEAN;
         }
     }
 
@@ -626,7 +600,7 @@ public sealed interface ExpressionDef
     record And(ExpressionDef left, ExpressionDef right) implements ExpressionDef {
         @Override
         public TypeDef type()  {
-            return TypeDef.of(boolean.class);
+            return TypeDef.Primitive.BOOLEAN;
         }
     }
 
@@ -642,7 +616,7 @@ public sealed interface ExpressionDef
     record Or(ExpressionDef left, ExpressionDef right) implements ExpressionDef {
         @Override
         public TypeDef type()  {
-            return TypeDef.of(boolean.class);
+            return TypeDef.Primitive.BOOLEAN;
         }
     }
 

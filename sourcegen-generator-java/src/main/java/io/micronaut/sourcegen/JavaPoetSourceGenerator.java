@@ -517,7 +517,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 CodeBlock.of(")")
             );
         }
-        if (expressionDef instanceof ExpressionDef.PrimitiveInstance primitiveInstance) {
+        if (expressionDef instanceof TypeDef.Primitive.PrimitiveInstance primitiveInstance) {
             return renderExpression(objectDef, methodDef, primitiveInstance.value());
         }
         if (expressionDef instanceof ExpressionDef.NewArrayOfSize newArray) {

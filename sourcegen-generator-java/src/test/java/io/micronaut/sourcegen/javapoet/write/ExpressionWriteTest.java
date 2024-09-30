@@ -158,7 +158,7 @@ public class ExpressionWriteTest extends AbstractWriteTest {
 
     @Test
     public void returnPrimitiveInitialization() throws IOException {
-        ExpressionDef intExpression = TypeDef.of(int.class).initialize(ExpressionDef.constant(0));
+        ExpressionDef intExpression = TypeDef.Primitive.INT.initialize(ExpressionDef.constant(0));
         String result = writeMethodWithExpression(intExpression);
 
         assertEquals("0", result);
