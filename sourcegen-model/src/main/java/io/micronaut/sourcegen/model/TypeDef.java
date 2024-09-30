@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
@@ -248,6 +247,20 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
      */
     default boolean isNullable() {
         return false;
+    }
+
+    /**
+     * @return Is primitive type
+     */
+    default boolean isPrimitive() {
+        return this instanceof TypeDef.Primitive;
+    }
+
+    /**
+     * @return Is Array type
+     */
+    default boolean isArray() {
+        return this instanceof TypeDef.Array;
     }
 
     /**

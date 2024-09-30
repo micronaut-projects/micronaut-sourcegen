@@ -158,7 +158,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                         exp = exp.invoke("append", variableDef.type(),
                                 ExpressionDef.constant(beanProperty.getName() + "="))
                             .invoke("append", variableDef.type(),
-                                (TypeDef.of(beanProperty.getType()) instanceof TypeDef.Array) ?
+                                (TypeDef.of(beanProperty.getType()).isArray()) ?
                                     ClassTypeDef.of(Arrays.class).invokeStatic("toString",
                                         TypeDef.of(String.class), List.of(propertyValue)) : propertyValue)
                             .invoke("append", variableDef.type(),
@@ -204,11 +204,11 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                             } else {
                                 continue;
                             }
-                            ExpressionDef newEqualsExpression = (propertyTypeDef instanceof TypeDef.Primitive) ?
+                            ExpressionDef newEqualsExpression = propertyTypeDef.isPrimitive() ?
                                 firstProperty.asCondition(" == ", secondProperty)
                                 : firstProperty.asCondition(" == ", secondProperty)
                                 .asConditionOr(firstProperty.isNonNull().asConditionAnd(
-                                    (propertyTypeDef instanceof TypeDef.Array) ?
+                                    (propertyTypeDef.isArray()) ?
                                         ClassTypeDef.of(Arrays.class).invokeStatic("equals", TypeDef.BOOLEAN, Arrays.asList(firstProperty, secondProperty))
                                         : firstProperty.invoke("equals", TypeDef.BOOLEAN, secondProperty)
                                 ));
@@ -270,10 +270,10 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
     private static ExpressionDef getPropertyHashValue(TypeDef propertyTypeDef, ExpressionDef thisProperty) {
         ExpressionDef propertyHashCalculation;
         // calculate new property hash value
-        if (propertyTypeDef instanceof TypeDef.Array) {
+        if (propertyTypeDef.isArray()) {
             String methodName = (((TypeDef.Array) propertyTypeDef).dimensions() > 1) ?  "deepHashCode" : "hashCode";
             propertyHashCalculation = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.of(int.class), thisProperty);
-        } else if (propertyTypeDef instanceof TypeDef.Primitive) {
+        } else if (propertyTypeDef.isPrimitive()) {
             String typeName = ((TypeDef.Primitive) propertyTypeDef).name();
             if (propertyTypeDef == TypeDef.BOOLEAN) {
                 propertyHashCalculation = thisProperty.asConditionIfElse(
