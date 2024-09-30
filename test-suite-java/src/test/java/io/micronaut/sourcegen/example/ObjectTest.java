@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.Assert.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class ObjectTest {
@@ -33,11 +34,31 @@ public class ObjectTest {
     }
 
     @Test
-    public void testToStringWithSecret() {
-        var elephant = new Elephant("Daisy", 5, false);
+    public void testToStringWithExclude() {
+        var elephant = new Elephant("Daisy", 5, false, 1);
 
         assertNotNull(ElephantObject.toString(elephant));
-        assertEquals("Elephant[hasSibling=false]", elephant.toString());
+        assertEquals("Elephant[name=Daisy, hasSibling=false]", elephant.toString());
+    }
+
+    @Test
+    public void testMultipleDimensionArrays() {
+        var elephant = new Elephant("Daisy", 5, false, 1);
+        var elephantDiff = new Elephant("Daisy", 5, false, 2);
+        var elephantSame = new Elephant("Dumbo", 5, false, 1);
+
+        assertNotEquals(elephant.hashCode(), elephantDiff.hashCode());
+        assertEquals(elephant.hashCode(), elephantSame.hashCode());
+    }
+
+    @Test
+    public void testEqualsWithExclude() {
+        var elephant = new Elephant("Daisy", 5, false, 1);
+        var elephantDiff = new Elephant("Daisy", 5, false, 2);
+        var elephantSame = new Elephant("Dumbo", 5, false, 1);
+
+        assertFalse(elephant.equals(elephantDiff));
+        assertTrue(elephant.equals(elephantSame));
     }
 
     @Test

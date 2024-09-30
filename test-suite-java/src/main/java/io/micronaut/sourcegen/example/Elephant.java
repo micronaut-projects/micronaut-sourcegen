@@ -15,19 +15,30 @@
  */
 package io.micronaut.sourcegen.example;
 
+import io.micronaut.sourcegen.annotations.EqualsAndHashCode;
 import io.micronaut.sourcegen.annotations.ToString;
 
 @ToString
+@EqualsAndHashCode
 public class Elephant {
-    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     public String name;
     public int age;
     private boolean hasSibling;
 
-    public Elephant(String name, int age, boolean hasSibling) {
+    @ToString.Exclude
+    private int[][] values;
+
+    public Elephant(String name, int age, boolean hasSibling, int value) {
         this.name = name;
         this.age = age;
         this.hasSibling = hasSibling;
+        values = new int[3][3];
+        for(int i=0; i<3; i++) {
+            for(int j=0; j<3; j++) {
+                values[i][j] = value;
+            }
+        }
     }
 
     public Elephant(String name) {
@@ -42,7 +53,22 @@ public class Elephant {
         return hasSibling;
     }
 
+    public int[][] getValues() {
+        return values;
+    }
+
+    @Override
     public String toString() {
         return ElephantObject.toString(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return ElephantObject.equals(this, o);
+    }
+
+    @Override
+    public int hashCode() {
+        return ElephantObject.hashCode(this);
     }
 }
