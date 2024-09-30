@@ -615,8 +615,7 @@ public sealed interface ExpressionDef
     }
 
     /**
-     * The and condition. The expression which is a type of Condition,
-     * gets parentheses put around.
+     * The and condition. Puts parenthesis around itself when needed.
      *
      * @param left     The left expression
      * @param right    The right expression
@@ -632,8 +631,7 @@ public sealed interface ExpressionDef
     }
 
     /**
-     * The or condition. The expression which is a type of Condition,
-     *      * gets parentheses put around.
+     * The or condition. Puts parenthesis around itself when needed.
      *
      * @param left     The left expression
      * @param right    The right expression

@@ -126,12 +126,12 @@ public class ExpressionWriteTest extends AbstractWriteTest {
     @Test
     public void returnAndConditionWithParentheses() throws IOException {
         ExpressionDef andExpression = new ExpressionDef.And(
-            ExpressionDef.trueValue().asCondition("==", ExpressionDef.falseValue()),
-            new VariableDef.Local("field", TypeDef.of(Object.class)).isNonNull()
+            ExpressionDef.trueValue().asConditionOr(ExpressionDef.falseValue()),
+            ExpressionDef.trueValue().asConditionOr(ExpressionDef.falseValue())
         );
         String result = writeMethodWithExpression(andExpression);
 
-        assertEquals("(true==false) && (field != null)", result);
+        assertEquals("(true || false) && (true || false)", result);
     }
 
     @Test
@@ -148,12 +148,12 @@ public class ExpressionWriteTest extends AbstractWriteTest {
     @Test
     public void returnOrConditionWithParentheses() throws IOException {
         ExpressionDef orExpression = new ExpressionDef.Or(
-            ExpressionDef.trueValue().asCondition("==", ExpressionDef.falseValue()),
-            new VariableDef.Local("field", TypeDef.of(Object.class)).isNonNull()
+            ExpressionDef.trueValue().asConditionAnd(ExpressionDef.falseValue()),
+            ExpressionDef.trueValue().asConditionOr(ExpressionDef.falseValue())
         );
         String result = writeMethodWithExpression(orExpression);
 
-        assertEquals("(true==false) || (field != null)", result);
+        assertEquals("(true && false) || (true || false)", result);
     }
 
     @Test

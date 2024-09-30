@@ -585,57 +585,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             );
         }
         if (expressionDef instanceof ExpressionDef.And andExpressionDef) {
-            boolean isLeftCondition = andExpressionDef.left() instanceof ExpressionDef.Condition ||
-                andExpressionDef.left() instanceof ExpressionDef.And || andExpressionDef.left() instanceof ExpressionDef.Or;
-            boolean isRightCondition = andExpressionDef.right() instanceof ExpressionDef.Condition ||
-                andExpressionDef.right() instanceof ExpressionDef.And || andExpressionDef.right() instanceof ExpressionDef.Or;
-            if (isLeftCondition && isRightCondition) {
-                return CodeBlock.concat(
-                    CodeBlock.of("("),
-                    renderExpression(objectDef, methodDef, andExpressionDef.left()),
-                    CodeBlock.of(")"),
-                    CodeBlock.of(" && "),
-                    CodeBlock.of("("),
-                    renderExpression(objectDef, methodDef, andExpressionDef.right()),
-                    CodeBlock.of(")")
-                );
-            } else if (isLeftCondition) {
-                return CodeBlock.concat(
-                    CodeBlock.of("("),
-                    renderExpression(objectDef, methodDef, andExpressionDef.left()),
-                    CodeBlock.of(")"),
-                    CodeBlock.of(" && "),
-                    renderExpression(objectDef, methodDef, andExpressionDef.right())
-                );
-            } else if (isRightCondition) {
-                return CodeBlock.concat(
-                    renderExpression(objectDef, methodDef, andExpressionDef.left()),
-                    CodeBlock.of(" && "),
-                    CodeBlock.of("("),
-                    renderExpression(objectDef, methodDef, andExpressionDef.right()),
-                    CodeBlock.of(")")
-                );
-            } else {
-                return CodeBlock.concat(
-                    renderExpression(objectDef, methodDef, andExpressionDef.left()),
-                    CodeBlock.of(" && "),
-                    renderExpression(objectDef, methodDef, andExpressionDef.right())
-                    );
-            }
+            return CodeBlock.concat(
+                renderCondition(objectDef, methodDef, andExpressionDef.left()),
+                CodeBlock.of(" && "),
+                renderCondition(objectDef, methodDef, andExpressionDef.right())
+            );
         }
         if (expressionDef instanceof ExpressionDef.Or orExpressionDef) {
-            boolean isLeftCondition = orExpressionDef.left() instanceof ExpressionDef.Condition ||
-                orExpressionDef.left() instanceof ExpressionDef.And || orExpressionDef.left() instanceof ExpressionDef.Or;
-            boolean isRightCondition = orExpressionDef.right() instanceof ExpressionDef.Condition ||
-                orExpressionDef.right() instanceof ExpressionDef.And || orExpressionDef.right() instanceof ExpressionDef.Or;
             return CodeBlock.concat(
-                (isLeftCondition) ? CodeBlock.of("(") : CodeBlock.of(""),
-                renderExpression(objectDef, methodDef, orExpressionDef.left()),
-                (isLeftCondition) ? CodeBlock.of(")") : CodeBlock.of(""),
+                renderCondition(objectDef, methodDef, orExpressionDef.left()),
                 CodeBlock.of(" || "),
-                (isRightCondition) ? CodeBlock.of("(") : CodeBlock.of(""),
-                renderExpression(objectDef, methodDef, orExpressionDef.right()),
-                (isRightCondition) ? CodeBlock.of(")") : CodeBlock.of("")
+                renderCondition(objectDef, methodDef, orExpressionDef.right())
             );
         }
         if (expressionDef instanceof ExpressionDef.IfElse condition) {
@@ -698,6 +658,19 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return renderVariable(objectDef, methodDef, variableDef);
         }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
+    }
+
+    private CodeBlock renderCondition(@Nullable ObjectDef objectDef, MethodDef methodDef, ExpressionDef expressionDef) {
+        boolean needsParentheses = expressionDef instanceof ExpressionDef.And || expressionDef instanceof ExpressionDef.Or;
+        var rendered = renderExpression(objectDef, methodDef, expressionDef);
+        if (needsParentheses) {
+            return CodeBlock.concat(
+                CodeBlock.of("("),
+                rendered,
+                CodeBlock.of(")")
+            );
+        }
+        return rendered;
     }
 
     private void renderYield(CodeBlock.Builder builder, MethodDef methodDef, StatementDef statementDef, ObjectDef objectDef) {
