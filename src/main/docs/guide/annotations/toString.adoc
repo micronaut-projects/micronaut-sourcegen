@@ -1,0 +1,21 @@
+If you annotate a Java Bean with `@ToString`, a `[Bean]Object` class is generated at compilation-time
+with a static implementation of the java.utils.Object's toString() method.
+
+- Properties that do not wish to be printed out should be annotated with @ToString.Exclude
+- All bean properties (with getters) will be written in the form of a Java Record in the generated toString() method with signature:
+
+    `public static String [BeanName]Object.toString(BeanName object)`
+
+NOTE: The user is expected to use the generated static method by overriding the toString() method themselves.
+
+.An example annotated bean with different type of properties and an overridden toString() method:
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Elephant.java[tags=clazs,indent=0]
+----
+
+.A test case with different examples how new methods can be used
+[source,java]
+----
+include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/ObjectTest.java[tags=test,indent=0]
+----

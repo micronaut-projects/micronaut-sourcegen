@@ -36,10 +36,7 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod,
-    ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.Cast,
-    ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize,
-    ExpressionDef.NewInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef {
+    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
 
     /**
      * The condition of this variable.
@@ -51,6 +48,28 @@ public sealed interface ExpressionDef
      */
     default ExpressionDef asCondition(String op, ExpressionDef expression) {
         return new ExpressionDef.Condition(op, this, expression);
+    }
+
+    /**
+     * The and condition of this variable.
+     *
+     * @param expression The expression of this variable
+     * @return The "and" condition expression
+     * @since 1.3
+     */
+    default ExpressionDef asConditionAnd(ExpressionDef expression) {
+        return new ExpressionDef.And(this, expression);
+    }
+
+    /**
+     * The or condition of this variable.
+     *
+     * @param expression The expression of this variable
+     * @return The "or" condition expression
+     * @since 1.3
+     */
+    default ExpressionDef asConditionOr(ExpressionDef expression) {
+        return new ExpressionDef.Or(this, expression);
     }
 
     /**
@@ -84,7 +103,7 @@ public sealed interface ExpressionDef
      */
     @NonNull
     static ExpressionDef.Constant trueValue() {
-        return new Constant(TypeDef.BOOLEAN, true);
+        return new Constant(TypeDef.Primitive.BOOLEAN, true);
     }
 
     /**
@@ -93,7 +112,7 @@ public sealed interface ExpressionDef
      */
     @NonNull
     static ExpressionDef.Constant falseValue() {
-        return new Constant(TypeDef.BOOLEAN, false);
+        return new Constant(TypeDef.Primitive.BOOLEAN, false);
     }
 
     /**
@@ -565,7 +584,39 @@ public sealed interface ExpressionDef
                      ExpressionDef right) implements ExpressionDef {
         @Override
         public TypeDef type() {
-            return TypeDef.of(boolean.class);
+            return TypeDef.Primitive.BOOLEAN;
+        }
+    }
+
+    /**
+     * The and condition. Puts parenthesis around itself when needed.
+     *
+     * @param left     The left expression
+     * @param right    The right expression
+     * @author Elif Kurtay
+     * @since 1.3
+     */
+    @Experimental
+    record And(ExpressionDef left, ExpressionDef right) implements ExpressionDef {
+        @Override
+        public TypeDef type()  {
+            return TypeDef.Primitive.BOOLEAN;
+        }
+    }
+
+    /**
+     * The or condition. Puts parenthesis around itself when needed.
+     *
+     * @param left     The left expression
+     * @param right    The right expression
+     * @author Elif Kurtay
+     * @since 1.3
+     */
+    @Experimental
+    record Or(ExpressionDef left, ExpressionDef right) implements ExpressionDef {
+        @Override
+        public TypeDef type()  {
+            return TypeDef.Primitive.BOOLEAN;
         }
     }
 

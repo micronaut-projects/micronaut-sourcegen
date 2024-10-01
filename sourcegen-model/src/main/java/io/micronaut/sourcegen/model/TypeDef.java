@@ -41,7 +41,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
 
     TypeDef OBJECT = of(Object.class);
 
-    TypeDef BOOLEAN = of(boolean.class);
+    TypeDef STRING = of(String.class);
 
     /**
      * A simple type representing a special this-type, in context of a class def, method or field the type will be replaced by the current type.
@@ -250,6 +250,20 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
     }
 
     /**
+     * @return Is primitive type
+     */
+    default boolean isPrimitive() {
+        return this instanceof TypeDef.Primitive;
+    }
+
+    /**
+     * @return Is Array type
+     */
+    default boolean isArray() {
+        return this instanceof TypeDef.Array;
+    }
+
+    /**
      * @return A new nullable type
      */
     default TypeDef makeNullable() {
@@ -266,6 +280,25 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
     @Experimental
     record Primitive(String name) implements TypeDef {
 
+        public static final TypeDef.Primitive INT = (Primitive) of(int.class);
+        public static final TypeDef.Primitive BOOLEAN = (Primitive) of(boolean.class);
+        public static final TypeDef.Primitive LONG = (Primitive) of(long.class);
+        public static final TypeDef.Primitive CHAR = (Primitive) of(char.class);
+        public static final TypeDef.Primitive BYTE = (Primitive) of(byte.class);
+        public static final TypeDef.Primitive SHORT = (Primitive) of(short.class);
+        public static final TypeDef.Primitive DOUBLE = (Primitive) of(double.class);
+        public static final TypeDef.Primitive FLOAT = (Primitive) of(float.class);
+
+        @Override
+        public boolean isPrimitive() {
+            return true;
+        }
+
+        @Override
+        public boolean isArray() {
+            return false;
+        }
+
         @Override
         public TypeDef makeNullable() {
             return wrapperType().makeNullable();
@@ -276,6 +309,43 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
             return ClassTypeDef.of(
                 ReflectionUtils.getWrapperType(primitiveType)
             );
+        }
+
+        /**
+         * Instantiate this class.
+         *
+         * @param value The expression giving the initial value
+         * @return The instantiate expression
+         */
+        public ExpressionDef initialize(ExpressionDef value) {
+            return initialize(this, value);
+        }
+
+
+        /**
+         * The new instance expression for primitives.
+         *
+         * @param type   The type
+         * @param value The initial value
+         * @return The new instance
+         */
+        @Experimental
+        public static PrimitiveInstance initialize(TypeDef type,
+                                            ExpressionDef value) {
+            return new PrimitiveInstance(type, value);
+        }
+
+        /**
+         * The new instance expression.
+         *
+         * @param type   The type
+         * @param value The initial value
+         * @author Elif Kurtay
+         * @since 1.3
+         */
+        @Experimental
+        public record PrimitiveInstance(TypeDef type,
+                                 ExpressionDef value) implements ExpressionDef {
         }
     }
 
@@ -290,6 +360,15 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
     @Experimental
     record Wildcard(List<TypeDef> upperBounds,
                     List<TypeDef> lowerBounds) implements TypeDef {
+        @Override
+        public boolean isPrimitive() {
+            return false;
+        }
+
+        @Override
+        public boolean isArray() {
+            return false;
+        }
     }
 
     /**
@@ -329,6 +408,16 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
         @Override
         public TypeDef makeNullable() {
             return new Array(componentType, dimensions, true);
+        }
+
+        @Override
+        public boolean isPrimitive() {
+            return false;
+        }
+
+        @Override
+        public boolean isArray() {
+            return true;
         }
     }
 }

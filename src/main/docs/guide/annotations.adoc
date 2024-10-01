@@ -12,6 +12,10 @@ dependency:micronaut-sourcegen-annotations[groupId=io.micronaut.sourcegen]
 | Create a builder of the annotated type.
 | api:sourcegen.annotations.Wither[]
 | Create an interface with copy style method and possible builder style methods for a record
+| api:sourcegen.annotations.ToString[]
+| Generated a new class with a static implementation of the java.utils.Object's toString() method for annotated Java Bean
+| api:sourcegen.annotations.EqualsAndHashCode[]
+| Generated a new class with a static implementation of the java.utils.Object's equals() and hashCode() methods for annotated Java Bean
 |===
 
 

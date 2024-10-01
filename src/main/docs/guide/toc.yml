@@ -9,5 +9,7 @@ annotations:
   wither: Wither
   superBuilder: Super Builder
   singular: Singular
+  toString: ToString
+  equalsAndHashCode: Equals and HashCode
 repository: Repository
 

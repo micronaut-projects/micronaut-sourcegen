@@ -1,0 +1,24 @@
+If you annotate a Java Bean with `@EqualsAndHashCode`, a `[Bean]Object` class is generated at compilation-time
+with a static implementation of the java.utils.Object's equals() and hashCode() methods.
+
+- Properties that do not wish to be processed should be annotated with @EqualsAndHashCode.Exclude
+- All bean properties (with getters) will be used in the calculations of both methods with signature:
+
+    `public static int [BeanName]Object.hashCode(BeanName object)`
+
+    `public static boolean [BeanName]Object.equals(BeanName object, Object o)`
+
+
+NOTE: The user is expected to use the generated static method by overriding the equals() and hashCode() methods themselves.
+
+.An example annotated bean with different type of properties
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Person4.java[tags=clazz,indent=0]
+----
+
+.A test case with different examples how new methods can be used
+[source,java]
+----
+include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/ObjectTest.java[tags=testt,indent=0]
+----

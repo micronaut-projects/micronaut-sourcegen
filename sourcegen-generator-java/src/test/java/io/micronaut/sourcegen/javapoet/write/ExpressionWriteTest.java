@@ -87,7 +87,7 @@ public class ExpressionWriteTest extends AbstractWriteTest {
             .cast(TypeDef.primitive("float"));
         String result = writeMethodWithExpression(castedExpression);
 
-        assertEquals("(float) 10.5d", result);
+        assertEquals("(float) (10.5d)", result);
     }
 
     @Test
@@ -98,6 +98,69 @@ public class ExpressionWriteTest extends AbstractWriteTest {
         );
         String result = writeMethodWithExpression(castedExpression);
 
-        assertEquals("(Object) \"hello\"", result);
+        assertEquals("(Object) (\"hello\")", result);
+    }
+
+    @Test
+    public void returnCastedVariable() throws IOException {
+        ExpressionDef castedExpression = new Cast(
+            TypeDef.of(Object.class),
+            new VariableDef.Local("field", TypeDef.of(Object.class))
+        );
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(Object) field", result);
+    }
+
+    @Test
+    public void returnAndCondition() throws IOException {
+        ExpressionDef andExpression = new ExpressionDef.And(
+            ExpressionDef.trueValue(),
+            new VariableDef.Local("field", TypeDef.of(Object.class))
+        );
+        String result = writeMethodWithExpression(andExpression);
+
+        assertEquals("true && field", result);
+    }
+
+    @Test
+    public void returnAndConditionWithParentheses() throws IOException {
+        ExpressionDef andExpression = new ExpressionDef.And(
+            ExpressionDef.trueValue().asConditionOr(ExpressionDef.falseValue()),
+            ExpressionDef.trueValue().asConditionOr(ExpressionDef.falseValue())
+        );
+        String result = writeMethodWithExpression(andExpression);
+
+        assertEquals("(true || false) && (true || false)", result);
+    }
+
+    @Test
+    public void returnOrCondition() throws IOException {
+        ExpressionDef orExpression = new ExpressionDef.Or(
+            ExpressionDef.trueValue(),
+            new VariableDef.Local("field", TypeDef.of(Object.class))
+        );
+        String result = writeMethodWithExpression(orExpression);
+
+        assertEquals("true || field", result);
+    }
+
+    @Test
+    public void returnOrConditionWithParentheses() throws IOException {
+        ExpressionDef orExpression = new ExpressionDef.Or(
+            ExpressionDef.trueValue().asConditionAnd(ExpressionDef.falseValue()),
+            ExpressionDef.trueValue().asConditionOr(ExpressionDef.falseValue())
+        );
+        String result = writeMethodWithExpression(orExpression);
+
+        assertEquals("(true && false) || (true || false)", result);
+    }
+
+    @Test
+    public void returnPrimitiveInitialization() throws IOException {
+        ExpressionDef intExpression = TypeDef.Primitive.INT.initialize(ExpressionDef.constant(0));
+        String result = writeMethodWithExpression(intExpression);
+
+        assertEquals("0", result);
     }
 }

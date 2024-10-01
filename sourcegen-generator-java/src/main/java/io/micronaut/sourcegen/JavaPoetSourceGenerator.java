@@ -517,6 +517,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 CodeBlock.of(")")
             );
         }
+        if (expressionDef instanceof TypeDef.Primitive.PrimitiveInstance primitiveInstance) {
+            return renderExpression(objectDef, methodDef, primitiveInstance.value());
+        }
         if (expressionDef instanceof ExpressionDef.NewArrayOfSize newArray) {
             return CodeBlock.of("new $T[$L]", asType(newArray.type().componentType(), objectDef), newArray.size());
         }
@@ -537,9 +540,16 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return renderExpression(objectDef, methodDef, convertExpressionDef.expressionDef());
         }
         if (expressionDef instanceof ExpressionDef.Cast castExpressionDef) {
+            if (castExpressionDef.expressionDef() instanceof VariableDef variableDef) {
+                return CodeBlock.concat(
+                    CodeBlock.of("($T) ", asType(castExpressionDef.type(), objectDef)),
+                    renderExpression(objectDef, methodDef, variableDef)
+                );
+            }
             return CodeBlock.concat(
-                CodeBlock.of("($T) ", asType(castExpressionDef.type(), objectDef)),
-                renderExpression(objectDef, methodDef, castExpressionDef.expressionDef())
+                CodeBlock.of("($T) (", asType(castExpressionDef.type(), objectDef)),
+                renderExpression(objectDef, methodDef, castExpressionDef.expressionDef()),
+                CodeBlock.of(")")
             );
         }
         if (expressionDef instanceof ExpressionDef.Constant constant) {
@@ -572,6 +582,20 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 renderExpression(objectDef, methodDef, condition.left()),
                 CodeBlock.of(condition.operator()),
                 renderExpression(objectDef, methodDef, condition.right())
+            );
+        }
+        if (expressionDef instanceof ExpressionDef.And andExpressionDef) {
+            return CodeBlock.concat(
+                renderCondition(objectDef, methodDef, andExpressionDef.left()),
+                CodeBlock.of(" && "),
+                renderCondition(objectDef, methodDef, andExpressionDef.right())
+            );
+        }
+        if (expressionDef instanceof ExpressionDef.Or orExpressionDef) {
+            return CodeBlock.concat(
+                renderCondition(objectDef, methodDef, orExpressionDef.left()),
+                CodeBlock.of(" || "),
+                renderCondition(objectDef, methodDef, orExpressionDef.right())
             );
         }
         if (expressionDef instanceof ExpressionDef.IfElse condition) {
@@ -634,6 +658,19 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return renderVariable(objectDef, methodDef, variableDef);
         }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
+    }
+
+    private CodeBlock renderCondition(@Nullable ObjectDef objectDef, MethodDef methodDef, ExpressionDef expressionDef) {
+        boolean needsParentheses = expressionDef instanceof ExpressionDef.And || expressionDef instanceof ExpressionDef.Or;
+        var rendered = renderExpression(objectDef, methodDef, expressionDef);
+        if (needsParentheses) {
+            return CodeBlock.concat(
+                CodeBlock.of("("),
+                rendered,
+                CodeBlock.of(")")
+            );
+        }
+        return rendered;
     }
 
     private void renderYield(CodeBlock.Builder builder, MethodDef methodDef, StatementDef statementDef, ObjectDef objectDef) {
