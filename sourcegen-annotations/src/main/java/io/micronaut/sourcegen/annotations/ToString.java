@@ -23,8 +23,8 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * The ToString annotation on a bean should generate a toString method.
- * The method will be created in [BeanName]Utils class as a static method:
- *      public static String BeanNameUtils.toString(BeanName object)
+ * The method will be created in [BeanName]Object class as a static method:
+ *      public static String [BeanName]Object.toString(BeanName object)
  *
  * @author Elif Kurtay
  * @since 1.3

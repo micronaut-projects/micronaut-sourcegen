@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.example;
 
+//tag::clazs[]
 import io.micronaut.sourcegen.annotations.EqualsAndHashCode;
 import io.micronaut.sourcegen.annotations.ToString;
 
@@ -72,3 +73,4 @@ public class Elephant {
         return ElephantObject.hashCode(this);
     }
 }
+//tag::clazs[]

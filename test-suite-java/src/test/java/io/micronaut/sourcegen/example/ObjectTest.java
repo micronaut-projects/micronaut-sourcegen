@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class ObjectTest {
-
+    //tag::test[]
     @Test
     public void testToString() {
         var person = new Person4(123L, Person4.Title.MR,"Cédric", new byte[]{1,2,3});
@@ -40,7 +40,9 @@ public class ObjectTest {
         assertNotNull(ElephantObject.toString(elephant));
         assertEquals("Elephant[name=Daisy, hasSibling=false]", elephant.toString());
     }
+    //end::test[]
 
+    //tag::testt[]
     @Test
     public void testMultipleDimensionArrays() {
         var elephant = new Elephant("Daisy", 5, false, 1);
@@ -113,4 +115,5 @@ public class ObjectTest {
         assertNotEquals(person.hashCode(), personDiffObject.hashCode());
         assertNotEquals(person.hashCode(), personDiffArray.hashCode());
     }
+    //end::testt[]
 }
