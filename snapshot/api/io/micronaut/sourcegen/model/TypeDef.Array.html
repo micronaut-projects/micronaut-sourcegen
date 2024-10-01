@@ -119,7 +119,7 @@ implements <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.mod
 <h2>Field Summary</h2>
 <div class="inherited-list">
 <h3 id="fields-inherited-from-class-io.micronaut.sourcegen.model.TypeDef">Fields inherited from interface&nbsp;io.micronaut.sourcegen.model.<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></h3>
-<code><a href="TypeDef.html#BOOLEAN">BOOLEAN</a>, <a href="TypeDef.html#OBJECT">OBJECT</a>, <a href="TypeDef.html#THIS">THIS</a>, <a href="TypeDef.html#VOID">VOID</a></code></div>
+<code><a href="TypeDef.html#OBJECT">OBJECT</a>, <a href="TypeDef.html#STRING">STRING</a>, <a href="TypeDef.html#THIS">THIS</a>, <a href="TypeDef.html#VOID">VOID</a></code></div>
 </section>
 </li>
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
@@ -171,7 +171,13 @@ implements <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.mod
 <div class="block">Returns a hash code value for this object.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isNullable()" class="member-name-link">isNullable</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isArray()" class="member-name-link">isArray</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isNullable()" class="member-name-link">isNullable</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isPrimitive()" class="member-name-link">isPrimitive</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#makeNullable()" class="member-name-link">makeNullable</a>()</code></div>
@@ -250,6 +256,30 @@ implements <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.mod
 <dd><code><a href="TypeDef.html#makeNullable()">makeNullable</a></code>&nbsp;in interface&nbsp;<code><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></dd>
 <dt>Returns:</dt>
 <dd>A new nullable type</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="isPrimitive()">
+<h3>isPrimitive</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isPrimitive</span>()</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="TypeDef.html#isPrimitive()">isPrimitive</a></code>&nbsp;in interface&nbsp;<code><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></dd>
+<dt>Returns:</dt>
+<dd>Is primitive type</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="isArray()">
+<h3>isArray</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isArray</span>()</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="TypeDef.html#isArray()">isArray</a></code>&nbsp;in interface&nbsp;<code><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></dd>
+<dt>Returns:</dt>
+<dd>Is Array type</dd>
 </dl>
 </section>
 </li>

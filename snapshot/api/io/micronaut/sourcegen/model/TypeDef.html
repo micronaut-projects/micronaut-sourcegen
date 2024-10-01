@@ -135,10 +135,10 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Field</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static final <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></div>
-<div class="col-second even-row-color"><code><a href="#BOOLEAN" class="member-name-link">BOOLEAN</a></code></div>
+<div class="col-second even-row-color"><code><a href="#OBJECT" class="member-name-link">OBJECT</a></code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>static final <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></div>
-<div class="col-second odd-row-color"><code><a href="#OBJECT" class="member-name-link">OBJECT</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#STRING" class="member-name-link">STRING</a></code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>static final <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></div>
 <div class="col-second even-row-color"><code><a href="#THIS" class="member-name-link">THIS</a></code></div>
@@ -185,7 +185,13 @@ loadScripts(document, 'script');</script>
 <div class="block">Instantiate an array of this class.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isNullable()" class="member-name-link">isNullable</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isArray()" class="member-name-link">isArray</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isNullable()" class="member-name-link">isNullable</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isPrimitive()" class="member-name-link">isPrimitive</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#makeNullable()" class="member-name-link">makeNullable</a>()</code></div>
@@ -270,9 +276,9 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="BOOLEAN">
-<h3>BOOLEAN</h3>
-<div class="member-signature"><span class="modifiers">static final</span>&nbsp;<span class="return-type"><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></span>&nbsp;<span class="element-name">BOOLEAN</span></div>
+<section class="detail" id="STRING">
+<h3>STRING</h3>
+<div class="member-signature"><span class="modifiers">static final</span>&nbsp;<span class="return-type"><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></span>&nbsp;<span class="element-name">STRING</span></div>
 </section>
 </li>
 <li>
@@ -485,6 +491,26 @@ loadScripts(document, 'script');</script>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>Is nullable type</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="isPrimitive()">
+<h3>isPrimitive</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isPrimitive</span>()</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>Is primitive type</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="isArray()">
+<h3>isArray</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isArray</span>()</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>Is Array type</dd>
 </dl>
 </section>
 </li>
