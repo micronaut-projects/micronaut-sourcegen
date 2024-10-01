@@ -55,7 +55,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 .addModifiers(Modifier.PUBLIC)
                 .returns(resultType1)
                 .build((self, parameterDefs) ->
-                    parameterDefs.get(0).asExpression().asExpressionSwitch(
+                    parameterDefs.get(0).asExpressionSwitch(
                         resultType1,
                         Map.of(
                             ExpressionDef.constant("abc"), ExpressionDef.constant(1),
@@ -74,7 +74,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 .addModifiers(Modifier.PUBLIC)
                 .returns(resultType2)
                 .build((self, parameterDefs) ->
-                    parameterDefs.get(0).asExpression().asExpressionSwitch(
+                    parameterDefs.get(0).asExpressionSwitch(
                         resultType2,
                         Map.of(
                             ExpressionDef.constant("abc"), ExpressionDef.constant(TimeUnit.SECONDS),
@@ -95,10 +95,10 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 .addModifiers(Modifier.PUBLIC)
                 .returns(resultType3)
                 .build((self, parameterDefs) ->
-                    parameterDefs.get(0).asExpression().asExpressionSwitch(
+                    parameterDefs.get(0).asExpressionSwitch(
                         resultType3,
                         Map.of(
-                            ExpressionDef.constant("abc"), parameterDefs.get(1).asExpression().asExpressionSwitch(
+                            ExpressionDef.constant("abc"), parameterDefs.get(1).asExpressionSwitch(
                                 resultType3,
                                 Map.of(
                                     ExpressionDef.constant(1), ExpressionDef.constant(TimeUnit.MILLISECONDS),
@@ -121,7 +121,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 .addModifiers(Modifier.PUBLIC)
                 .returns(resultType4)
                 .build((self, parameterDefs) ->
-                    parameterDefs.get(0).asExpression().asStatementSwitch(
+                    parameterDefs.get(0).asStatementSwitch(
                         resultType4,
                         Map.of(
                             ExpressionDef.constant("abc"), ExpressionDef.constant(1).returning(),
@@ -140,7 +140,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 .addModifiers(Modifier.PUBLIC)
                 .returns(resultType5)
                 .build((self, parameterDefs) ->
-                    parameterDefs.get(0).asExpression().asStatementSwitch(
+                    parameterDefs.get(0).asStatementSwitch(
                         resultType5,
                         Map.of(
                             ExpressionDef.constant("abc"), ExpressionDef.constant(TimeUnit.SECONDS).returning(),
@@ -161,10 +161,10 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 .addModifiers(Modifier.PUBLIC)
                 .returns(resultType6)
                 .build((self, parameterDefs) ->
-                    parameterDefs.get(0).asExpression().asStatementSwitch(
+                    parameterDefs.get(0).asStatementSwitch(
                         resultType6,
                         Map.of(
-                            ExpressionDef.constant("abc"), parameterDefs.get(1).asExpression().asStatementSwitch(
+                            ExpressionDef.constant("abc"), parameterDefs.get(1).asStatementSwitch(
                                 resultType6,
                                 Map.of(
                                     ExpressionDef.constant(1), ExpressionDef.constant(TimeUnit.MILLISECONDS).returning(),
@@ -189,10 +189,10 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 .addModifiers(Modifier.PUBLIC)
                 .returns(resultType7)
                 .build((self, parameterDefs) ->
-                    parameterDefs.get(0).asExpression().asExpressionSwitch(
+                    parameterDefs.get(0).asExpressionSwitch(
                         resultType7,
                         Map.of(
-                            ExpressionDef.constant("abc"), parameterDefs.get(1).asExpression().asExpressionSwitch(
+                            ExpressionDef.constant("abc"), parameterDefs.get(1).asExpressionSwitch(
                                 resultType7,
                                 Map.of(
                                     ExpressionDef.constant(1), ExpressionDef.constant(TimeUnit.MILLISECONDS),
@@ -218,7 +218,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 .addModifiers(Modifier.PUBLIC)
                 .returns(resultType8)
                 .build((self, parameterDefs) ->
-                    parameterDefs.get(0).asExpression().asExpressionSwitch(
+                    parameterDefs.get(0).asExpressionSwitch(
                         resultType8,
                         Map.of(
                             ExpressionDef.constant("abc"), ExpressionDef.constant(TimeUnit.SECONDS),

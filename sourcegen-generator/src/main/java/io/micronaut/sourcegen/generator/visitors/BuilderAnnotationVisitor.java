@@ -301,13 +301,13 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(propertyName, TypeDef.parameterized(Collection.class, singularTypeDef))
                 .build((self, parameterDefs) -> StatementDef.multi(
-                    parameterDefs.get(0).asExpression().isNull().asConditionIf(
+                    parameterDefs.get(0).isNull().asConditionIf(
                         ClassTypeDef.of(NullPointerException.class).doThrow(ExpressionDef.constant(propertyName + " cannot be null"))
                     ),
                     self.field(field).isNull().asConditionIf(
                         self.field(field).assign(ClassTypeDef.of(ArrayList.class).instantiate())
                     ),
-                    self.field(field).invoke("addAll", TypeDef.primitive(boolean.class), parameterDefs.get(0).asExpression()),
+                    self.field(field).invoke("addAll", TypeDef.primitive(boolean.class), parameterDefs.get(0)),
                     returningExpressionProvider.apply(self)
                 )));
             classBuilder.addMethod(MethodDef.builder(singularName)
@@ -317,7 +317,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     self.field(field).isNull().asConditionIf(
                         self.field(field).assign(ClassTypeDef.of(ArrayList.class).instantiate())
                     ),
-                    self.field(field).invoke("add", TypeDef.of(boolean.class), parameterDefs.get(0).asExpression()),
+                    self.field(field).invoke("add", TypeDef.of(boolean.class), parameterDefs.get(0)),
                     returningExpressionProvider.apply(self)
                 )));
             classBuilder.addMethod(MethodDef.builder("clear" + StringUtils.capitalize(propertyName))
@@ -343,7 +343,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(propertyName, TypeDef.parameterized(Map.class, keyType, valueType))
                 .build((self, parameterDefs) -> StatementDef.multi(
-                    parameterDefs.get(0).asExpression().isNull().asConditionIf(
+                    parameterDefs.get(0).isNull().asConditionIf(
                         ClassTypeDef.of(NullPointerException.class).doThrow(ExpressionDef.constant(propertyName + " cannot be null"))
                     ),
                     self.field(field).isNull().asConditionIf(
@@ -352,7 +352,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     self.field(field).invoke(
                         "addAll",
                         TypeDef.primitive(boolean.class),
-                        parameterDefs.get(0).asExpression().invoke("entrySet", ClassTypeDef.of(Set.class))
+                        parameterDefs.get(0).invoke("entrySet", ClassTypeDef.of(Set.class))
                     ),
                     returningExpressionProvider.apply(self)
                 )));
@@ -370,8 +370,8 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         ClassTypeDef.of(Map.class).invokeStatic(
                             "entry",
                             ClassTypeDef.of(Map.Entry.class),
-                            parameterDefs.get(0).asExpression(),
-                            parameterDefs.get(1).asExpression()
+                            parameterDefs.get(0),
+                            parameterDefs.get(1)
                         )
                     ),
                     returningExpressionProvider.apply(self)

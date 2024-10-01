@@ -157,8 +157,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                         if (readMethod.isEmpty()) {
                             continue;
                         }
-                        ExpressionDef propertyValue = parameterDef.get(0).asVariable()
-                            .invoke(readMethod.get(), List.of());
+                        ExpressionDef propertyValue = parameterDef.get(0).invoke(readMethod.get());
 
                         exp = exp.invoke("append", variableDef.type(),
                                 ExpressionDef.constant(beanProperty.getName() + "="))
@@ -186,8 +185,8 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             .addParameter("instance", selfType)
             .addParameter("o", TypeDef.OBJECT)
             .build((self, parameterDef) -> {
-                VariableDef instance = parameterDef.get(0).asVariable();
-                VariableDef o = parameterDef.get(1).asVariable();
+                VariableDef instance = parameterDef.get(0);
+                VariableDef o = parameterDef.get(1);
 
                 return StatementDef.multi(
                     instance.asCondition(" == ", o)
@@ -199,7 +198,6 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                     o.cast(selfType).newLocal("other", variableDef -> {
                         ExpressionDef exp = null;
                         for (PropertyElement beanProperty : properties) {
-                            TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
                             if (beanProperty.hasAnnotation(EqualsAndHashCode.Exclude.class)) {
                                 continue;
                             }
@@ -207,16 +205,16 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                             if (readMethod.isEmpty()) {
                                 continue;
                             }
-                            var firstProperty = instance.invoke(readMethod.get(), List.of());
-                            var secondProperty = variableDef.invoke(readMethod.get(), List.of());
+                            var firstProperty = instance.invoke(readMethod.get());
+                            var secondProperty = variableDef.invoke(readMethod.get());
 
                             ExpressionDef newEqualsExpression = firstProperty.asCondition(" == ", secondProperty);
-                            if (!propertyTypeDef.isPrimitive()) {
+                            if (!beanProperty.isPrimitive() || beanProperty.isArray()) {
                                 // Object.equals for objects
                                 ExpressionDef equalsMethod = firstProperty.invoke("equals", TypeDef.Primitive.BOOLEAN, secondProperty);
-                                if (propertyTypeDef.isArray()) {
+                                if (beanProperty.isArray()) {
                                     // Arrays.equals or Arrays.deepEquals for Array
-                                    String methodName = (((TypeDef.Array) propertyTypeDef).dimensions() > 1) ?  "deepEquals" : "equals";
+                                    String methodName = beanProperty.getArrayDimensions() > 1 ?  "deepEquals" : "equals";
                                     equalsMethod = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.Primitive.BOOLEAN, firstProperty, secondProperty);
                                 }
                                 newEqualsExpression = newEqualsExpression
@@ -246,13 +244,13 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
             .addParameter("instance", selfType)
             .returns(TypeDef.Primitive.INT)
             .build((self, parameterDef) -> StatementDef.multi(
-                    parameterDef.get(0).asExpression().isNull().asConditionIf(ExpressionDef.constant(0).returning()),
-                    TypeDef.Primitive.INT.initialize(ExpressionDef.constant(1)).newLocal("hashValue", hashValue -> {
+                    parameterDef.get(0).isNull().asConditionIf(ExpressionDef.constant(0).returning()),
+                    TypeDef.Primitive.INT.initialize(1).newLocal("hashValue", hashValue -> {
                         List<StatementDef> hashUpdates = new ArrayList<>();
                         properties.stream().filter(beanProperty -> !beanProperty.hasAnnotation(EqualsAndHashCode.Exclude.class) && beanProperty.getReadMethod().isPresent())
                             .forEach(property -> {
-                                ExpressionDef propertyGetter = parameterDef.get(0).asVariable()
-                                    .invoke(property.getReadMethod().get(), List.of());
+                                ExpressionDef propertyGetter = parameterDef.get(0)
+                                    .invoke(property.getReadMethod().get());
                                 hashUpdates.add(hashValue.assign(
                                     hashValue.asCondition(" * ", ExpressionDef.constant(HASH_MULTIPLIER)
                                         .asCondition(" + ", getPropertyHashValue(TypeDef.of(property.getType()), propertyGetter)))));
@@ -265,7 +263,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
         classDefBuilder.addMethod(method);
     }
 
-    /** Calculate property hash value according to its type
+    /** Calculate property hash value according to its type.
      *
      * @param propertyTypeDef TypeDef of the property
      * @param propertyGetter the expression that gets the value of the property
@@ -301,7 +299,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
         } else { // OBJECT
             propertyHashCalculation = propertyGetter.isNull().asConditionIfElse(
                 ExpressionDef.constant(NULL_HASH_VALUE),
-                propertyGetter.invoke("hashCode", TypeDef.Primitive.INT, List.of())
+                propertyGetter.invoke("hashCode", TypeDef.Primitive.INT)
             );
         }
         return propertyHashCalculation.cast(TypeDef.Primitive.INT);

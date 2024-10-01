@@ -60,7 +60,7 @@ public final class ParameterDef extends AbstractElement {
      * @return Return the parameter as a variable
      * @since 1.2
      */
-    public VariableDef asVariable() {
+    public VariableDef.MethodParameter asVariable() {
         return new VariableDef.MethodParameter(name, type);
     }
 

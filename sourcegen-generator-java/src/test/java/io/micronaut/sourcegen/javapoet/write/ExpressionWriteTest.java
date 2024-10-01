@@ -163,4 +163,12 @@ public class ExpressionWriteTest extends AbstractWriteTest {
 
         assertEquals("0", result);
     }
+
+    @Test
+    public void returnPrimitiveInitialization2() throws IOException {
+        ExpressionDef intExpression = TypeDef.Primitive.INT.initialize(0);
+        String result = writeMethodWithExpression(intExpression);
+
+        assertEquals("0", result);
+    }
 }
