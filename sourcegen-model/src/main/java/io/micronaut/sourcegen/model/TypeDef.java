@@ -87,7 +87,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
      * @param name The primitive type name
      * @return a new type definition
      */
-    static TypeDef primitive(String name) {
+    static Primitive primitive(String name) {
         return new Primitive(name);
     }
 
@@ -97,7 +97,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
      * @param type The primitive type
      * @return a new type definition
      */
-    static TypeDef primitive(Class<?> type) {
+    static Primitive primitive(Class<?> type) {
         if (!type.isPrimitive()) {
             throw new IllegalStateException("Expected a primitive type got: " + type);
         }
@@ -280,14 +280,14 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
     @Experimental
     record Primitive(String name) implements TypeDef {
 
-        public static final TypeDef.Primitive INT = (Primitive) of(int.class);
-        public static final TypeDef.Primitive BOOLEAN = (Primitive) of(boolean.class);
-        public static final TypeDef.Primitive LONG = (Primitive) of(long.class);
-        public static final TypeDef.Primitive CHAR = (Primitive) of(char.class);
-        public static final TypeDef.Primitive BYTE = (Primitive) of(byte.class);
-        public static final TypeDef.Primitive SHORT = (Primitive) of(short.class);
-        public static final TypeDef.Primitive DOUBLE = (Primitive) of(double.class);
-        public static final TypeDef.Primitive FLOAT = (Primitive) of(float.class);
+        public static final TypeDef.Primitive INT = primitive(int.class);
+        public static final TypeDef.Primitive BOOLEAN = primitive(boolean.class);
+        public static final TypeDef.Primitive LONG = primitive(long.class);
+        public static final TypeDef.Primitive CHAR = primitive(char.class);
+        public static final TypeDef.Primitive BYTE = primitive(byte.class);
+        public static final TypeDef.Primitive SHORT = primitive(short.class);
+        public static final TypeDef.Primitive DOUBLE = primitive(double.class);
+        public static final TypeDef.Primitive FLOAT = primitive(float.class);
 
         @Override
         public boolean isPrimitive() {
@@ -312,27 +312,27 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
         }
 
         /**
-         * Instantiate this class.
+         * The new instance expression for primitives.
          *
-         * @param value The expression giving the initial value
-         * @return The instantiate expression
+         * @param value The initial value
+         * @return The new instance
+         * @since 1.3
          */
-        public ExpressionDef initialize(ExpressionDef value) {
-            return initialize(this, value);
+        @Experimental
+        public PrimitiveInstance initialize(ExpressionDef value) {
+            return new PrimitiveInstance(this, value);
         }
-
 
         /**
          * The new instance expression for primitives.
          *
-         * @param type   The type
-         * @param value The initial value
+         * @param constant The constant
          * @return The new instance
+         * @since 1.3
          */
         @Experimental
-        public static PrimitiveInstance initialize(TypeDef type,
-                                            ExpressionDef value) {
-            return new PrimitiveInstance(type, value);
+        public PrimitiveInstance initialize(Object constant) {
+            return new PrimitiveInstance(this, new ExpressionDef.Constant(this, constant));
         }
 
         /**
@@ -344,8 +344,8 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
          * @since 1.3
          */
         @Experimental
-        public record PrimitiveInstance(TypeDef type,
-                                 ExpressionDef value) implements ExpressionDef {
+        public record PrimitiveInstance(TypeDef.Primitive type,
+                                        ExpressionDef value) implements ExpressionDef {
         }
     }
 

@@ -153,7 +153,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             .addParameter("consumer", consumableType)
             .returns(recordType).build((self, parameterDefs) ->
                 self.invoke(withMethod).newLocal("builder", builderVar ->
-                    parameterDefs.get(0).asExpression().invoke("accept", TypeDef.VOID, builderVar)
+                    parameterDefs.get(0).invoke("accept", TypeDef.VOID, builderVar)
                         .after(
                             builderVar.invoke("build", recordType).returning()
                         ))
@@ -187,7 +187,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                 for (ParameterElement parameter : recordElement.getPrimaryConstructor().orElseThrow().getParameters()) {
                     ExpressionDef exp;
                     if (parameter.getName().equals(beanProperty.getName())) {
-                        exp = parameterDefs.get(0).asExpression();
+                        exp = parameterDefs.get(0);
                     } else {
                         exp = self.invoke(propertyAccessMethods.get(parameter.getName()));
                     }
@@ -198,7 +198,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                         ClassTypeDef.of(Objects.class).invokeStatic(
                             "requireNonNull",
                             ClassTypeDef.OBJECT,
-                            parameterDefs.get(0).asExpression()
+                            parameterDefs.get(0)
                         ),
                         recordType.instantiate(values).returning()
                     );

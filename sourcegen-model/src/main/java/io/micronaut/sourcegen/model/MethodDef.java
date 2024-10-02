@@ -186,8 +186,11 @@ public final class MethodDef extends AbstractElement {
             return build((self, parameterDefs) -> null);
         }
 
-        public MethodDef build(BiFunction<VariableDef.This, List<ParameterDef>, StatementDef> bodyBuilder) {
-            StatementDef statement = bodyBuilder.apply(new VariableDef.This(TypeDef.THIS), parameters);
+        public MethodDef build(BiFunction<VariableDef.This, List<VariableDef.MethodParameter>, StatementDef> bodyBuilder) {
+            List<VariableDef.MethodParameter> variables = parameters.stream()
+                .map(ParameterDef::asVariable)
+                .toList();
+            StatementDef statement = bodyBuilder.apply(new VariableDef.This(TypeDef.THIS), variables);
             if (statement != null) {
                 addStatement(statement);
                 if (returnType == null && !statements.isEmpty()) {
