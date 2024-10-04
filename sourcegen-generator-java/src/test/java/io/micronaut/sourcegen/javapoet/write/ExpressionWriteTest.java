@@ -153,7 +153,7 @@ public class ExpressionWriteTest extends AbstractWriteTest {
         );
         String result = writeMethodWithExpression(orExpression);
 
-        assertEquals("(true && false) || (true || false)", result);
+        assertEquals("true && false || (true || false)", result);
     }
 
     @Test

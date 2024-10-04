@@ -19,6 +19,10 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.core.reflect.ClassUtils;
+import io.micronaut.inject.ast.FieldElement;
+import io.micronaut.inject.ast.MemberElement;
+import io.micronaut.inject.ast.MethodElement;
+import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec;
@@ -54,10 +58,12 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 /**
@@ -577,11 +583,26 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 CodeBlock.of(")")
             );
         }
+        if (expressionDef instanceof ExpressionDef.GetPropertyValue getPropertyValue) {
+            PropertyElement propertyElement = getPropertyValue.propertyElement();
+            Optional<? extends MemberElement> readPropertyMember = propertyElement.getReadMember();
+            if (readPropertyMember.isEmpty()) {
+                throw new IllegalStateException("Read member not found for property: " + propertyElement);
+            }
+            MemberElement memberElement = readPropertyMember.get();
+            if (memberElement instanceof MethodElement methodElement) {
+                return renderExpression(objectDef, methodDef, getPropertyValue.instance().invoke(methodElement));
+            }
+            if (memberElement instanceof FieldElement fieldElement) {
+                // TODO: support field
+            }
+            throw new IllegalStateException("Unrecognized property read element: " + propertyElement);
+        }
         if (expressionDef instanceof ExpressionDef.Condition condition) {
             return CodeBlock.concat(
-                renderExpression(objectDef, methodDef, condition.left()),
+                renderCondition(objectDef, methodDef, condition.left()),
                 CodeBlock.of(condition.operator()),
-                renderExpression(objectDef, methodDef, condition.right())
+                renderCondition(objectDef, methodDef, condition.right())
             );
         }
         if (expressionDef instanceof ExpressionDef.And andExpressionDef) {
@@ -657,20 +678,102 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (expressionDef instanceof VariableDef variableDef) {
             return renderVariable(objectDef, methodDef, variableDef);
         }
+        if (expressionDef instanceof ExpressionDef.GetClassValue getClassValue) {
+            return renderExpression(objectDef, methodDef, getClassValue.instance().invoke("getClass", TypeDef.of(Class.class)));
+        }
+        if (expressionDef instanceof ExpressionDef.HashCode hashCode) {
+            ExpressionDef instance = hashCode.instance();
+            TypeDef type = instance.type();
+            if (type.isArray()) {
+                if (type instanceof TypeDef.Array array && array.dimensions() > 1) {
+                    return renderExpression(
+                        objectDef,
+                        methodDef,
+                        ClassTypeDef.of(Arrays.class)
+                            .invokeStatic(
+                                "deepHashCode",
+                                TypeDef.Primitive.BOOLEAN,
+                                hashCode.instance()
+                            ));
+                }
+                return renderExpression(
+                    objectDef,
+                    methodDef,
+                    ClassTypeDef.of(Arrays.class)
+                        .invokeStatic(
+                            "hashCode",
+                            TypeDef.Primitive.BOOLEAN,
+                            hashCode.instance()
+                        ));
+            }
+            if (type instanceof TypeDef.Primitive primitive) {
+                return renderExpression(
+                    objectDef,
+                    methodDef,
+                    primitive.wrapperType()
+                        .invokeStatic(
+                            "hashCode",
+                            TypeDef.Primitive.BOOLEAN,
+                            hashCode.instance()
+                        ));
+            }
+            return renderExpression(objectDef, methodDef, instance.isNull().asConditionIfElse(
+                ExpressionDef.constant(0),
+                instance.invoke("hashCode", TypeDef.Primitive.BOOLEAN))
+            );
+        }
+        if (expressionDef instanceof ExpressionDef.EqualsStructurally equalsStructurally) {
+            var type = equalsStructurally.instance().type();
+            if (type.isArray()) {
+                if (type instanceof TypeDef.Array array && array.dimensions() > 1) {
+                    return renderExpression(
+                        objectDef,
+                        methodDef,
+                        ClassTypeDef.of(Arrays.class)
+                            .invokeStatic(
+                                "deepEquals",
+                                TypeDef.Primitive.BOOLEAN,
+                                equalsStructurally.instance(),
+                                equalsStructurally.other())
+                    );
+                }
+                return renderExpression(
+                    objectDef,
+                    methodDef,
+                    ClassTypeDef.of(Arrays.class)
+                        .invokeStatic(
+                            "equals",
+                            TypeDef.Primitive.BOOLEAN,
+                            equalsStructurally.instance(),
+                            equalsStructurally.other())
+                );
+            }
+            return renderExpression(
+                objectDef,
+                methodDef,
+                equalsStructurally.instance().invoke("equals", TypeDef.Primitive.BOOLEAN, equalsStructurally.other())
+            );
+        }
+        if (expressionDef instanceof ExpressionDef.EqualsReferentially equalsReferentially) {
+            return CodeBlock.builder()
+                .add(renderExpression(objectDef, methodDef, equalsReferentially.instance()))
+                .add(" == ")
+                .add(renderExpression(objectDef, methodDef, equalsReferentially.other()))
+                .build();
+        }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
     private CodeBlock renderCondition(@Nullable ObjectDef objectDef, MethodDef methodDef, ExpressionDef expressionDef) {
-        boolean needsParentheses = expressionDef instanceof ExpressionDef.And || expressionDef instanceof ExpressionDef.Or;
         var rendered = renderExpression(objectDef, methodDef, expressionDef);
-        if (needsParentheses) {
-            return CodeBlock.concat(
-                CodeBlock.of("("),
-                rendered,
-                CodeBlock.of(")")
-            );
+        if (expressionDef instanceof StatementDef || expressionDef instanceof VariableDef || expressionDef instanceof ExpressionDef.And || expressionDef instanceof ExpressionDef.Constant) {
+            return rendered;
         }
-        return rendered;
+        return CodeBlock.concat(
+            CodeBlock.of("("),
+            rendered,
+            CodeBlock.of(")")
+        );
     }
 
     private void renderYield(CodeBlock.Builder builder, MethodDef methodDef, StatementDef statementDef, ObjectDef objectDef) {

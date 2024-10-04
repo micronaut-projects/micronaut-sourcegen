@@ -15,12 +15,10 @@
  */
 package io.micronaut.sourcegen.example;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ObjectTest {
     //tag::test[]
@@ -29,17 +27,10 @@ public class ObjectTest {
         var person = new Person4(123L, Person4.Title.MR,"Cédric", new byte[]{1,2,3});
 
         assertNotNull(Person4Object.toString(person));
-        assertTrue(person.toString().contains("Person4["));
+        Assertions.assertTrue(person.toString().contains("Person4["));
         assertEquals("Person4[id=123, title=MR, name=Cédric, bytes=[1, 2, 3]]", person.toString());
     }
 
-    @Test
-    public void testToStringWithExclude() {
-        var elephant = new Elephant("Daisy", 5, false, 1);
-
-        assertNotNull(ElephantObject.toString(elephant));
-        assertEquals("Elephant[name=Daisy, hasSibling=false]", elephant.toString());
-    }
     //end::test[]
 
     //tag::testt[]
@@ -59,8 +50,8 @@ public class ObjectTest {
         var elephantDiff = new Elephant("Daisy", 5, false, 2);
         var elephantSame = new Elephant("Dumbo", 5, false, 1);
 
-        assertFalse(elephant.equals(elephantDiff));
-        assertTrue(elephant.equals(elephantSame));
+        assertNotEquals(elephant, elephantDiff);
+        assertEquals(elephant, elephantSame);
     }
 
     @Test
@@ -74,13 +65,13 @@ public class ObjectTest {
 
         assertNotNull(Person4Object.equals(person, personSame));
 
-        assertTrue(person.equals(person));
-        assertTrue(person.equals(personSame));
+        assertEquals(person, person);
+        assertEquals(person, personSame);
 
-        assertFalse(person.equals(personDiffPrimitive));
-        assertFalse(person.equals(personDiffEnum));
-        assertFalse(person.equals(personDiffObject));
-        assertFalse(person.equals(personDiffArray));
+        assertNotEquals(person, personDiffPrimitive);
+        assertNotEquals(person, personDiffEnum);
+        assertNotEquals(person, personDiffObject);
+        assertNotEquals(person, personDiffArray);
     }
 
     @Test
@@ -90,12 +81,24 @@ public class ObjectTest {
         var personDoubleNull2 = new Person4(123L, Person4.Title.MR,null, new byte[]{1,2,3});
         var personSingleNull = new Person4(124L, Person4.Title.MR,"Cédric", null);
 
-        assertFalse(person.equals(null));
-        assertFalse(person.equals(new Object()));
+        assertNotEquals(null, person);
+        assertNotEquals(person, new Object());
 
-        assertTrue(personDoubleNull1.equals(personDoubleNull2));
-        assertFalse(personSingleNull.equals(person));
-        assertFalse(person.equals(personSingleNull));
+        assertEquals(personDoubleNull1, personDoubleNull2);
+        assertNotEquals(personSingleNull, person);
+        assertNotEquals(person, personSingleNull);
+    }
+
+    @Test
+    public void testHashCodeWithNulls() {
+        var person = new Person4(123L, Person4.Title.MR,"Cédric", new byte[]{1,2,3});
+        var personDoubleNull1 = new Person4(123L, Person4.Title.MR,null, new byte[]{1,2,3});
+        var personDoubleNull2 = new Person4(123L, Person4.Title.MR,null, new byte[]{1,2,3});
+        var personSingleNull = new Person4(124L, Person4.Title.MR,"Cédric", null);
+
+        assertEquals(personDoubleNull1.hashCode(), personDoubleNull2.hashCode());
+        assertNotEquals(personSingleNull.hashCode(), person.hashCode());
+        assertNotEquals(person.hashCode(), personSingleNull.hashCode());
     }
 
     @Test

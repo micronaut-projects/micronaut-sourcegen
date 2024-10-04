@@ -41,6 +41,7 @@ public final class MethodDef extends AbstractElement {
     private final TypeDef returnType;
     private final List<ParameterDef> parameters;
     private final List<StatementDef> statements;
+    private final boolean override;
 
     MethodDef(String name,
               EnumSet<Modifier> modifiers,
@@ -48,11 +49,12 @@ public final class MethodDef extends AbstractElement {
               List<ParameterDef> parameters,
               List<StatementDef> statements,
               List<AnnotationDef> annotations,
-              List<String> javadoc) {
+              List<String> javadoc, boolean override) {
         super(name, modifiers, annotations, javadoc);
         this.returnType = returnType;
         this.parameters = Collections.unmodifiableList(parameters);
         this.statements = statements;
+        this.override = override;
     }
 
     /**
@@ -116,6 +118,13 @@ public final class MethodDef extends AbstractElement {
         return parameter;
     }
 
+    /**
+     * @return True if method is an override
+     */
+    public boolean isOverride() {
+        return override;
+    }
+
     public static MethodDefBuilder builder(String name) {
         return new MethodDefBuilder(name);
     }
@@ -132,6 +141,7 @@ public final class MethodDef extends AbstractElement {
         private final List<ParameterDef> parameters = new ArrayList<>();
         private TypeDef returnType;
         private final List<StatementDef> statements = new ArrayList<>();
+        private boolean overrides;
 
         private MethodDefBuilder(String name) {
             super(name);
@@ -146,6 +156,26 @@ public final class MethodDef extends AbstractElement {
          */
         public MethodDefBuilder returns(TypeDef type) {
             this.returnType = type;
+            return this;
+        }
+
+        /**
+         * Mark the method as an override.
+         *
+         * @return the current builder
+         */
+        public MethodDefBuilder overrides() {
+            return overrides(true);
+        }
+
+        /**
+         * Mark the method as an override.
+         *
+         * @param overrides The value
+         * @return the current builder
+         */
+        public MethodDefBuilder overrides(boolean overrides) {
+            this.overrides = overrides;
             return this;
         }
 
@@ -203,7 +233,7 @@ public final class MethodDef extends AbstractElement {
             if (returnType == null && !name.equals(CONSTRUCTOR)) {
                 throw new IllegalStateException("Return type of method: " + name + " not specified!");
             }
-            return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc);
+            return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc, overrides);
         }
 
     }

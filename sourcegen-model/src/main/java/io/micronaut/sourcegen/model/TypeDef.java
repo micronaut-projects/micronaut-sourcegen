@@ -188,6 +188,17 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
      * @param genericParameters The parameters
      * @return a new type definition
      */
+    static ClassTypeDef parameterized(ClassTypeDef type, Class<?>... genericParameters) {
+        return parameterized(type, Stream.of(genericParameters).map(TypeDef::of).toList());
+    }
+
+    /**
+     * Creates a new type with generic parameters.
+     *
+     * @param type              The type
+     * @param genericParameters The parameters
+     * @return a new type definition
+     */
     static ClassTypeDef parameterized(ClassTypeDef type, List<TypeDef> genericParameters) {
         return new ClassTypeDef.Parameterized(type, genericParameters);
     }
