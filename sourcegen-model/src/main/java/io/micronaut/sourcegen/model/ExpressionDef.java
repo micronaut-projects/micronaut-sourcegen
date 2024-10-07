@@ -37,7 +37,7 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.GetClassValue, ExpressionDef.GetPropertyValue, ExpressionDef.HashCode, ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
+    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.InvokeGetClassMethod, ExpressionDef.GetPropertyValue, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
 
     /**
      * The condition of this variable.
@@ -336,6 +336,46 @@ public sealed interface ExpressionDef
             parameters,
             TypeDef.of(methodElement.getReturnType())
         );
+    }
+
+    /**
+     * The invocation of the {@link Object#hashCode()} or equivalent method for the expression.
+     *
+     * @return The hash code invocation
+     * @since 1.2
+     */
+    default InvokeHashCodeMethod invokeHashCode() {
+        return new InvokeHashCodeMethod(this);
+    }
+
+    /**
+     * The invocation of the {@link Object#getClass()}} or equivalent method for the expression.
+     *
+     * @return The get class invocation
+     * @since 1.2
+     */
+    default InvokeGetClassMethod invokeGetClass() {
+        return new InvokeGetClassMethod(this);
+    }
+
+    /**
+     * The structurally equals {@link Object#equals(Object)} of this expression and the other expression.
+     *
+     * @return The equals expression
+     * @since 1.3
+     */
+    default EqualsStructurally equalsStructurally(ExpressionDef other) {
+        return new EqualsStructurally(this, other);
+    }
+
+    /**
+     * The referentially equals (==) of this expression and the other expression.
+     *
+     * @return The equals expression
+     * @since 1.3
+     */
+    default EqualsReferentially equalsReferentially(ExpressionDef other) {
+        return new EqualsReferentially(this, other);
     }
 
     /**
@@ -724,7 +764,7 @@ public sealed interface ExpressionDef
      * @since 1.3
      */
     @Experimental
-    record GetClassValue(ExpressionDef instance) implements ExpressionDef {
+    record InvokeGetClassMethod(ExpressionDef instance) implements ExpressionDef {
 
         @Override
         public TypeDef type() {
@@ -740,7 +780,7 @@ public sealed interface ExpressionDef
      * @since 1.3
      */
     @Experimental
-    record HashCode(ExpressionDef instance) implements ExpressionDef {
+    record InvokeHashCodeMethod(ExpressionDef instance) implements ExpressionDef {
 
         @Override
         public TypeDef type() {

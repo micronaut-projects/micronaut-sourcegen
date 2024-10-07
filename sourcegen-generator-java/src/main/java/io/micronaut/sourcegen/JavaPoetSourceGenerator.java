@@ -678,11 +678,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (expressionDef instanceof VariableDef variableDef) {
             return renderVariable(objectDef, methodDef, variableDef);
         }
-        if (expressionDef instanceof ExpressionDef.GetClassValue getClassValue) {
-            return renderExpression(objectDef, methodDef, getClassValue.instance().invoke("getClass", TypeDef.of(Class.class)));
+        if (expressionDef instanceof ExpressionDef.InvokeGetClassMethod invokeGetClassMethod) {
+            return renderExpression(objectDef, methodDef, invokeGetClassMethod.instance().invoke("getClass", TypeDef.of(Class.class)));
         }
-        if (expressionDef instanceof ExpressionDef.HashCode hashCode) {
-            ExpressionDef instance = hashCode.instance();
+        if (expressionDef instanceof ExpressionDef.InvokeHashCodeMethod invokeHashCodeMethod) {
+            ExpressionDef instance = invokeHashCodeMethod.instance();
             TypeDef type = instance.type();
             if (type.isArray()) {
                 if (type instanceof TypeDef.Array array && array.dimensions() > 1) {
@@ -693,7 +693,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                             .invokeStatic(
                                 "deepHashCode",
                                 TypeDef.Primitive.BOOLEAN,
-                                hashCode.instance()
+                                invokeHashCodeMethod.instance()
                             ));
                 }
                 return renderExpression(
@@ -703,7 +703,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         .invokeStatic(
                             "hashCode",
                             TypeDef.Primitive.BOOLEAN,
-                            hashCode.instance()
+                            invokeHashCodeMethod.instance()
                         ));
             }
             if (type instanceof TypeDef.Primitive primitive) {
@@ -714,7 +714,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         .invokeStatic(
                             "hashCode",
                             TypeDef.Primitive.BOOLEAN,
-                            hashCode.instance()
+                            invokeHashCodeMethod.instance()
                         ));
             }
             return renderExpression(objectDef, methodDef, instance.isNull().asConditionIfElse(

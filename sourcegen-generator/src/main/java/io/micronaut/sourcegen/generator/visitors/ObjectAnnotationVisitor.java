@@ -191,9 +191,9 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                 VariableDef o = parameterDef.get(1);
 
                 return StatementDef.multi(
-                    new ExpressionDef.EqualsReferentially(instance, o).asConditionIf(ExpressionDef.trueValue().returning()),
+                    instance.equalsReferentially(o).asConditionIf(ExpressionDef.trueValue().returning()),
                     o.isNull().asConditionOr(
-                            new ExpressionDef.GetClassValue(instance).asCondition(" != ", new ExpressionDef.GetClassValue(o)))
+                            instance.invokeGetClass().asCondition(" != ", new ExpressionDef.InvokeGetClassMethod(o)))
                         .asConditionIf(ExpressionDef.falseValue().returning()),
                     o.cast(selfType).newLocal("other", variableDef -> {
                         ExpressionDef exp = null;
@@ -215,7 +215,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
 //                                    String methodName = beanProperty.getArrayDimensions() > 1 ?  "deepEquals" : "equals";
 //                                    equalsMethod = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.Primitive.BOOLEAN, firstProperty, secondProperty);
 //                                }
-                                ExpressionDef equalsMethod = new ExpressionDef.EqualsStructurally(firstProperty, secondProperty);
+                                ExpressionDef equalsMethod = firstProperty.equalsStructurally(secondProperty);
                                 newEqualsExpression = newEqualsExpression
                                     .asConditionOr(firstProperty.isNonNull().asConditionAnd(equalsMethod));
                             }
@@ -249,13 +249,15 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                         return ExpressionDef.constant(0).returning();
                     }
                     VariableDef.MethodParameter instance = parameterDef.get(0);
-                    return StatementDef.multi(
+                PropertyElement propertyElement1 = iterator.next();
+                return StatementDef.multi(
                         instance.isNull().asConditionIf(ExpressionDef.constant(0).returning()),
-                        TypeDef.Primitive.INT.initialize(getHashCode(instance, iterator.next())).newLocal("hashValue", hashValue -> {
+                        TypeDef.Primitive.INT.initialize(instance.getPropertyValue(propertyElement1).invokeHashCode()).newLocal("hashValue", hashValue -> {
                             List<StatementDef> hashUpdates = new ArrayList<>();
                             while (iterator.hasNext()) {
+                                PropertyElement propertyElement = iterator.next();
                                 ExpressionDef condition = hashValue.asCondition(" * ", ExpressionDef.constant(HASH_MULTIPLIER))
-                                    .asCondition(" + ", getHashCode(instance, iterator.next()));
+                                    .asCondition(" + ", instance.getPropertyValue(propertyElement).invokeHashCode());
                                 hashUpdates.add(hashValue.assign(condition));
                             }
                             hashUpdates.add(hashValue.returning());
@@ -265,10 +267,6 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                 }
             );
         classDefBuilder.addMethod(method);
-    }
-
-    private static ExpressionDef.HashCode getHashCode(VariableDef instance, PropertyElement propertyElement) {
-        return new ExpressionDef.HashCode(instance.getPropertyValue(propertyElement));
     }
 
 }

@@ -957,11 +957,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is PrimitiveInstance) {
                 return renderExpressionCode(objectDef, methodDef, expressionDef.value)
             }
-            if (expressionDef is GetClassValue) {
+            if (expressionDef is InvokeGetClassMethod) {
                 val instanceExp = renderExpressionCode(objectDef, methodDef, expressionDef.instance)
                 return instanceExp.toBuilder().add(".javaClass").build()
             }
-            if (expressionDef is HashCode) {
+            if (expressionDef is InvokeHashCodeMethod) {
                 val instanceExp = renderExpressionCode(objectDef, methodDef, expressionDef.instance)
                 val type = expressionDef.instance.type()
                 if (type.isArray) {
