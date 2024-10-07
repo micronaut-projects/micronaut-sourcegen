@@ -38,6 +38,8 @@ import java.util.function.Predicate;
 @Internal
 public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<GenerateIfsPredicate, Object> {
 
+    public static final String PARAM = "myParam";
+
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
@@ -50,12 +52,15 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
             return;
         }
 
+        Class<?> implementsType = Predicate.class;
+
         ClassDef ifPredicateDef = ClassDef.builder(element.getPackageName() + ".IfPredicate")
-            .addSuperinterface(TypeDef.parameterized(Predicate.class, Object.class))
-            .addMethod(MethodDef.builder("test").addParameter("param", Object.class)
+            .addSuperinterface(TypeDef.parameterized(implementsType, Object.class))
+            .addMethod(MethodDef.builder("test").addParameter(PARAM, Object.class)
                 .addModifiers(Modifier.PUBLIC)
+                .overrides()
                 .addStatement(new StatementDef.If(
-                    new VariableDef.MethodParameter("param", TypeDef.of(Object.class)).isNull(),
+                    new VariableDef.MethodParameter(PARAM, TypeDef.of(Object.class)).isNull(),
                     ExpressionDef.trueValue().returning()
                 ))
                 .addStatement(ExpressionDef.falseValue().returning())
@@ -66,11 +71,12 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
         writeObject(element, context, sourceGenerator, ifPredicateDef);
 
         ClassDef ifNonPredicateDef = ClassDef.builder(element.getPackageName() + ".IfNonPredicate")
-            .addSuperinterface(TypeDef.parameterized(Predicate.class, Object.class))
-            .addMethod(MethodDef.builder("test").addParameter("param", Object.class)
+            .addSuperinterface(TypeDef.parameterized(implementsType, Object.class))
+            .addMethod(MethodDef.builder("test").addParameter(PARAM, Object.class)
                 .addModifiers(Modifier.PUBLIC)
+                .overrides()
                 .addStatement(
-                    new VariableDef.MethodParameter("param", TypeDef.of(Object.class))
+                    new VariableDef.MethodParameter(PARAM, TypeDef.of(Object.class))
                         .isNonNull()
                         .asConditionIf(ExpressionDef.trueValue().returning())
                 )
@@ -82,13 +88,14 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
         writeObject(element, context, sourceGenerator, ifNonPredicateDef);
 
         ClassDef ifElsePredicateDef = ClassDef.builder(element.getPackageName() + ".IfElsePredicate")
-            .addSuperinterface(TypeDef.parameterized(Predicate.class, Object.class))
-            .addMethod(MethodDef.builder("test").addParameter("param", Object.class)
+            .addSuperinterface(TypeDef.parameterized(implementsType, Object.class))
+            .addMethod(MethodDef.builder("test").addParameter(PARAM, Object.class)
                 .addModifiers(Modifier.PUBLIC)
+                .overrides()
                 .addStatement(new StatementDef.IfElse(
                     new ExpressionDef.Condition(
                         " == ",
-                        new VariableDef.MethodParameter("param", TypeDef.of(Object.class)),
+                        new VariableDef.MethodParameter(PARAM, TypeDef.of(Object.class)),
                         new ExpressionDef.Constant(TypeDef.of(Object.class), null)
                     ),
                     new StatementDef.Return(
@@ -105,11 +112,12 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
         writeObject(element, context, sourceGenerator, ifElsePredicateDef);
 
         ClassDef ifNonElsePredicateDef = ClassDef.builder(element.getPackageName() + ".IfNonElsePredicate")
-            .addSuperinterface(TypeDef.parameterized(Predicate.class, Object.class))
-            .addMethod(MethodDef.builder("test").addParameter("param", Object.class)
+            .addSuperinterface(TypeDef.parameterized(implementsType, Object.class))
+            .addMethod(MethodDef.builder("test").addParameter(PARAM, Object.class)
                 .addModifiers(Modifier.PUBLIC)
+                .overrides()
                 .addStatement(
-                    new VariableDef.MethodParameter("param", TypeDef.of(Object.class))
+                    new VariableDef.MethodParameter(PARAM, TypeDef.of(Object.class))
                         .isNull()
                         .asConditionIfElse(
                             ExpressionDef.trueValue().returning(),
@@ -123,19 +131,16 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
         writeObject(element, context, sourceGenerator, ifNonElsePredicateDef);
 
         ClassDef ifNonElseExpressionPredicateDef = ClassDef.builder(element.getPackageName() + ".IfNonElseExpressionPredicate")
-            .addSuperinterface(TypeDef.parameterized(Predicate.class, Object.class))
-            .addMethod(MethodDef.builder("test").addParameter("param", Object.class)
+            .addSuperinterface(TypeDef.parameterized(implementsType, Object.class))
+            .addMethod(MethodDef.builder("test").addParameter(PARAM, Object.class)
                 .addModifiers(Modifier.PUBLIC)
-                .addStatement(
-                    new VariableDef.MethodParameter("param", TypeDef.of(Object.class))
-                        .isNull()
-                        .asConditionIfElse(
-                            ExpressionDef.trueValue(),
-                            ExpressionDef.falseValue()
-                        ).returning()
-                )
+                .overrides()
                 .returns(boolean.class)
-                .build())
+                .build((self, methodParameters) -> methodParameters.get(0).isNull().asConditionIfElse(
+                    ExpressionDef.trueValue(),
+                    ExpressionDef.falseValue()
+                ).returning())
+            )
             .build();
 
         writeObject(element, context, sourceGenerator, ifNonElseExpressionPredicateDef);

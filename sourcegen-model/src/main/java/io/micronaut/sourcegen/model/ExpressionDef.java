@@ -22,6 +22,7 @@ import io.micronaut.core.convert.ConversionService;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.MethodElement;
+import io.micronaut.inject.ast.PropertyElement;
 
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,7 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
+    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.InvokeGetClassMethod, ExpressionDef.GetPropertyValue, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
 
     /**
      * The condition of this variable.
@@ -337,6 +338,58 @@ public sealed interface ExpressionDef
         );
     }
 
+    /**
+     * The invocation of the {@link Object#hashCode()} or equivalent method for the expression.
+     *
+     * @return The hash code invocation
+     * @since 1.2
+     */
+    default InvokeHashCodeMethod invokeHashCode() {
+        return new InvokeHashCodeMethod(this);
+    }
+
+    /**
+     * The invocation of the {@link Object#getClass()}} or equivalent method for the expression.
+     *
+     * @return The get class invocation
+     * @since 1.2
+     */
+    default InvokeGetClassMethod invokeGetClass() {
+        return new InvokeGetClassMethod(this);
+    }
+
+    /**
+     * The structurally equals {@link Object#equals(Object)} of this expression and the other expression.
+     *
+     * @param other The other expression to compare with
+     * @return The equals expression
+     * @since 1.3
+     */
+    default EqualsStructurally equalsStructurally(ExpressionDef other) {
+        return new EqualsStructurally(this, other);
+    }
+
+    /**
+     * The referentially equals (==) of this expression and the other expression.
+     *
+     * @param other The other expression to compare with
+     * @return The equals expression
+     * @since 1.3
+     */
+    default EqualsReferentially equalsReferentially(ExpressionDef other) {
+        return new EqualsReferentially(this, other);
+    }
+
+    /**
+     * The get property value expression.
+     *
+     * @param propertyElement The property element
+     * @return The get property value expression
+     * @since 1.3
+     */
+    default GetPropertyValue getPropertyValue(PropertyElement propertyElement) {
+        return new GetPropertyValue(this, propertyElement);
+    }
 
     /**
      * Resolve a constant for the given type from the string.
@@ -591,15 +644,15 @@ public sealed interface ExpressionDef
     /**
      * The and condition. Puts parenthesis around itself when needed.
      *
-     * @param left     The left expression
-     * @param right    The right expression
+     * @param left  The left expression
+     * @param right The right expression
      * @author Elif Kurtay
      * @since 1.3
      */
     @Experimental
     record And(ExpressionDef left, ExpressionDef right) implements ExpressionDef {
         @Override
-        public TypeDef type()  {
+        public TypeDef type() {
             return TypeDef.Primitive.BOOLEAN;
         }
     }
@@ -607,15 +660,15 @@ public sealed interface ExpressionDef
     /**
      * The or condition. Puts parenthesis around itself when needed.
      *
-     * @param left     The left expression
-     * @param right    The right expression
+     * @param left  The left expression
+     * @param right The right expression
      * @author Elif Kurtay
      * @since 1.3
      */
     @Experimental
     record Or(ExpressionDef left, ExpressionDef right) implements ExpressionDef {
         @Override
-        public TypeDef type()  {
+        public TypeDef type() {
             return TypeDef.Primitive.BOOLEAN;
         }
     }
@@ -654,7 +707,7 @@ public sealed interface ExpressionDef
     /**
      * The switch yield case expression.
      *
-     * @param type The yield result
+     * @param type      The yield result
      * @param statement The statement that should yield the result
      * @since 1.2
      */
@@ -677,12 +730,98 @@ public sealed interface ExpressionDef
     /**
      * The new array expression.
      *
-     * @param type       The type
+     * @param type        The type
      * @param expressions The items expression
      * @author Denis Stepanov
      * @since 1.2
      */
     @Experimental
-    record NewArrayInitialized(TypeDef.Array type, List<ExpressionDef> expressions) implements ExpressionDef {
+    record NewArrayInitialized(TypeDef.Array type,
+                               List<ExpressionDef> expressions) implements ExpressionDef {
     }
+
+    /**
+     * The get property value expression.
+     *
+     * @param instance        The instance
+     * @param propertyElement The property element
+     * @author Denis Stepanov
+     * @since 1.3
+     */
+    @Experimental
+    record GetPropertyValue(ExpressionDef instance,
+                            PropertyElement propertyElement) implements ExpressionDef {
+
+        @Override
+        public TypeDef type() {
+            return TypeDef.of(propertyElement.getType());
+        }
+    }
+
+    /**
+     * The get class expression.
+     *
+     * @param instance The instance
+     * @author Denis Stepanov
+     * @since 1.3
+     */
+    @Experimental
+    record InvokeGetClassMethod(ExpressionDef instance) implements ExpressionDef {
+
+        @Override
+        public TypeDef type() {
+            return TypeDef.of(Class.class);
+        }
+    }
+
+    /**
+     * The get hashCode expression.
+     *
+     * @param instance The instance
+     * @author Denis Stepanov
+     * @since 1.3
+     */
+    @Experimental
+    record InvokeHashCodeMethod(ExpressionDef instance) implements ExpressionDef {
+
+        @Override
+        public TypeDef type() {
+            return TypeDef.of(Class.class);
+        }
+    }
+
+    /**
+     * The structurally equals expression.
+     *
+     * @param instance The instance
+     * @param other The other
+     * @author Denis Stepanov
+     * @since 1.3
+     */
+    @Experimental
+    record EqualsStructurally(ExpressionDef instance, ExpressionDef other) implements ExpressionDef {
+
+        @Override
+        public TypeDef type() {
+            return TypeDef.Primitive.BOOLEAN;
+        }
+    }
+
+    /**
+     * The referential equals expression.
+     *
+     * @param instance The instance
+     * @param other The other
+     * @author Denis Stepanov
+     * @since 1.3
+     */
+    @Experimental
+    record EqualsReferentially(ExpressionDef instance, ExpressionDef other) implements ExpressionDef {
+
+        @Override
+        public TypeDef type() {
+            return TypeDef.Primitive.BOOLEAN;
+        }
+    }
+
 }
