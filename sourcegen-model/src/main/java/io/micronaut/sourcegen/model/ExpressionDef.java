@@ -361,6 +361,7 @@ public sealed interface ExpressionDef
     /**
      * The structurally equals {@link Object#equals(Object)} of this expression and the other expression.
      *
+     * @param other The other expression to compare with
      * @return The equals expression
      * @since 1.3
      */
@@ -371,6 +372,7 @@ public sealed interface ExpressionDef
     /**
      * The referentially equals (==) of this expression and the other expression.
      *
+     * @param other The other expression to compare with
      * @return The equals expression
      * @since 1.3
      */
