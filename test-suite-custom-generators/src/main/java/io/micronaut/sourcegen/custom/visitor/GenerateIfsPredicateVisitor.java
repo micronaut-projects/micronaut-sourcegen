@@ -54,13 +54,15 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
 
         Class<?> implementsType = Predicate.class;
 
+        TypeDef paramType = TypeDef.OBJECT.makeNullable();
+
         ClassDef ifPredicateDef = ClassDef.builder(element.getPackageName() + ".IfPredicate")
-            .addSuperinterface(TypeDef.parameterized(implementsType, Object.class))
-            .addMethod(MethodDef.builder("test").addParameter(PARAM, Object.class)
+            .addSuperinterface(TypeDef.parameterized(implementsType, paramType))
+            .addMethod(MethodDef.builder("test").addParameter(PARAM, paramType)
                 .addModifiers(Modifier.PUBLIC)
                 .overrides()
                 .addStatement(new StatementDef.If(
-                    new VariableDef.MethodParameter(PARAM, TypeDef.of(Object.class)).isNull(),
+                    new VariableDef.MethodParameter(PARAM, paramType).isNull(),
                     ExpressionDef.trueValue().returning()
                 ))
                 .addStatement(ExpressionDef.falseValue().returning())
@@ -71,12 +73,12 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
         writeObject(element, context, sourceGenerator, ifPredicateDef);
 
         ClassDef ifNonPredicateDef = ClassDef.builder(element.getPackageName() + ".IfNonPredicate")
-            .addSuperinterface(TypeDef.parameterized(implementsType, Object.class))
-            .addMethod(MethodDef.builder("test").addParameter(PARAM, Object.class)
+            .addSuperinterface(TypeDef.parameterized(implementsType, paramType))
+            .addMethod(MethodDef.builder("test").addParameter(PARAM, paramType)
                 .addModifiers(Modifier.PUBLIC)
                 .overrides()
                 .addStatement(
-                    new VariableDef.MethodParameter(PARAM, TypeDef.of(Object.class))
+                    new VariableDef.MethodParameter(PARAM, paramType)
                         .isNonNull()
                         .asConditionIf(ExpressionDef.trueValue().returning())
                 )
@@ -88,14 +90,14 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
         writeObject(element, context, sourceGenerator, ifNonPredicateDef);
 
         ClassDef ifElsePredicateDef = ClassDef.builder(element.getPackageName() + ".IfElsePredicate")
-            .addSuperinterface(TypeDef.parameterized(implementsType, Object.class))
-            .addMethod(MethodDef.builder("test").addParameter(PARAM, Object.class)
+            .addSuperinterface(TypeDef.parameterized(implementsType, paramType))
+            .addMethod(MethodDef.builder("test").addParameter(PARAM, paramType)
                 .addModifiers(Modifier.PUBLIC)
                 .overrides()
                 .addStatement(new StatementDef.IfElse(
                     new ExpressionDef.Condition(
                         " == ",
-                        new VariableDef.MethodParameter(PARAM, TypeDef.of(Object.class)),
+                        new VariableDef.MethodParameter(PARAM, paramType),
                         new ExpressionDef.Constant(TypeDef.of(Object.class), null)
                     ),
                     new StatementDef.Return(
@@ -112,12 +114,12 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
         writeObject(element, context, sourceGenerator, ifElsePredicateDef);
 
         ClassDef ifNonElsePredicateDef = ClassDef.builder(element.getPackageName() + ".IfNonElsePredicate")
-            .addSuperinterface(TypeDef.parameterized(implementsType, Object.class))
-            .addMethod(MethodDef.builder("test").addParameter(PARAM, Object.class)
+            .addSuperinterface(TypeDef.parameterized(implementsType, paramType))
+            .addMethod(MethodDef.builder("test").addParameter(PARAM, paramType)
                 .addModifiers(Modifier.PUBLIC)
                 .overrides()
                 .addStatement(
-                    new VariableDef.MethodParameter(PARAM, TypeDef.of(Object.class))
+                    new VariableDef.MethodParameter(PARAM, paramType)
                         .isNull()
                         .asConditionIfElse(
                             ExpressionDef.trueValue().returning(),
@@ -131,8 +133,8 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
         writeObject(element, context, sourceGenerator, ifNonElsePredicateDef);
 
         ClassDef ifNonElseExpressionPredicateDef = ClassDef.builder(element.getPackageName() + ".IfNonElseExpressionPredicate")
-            .addSuperinterface(TypeDef.parameterized(implementsType, Object.class))
-            .addMethod(MethodDef.builder("test").addParameter(PARAM, Object.class)
+            .addSuperinterface(TypeDef.parameterized(implementsType, paramType))
+            .addMethod(MethodDef.builder("test").addParameter(PARAM, paramType)
                 .addModifiers(Modifier.PUBLIC)
                 .overrides()
                 .returns(boolean.class)

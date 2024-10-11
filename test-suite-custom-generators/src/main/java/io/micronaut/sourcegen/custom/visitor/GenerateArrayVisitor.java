@@ -40,10 +40,10 @@ public final class GenerateArrayVisitor implements TypeElementVisitor<io.microna
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        TypeDef arrayType = TypeDef.of(String[].class);
+        TypeDef arrayType = new TypeDef.Array(TypeDef.STRING.makeNullable(), 1, false);
 
         ClassDef arrayClassDef1 = ClassDef.builder(element.getPackageName() + ".Array1")
-            .addMethod(MethodDef.builder("test").addParameter("param", String.class)
+            .addMethod(MethodDef.builder("test").addParameter("param", TypeDef.STRING)
                 .addModifiers(Modifier.PUBLIC)
                 .build((self, parameterDefs) -> arrayType.instantiateArray(10).returning()))
             .build();
@@ -51,7 +51,7 @@ public final class GenerateArrayVisitor implements TypeElementVisitor<io.microna
         writeObject(element, context, arrayClassDef1);
 
         ClassDef arrayClassDef2 = ClassDef.builder(element.getPackageName() + ".Array2")
-            .addMethod(MethodDef.builder("test").addParameter("param", String.class)
+            .addMethod(MethodDef.builder("test").addParameter("param", TypeDef.STRING)
                 .addModifiers(Modifier.PUBLIC)
                 .build((self, parameterDefs) ->
                     arrayType.instantiateArray(
