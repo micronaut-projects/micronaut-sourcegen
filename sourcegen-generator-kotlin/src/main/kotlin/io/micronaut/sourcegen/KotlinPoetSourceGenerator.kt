@@ -954,6 +954,27 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     .add(renderExpressionCode(objectDef, methodDef, expressionDef.right))
                     .build()
             }
+            if (expressionDef is NewArrayOfSize) {
+                return CodeBlock.of(
+                    "arrayOfNulls<%T>(%L)",
+                    asType(expressionDef.type.componentType, objectDef),
+                    expressionDef.size
+                )
+            }
+            if (expressionDef is NewArrayInitialized) {
+                val builder: CodeBlock.Builder = CodeBlock.builder()
+                builder.add("arrayOf<%T>(", asType(expressionDef.type.componentType, objectDef))
+                val iterator: Iterator<ExpressionDef> = expressionDef.expressions.iterator()
+                while (iterator.hasNext()) {
+                    val expression = iterator.next()
+                    builder.add(renderExpressionCode(objectDef, methodDef, expression))
+                    if (iterator.hasNext()) {
+                        builder.add(",")
+                    }
+                }
+                builder.add(")")
+                return builder.build()
+            }
             if (expressionDef is PrimitiveInstance) {
                 return renderExpressionCode(objectDef, methodDef, expressionDef.value)
             }
