@@ -16,6 +16,8 @@
 package io.micronaut.sourcegen.generator;
 
 import io.micronaut.core.annotation.Experimental;
+import io.micronaut.inject.ast.Element;
+import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.model.ObjectDef;
 
@@ -40,9 +42,29 @@ public interface SourceGenerator {
      * Write the source code.
      *
      * @param objectDef The object definition
-     * @param writer           The writer
+     * @param writer    The writer
      * @throws IOException The IO exception
      */
     void write(ObjectDef objectDef, Writer writer) throws IOException;
+
+    /**
+     * Write the file using the context.
+     *
+     * @param objectDef           The object to write
+     * @param context             The context
+     * @param originatingElements the originated elements
+     * @since 1.4
+     */
+    default void write(ObjectDef objectDef, VisitorContext context, Element... originatingElements) {
+        context.visitGeneratedSourceFile(objectDef.getPackageName(), objectDef.getSimpleName(), originatingElements)
+            .ifPresent(generatedFile -> {
+                try {
+                    generatedFile.write(writer -> write(objectDef, writer));
+                } catch (Exception e) {
+                    Element element = originatingElements.length > 0 ? originatingElements[0] : null;
+                    throw new ProcessingException(element, "Failed to generate '" + objectDef.getName() + "': " + e.getMessage(), e);
+                }
+            });
+    }
 
 }

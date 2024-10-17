@@ -18,7 +18,6 @@ package io.micronaut.sourcegen.custom.visitor;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
-import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.example.GenerateMyRepository1;
@@ -28,13 +27,10 @@ import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
-import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
 import javax.lang.model.element.Modifier;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -65,7 +61,7 @@ public final class GenerateMyRepository1Visitor implements TypeElementVisitor<Ge
             )
             .build();
 
-        writeObject(element, context, sourceGenerator, myEntityDef);
+        sourceGenerator.write(myEntityDef, context, element);
 
         TypeDef.TypeVariable entityType = new TypeDef.TypeVariable(
             "E",
@@ -109,7 +105,7 @@ public final class GenerateMyRepository1Visitor implements TypeElementVisitor<Ge
 
             .build();
 
-        writeObject(element, context, sourceGenerator, crudRepositoryDef);
+        sourceGenerator.write(crudRepositoryDef, context, element);
 
         InterfaceDef myRepositoryRef = InterfaceDef.builder(element.getPackageName() + ".MyRepository1")
             .addModifiers(Modifier.PUBLIC)
@@ -121,17 +117,7 @@ public final class GenerateMyRepository1Visitor implements TypeElementVisitor<Ge
 
             .build();
 
-        writeObject(element, context, sourceGenerator, myRepositoryRef);
+        sourceGenerator.write(myRepositoryRef, context, element);
     }
 
-    private void writeObject(ClassElement element, VisitorContext context, SourceGenerator sourceGenerator, ObjectDef objectDef) {
-        context.visitGeneratedSourceFile(objectDef.getPackageName(), objectDef.getSimpleName(), element)
-            .ifPresent(generatedFile -> {
-                try {
-                    generatedFile.write(writer -> sourceGenerator.write(objectDef, writer));
-                } catch (Exception e) {
-                    throw new ProcessingException(element, e.getMessage(), e);
-                }
-            });
-    }
 }

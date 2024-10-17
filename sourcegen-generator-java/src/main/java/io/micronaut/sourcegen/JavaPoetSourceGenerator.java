@@ -598,6 +598,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             throw new IllegalStateException("Unrecognized property read element: " + propertyElement);
         }
+        if (expressionDef instanceof ExpressionDef.IsNull isNull) {
+            return renderExpression(objectDef, methodDef, new ExpressionDef.Condition("==", isNull.expression(), ExpressionDef.nullValue()));
+        }
+        if (expressionDef instanceof ExpressionDef.IsNotNull isNotNull) {
+            return renderExpression(objectDef, methodDef, new ExpressionDef.Condition("!=", isNotNull.expression(), ExpressionDef.nullValue()));
+        }
         if (expressionDef instanceof ExpressionDef.Condition condition) {
             return CodeBlock.concat(
                 renderCondition(objectDef, methodDef, condition.left()),

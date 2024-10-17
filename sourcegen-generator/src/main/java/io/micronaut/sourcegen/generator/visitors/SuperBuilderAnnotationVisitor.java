@@ -119,19 +119,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
             }
 
             processed.add(element.getName());
-            context.visitGeneratedSourceFile(
-                abstractBuilderDef.getPackageName(),
-                abstractBuilderDef.getSimpleName(),
-                element
-            ).ifPresent(sourceFile -> {
-                try {
-                    sourceFile.write(
-                        writer -> sourceGenerator.write(abstractBuilderDef, writer)
-                    );
-                } catch (Exception e) {
-                    throw new ProcessingException(element, "Failed to generate an abstract super builder: " + e.getMessage(), e);
-                }
-            });
+            sourceGenerator.write(abstractBuilderDef, context, element);
 
             if (!element.isAbstract()) {
 
@@ -161,15 +149,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 builder.addMethod(createBuilderMethod(builderType));
 
                 ClassDef builderDef = builder.build();
-                context.visitGeneratedSourceFile(builderDef.getPackageName(), builderDef.getSimpleName(), element).ifPresent(sourceFile -> {
-                    try {
-                        sourceFile.write(
-                            writer -> sourceGenerator.write(builderDef, writer)
-                        );
-                    } catch (Exception e) {
-                        throw new ProcessingException(element, "Failed to generate a super builder: " + e.getMessage(), e);
-                    }
-                });
+                sourceGenerator.write(builderDef, context, element);
             }
         } catch (ProcessingException e) {
             throw e;

@@ -65,14 +65,7 @@ public final class GenerateInterfaceBuilder implements TypeElementVisitor<Genera
 
             .build();
 
-        context.visitGeneratedSourceFile(interfaceDef.getPackageName(), interfaceDef.getSimpleName(), element) // <5>
-            .ifPresent(generatedFile -> {
-                try {
-                    generatedFile.write(writer -> sourceGenerator.write(interfaceDef, writer));
-                } catch (Exception e) {
-                    throw new ProcessingException(element, e.getMessage(), e);
-                }
-            });
+        sourceGenerator.write(interfaceDef, context, element);
     }
 }
 // end::class[]

@@ -18,7 +18,6 @@ package io.micronaut.sourcegen.custom.visitor;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
-import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.example.GenerateSwitch;
@@ -27,7 +26,6 @@ import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.MethodDef;
-import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
 import javax.lang.model.element.Modifier;
@@ -66,7 +64,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 ))
             .build();
 
-        writeObject(element, context, sourceGenerator, switch1Def);
+        sourceGenerator.write(switch1Def, context, element);
 
         TypeDef resultType2 = TypeDef.of(TimeUnit.class);
         ClassDef switch2Def = ClassDef.builder(element.getPackageName() + ".Switch2")
@@ -85,7 +83,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 ))
             .build();
 
-        writeObject(element, context, sourceGenerator, switch2Def);
+        sourceGenerator.write(switch2Def, context, element);
 
         TypeDef resultType3 = TypeDef.of(TimeUnit.class);
         ClassDef switch3Def = ClassDef.builder(element.getPackageName() + ".Switch3")
@@ -113,7 +111,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 ))
             .build();
 
-        writeObject(element, context, sourceGenerator, switch3Def);
+        sourceGenerator.write(switch3Def, context, element);
 
         TypeDef resultType4 = TypeDef.of(Integer.class);
         ClassDef switch4Def = ClassDef.builder(element.getPackageName() + ".Switch4")
@@ -132,7 +130,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 ))
             .build();
 
-        writeObject(element, context, sourceGenerator, switch4Def);
+        sourceGenerator.write(switch4Def, context, element);
 
         TypeDef resultType5 = TypeDef.of(TimeUnit.class);
         ClassDef switch5Def = ClassDef.builder(element.getPackageName() + ".Switch5")
@@ -151,7 +149,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 ))
             .build();
 
-        writeObject(element, context, sourceGenerator, switch5Def);
+        sourceGenerator.write(switch5Def, context, element);
 
         TypeDef resultType6 = TypeDef.of(TimeUnit.class);
         ClassDef switch6Def = ClassDef.builder(element.getPackageName() + ".Switch6")
@@ -179,7 +177,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 ))
             .build();
 
-        writeObject(element, context, sourceGenerator, switch6Def);
+        sourceGenerator.write(switch6Def, context, element);
 
         TypeDef resultType7 = TypeDef.of(TimeUnit.class);
         ClassDef switch7Def = ClassDef.builder(element.getPackageName() + ".Switch7")
@@ -210,7 +208,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 ))
             .build();
 
-        writeObject(element, context, sourceGenerator, switch7Def);
+        sourceGenerator.write(switch7Def, context, element);
 
         TypeDef resultType8 = TypeDef.of(TimeUnit.class);
         ClassDef switch8Def = ClassDef.builder(element.getPackageName() + ".Switch8")
@@ -232,17 +230,7 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
                 ))
             .build();
 
-        writeObject(element, context, sourceGenerator, switch8Def);
+        sourceGenerator.write(switch8Def, context, element);
     }
 
-    private void writeObject(ClassElement element, VisitorContext context, SourceGenerator sourceGenerator, ObjectDef objectDef) {
-        context.visitGeneratedSourceFile(objectDef.getPackageName(), objectDef.getSimpleName(), element)
-            .ifPresent(generatedFile -> {
-                try {
-                    generatedFile.write(writer -> sourceGenerator.write(objectDef, writer));
-                } catch (Exception e) {
-                    throw new ProcessingException(element, e.getMessage(), e);
-                }
-            });
-    }
 }

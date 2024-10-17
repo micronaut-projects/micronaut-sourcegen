@@ -40,21 +40,23 @@ public final class GenerateArrayVisitor implements TypeElementVisitor<io.microna
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        TypeDef arrayType = new TypeDef.Array(TypeDef.STRING.makeNullable(), 1, false);
+        TypeDef.Array arrayType = TypeDef.STRING.makeNullable().array(1);
 
         ClassDef arrayClassDef1 = ClassDef.builder(element.getPackageName() + ".Array1")
+            .addModifiers(Modifier.PUBLIC)
             .addMethod(MethodDef.builder("test").addParameter("param", TypeDef.STRING)
                 .addModifiers(Modifier.PUBLIC)
-                .build((self, parameterDefs) -> arrayType.instantiateArray(10).returning()))
+                .build((self, parameterDefs) -> arrayType.instantiate(10).returning()))
             .build();
 
         writeObject(element, context, arrayClassDef1);
 
         ClassDef arrayClassDef2 = ClassDef.builder(element.getPackageName() + ".Array2")
+            .addModifiers(Modifier.PUBLIC)
             .addMethod(MethodDef.builder("test").addParameter("param", TypeDef.STRING)
                 .addModifiers(Modifier.PUBLIC)
                 .build((self, parameterDefs) ->
-                    arrayType.instantiateArray(
+                    arrayType.instantiate(
                         ExpressionDef.constant("A"),
                         ExpressionDef.constant("B"),
                         ExpressionDef.constant("C")
@@ -69,14 +71,7 @@ public final class GenerateArrayVisitor implements TypeElementVisitor<io.microna
         if (sourceGenerator == null) {
             return;
         }
-        context.visitGeneratedSourceFile(arrayClassDef.getPackageName(), arrayClassDef.getSimpleName(), element)
-            .ifPresent(generatedFile -> {
-                try {
-                    generatedFile.write(writer -> sourceGenerator.write(arrayClassDef, writer));
-                } catch (Exception e) {
-                    throw new ProcessingException(element, e.getMessage(), e);
-                }
-            });
+        sourceGenerator.write(arrayClassDef, context, element);
     }
 
 }

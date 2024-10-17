@@ -112,19 +112,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
 
             ClassDef objectDef = objectBuilder.build();
             processed.add(element.getName());
-            context.visitGeneratedSourceFile(
-                objectDef.getPackageName(),
-                objectDef.getSimpleName(),
-                element
-            ).ifPresent(sourceFile -> {
-                try {
-                    sourceFile.write(
-                        writer -> sourceGenerator.write(objectDef, writer)
-                    );
-                } catch (Exception e) {
-                    throw new ProcessingException(element, "Failed to generate a ObjectBuilder: " + e.getMessage(), e);
-                }
-            });
+            sourceGenerator.write(objectDef, context, element);
         } catch (ProcessingException e) {
             throw e;
         } catch (Exception e) {

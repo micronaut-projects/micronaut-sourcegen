@@ -39,9 +39,9 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
 
     TypeDef VOID = primitive("void");
 
-    TypeDef OBJECT = of(Object.class);
+    ClassTypeDef OBJECT = ClassTypeDef.of(Object.class);
 
-    TypeDef STRING = of(String.class);
+    ClassTypeDef STRING = ClassTypeDef.of(String.class);
 
     /**
      * A simple type representing a special this-type, in context of a class def, method or field the type will be replaced by the current type.
@@ -49,36 +49,14 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
     TypeDef THIS = of(ThisType.class);
 
     /**
-     * Instantiate an array of this class.
+     * Create an array type.
      *
-     * @param length The length of the array
-     * @return The instantiate expression
-     * @since 1.2
+     * @param dimension The dimension of the array
+     * @return The array type
+     * @since 1.4
      */
-    default ExpressionDef instantiateArray(int length) {
-        return new ExpressionDef.NewArrayOfSize((Array) this, length);
-    }
-
-    /**
-     * Instantiate an array of this class.
-     *
-     * @param expressions The items expressions
-     * @return The instantiate expression
-     * @since 1.2
-     */
-    default ExpressionDef instantiateArray(List<ExpressionDef> expressions) {
-        return new ExpressionDef.NewArrayInitialized((Array) this, expressions);
-    }
-
-    /**
-     * Instantiate an array of this class.
-     *
-     * @param expressions The items expressions
-     * @return The instantiate expression
-     * @since 1.2
-     */
-    default ExpressionDef instantiateArray(ExpressionDef... expressions) {
-        return instantiateArray(List.of(expressions));
+    default TypeDef.Array array(int dimension) {
+        return new TypeDef.Array(this, dimension, false);
     }
 
     /**
@@ -300,6 +278,9 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
         public static final TypeDef.Primitive DOUBLE = primitive(double.class);
         public static final TypeDef.Primitive FLOAT = primitive(float.class);
 
+        public static final ExpressionDef.Constant TRUE = BOOLEAN.constant(true);
+        public static final ExpressionDef.Constant FALSE = BOOLEAN.constant(false);
+
         @Override
         public boolean isPrimitive() {
             return true;
@@ -323,6 +304,18 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
         }
 
         /**
+         * A primitive constant expression.
+         *
+         * @param value The constant value
+         * @return The new instance
+         * @since 1.3
+         */
+        @Experimental
+        public ExpressionDef.Constant constant(Object value) {
+            return new ExpressionDef.Constant(this, value);
+        }
+
+        /**
          * The new instance expression for primitives.
          *
          * @param value The initial value
@@ -343,7 +336,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
          */
         @Experimental
         public PrimitiveInstance initialize(Object constant) {
-            return new PrimitiveInstance(this, new ExpressionDef.Constant(this, constant));
+            return new PrimitiveInstance(this, constant(constant));
         }
 
         /**
@@ -410,6 +403,39 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
      */
     @Experimental
     record Array(TypeDef componentType, int dimensions, boolean nullable) implements TypeDef {
+
+        /**
+         * Instantiate an array of this class.
+         *
+         * @param size The size of the array
+         * @return The instantiate expression
+         * @since 1.4
+         */
+        public ExpressionDef.NewArrayOfSize instantiate(int size) {
+            return new ExpressionDef.NewArrayOfSize(this, size);
+        }
+
+        /**
+         * Instantiate an array of this class.
+         *
+         * @param expressions The expressions
+         * @return The instantiate expression
+         * @since 1.4
+         */
+        public ExpressionDef.NewArrayInitialized instantiate(List<ExpressionDef> expressions) {
+            return new ExpressionDef.NewArrayInitialized(this, expressions);
+        }
+
+        /**
+         * Instantiate an array of this class.
+         *
+         * @param expressions The items expressions
+         * @return The instantiate expression
+         * @since 1.4
+         */
+        public ExpressionDef instantiate(ExpressionDef... expressions) {
+            return instantiate(List.of(expressions));
+        }
 
         @Override
         public boolean isNullable() {

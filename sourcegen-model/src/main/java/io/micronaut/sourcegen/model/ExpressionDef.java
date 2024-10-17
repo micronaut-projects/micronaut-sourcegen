@@ -37,7 +37,7 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.InvokeGetClassMethod, ExpressionDef.GetPropertyValue, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.IfElse, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
+    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.IsNotNull, ExpressionDef.IsNull, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
 
     /**
      * The condition of this variable.
@@ -78,7 +78,7 @@ public sealed interface ExpressionDef
      * @since 1.2
      */
     default ExpressionDef isNonNull() {
-        return asCondition(" != ", ExpressionDef.nullValue());
+        return new ExpressionDef.IsNotNull(this);
     }
 
     /**
@@ -86,7 +86,7 @@ public sealed interface ExpressionDef
      * @since 1.2
      */
     default ExpressionDef isNull() {
-        return asCondition(" == ", ExpressionDef.nullValue());
+        return new ExpressionDef.IsNull(this);
     }
 
     /**
@@ -104,7 +104,7 @@ public sealed interface ExpressionDef
      */
     @NonNull
     static ExpressionDef.Constant trueValue() {
-        return new Constant(TypeDef.Primitive.BOOLEAN, true);
+        return TypeDef.Primitive.TRUE;
     }
 
     /**
@@ -113,7 +113,7 @@ public sealed interface ExpressionDef
      */
     @NonNull
     static ExpressionDef.Constant falseValue() {
-        return new Constant(TypeDef.Primitive.BOOLEAN, false);
+        return TypeDef.Primitive.FALSE;
     }
 
     /**
@@ -635,6 +635,34 @@ public sealed interface ExpressionDef
     record Condition(String operator,
                      ExpressionDef left,
                      ExpressionDef right) implements ExpressionDef {
+        @Override
+        public TypeDef type() {
+            return TypeDef.Primitive.BOOLEAN;
+        }
+    }
+
+    /**
+     * The IS NULL condition.
+     *
+     * @param expression The expression
+     * @author Denis Stepanov
+     */
+    @Experimental
+    record IsNull(ExpressionDef expression) implements ExpressionDef {
+        @Override
+        public TypeDef type() {
+            return TypeDef.Primitive.BOOLEAN;
+        }
+    }
+
+    /**
+     * The IS NOT NULL condition.
+     *
+     * @param expression The expression
+     * @author Denis Stepanov
+     */
+    @Experimental
+    record IsNotNull(ExpressionDef expression) implements ExpressionDef {
         @Override
         public TypeDef type() {
             return TypeDef.Primitive.BOOLEAN;

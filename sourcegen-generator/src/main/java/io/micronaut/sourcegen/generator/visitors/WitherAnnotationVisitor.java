@@ -118,19 +118,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
 
             InterfaceDef witherDef = wither.build();
             processed.add(recordElement.getName());
-            context.visitGeneratedSourceFile(
-                witherDef.getPackageName(),
-                witherDef.getSimpleName(),
-                recordElement
-            ).ifPresent(sourceFile -> {
-                try {
-                    sourceFile.write(
-                        writer -> sourceGenerator.write(witherDef, writer)
-                    );
-                } catch (Exception e) {
-                    throw new ProcessingException(recordElement, "Failed to generate a wither: " + e.getMessage(), e);
-                }
-            });
+            sourceGenerator.write(witherDef, context, recordElement);
         } catch (ProcessingException e) {
             throw e;
         } catch (Exception e) {

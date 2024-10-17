@@ -69,14 +69,7 @@ public final class CopyAnnotationsVisitor implements TypeElementVisitor<CopyAnno
         if (sourceGenerator == null) {
             return;
         }
-        context.visitGeneratedSourceFile(recordDef.getPackageName(), recordDef.getSimpleName(), element)
-            .ifPresent(generatedFile -> {
-                try {
-                    generatedFile.write(writer -> sourceGenerator.write(recordDef, writer));
-                } catch (Exception e) {
-                    throw new ProcessingException(element, e.getMessage(), e);
-                }
-            });
+        sourceGenerator.write(recordDef, context, element);
     }
 
 }

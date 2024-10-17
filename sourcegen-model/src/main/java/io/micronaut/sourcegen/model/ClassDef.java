@@ -59,6 +59,14 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
         this.superclass = superclass;
     }
 
+    @Override
+    public ClassTypeDef asTypeDef() {
+        if (typeVariables.isEmpty()) {
+            return ObjectDef.super.asTypeDef();
+        }
+        return TypeDef.parameterized(ObjectDef.super.asTypeDef(), typeVariables.toArray(new TypeDef.TypeVariable[0]));
+    }
+
     public static ClassDefBuilder builder(String name) {
         return new ClassDefBuilder(name);
     }

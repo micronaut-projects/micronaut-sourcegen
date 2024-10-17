@@ -75,14 +75,7 @@ public final class GenerateMyEnum1 implements TypeElementVisitor<io.micronaut.so
         if (sourceGenerator == null) {
             return;
         }
-        context.visitGeneratedSourceFile(beanDef.getPackageName(), beanDef.getSimpleName(), element)
-            .ifPresent(generatedFile -> {
-                try {
-                    generatedFile.write(writer -> sourceGenerator.write(beanDef, writer));
-                } catch (Exception e) {
-                    throw new ProcessingException(element, e.getMessage(), e);
-                }
-            });
+        sourceGenerator.write(beanDef, context, element);
     }
 
 }
