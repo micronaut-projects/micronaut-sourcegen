@@ -113,18 +113,18 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
 
         sourceGenerator.write(switch3Def, context, element);
 
-        TypeDef resultType4 = TypeDef.of(Integer.class);
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
         ClassDef switch4Def = ClassDef.builder(element.getPackageName() + ".Switch4")
             .addMethod(MethodDef.builder("test").addParameter("param", String.class)
                 .addModifiers(Modifier.PUBLIC)
-                .returns(resultType4)
+                .returns(intType)
                 .build((self, parameterDefs) ->
                     parameterDefs.get(0).asStatementSwitch(
-                        resultType4,
+                        intType,
                         Map.of(
-                            ExpressionDef.constant("abc"), ExpressionDef.constant(1).returning(),
-                            ExpressionDef.constant("xyz"), ExpressionDef.constant(2).returning(),
-                            ExpressionDef.nullValue(), ExpressionDef.constant(3).returning()
+                            ExpressionDef.constant("abc"), intType.constant(1).returning(),
+                            ExpressionDef.constant("xyz"), intType.constant(2).returning(),
+                            ExpressionDef.nullValue(), intType.constant(3).returning()
                         )
                     )
                 ))
@@ -231,6 +231,24 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
             .build();
 
         sourceGenerator.write(switch8Def, context, element);
+
+        ClassDef switch9Def = ClassDef.builder(element.getPackageName() + ".Switch9")
+            .addMethod(MethodDef.builder("test").addParameter("param", intType)
+                .addModifiers(Modifier.PUBLIC)
+                .returns(intType)
+                .build((self, parameterDefs) ->
+                    parameterDefs.get(0).asStatementSwitch(
+                        intType,
+                        Map.of(
+                            intType.constant(111), intType.constant(1).returning(),
+                            intType.constant(222), intType.constant(2).returning(),
+                            ExpressionDef.nullValue(), intType.constant(3).returning()
+                        )
+                    )
+                ))
+            .build();
+
+        sourceGenerator.write(switch9Def, context, element);
     }
 
 }

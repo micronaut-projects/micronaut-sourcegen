@@ -24,6 +24,7 @@ import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.PropertyElement;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,7 +38,7 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.IsNotNull, ExpressionDef.IsNull, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
+    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallInstanceMethod2, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.GetPropertyValue, ExpressionDef.GetStaticField, ExpressionDef.IfElse, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.IsNotNull, ExpressionDef.IsNull, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.PutStaticField, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
 
     /**
      * The condition of this variable.
@@ -274,8 +275,20 @@ public sealed interface ExpressionDef
      * @return The call to the instance method
      * @since 1.2
      */
-    default CallInstanceMethod invoke(MethodDef methodDef) {
-        return new CallInstanceMethod(this, methodDef);
+    default CallInstanceMethod invoke(MethodDef methodDef, ExpressionDef... parameters) {
+        return new CallInstanceMethod(this, methodDef, parameters);
+    }
+
+    /**
+     * The invoke the method defined by the reflection.
+     *
+     * @param method     The method
+     * @param parameters The parameters
+     * @return The invoke method expression
+     * @since 1.4
+     */
+    default CallInstanceMethod2 invoke(Method method, ExpressionDef... parameters) {
+        return new CallInstanceMethod2(this, method, parameters);
     }
 
     /**
@@ -441,7 +454,13 @@ public sealed interface ExpressionDef
         if (value == null) {
             return null;
         }
-        return new Constant(TypeDef.of(value.getClass()), value);
+        TypeDef type;
+        if (value instanceof TypeDef) {
+            type = TypeDef.CLASS;
+        } else {
+            type = TypeDef.of(value.getClass());
+        }
+        return new Constant(type, value);
     }
 
     /**
@@ -590,12 +609,8 @@ public sealed interface ExpressionDef
                               List<ExpressionDef> parameters,
                               TypeDef returningType) implements ExpressionDef, StatementDef {
 
-        public CallInstanceMethod(ExpressionDef instance, MethodDef methodDef) {
-            this(instance, methodDef.name, methodDef.getParameters()
-                    .stream()
-                    .<ExpressionDef>map(ParameterDef::asExpression)
-                    .toList(),
-                methodDef.getReturnType());
+        public CallInstanceMethod(ExpressionDef instance, MethodDef methodDef, ExpressionDef... parameters) {
+            this(instance, methodDef.name, List.of(parameters), methodDef.getReturnType());
         }
 
         @Override
@@ -605,9 +620,30 @@ public sealed interface ExpressionDef
     }
 
     /**
+     * The invoke method expression.
+     *
+     * @param instance The instance
+     * @param method   The method
+     * @param type     The type
+     * @author Denis Stepanov
+     * @since 1.4
+     */
+    @Experimental
+    record CallInstanceMethod2(ExpressionDef instance,
+                               Method method,
+                               TypeDef type,
+                               ExpressionDef... parameters) implements ExpressionDef, StatementDef {
+
+        public CallInstanceMethod2(ExpressionDef instance, Method method, ExpressionDef... parameters) {
+            this(instance, method, TypeDef.of(method.getReturnType()), parameters);
+        }
+
+    }
+
+    /**
      * The call a static method expression.
      *
-     * @param classDef      The instance
+     * @param classDef      The class
      * @param name          The method name
      * @param parameters    The parameters
      * @param returningType The returning
@@ -621,6 +657,37 @@ public sealed interface ExpressionDef
         public TypeDef type() {
             return returningType;
         }
+    }
+
+    /**
+     * The get a static field expression.
+     *
+     * @param classDef The class
+     * @param name     The field name
+     * @param type     The field type
+     * @author Denis Stepanov
+     * @since 1.4
+     */
+    @Experimental
+    record GetStaticField(ClassTypeDef classDef, String name,
+                          TypeDef type) implements ExpressionDef, StatementDef {
+    }
+
+    /**
+     * The set a static field expression.
+     *
+     * @param classDef   The class
+     * @param name       The field name
+     * @param type       The field type
+     * @param expression The expression
+     * @author Denis Stepanov
+     * @since 1.4
+     */
+    @Experimental
+    record PutStaticField(ClassTypeDef classDef,
+                          String name,
+                          TypeDef type,
+                          ExpressionDef expression) implements ExpressionDef, StatementDef {
     }
 
     /**

@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.annotation.NonNull;
+import io.micronaut.core.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +30,7 @@ import java.util.Map;
  * @since 1.0
  */
 @Experimental
-public sealed interface StatementDef permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallStaticMethod, StatementDef.Assign, StatementDef.DefineAndAssign, StatementDef.If, StatementDef.IfElse, StatementDef.Multi, StatementDef.Return, StatementDef.Switch, StatementDef.Throw, StatementDef.While {
+public sealed interface StatementDef permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallInstanceMethod2, ExpressionDef.CallStaticMethod, ExpressionDef.GetStaticField, ExpressionDef.PutStaticField, StatementDef.Assign, StatementDef.DefineAndAssign, StatementDef.If, StatementDef.IfElse, StatementDef.Multi, StatementDef.Return, StatementDef.Switch, StatementDef.Throw, StatementDef.While {
 
     /**
      * The helper method to turn this statement into a multi statement.
@@ -113,7 +114,7 @@ public sealed interface StatementDef permits ExpressionDef.CallInstanceMethod, E
      * @since 1.0
      */
     @Experimental
-    record Return(ExpressionDef expression) implements StatementDef {
+    record Return(@Nullable ExpressionDef expression) implements StatementDef {
     }
 
     /**

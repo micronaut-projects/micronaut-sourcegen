@@ -116,18 +116,51 @@ public sealed interface ClassTypeDef extends TypeDef {
     }
 
     /**
-     * Invoke static method.
+     * Get static field.
      *
-     * @param name          The method name
-     * @param parameters    The parameters
-     * @param returningType The return type
-     * @return the invoke static method expression
-     * @since 1.2
+     * @param name The field name
+     * @param type The field type
+     * @return the get static field expression
+     * @since 1.4
      */
-    default ExpressionDef.CallStaticMethod invokeStatic(String name,
-                                                        TypeDef returningType,
-                                                        ExpressionDef... parameters) {
-        return invokeStatic(name, returningType, List.of(parameters));
+    default ExpressionDef.GetStaticField getStatic(String name,
+                                                   TypeDef type) {
+        return new ExpressionDef.GetStaticField(this, name, type);
+    }
+
+    /**
+     * Get static field.
+     *
+     * @param field The field
+     * @return the get static field expression
+     * @since 1.4
+     */
+    default ExpressionDef.GetStaticField getStatic(FieldDef field) {
+        return new ExpressionDef.GetStaticField(this, field.getName(), field.getType());
+    }
+
+    /**
+     * Put static field.
+     *
+     * @param name       The field name
+     * @param type       The field type
+     * @param expression The expression
+     * @return the put static field expression
+     * @since 1.4
+     */
+    default ExpressionDef.PutStaticField putStatic(String name, TypeDef type, ExpressionDef expression) {
+        return new ExpressionDef.PutStaticField(this, name, type, expression);
+    }
+
+    /**
+     * Put static field.
+     *
+     * @param field The field
+     * @return the put static field expression
+     * @since 1.4
+     */
+    default ExpressionDef.PutStaticField putStatic(FieldDef field, ExpressionDef expression) {
+        return putStatic(field.getName(), field.getType(), expression);
     }
 
     /**
@@ -143,6 +176,32 @@ public sealed interface ClassTypeDef extends TypeDef {
                                                         TypeDef returningType,
                                                         List<ExpressionDef> parameters) {
         return new ExpressionDef.CallStaticMethod(this, name, parameters, returningType);
+    }
+
+    /**
+     * Invoke static method.
+     *
+     * @param name          The method name
+     * @param parameters    The parameters
+     * @param returningType The return type
+     * @return the invoke static method expression
+     * @since 1.4
+     */
+    default ExpressionDef.CallStaticMethod invokeStatic(String name,
+                                                        TypeDef returningType,
+                                                        ExpressionDef... parameters) {
+        return invokeStatic(name, returningType, List.of(parameters));
+    }
+
+    /**
+     * Invoke static method.
+     *
+     * @param method The method
+     * @return the invoke static method expression
+     * @since 1.4
+     */
+    default ExpressionDef.CallStaticMethod invokeStatic(MethodDef method, ExpressionDef... parameters) {
+        return invokeStatic(method.getName(), method.getReturnType(), parameters);
     }
 
     /**

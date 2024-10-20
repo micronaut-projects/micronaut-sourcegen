@@ -41,12 +41,29 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
 
     ClassTypeDef OBJECT = ClassTypeDef.of(Object.class);
 
+    ClassTypeDef CLASS = ClassTypeDef.of(Class.class);
+
     ClassTypeDef STRING = ClassTypeDef.of(String.class);
 
     /**
      * A simple type representing a special this-type, in context of a class def, method or field the type will be replaced by the current type.
      */
     TypeDef THIS = of(ThisType.class);
+
+    /**
+     * A simple type representing a special super-type, in context of a class def, method or field the type will be replaced by the current super type.
+     */
+    TypeDef SUPER = of(SuperType.class);
+
+    /**
+     * Create an array type.
+     *
+     * @return The array type
+     * @since 1.4
+     */
+    default TypeDef.Array array() {
+        return new TypeDef.Array(this, 1, false);
+    }
 
     /**
      * Create an array type.

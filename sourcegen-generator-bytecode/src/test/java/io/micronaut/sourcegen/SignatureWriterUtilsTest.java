@@ -4,6 +4,7 @@ import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.junit.jupiter.api.Assertions;
@@ -114,6 +115,19 @@ public class SignatureWriterUtilsTest {
             SignatureWriterUtils.getInterfaceSignature(myRepositoryRef)
         );
     }
+
+//    @Test
+//    public void methodSignature() {
+//        Assertions.assertEquals(
+//            "()V",
+//            SignatureWriterUtils.getMethodSignature(
+//                MethodDef.builder("<init>")
+//                    .addParameter(ParameterDef.of("value", TypeDef.STRING))
+//                    .returns(TypeDef.VOID)
+//                    .build()
+//            )
+//        );
+//    }
 
     @Test
     public void classSignature() {

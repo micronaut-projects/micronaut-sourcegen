@@ -18,6 +18,7 @@ package io.micronaut.sourcegen;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ParameterDef;
@@ -28,6 +29,20 @@ import org.objectweb.asm.signature.SignatureWriter;
 
 public class SignatureWriterUtils {
 
+    @Nullable
+    static String getFieldSignature(FieldDef fieldDef) {
+        if (!needsSignature(fieldDef.getType())) {
+            return null;
+        }
+        SignatureWriter writer = new SignatureWriter();
+
+        writeSignature(writer, fieldDef.getType(), true);
+        writer.visitEnd();
+
+        return writer.toString();
+    }
+
+    @Nullable
     static String getClassSignature(ClassDef classDef) {
         SignatureWriter writer = new SignatureWriter();
 
@@ -107,6 +122,12 @@ public class SignatureWriterUtils {
     }
 
     private static void writeSignature(SignatureVisitor signatureWriter, TypeDef typeDef, boolean isDefinition) {
+        if (typeDef == TypeDef.THIS) {
+            throw new IllegalStateException();
+        }
+        if (typeDef == TypeDef.SUPER) {
+            throw new IllegalStateException();
+        }
         if (typeDef instanceof TypeDef.Primitive classDef) {
             signatureWriter.visitBaseType(TypeUtils.getType(classDef).getDescriptor().charAt(0));
             return;
@@ -134,8 +155,10 @@ public class SignatureWriterUtils {
             return;
         }
         if (typeDef instanceof ClassTypeDef classDef) {
-            signatureWriter.visitClassType(TypeUtils.getType(classDef).getInternalName());
+            signatureWriter.visitClassType(TypeUtils.getType(classDef.getName()).getInternalName());
+            return;
         }
+        throw new IllegalStateException("Not recognized typedef: " + typeDef);
     }
 
 }

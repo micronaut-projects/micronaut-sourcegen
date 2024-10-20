@@ -20,6 +20,7 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Type;
 
+import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,6 +29,12 @@ public class TypeUtils {
     private static final Pattern ARRAY_PATTERN = Pattern.compile("(\\[])+$");
 
     public static Type getType(TypeDef typeDef) {
+        if (typeDef == TypeDef.THIS) {
+            throw new IllegalStateException("This type not replaced");
+        }
+        if (typeDef == TypeDef.SUPER) {
+            throw new IllegalStateException("Super type not replaced");
+        }
         if (typeDef instanceof TypeDef.Array array) {
             return Type.getType("[".repeat(array.dimensions()) + 'L' +  getType(array.componentType()).getInternalName() + ";");
         }
@@ -48,12 +55,12 @@ public class TypeUtils {
         throw new IllegalStateException("Unsupported type: " + typeDef);
     }
 
-    private static String getConstructorDescriptor(Class<?>... argumentTypes) {
+    public static String getConstructorDescriptor(Collection<TypeDef> types) {
         StringBuilder builder = new StringBuilder();
         builder.append('(');
 
-        for (Class<?> argumentType : argumentTypes) {
-            builder.append(TypeUtils.getTypeDescriptor(argumentType.getName()));
+        for (TypeDef argumentType : types) {
+            builder.append(TypeUtils.getType(argumentType).getDescriptor());
         }
 
         return builder.append(")V").toString();
@@ -78,7 +85,7 @@ public class TypeUtils {
         return start.append(';').toString();
     }
 
-    private static Type getType(String className, Type... genericTypes) {
+    public static Type getType(String className, Type... genericTypes) {
         return Type.getType(getTypeDescriptor(className, genericTypes));
     }
 

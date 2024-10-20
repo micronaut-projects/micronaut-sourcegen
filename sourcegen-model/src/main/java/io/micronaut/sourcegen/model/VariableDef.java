@@ -24,7 +24,7 @@ import io.micronaut.core.annotation.Experimental;
  * @since 1.0
  */
 @Experimental
-public sealed interface VariableDef extends ExpressionDef permits VariableDef.Field, VariableDef.Local, VariableDef.MethodParameter, VariableDef.StaticField, VariableDef.This {
+public sealed interface VariableDef extends ExpressionDef permits VariableDef.Field, VariableDef.Local, VariableDef.MethodParameter, VariableDef.StaticField, VariableDef.Super, VariableDef.This {
 
     /**
      * Assign this variable an expression.
@@ -128,6 +128,22 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Fi
      */
     @Experimental
     record This(TypeDef type) implements VariableDef {
+
+        public Super superRef() {
+            return new Super(TypeDef.SUPER);
+        }
+
+    }
+
+    /**
+     * The variable of `super`.
+     *
+     * @param type The type
+     * @author Denis Stepanov
+     * @since 1.4
+     */
+    @Experimental
+    record Super(TypeDef type) implements VariableDef {
     }
 
 }

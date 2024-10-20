@@ -21,6 +21,7 @@ import io.micronaut.sourcegen.custom.example.GenerateIfsPredicate;
 import io.micronaut.sourcegen.custom.example.GenerateMyEnum1;
 import io.micronaut.sourcegen.custom.example.GenerateInterface;
 import io.micronaut.sourcegen.custom.example.GenerateMyRepository1;
+import io.micronaut.sourcegen.custom.example.GenerateSwitch;
 
 //@GenerateMyBean1
 //@GenerateMyBean2
@@ -31,7 +32,7 @@ import io.micronaut.sourcegen.custom.example.GenerateMyRepository1;
 @GenerateMyRepository1
 @GenerateMyEnum1
 @GenerateIfsPredicate
-//@GenerateSwitch
+@GenerateSwitch
 @GenerateArray
 public class Trigger {
 }
