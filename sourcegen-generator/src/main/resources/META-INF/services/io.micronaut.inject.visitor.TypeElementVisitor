@@ -2,3 +2,4 @@ io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor
 io.micronaut.sourcegen.generator.visitors.WitherAnnotationVisitor
 io.micronaut.sourcegen.generator.visitors.SuperBuilderAnnotationVisitor
 io.micronaut.sourcegen.generator.visitors.ObjectAnnotationVisitor
+io.micronaut.sourcegen.generator.visitors.DelegateAnnotationVisitor
