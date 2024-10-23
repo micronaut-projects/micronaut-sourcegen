@@ -120,7 +120,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         var companionBuilder: TypeSpec.Builder? = null
         for (property in interfaceDef.properties) {
             val propertySpec = if (property.type.isNullable) {
-                buildNullableProperty(
+                buildProperty(
                     property.name,
                     property.type.makeNullable(),
                     property.modifiers,
@@ -189,7 +189,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         for (property in classDef.properties) {
             var propertySpec: PropertySpec
             if (property.type.isNullable) {
-                propertySpec = buildNullableProperty(
+                propertySpec = buildProperty(
                     property.name,
                     property.type.makeNullable(),
                     property.modifiers,
@@ -233,12 +233,18 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     companionBuilder = TypeSpec.companionObjectBuilder()
                 }
                 companionBuilder.addProperty(
-                    buildNullableProperty(field, stripStatic(modifiers), field.javadoc, classDef)
+                    buildProperty(field, stripStatic(modifiers), field.javadoc, classDef)
                 )
             } else {
-                classBuilder.addProperty(
-                    buildNullableProperty(field, modifiers, field.javadoc, classDef)
-                )
+                if (field.type.isNullable) {
+                    classBuilder.addProperty(
+                        buildProperty(field, modifiers, field.javadoc, classDef)
+                    )
+                } else {
+                    classBuilder.addProperty(
+                        buildProperty(field, modifiers, field.javadoc, classDef)
+                    )
+                }
             }
         }
 
@@ -378,7 +384,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             .writeTo(writer)
     }
 
-    private fun buildNullableProperty(
+    private fun buildProperty(
         name: String,
         typeDef: TypeDef,
         modifiers: Set<Modifier>,
@@ -410,8 +416,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 )
             }
         }
-        return propertyBuilder
-            .initializer("null").build()
+        if (typeDef.isNullable) {
+            propertyBuilder.initializer("null")
+        }
+        return propertyBuilder.build()
     }
 
     private fun buildConstructorProperty(
@@ -441,13 +449,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             .build()
     }
 
-    private fun buildNullableProperty(
+    private fun buildProperty(
         field: FieldDef,
         modifiers: Set<Modifier>,
         docs: List<String>,
         objectDef: ObjectDef?
     ): PropertySpec {
-        return buildNullableProperty(
+        return buildProperty(
             field.name,
             field.type,
             modifiers,

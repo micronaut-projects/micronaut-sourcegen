@@ -15,25 +15,22 @@
  */
 package io.micronaut.sourcegen.example.delegate;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-class DelegateWorkerTest {
+internal class DelegateWorkerTest {
 
     @Test
-    void test() {
-        OvertimeWorker worker = new OvertimeWorker(new RobotWorker(
+    fun test() {
+        val worker = OvertimeWorker(RobotWorker(
             "robot",
-            10,
-            List.of("does everything")
-        ));
+            10.0,
+            listOf("does everything")
+        ))
 
-        assertEquals("robot", worker.name());
-        assertEquals(12, worker.tasksPerDay()); // increased because of delegate
-        assertEquals(List.of("does everything"), worker.competencies());
+        Assertions.assertEquals("robot", worker.name())
+        Assertions.assertEquals(12.0, worker.tasksPerDay()) // increased because of delegate
+        Assertions.assertEquals(listOf("does everything"), worker.competencies())
     }
 
 }
