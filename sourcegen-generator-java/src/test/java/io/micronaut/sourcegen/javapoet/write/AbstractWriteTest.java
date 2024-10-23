@@ -10,8 +10,10 @@ import io.micronaut.sourcegen.model.StatementDef;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.fail;
 
@@ -36,6 +38,21 @@ public abstract class AbstractWriteTest {
             fail("Expected class to match regex: \n" + CLASS_REGEX + "\nbut is: \n" + result);
         }
         return matcher.group(1).trim();
+    }
+
+    /**
+     * Write as class and returns the constructor.
+     */
+    protected String writeClassAndGetConstructor(ClassDef classDef) throws IOException {
+        String content = writeClassWithContents(classDef);
+
+        final Pattern CONSTRUCTOR_REGEX = Pattern.compile(
+            "\\s*\\S* ?" + classDef.getSimpleName() + "\\([^)]*\\) \\{([^}]+)}");
+        Matcher matcher = CONSTRUCTOR_REGEX.matcher(content);
+        if (!matcher.find()) {
+            fail("Expected class content to match regex: \n" + CONSTRUCTOR_REGEX + "\nbut is: \n" + content);
+        }
+        return unindent(matcher.group(0));
     }
 
     protected String writeMethodWithExpression(ExpressionDef expression) throws IOException {
@@ -64,6 +81,22 @@ public abstract class AbstractWriteTest {
             .addModifiers(Modifier.PUBLIC)
             .build();
         return writeClassWithContents(classDef);
+    }
+
+    protected String unindent(String content) {
+        String[] lines = content.split("\n");
+        int indent = 1000;
+        for (String line: lines) {
+            for (int i = 0; i < indent && i < line.length(); i++) {
+                if (!Character.isWhitespace(line.charAt(i))) {
+                    indent = i;
+                    break;
+                }
+            }
+        }
+        int finalIndent = indent;
+        return Arrays.stream(lines).map(v -> v.length() > finalIndent ? v.substring(finalIndent) : "")
+            .collect(Collectors.joining("\n"));
     }
 
 }
