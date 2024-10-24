@@ -29,11 +29,9 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public final class EnumDef extends AbstractElement implements ObjectDef {
+public final class EnumDef extends ObjectDef {
 
     private final List<String> enumConstants;
-    private final List<MethodDef> methods;
-    private final List<TypeDef> superinterfaces;
 
     private EnumDef(String name,
                     EnumSet<Modifier> modifiers,
@@ -42,26 +40,16 @@ public final class EnumDef extends AbstractElement implements ObjectDef {
                     List<String> javadoc,
                     List<String> enumConstants,
                     List<TypeDef> superinterfaces) {
-        super(name, modifiers, annotations, javadoc);
-        this.methods = methods;
+        super(name, modifiers, annotations, javadoc, methods, superinterfaces);
         this.enumConstants = enumConstants;
-        this.superinterfaces = superinterfaces;
     }
 
     public static EnumDefBuilder builder(String name) {
         return new EnumDefBuilder(name);
     }
 
-    public List<MethodDef> getMethods() {
-        return methods;
-    }
-
     public List<String> getEnumConstants() {
         return enumConstants;
-    }
-
-    public List<TypeDef> getSuperinterfaces() {
-        return superinterfaces;
     }
 
     /**
@@ -71,7 +59,7 @@ public final class EnumDef extends AbstractElement implements ObjectDef {
      * @since 1.0
      */
     @Experimental
-    public static final class EnumDefBuilder extends AbstractElementBuilder<EnumDefBuilder> {
+    public static final class EnumDefBuilder extends ObjectDefBuilder<EnumDefBuilder> {
 
         private final List<String> enumConstants = new ArrayList<>();
         private final List<MethodDef> methods = new ArrayList<>();
@@ -81,18 +69,8 @@ public final class EnumDef extends AbstractElement implements ObjectDef {
             super(name);
         }
 
-        public EnumDefBuilder addMethod(MethodDef method) {
-            methods.add(method);
-            return this;
-        }
-
         public EnumDefBuilder addEnumConstant(String name) {
             enumConstants.add(name);
-            return this;
-        }
-
-        public EnumDefBuilder addSuperinterface(TypeDef superinterface) {
-            superinterfaces.add(superinterface);
             return this;
         }
 
