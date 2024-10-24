@@ -19,7 +19,6 @@ import io.micronaut.core.annotation.AnnotationValue;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
-import io.micronaut.inject.ast.GenericPlaceholderElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.processing.ProcessingException;
@@ -44,14 +43,9 @@ import io.micronaut.sourcegen.model.VariableDef.This;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
 
 /**
@@ -122,8 +116,8 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
                 );
                 typeDef = TypeDef.parameterized(
                     typeDef,
-                    element.getTypeArguments().entrySet().stream().map(
-                        v -> (TypeDef) new TypeVariable(v.getKey())
+                    element.getTypeArguments().keySet().stream().map(
+                        classElement -> (TypeDef) new TypeVariable(classElement)
                     ).toList()
                 );
             }
