@@ -59,28 +59,12 @@ public final class GenerateMyBean3Visitor implements TypeElementVisitor<Generate
                     .build()
             ).build())
             .addMethod(MethodDef.constructor().addParameter("name", ClassTypeDef.of(String.class))
-                .addStatement(new StatementDef.Assign(
-                    new VariableDef.Field(new VariableDef.This(
-                        ClassTypeDef.of(builderClassName)),
-                        "otherName", ClassTypeDef.of(String.class)
-                    ),
-                    new VariableDef.MethodParameter("name", ClassTypeDef.of(String.class))
-                ))
-                .build()
+                .build((aThis, methodParameters) -> aThis.field("otherName", ClassTypeDef.of(String.class)).put(methodParameters.get(0)))
             )
             .addMethod(MethodDef.builder("castPrimitive")
                 .addParameter(ParameterDef.of("value", TypeDef.primitive(Double.TYPE)))
                 .returns(TypeDef.primitive(Float.TYPE))
-                .addStatement(new StatementDef.Return(
-                    new ExpressionDef.Cast(
-                        TypeDef.primitive(Float.TYPE),
-                        new VariableDef.MethodParameter(
-                            "value",
-                            TypeDef.primitive(Double.TYPE)
-                        )
-                    )
-                ))
-                .build()
+                .build((aThis, methodParameters) -> methodParameters.get(0).cast(TypeDef.primitive(Float.TYPE)).returning())
             )
             .build();
 

@@ -15,14 +15,17 @@
  */
 package io.micronaut.sourcegen.model;
 
+import com.github.javaparser.quality.NotNull;
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.convert.ConversionService;
 import io.micronaut.core.reflect.ClassUtils;
+import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.PropertyElement;
+import io.micronaut.inject.processing.JavaModelUtils;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -38,7 +41,7 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallInstanceMethod2, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.GetPropertyValue, ExpressionDef.GetStaticField, ExpressionDef.IfElse, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.IsNotNull, ExpressionDef.IsNull, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.PutStaticField, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
+    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallInstanceMethod2, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.IsNotNull, ExpressionDef.IsNull, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
 
     /**
      * The condition of this variable.
@@ -435,7 +438,7 @@ public sealed interface ExpressionDef
             } else {
                 name = value.toString();
             }
-            return new VariableDef.StaticField(typeDef, name, typeDef);
+            return ((ClassTypeDef) typeDef).getStaticField(name, typeDef);
         }
         return null;
     }
@@ -461,6 +464,21 @@ public sealed interface ExpressionDef
             type = TypeDef.of(value.getClass());
         }
         return new Constant(type, value);
+    }
+
+    /**
+     * Resolve a constant for the given type from the string.
+     *
+     * @param value The string value
+     * @return The constant
+     * @throws IllegalArgumentException if the constant is not supported.
+     * @since 1.2
+     */
+    @Experimental
+    @Nullable
+    static ExpressionDef.Constant primitiveConstant(@NotNull Object value) {
+        Class<?> primitiveType = ReflectionUtils.getPrimitiveType(value.getClass());
+        return new ExpressionDef.Constant(TypeDef.primitive(primitiveType), value);
     }
 
     /**
@@ -657,37 +675,6 @@ public sealed interface ExpressionDef
         public TypeDef type() {
             return returningType;
         }
-    }
-
-    /**
-     * The get a static field expression.
-     *
-     * @param classDef The class
-     * @param name     The field name
-     * @param type     The field type
-     * @author Denis Stepanov
-     * @since 1.4
-     */
-    @Experimental
-    record GetStaticField(ClassTypeDef classDef, String name,
-                          TypeDef type) implements ExpressionDef, StatementDef {
-    }
-
-    /**
-     * The set a static field expression.
-     *
-     * @param classDef   The class
-     * @param name       The field name
-     * @param type       The field type
-     * @param expression The expression
-     * @author Denis Stepanov
-     * @since 1.4
-     */
-    @Experimental
-    record PutStaticField(ClassTypeDef classDef,
-                          String name,
-                          TypeDef type,
-                          ExpressionDef expression) implements ExpressionDef, StatementDef {
     }
 
     /**

@@ -71,6 +71,7 @@ public final class SourceGenerators {
         if (exception.getClass().getSimpleName().equals("PostponeToNextRoundException") && exception instanceof RuntimeException runtimeException) {
             postponeCallback.accept(runtimeException);
         } else {
+            exception.printStackTrace();
             String message = exception.getMessage() != null ? exception.getMessage() : exception.getClass().getSimpleName();
             throw new ProcessingException(originatingElement, "Failed to generate a @" + annotation.getSimpleName() + ": " + message, exception);
         }

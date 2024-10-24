@@ -18,6 +18,7 @@ package io.micronaut.sourcegen;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.Element;
+import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.model.ClassDef;
@@ -33,6 +34,7 @@ import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
+import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Label;
@@ -41,10 +43,12 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 import org.objectweb.asm.commons.TableSwitchGenerator;
+import org.objectweb.asm.util.CheckClassAdapter;
+import org.objectweb.asm.util.TraceClassVisitor;
 
 import javax.lang.model.element.Modifier;
-import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.Collection;
 import java.util.HashMap;
@@ -79,12 +83,13 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
 
     private ClassWriter generateClassBytes(ObjectDef objectDef) {
         ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-        writeClass(classWriter, objectDef);
+        CheckClassAdapter cv = new CheckClassAdapter(classWriter);
+        writeObject(cv, objectDef);
         classWriter.visitEnd();
         return classWriter;
     }
 
-    private void writeClass(ClassWriter classWriter, ObjectDef objectDef) {
+    public void writeObject(ClassVisitor classWriter, ObjectDef objectDef) {
         if (objectDef instanceof ClassDef classDef) {
             writeClass(classWriter, classDef);
         } else if (objectDef instanceof RecordDef recordDef) {
@@ -98,9 +103,9 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
         }
     }
 
-    private void writeEnum(ClassWriter classWriter, EnumDef enumDef) {
+    private void writeEnum(ClassVisitor classWriter, EnumDef enumDef) {
         ClassTypeDef enumTypeDef = enumDef.asTypeDef();
-        Type enumType = TypeUtils.getType(enumTypeDef);
+        Type enumType = TypeUtils.getType(enumTypeDef, null);
 
         ClassTypeDef baseEnumTypeDef = ClassTypeDef.of(Enum.class);
         ClassDef enumClassDef = ClassDef.builder(enumDef.getName())
@@ -114,7 +119,7 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
             enumType.getInternalName(),
             SignatureWriterUtils.getClassSignature(enumClassDef),
             Type.getType(Enum.class).getInternalName(),
-            enumDef.getSuperinterfaces().stream().map(TypeUtils::getType).map(Type::getInternalName).toArray(String[]::new)
+            enumDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, enumDef)).map(Type::getInternalName).toArray(String[]::new)
         );
         for (String enumConstant : enumDef.getEnumConstants()) {
             FieldVisitor fieldVisitor = classWriter.visitField(ACC_PUBLIC + ACC_FINAL + ACC_STATIC + ACC_ENUM, enumConstant, enumType.getDescriptor(), null, null);
@@ -125,32 +130,16 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
             .addParameter(ParameterDef.of("name", TypeDef.STRING))
             .addParameter(ParameterDef.of("ordinal", TypeDef.Primitive.INT))
             .build((aThis, methodParameters) -> aThis.superRef().invoke(MethodDef.constructor().build(), methodParameters.get(0), methodParameters.get(1))));
-//        private <init>(Ljava/lang/String;I)V
-//            // parameter synthetic  $enum$name
-//            // parameter synthetic  $enum$ordinal
-//            L0
-//        LINENUMBER 5 L0
-//        ALOAD 0
-//        ALOAD 1
-//        ILOAD 2
-//        INVOKESPECIAL java/lang/Enum.<init> (Ljava/lang/String;I)V
-//            RETURN
-//        L1
-//        LOCALVARIABLE this Lio/micronaut/sourcegen/example/MyEnum1; L0 L1 0
-//        MAXSTACK = 3
-//        MAXLOCALS = 3
 
         FieldDef $valuesField = FieldDef.builder("$VALUES").ofType(enumTypeDef.array()).addModifiers(Modifier.STATIC, Modifier.PRIVATE).build();
 
-        writeField(classWriter, $valuesField);
-
-//        private final static synthetic [Lio/micronaut/sourcegen/example/MyEnum1; $VALUES
+        writeField(classWriter, enumDef, $valuesField);
 
         MethodDef valuesMethod = MethodDef.builder("values")
             .addModifiers(Modifier.STATIC, Modifier.PUBLIC)
             .returns(enumTypeDef.array())
             .build((aThis, methodParameters) ->
-                enumTypeDef.getStatic($valuesField)
+                enumTypeDef.getStaticField($valuesField)
                     .invoke(ReflectionUtils.getRequiredMethod(Object.class, "clone"))
                     .cast(enumTypeDef.array())
                     .returning());
@@ -175,7 +164,7 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
                     .instantiate(
                         enumDef.getEnumConstants()
                             .stream()
-                            .<ExpressionDef>map(name -> enumTypeDef.getStatic(name, enumTypeDef))
+                            .<ExpressionDef>map(name -> enumTypeDef.getStaticField(name, enumTypeDef))
                             .toList()
                     )
                     .returning());
@@ -193,9 +182,7 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
         int i = 0;
         for (String enumConstant : enumDef.getEnumConstants()) {
             staticMethodBuilder.addStatement(
-                enumTypeDef.putStatic(
-                    enumConstant,
-                    enumTypeDef,
+                enumTypeDef.getStaticField(enumConstant, enumTypeDef).put(
                     enumTypeDef.instantiate(
                         ExpressionDef.constant(enumConstant),
                         TypeDef.Primitive.INT.constant(i++)
@@ -204,28 +191,28 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
             );
         }
 
-        staticMethodBuilder.addStatement(enumTypeDef.putStatic($valuesField, enumTypeDef.invokeStatic($valuesMethod)));
+        staticMethodBuilder.addStatement(enumTypeDef.getStaticField($valuesField).put(enumTypeDef.invokeStatic($valuesMethod)));
         writeMethod(classWriter, null, staticMethodBuilder.build());
     }
 
-    private void writeField(ClassWriter classWriter, FieldDef fieldDef) {
+    private void writeField(ClassVisitor classWriter, ObjectDef objectDef, FieldDef fieldDef) {
         FieldVisitor fieldVisitor = classWriter.visitField(
             getModifiersFlag(fieldDef.getModifiers()),
             fieldDef.getName(),
-            TypeUtils.getType(fieldDef.getType()).getDescriptor(),
-            SignatureWriterUtils.getFieldSignature(fieldDef),
+            TypeUtils.getType(fieldDef.getType(), objectDef).getDescriptor(),
+            SignatureWriterUtils.getFieldSignature(objectDef, fieldDef),
             null
         );
         fieldVisitor.visitEnd();
     }
 
-    private void writeInterface(ClassWriter classWriter, InterfaceDef interfaceDef) {
+    private void writeInterface(ClassVisitor classWriter, InterfaceDef interfaceDef) {
         classWriter.visit(V17,
             ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(interfaceDef.getModifiers()),
             TypeUtils.getType(interfaceDef.asTypeDef()).getInternalName(),
             SignatureWriterUtils.getInterfaceSignature(interfaceDef),
             Type.getType(Object.class).getInternalName(),
-            interfaceDef.getSuperinterfaces().stream().map(TypeUtils::getType).map(Type::getInternalName).toArray(String[]::new)
+            interfaceDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, interfaceDef)).map(Type::getInternalName).toArray(String[]::new)
         );
         for (MethodDef method : interfaceDef.getMethods()) {
             writeMethod(classWriter, interfaceDef, method);
@@ -233,47 +220,55 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
         classWriter.visitEnd();
     }
 
-    private void writeRecord(ClassWriter classWriter, RecordDef recordDef) {
+    private void writeRecord(ClassVisitor classWriter, RecordDef recordDef) {
         classWriter.visit(V17, ACC_RECORD | getModifiersFlag(recordDef.getModifiers()), TypeUtils.getType(recordDef.asTypeDef()).getInternalName(), null, null, null);
     }
 
-    private void writeClass(ClassWriter classWriter, ClassDef classDef) {
+    private void writeClass(ClassVisitor classWriter, ClassDef classDef) {
         String CONSTRUCTOR_NAME = "<init>";
         String DESCRIPTOR_DEFAULT_CONSTRUCTOR = "()V";
+
+        TypeDef superclass = Objects.requireNonNullElse(classDef.getSuperclass(), TypeDef.OBJECT);
 
         classWriter.visit(
             V17,
             getModifiersFlag(classDef.getModifiers()),
             TypeUtils.getType(classDef.asTypeDef()).getInternalName(),
             SignatureWriterUtils.getClassSignature(classDef),
-            classDef.getSuperclass() == null ? Type.getType(Object.class).getInternalName() : TypeUtils.getType(classDef.getSuperclass()).getInternalName(),
-            classDef.getSuperinterfaces().stream().map(TypeUtils::getType).map(Type::getInternalName).toArray(String[]::new)
+            TypeUtils.getType(superclass, null).getInternalName(),
+            classDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, classDef)).map(Type::getInternalName).toArray(String[]::new)
         );
 
-        MethodVisitor defaultConstructor = classWriter.visitMethod(ACC_PUBLIC, CONSTRUCTOR_NAME, DESCRIPTOR_DEFAULT_CONSTRUCTOR, null, null);
-        GeneratorAdapter generatorAdapter = new GeneratorAdapter(defaultConstructor, ACC_PUBLIC, CONSTRUCTOR_NAME, DESCRIPTOR_DEFAULT_CONSTRUCTOR);
+        for (FieldDef field : classDef.getFields()) {
+            writeField(classWriter, classDef, field);
+        }
 
-        generatorAdapter.visitCode();
-        generatorAdapter.loadThis();
-        generatorAdapter.invokeConstructor(Type.getType(Object.class), Method.getMethod("void <init> ()"));
-        generatorAdapter.returnValue();
-        generatorAdapter.visitMaxs(2, 1);
-        generatorAdapter.visitEnd();
+        if (classDef.getMethods().stream().noneMatch(MethodDef::isConstructor)) {
+            MethodVisitor defaultConstructor = classWriter.visitMethod(ACC_PUBLIC, CONSTRUCTOR_NAME, DESCRIPTOR_DEFAULT_CONSTRUCTOR, null, null);
+            GeneratorAdapter generatorAdapter = new GeneratorAdapter(defaultConstructor, ACC_PUBLIC, CONSTRUCTOR_NAME, DESCRIPTOR_DEFAULT_CONSTRUCTOR);
+
+            generatorAdapter.visitCode();
+            generatorAdapter.loadThis();
+            generatorAdapter.invokeConstructor(TypeUtils.getType(superclass, null), Method.getMethod("void <init> ()"));
+            generatorAdapter.returnValue();
+            generatorAdapter.visitMaxs(2, 1);
+            generatorAdapter.visitEnd();
+        }
 
         for (MethodDef method : classDef.getMethods()) {
             writeMethod(classWriter, classDef, method);
         }
     }
 
-    private void writeMethod(ClassWriter classWriter, @Nullable ObjectDef objectDef, MethodDef methodDef) {
+    private void writeMethod(ClassVisitor classWriter, @Nullable ObjectDef objectDef, MethodDef methodDef) {
         String name = methodDef.getName();
-        String methodDescriptor = getMethodDescriptor(Objects.requireNonNullElse(methodDef.getReturnType(), TypeDef.VOID), methodDef.getParameters());
+        String methodDescriptor = getMethodDescriptor(objectDef, Objects.requireNonNullElse(methodDef.getReturnType(), TypeDef.VOID), methodDef.getParameters());
 
         MethodVisitor methodVisitor = classWriter.visitMethod(
             getModifiersFlag(methodDef.getModifiers()),
             name,
             methodDescriptor,
-            SignatureWriterUtils.getMethodSignature(methodDef),
+            SignatureWriterUtils.getMethodSignature(objectDef, methodDef),
             null
         );
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, getModifiersFlag(methodDef.getModifiers()), name, methodDescriptor);
@@ -286,49 +281,58 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
 //        }        method.getStatements().stream()
 //            .map(st -> renderStatementCodeBlock(objectDef, method, st))
 //            .forEach(methodBuilder::addCode);
+        Context context = new Context(objectDef, methodDef);
         List<StatementDef> statements = methodDef.getStatements();
+        if (methodDef.isConstructor() && statements.isEmpty() && objectDef instanceof ClassDef) {
+            statements = List.of(
+                MethodDef.constructor().build((aThis, methodParameters) -> aThis.superRef().invoke(MethodDef.constructor().build()))
+                    .getStatements()
+                    .get(0)
+            );
+        }
         if (!statements.isEmpty()) {
             methodVisitor.visitCode();
             for (StatementDef statement : statements) {
-                pushStatement(generatorAdapter, objectDef, methodDef, statement);
+                pushStatement(generatorAdapter, context, statement);
             }
-            methodVisitor.visitMaxs(20, 20);
         }
         if (methodDef.getName().endsWith("init>")) {
             generatorAdapter.returnValue();
+        }
+        if (!statements.isEmpty()) {
+            methodVisitor.visitMaxs(100, 100);
         }
         methodVisitor.visitEnd();
     }
 
     private void pushStatement(GeneratorAdapter generatorAdapter,
-                               @Nullable ObjectDef objectDef,
-                               MethodDef methodDef,
+                               Context context,
                                StatementDef statementDef) {
         if (statementDef instanceof StatementDef.Multi statements) {
             for (StatementDef statement : statements.statements()) {
-                pushStatement(generatorAdapter, objectDef, methodDef, statement);
+                pushStatement(generatorAdapter, context, statement);
             }
             return;
         }
         if (statementDef instanceof StatementDef.If ifStatement) {
             Label elseLabel = new Label();
-            renderConditionalExpression(generatorAdapter, objectDef, methodDef, ifStatement.condition(), elseLabel);
-            pushStatement(generatorAdapter, objectDef, methodDef, ifStatement.statement());
+            renderConditionalExpression(generatorAdapter, context, ifStatement.condition(), elseLabel);
+            pushStatement(generatorAdapter, context, ifStatement.statement());
             generatorAdapter.visitLabel(elseLabel);
             return;
         }
         if (statementDef instanceof StatementDef.IfElse ifStatement) {
             Label elseLabel = new Label();
-            renderConditionalExpression(generatorAdapter, objectDef, methodDef, ifStatement.condition(), elseLabel);
+            renderConditionalExpression(generatorAdapter, context, ifStatement.condition(), elseLabel);
             Label end = new Label();
-            pushStatement(generatorAdapter, objectDef, methodDef, ifStatement.statement());
+            pushStatement(generatorAdapter, context, ifStatement.statement());
             generatorAdapter.visitLabel(end);
             generatorAdapter.visitLabel(elseLabel);
-            pushStatement(generatorAdapter, objectDef, methodDef, ifStatement.elseStatement());
+            pushStatement(generatorAdapter, context, ifStatement.elseStatement());
             return;
         }
         if (statementDef instanceof StatementDef.Switch aSwitch) {
-            pushSwitchExpression(generatorAdapter, objectDef, methodDef, aSwitch.expression());
+            pushSwitchExpression(generatorAdapter, context, aSwitch.expression());
             Map<ExpressionDef.Constant, StatementDef> cases = new HashMap<>(aSwitch.cases());
             StatementDef defaultCase = cases.remove(null);
             if (defaultCase == null) {
@@ -344,143 +348,189 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
                 @Override
                 public void generateCase(int key, Label end) {
                     StatementDef exp = map.get(key);
-                    pushStatement(generatorAdapter, objectDef, methodDef, exp);
+                    pushStatement(generatorAdapter, context, exp);
                     generatorAdapter.goTo(end);
                 }
 
                 @Override
                 public void generateDefault() {
-                    pushStatement(generatorAdapter, objectDef, methodDef, finalDefaultCase);
+                    pushStatement(generatorAdapter, context, finalDefaultCase);
                 }
             });
             return;
         }
         if (statementDef instanceof StatementDef.While aWhile) {
-//            CodeBlock.Builder builder = CodeBlock.builder();
-//            builder.add("while (");
-//            builder.add(renderExpression(objectDef, methodDef, aWhile.expression()));
-//            builder.add(") {\n");
-//            builder.indent();
-//            builder.add(renderStatementCodeBlock(objectDef, methodDef, aWhile.statement()));
-//            builder.unindent();
-//            builder.add("}\n");
-//            return builder.build();
+            Label whileLoop = new Label();
+            Label end = new Label();
+//            generatorAdapter.visitLabel(whileLoop);
+//            pushExpression(generatorAdapter, context, aWhile.expression(), TypeDef.Primitive.BOOLEAN);
+//            generatorAdapter.push(true);
+//            generatorAdapter.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, end);
+            pushStatement(generatorAdapter, context, aWhile.statement());
+//            generatorAdapter.goTo(whileLoop);
+//            generatorAdapter.visitLabel(end);
+            return;
         }
-        renderStatement(generatorAdapter, objectDef, methodDef, statementDef);
+        renderStatement(generatorAdapter, context, statementDef);
     }
 
-    private void renderStatement(GeneratorAdapter generatorAdapter, @Nullable ObjectDef objectDef, MethodDef methodDef, StatementDef statementDef) {
-//        if (statementDef instanceof StatementDef.Throw aThrow) {
-//            return CodeBlock.concat(
-//                CodeBlock.of("throw "),
-//                renderExpression(objectDef, methodDef, aThrow.variableDef())
-//            );
-//        }
+    private void renderStatement(GeneratorAdapter generatorAdapter,
+                                 Context context,
+                                 StatementDef statementDef) {
+        if (statementDef instanceof StatementDef.Throw aThrow) {
+            pushExpression(generatorAdapter, context, aThrow.expression(), aThrow.expression().type());
+            generatorAdapter.throwException();
+            return;
+        }
         if (statementDef instanceof StatementDef.Return aReturn) {
             if (aReturn.expression() != null) {
-                pushExpression(generatorAdapter, objectDef, methodDef, aReturn.expression(), methodDef.getReturnType());
+                pushExpression(generatorAdapter, context, aReturn.expression(), context.methodDef.getReturnType());
             }
             generatorAdapter.returnValue();
             return;
         }
-//        if (statementDef instanceof StatementDef.Assign assign) {
-//            return CodeBlock.concat(
-//                renderExpression(objectDef, methodDef, assign.variable()),
-//                CodeBlock.of(" = "),
-//                renderExpression(objectDef, methodDef, assign.expression())
-//            );
-//        }
-//        if (statementDef instanceof StatementDef.DefineAndAssign assign) {
-//            return CodeBlock.concat(
-//                CodeBlock.of("$T $L", asType(assign.variable().type(), objectDef), assign.variable().name()),
-//                CodeBlock.of(" = "),
-//                renderExpression(objectDef, methodDef, assign.expression())
-//            );
-//        }
+        if (statementDef instanceof StatementDef.PutStaticField putStaticField) {
+            pushExpression(generatorAdapter, context, putStaticField.expression(), putStaticField.type());
+            generatorAdapter.putStatic(
+                TypeUtils.getType(putStaticField.classDef(), context.objectDef),
+                putStaticField.name(),
+                TypeUtils.getType(putStaticField.type(), context.objectDef)
+            );
+            return;
+        }
+        if (statementDef instanceof StatementDef.PutField putField) {
+            TypeDef owner = putField.instance().type();
+            pushExpression(generatorAdapter, context, putField.instance(), owner);
+            TypeDef fieldType = putField.type();
+            pushExpression(generatorAdapter, context, putField.expression(), fieldType);
+            generatorAdapter.putField(
+                TypeUtils.getType(owner, context.objectDef),
+                putField.name(),
+                TypeUtils.getType(fieldType, context.objectDef)
+            );
+            return;
+        }
+        if (statementDef instanceof StatementDef.Assign assign) {
+            VariableDef.Local local = assign.variable();
+            pushExpression(generatorAdapter, context, assign.expression(), local.type());
+            Integer localIndex = context.locals.get(local.name());
+            generatorAdapter.storeLocal(localIndex);
+            return;
+        }
+        if (statementDef instanceof StatementDef.DefineAndAssign assign) {
+            VariableDef.Local local = assign.variable();
+            Type localType = TypeUtils.getType(local.type(), context.objectDef);
+            int localIndex = generatorAdapter.newLocal(localType);
+            pushExpression(generatorAdapter, context, assign.expression(), local.type());
+            generatorAdapter.storeLocal(localIndex);
+            context.locals.put(local.name(), localIndex);
+            return;
+        }
         if (statementDef instanceof ExpressionDef expressionDef) {
-            pushExpression(generatorAdapter, objectDef, methodDef, expressionDef, expressionDef.type());
+            pushExpression(generatorAdapter, context, expressionDef, expressionDef.type());
             return;
         }
         throw new IllegalStateException("Unrecognized statement: " + statementDef);
     }
 
     private void pushExpression(GeneratorAdapter generatorAdapter,
-                                @Nullable ObjectDef objectDef,
-                                MethodDef methodDef,
+                                Context context,
                                 ExpressionDef expressionDef,
                                 TypeDef expectedType) {
-        if (expressionDef instanceof ExpressionDef.GetStaticField getStaticField) {
-            generatorAdapter.getStatic(
-                TypeUtils.getType(getStaticField.classDef()),
-                getStaticField.name(),
-                TypeUtils.getType(getStaticField.type())
-            );
-            return;
+        if (expectedType.isPrimitive() &&
+            expressionDef instanceof ExpressionDef.Constant constant
+            && !constant.type().isPrimitive()
+            && constant.value() != null
+            && ReflectionUtils.getPrimitiveType(constant.value().getClass()).isPrimitive()) {
+            expressionDef = ExpressionDef.primitiveConstant(constant.value());
         }
-        if (expressionDef instanceof ExpressionDef.PutStaticField putStaticField) {
-            pushExpression(generatorAdapter, objectDef, methodDef, putStaticField.expression(), putStaticField.type());
-            generatorAdapter.putStatic(
-                TypeUtils.getType(putStaticField.classDef()),
-                putStaticField.name(),
-                TypeUtils.getType(putStaticField.type())
-            );
-            return;
-        }
-        if (expressionDef instanceof ExpressionDef.CallInstanceMethod2 invokeMethod) {
-            TypeDef instanceType = getInstanceType(objectDef, invokeMethod.instance().type());
-            pushExpression(generatorAdapter, objectDef, methodDef, invokeMethod.instance(), instanceType);
-            for (ExpressionDef parameter : invokeMethod.parameters()) {
-                pushExpression(generatorAdapter, objectDef, methodDef, parameter, parameter.type());
+        pushExpressionNoCast(generatorAdapter, context, expressionDef);
+        TypeDef type = expressionDef.type();
+        cast(generatorAdapter, context, type, expectedType);
+    }
+
+    private void cast(GeneratorAdapter generatorAdapter, Context context, TypeDef from, TypeDef to) {
+        from = ObjectDef.getContextualType(context.objectDef, from);
+        to = ObjectDef.getContextualType(context.objectDef, to);
+        if ((from.isPrimitive() || to.isPrimitive()) && !from.equals(to)) {
+            if (from instanceof TypeDef.Primitive primitive && !to.isPrimitive()) {
+                box(generatorAdapter, context, from);
+                checkCast(generatorAdapter, context, primitive.wrapperType(), to);
             }
-            generatorAdapter.invokeVirtual(TypeUtils.getType(instanceType), Method.getMethod(invokeMethod.method()));
+            if (!from.isPrimitive() && to.isPrimitive()) {
+                unbox(generatorAdapter, context, to);
+            }
+        } else if (!from.makeNullable().equals(to.makeNullable())) {
+            checkCast(generatorAdapter, context, from, to);
+        }
+    }
+
+    private void unbox(GeneratorAdapter generatorAdapter, Context context, TypeDef to) {
+        generatorAdapter.unbox(TypeUtils.getType(to, context.objectDef));
+    }
+
+    private void box(GeneratorAdapter generatorAdapter, Context context, TypeDef from) {
+        generatorAdapter.valueOf(TypeUtils.getType(from, context.objectDef));
+    }
+
+    private void pushExpressionNoCast(GeneratorAdapter generatorAdapter,
+                                      Context context,
+                                      ExpressionDef expressionDef) {
+        if (expressionDef instanceof ExpressionDef.CallInstanceMethod2 invokeMethod) {
+            TypeDef instanceType = invokeMethod.instance().type();
+            pushExpression(generatorAdapter, context, invokeMethod.instance(), instanceType);
+            for (ExpressionDef parameter : invokeMethod.parameters()) {
+                pushExpression(generatorAdapter, context, parameter, parameter.type());
+            }
+            generatorAdapter.invokeVirtual(TypeUtils.getType(instanceType, context.objectDef), Method.getMethod(invokeMethod.method()));
             return;
         }
         if (expressionDef instanceof ExpressionDef.CallInstanceMethod callInstanceMethod) {
             ExpressionDef instance = callInstanceMethod.instance();
-            TypeDef instanceType = getInstanceType(objectDef, instance.type());
-            pushExpression(generatorAdapter, objectDef, methodDef, instance, instanceType);
+            TypeDef instanceType = instance.type();
+            pushExpression(generatorAdapter, context, instance, instanceType);
             for (ExpressionDef parameter : callInstanceMethod.parameters()) {
-                pushExpression(generatorAdapter, objectDef, methodDef, parameter, parameter.type());
+                pushExpression(generatorAdapter, context, parameter, parameter.type());
             }
             if (instance instanceof VariableDef.Super) {
                 generatorAdapter.invokeConstructor(
-                    TypeUtils.getType(instanceType),
-                    new Method(callInstanceMethod.name(), getMethodDescriptor2(callInstanceMethod.returningType(), callInstanceMethod.parameters()))
+                    TypeUtils.getType(instanceType, context.objectDef),
+                    new Method(callInstanceMethod.name(), getMethodDescriptor2(context.objectDef, callInstanceMethod.returningType(), callInstanceMethod.parameters()))
                 );
             } else {
                 generatorAdapter.invokeVirtual(
-                    TypeUtils.getType(instanceType),
-                    new Method(callInstanceMethod.name(), getMethodDescriptor2(callInstanceMethod.returningType(), callInstanceMethod.parameters()))
+                    TypeUtils.getType(instanceType, context.objectDef),
+                    new Method(callInstanceMethod.name(), getMethodDescriptor2(context.objectDef, callInstanceMethod.returningType(), callInstanceMethod.parameters()))
                 );
             }
             return;
         }
         if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
-            Type type = TypeUtils.getType(newInstance.type());
+            Type type = TypeUtils.getType(newInstance.type(), context.objectDef);
             generatorAdapter.newInstance(type);
             generatorAdapter.dup();
             for (ExpressionDef expression : newInstance.values()) {
-                pushExpression(generatorAdapter, objectDef, methodDef, expression, expression.type());
+                pushExpression(generatorAdapter, context, expression, expression.type());
             }
             generatorAdapter.invokeConstructor(
                 type,
-                new Method("<init>", TypeUtils.getConstructorDescriptor(newInstance.values().stream().map(ExpressionDef::type).toList()))
+                new Method("<init>", getConstructorDescriptor(context.objectDef, newInstance.values().stream().map(ExpressionDef::type).toList()))
             );
             return;
         }
 //        if (expressionDef instanceof TypeDef.Primitive.PrimitiveInstance primitiveInstance) {
-//            return renderExpression(objectDef, methodDef, primitiveInstance.value());
+//            return renderExpression(context, primitiveInstance.value());
 //        }
         if (expressionDef instanceof ExpressionDef.NewArrayOfSize newArray) {
             generatorAdapter.push(newArray.size());
-            generatorAdapter.newArray(TypeUtils.getType(newArray.type().componentType()));
+            generatorAdapter.newArray(TypeUtils.getType(newArray.type().componentType(), context.objectDef));
             return;
         }
         if (expressionDef instanceof ExpressionDef.NewArrayInitialized newArray) {
             List<ExpressionDef> expressions = newArray.expressions();
             generatorAdapter.push(expressions.size());
             TypeDef componentType = newArray.type().componentType();
-            Type type = TypeUtils.getType(componentType);
+            Type type = TypeUtils.getType(componentType, context.objectDef);
             generatorAdapter.newArray(type);
 
             if (!expressions.isEmpty()) {
@@ -488,32 +538,34 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
                 for (ExpressionDef expression : expressions) {
                     generatorAdapter.dup();
                     generatorAdapter.push(index++);
-                    pushExpression(generatorAdapter, objectDef, methodDef, expression, componentType);
+                    pushExpression(generatorAdapter, context, expression, componentType);
                     generatorAdapter.arrayStore(type);
                 }
             }
             return;
         }
-//        if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
-//            return renderExpression(objectDef, methodDef, convertExpressionDef.expressionDef());
-//        }
+        if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
+            return;
+        }
         if (expressionDef instanceof ExpressionDef.Cast castExpressionDef) {
             ExpressionDef exp = castExpressionDef.expressionDef();
-            pushExpression(generatorAdapter, objectDef, methodDef, exp, exp.type());
-            generatorAdapter.checkCast(TypeUtils.getType(castExpressionDef.type()));
+            TypeDef from = exp.type();
+            pushExpression(generatorAdapter, context, exp, from);
+            TypeDef to = castExpressionDef.type();
+            cast(generatorAdapter, context, from, to);
             return;
         }
         if (expressionDef instanceof ExpressionDef.Constant constant) {
-            pushConstant(generatorAdapter, constant, expectedType);
+            pushConstant(generatorAdapter, constant);
             return;
         }
         if (expressionDef instanceof ExpressionDef.CallStaticMethod staticMethod) {
             for (ExpressionDef parameter : staticMethod.parameters()) {
-                pushExpression(generatorAdapter, objectDef, methodDef, parameter, parameter.type());
+                pushExpression(generatorAdapter, context, parameter, parameter.type());
             }
             generatorAdapter.invokeStatic(
-                TypeUtils.getType(staticMethod.classDef()),
-                new Method(staticMethod.name(), getMethodDescriptor2(staticMethod.returningType(), staticMethod.parameters()))
+                TypeUtils.getType(staticMethod.classDef(), context.objectDef),
+                new Method(staticMethod.name(), getMethodDescriptor2(context.objectDef, staticMethod.returningType(), staticMethod.parameters()))
             );
             return;
         }
@@ -525,7 +577,7 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
 //            }
 //            MemberElement memberElement = readPropertyMember.get();
 //            if (memberElement instanceof MethodElement methodElement) {
-//                return renderExpression(objectDef, methodDef, getPropertyValue.instance().invoke(methodElement));
+//                return renderExpression(context, getPropertyValue.instance().invoke(methodElement));
 //            }
 //            if (memberElement instanceof FieldElement fieldElement) {
 //                // TODO: support field
@@ -533,38 +585,38 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
 //            throw new IllegalStateException("Unrecognized property read element: " + propertyElement);
 //        }
 //        if (expressionDef instanceof ExpressionDef.Condition condition) {
-//            renderExpression(generatorAdapter, objectDef, methodDef, condition.left());
-//            renderExpression(generatorAdapter, objectDef, methodDef, condition.right());
+//            renderExpression(generatorAdapter, context, condition.left());
+//            renderExpression(generatorAdapter, context, condition.right());
 //            return;
 //        }
 //        if (expressionDef instanceof ExpressionDef.And andExpressionDef) {
 //            return CodeBlock.concat(
-//                renderCondition(objectDef, methodDef, andExpressionDef.left()),
+//                renderCondition(context, andExpressionDef.left()),
 //                CodeBlock.of(" && "),
-//                renderCondition(objectDef, methodDef, andExpressionDef.right())
+//                renderCondition(context, andExpressionDef.right())
 //            );
 //        }
 //        if (expressionDef instanceof ExpressionDef.Or orExpressionDef) {
 //            return CodeBlock.concat(
-//                renderCondition(objectDef, methodDef, orExpressionDef.left()),
+//                renderCondition(context, orExpressionDef.left()),
 //                CodeBlock.of(" || "),
-//                renderCondition(objectDef, methodDef, orExpressionDef.right())
+//                renderCondition(context, orExpressionDef.right())
 //            );
 //        }
         if (expressionDef instanceof ExpressionDef.IfElse conditionIfElse) {
             Label elseLabel = new Label();
-            renderConditionalExpression(generatorAdapter, objectDef, methodDef, conditionIfElse.condition(), elseLabel);
+            renderConditionalExpression(generatorAdapter, context, conditionIfElse.condition(), elseLabel);
             Label end = new Label();
-            pushExpression(generatorAdapter, objectDef, methodDef, conditionIfElse.expression(), conditionIfElse.type());
+            pushExpression(generatorAdapter, context, conditionIfElse.expression(), conditionIfElse.type());
             generatorAdapter.goTo(end);
             generatorAdapter.visitLabel(elseLabel);
-            pushExpression(generatorAdapter, objectDef, methodDef, conditionIfElse.elseExpression(), conditionIfElse.type());
+            pushExpression(generatorAdapter, context, conditionIfElse.elseExpression(), conditionIfElse.type());
             generatorAdapter.visitLabel(end);
             return;
         }
         if (expressionDef instanceof ExpressionDef.Switch aSwitch) {
             ExpressionDef expression = aSwitch.expression();
-            pushSwitchExpression(generatorAdapter, objectDef, methodDef, expression);
+            pushSwitchExpression(generatorAdapter, context, expression);
             Map<ExpressionDef.Constant, ExpressionDef> cases = new HashMap<>(aSwitch.cases());
             ExpressionDef defaultCase = cases.remove(null);
             if (defaultCase == null) {
@@ -580,27 +632,27 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
                 @Override
                 public void generateCase(int key, Label end) {
                     ExpressionDef exp = map.get(key);
-                    pushExpression(generatorAdapter, objectDef, methodDef, exp, aSwitch.type());
+                    pushExpression(generatorAdapter, context, exp, aSwitch.type());
                     generatorAdapter.goTo(end);
                 }
 
                 @Override
                 public void generateDefault() {
-                    pushExpression(generatorAdapter, objectDef, methodDef, finalDefaultCase, aSwitch.type());
+                    pushExpression(generatorAdapter, context, finalDefaultCase, aSwitch.type());
                 }
             });
             return;
         }
         if (expressionDef instanceof ExpressionDef.SwitchYieldCase switchYieldCase) {
-            pushStatement(generatorAdapter, objectDef, methodDef, switchYieldCase.statement());
+            pushStatement(generatorAdapter, context, switchYieldCase.statement());
             return;
         }
         if (expressionDef instanceof VariableDef variableDef) {
-            pushVariable(generatorAdapter, objectDef, methodDef, variableDef);
+            pushVariable(generatorAdapter, context, variableDef);
             return;
         }
 //        if (expressionDef instanceof ExpressionDef.InvokeGetClassMethod invokeGetClassMethod) {
-//            return renderExpression(objectDef, methodDef, invokeGetClassMethod.instance().invoke("getClass", TypeDef.of(Class.class)));
+//            return renderExpression(context, invokeGetClassMethod.instance().invoke("getClass", TypeDef.of(Class.class)));
 //        }
 //        if (expressionDef instanceof ExpressionDef.InvokeHashCodeMethod invokeHashCodeMethod) {
 //            ExpressionDef instance = invokeHashCodeMethod.instance();
@@ -638,7 +690,7 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
 //                            invokeHashCodeMethod.instance()
 //                        ));
 //            }
-//            return renderExpression(objectDef, methodDef, instance.isNull().asConditionIfElse(
+//            return renderExpression(context, instance.isNull().asConditionIfElse(
 //                ExpressionDef.constant(0),
 //                instance.invoke("hashCode", TypeDef.Primitive.BOOLEAN))
 //            );
@@ -677,37 +729,25 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
 //        }
 //        if (expressionDef instanceof ExpressionDef.EqualsReferentially equalsReferentially) {
 //            return CodeBlock.builder()
-//                .add(renderExpression(objectDef, methodDef, equalsReferentially.instance()))
+//                .add(renderExpression(context, equalsReferentially.instance()))
 //                .add(" == ")
-//                .add(renderExpression(objectDef, methodDef, equalsReferentially.other()))
+//                .add(renderExpression(context, equalsReferentially.other()))
 //                .build();
 //        }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
-    private TypeDef getInstanceType(ObjectDef objectDef, TypeDef instanceType) {
-        if (instanceType == TypeDef.THIS) {
-            return objectDef.asTypeDef();
+    private void checkCast(GeneratorAdapter generatorAdapter, Context context, TypeDef from, TypeDef to) {
+        TypeDef toType = ObjectDef.getContextualType(context.objectDef, to);
+        if (!toType.makeNullable().equals(from.makeNullable())) {
+            generatorAdapter.checkCast(TypeUtils.getType(toType, context.objectDef));
         }
-        if (instanceType == TypeDef.SUPER) {
-            if (objectDef instanceof ClassDef classDef) {
-                if (classDef.getSuperclass() == null) {
-                    throw new IllegalStateException("Super class is missing for class def: " + classDef);
-                }
-                return classDef.getSuperclass();
-            }
-            if (objectDef instanceof EnumDef) {
-                return ClassTypeDef.of(Enum.class);
-            }
-            if (objectDef instanceof InterfaceDef interfaceDef) {
-                throw new IllegalStateException("Super class is not supported for interface def: " + interfaceDef);
-            }
-        }
-        return instanceType;
     }
 
-    private void pushSwitchExpression(GeneratorAdapter generatorAdapter, ObjectDef objectDef, MethodDef methodDef, ExpressionDef expression) {
-        pushExpression(generatorAdapter, objectDef, methodDef, expression, expression.type());
+    private void pushSwitchExpression(GeneratorAdapter generatorAdapter,
+                                      Context context,
+                                      ExpressionDef expression) {
+        pushExpression(generatorAdapter, context, expression, expression.type());
         if (expression.type() instanceof ClassTypeDef classTypeDef && classTypeDef.getName().equals(String.class.getName())) {
             generatorAdapter.invokeVirtual(
                 Type.getType(String.class),
@@ -727,33 +767,32 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
     }
 
     private void renderConditionalExpression(GeneratorAdapter generatorAdapter,
-                                             ObjectDef objectDef,
-                                             MethodDef methodDef,
+                                             Context context,
                                              ExpressionDef expressionDef,
                                              Label elseLabel) {
         if (expressionDef instanceof ExpressionDef.Condition condition) {
             if (condition.operator().trim().equals("==")) {
-                generatorAdapter.ifCmp(TypeUtils.getType(condition.type()), GeneratorAdapter.EQ, elseLabel);
+                generatorAdapter.ifCmp(TypeUtils.getType(condition.type(), context.objectDef), GeneratorAdapter.EQ, elseLabel);
             } else if (condition.operator().trim().equals("!=")) {
-                generatorAdapter.ifCmp(TypeUtils.getType(condition.type()), GeneratorAdapter.NE, elseLabel);
+                generatorAdapter.ifCmp(TypeUtils.getType(condition.type(), context.objectDef), GeneratorAdapter.NE, elseLabel);
             } else {
                 throw new IllegalStateException("Unrecognized condition operator: " + condition.operator());
             }
             return;
         }
         if (expressionDef instanceof ExpressionDef.IsNull isNull) {
-            pushExpression(generatorAdapter, objectDef, methodDef, isNull.expression(), TypeDef.Primitive.BOOLEAN);
+            pushExpression(generatorAdapter, context, isNull.expression(), isNull.expression().type());
             generatorAdapter.ifNonNull(elseLabel);
             return;
         }
         if (expressionDef instanceof ExpressionDef.IsNotNull isNotNull) {
-            pushExpression(generatorAdapter, objectDef, methodDef, isNotNull.expression(), TypeDef.Primitive.BOOLEAN);
+            pushExpression(generatorAdapter, context, isNotNull.expression(), isNotNull.expression().type());
             generatorAdapter.ifNull(elseLabel);
             return;
         }
         if (expressionDef instanceof ExpressionDef.Constant constant) {
             // TODO: allow only boolean
-            pushConstant(generatorAdapter, constant, TypeDef.Primitive.BOOLEAN);
+            pushConstant(generatorAdapter, constant);
             generatorAdapter.push(true);
             generatorAdapter.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, elseLabel);
             return;
@@ -761,44 +800,56 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
         throw new IllegalStateException("Unrecognized conditional expression: " + expressionDef);
     }
 
-    private void pushVariable(GeneratorAdapter generatorAdapter, @Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, VariableDef variableDef) {
-//        if (variableDef instanceof VariableDef.Local localVariableDef) {
-//            return CodeBlock.of(localVariableDef.name());
-//        }
+    private void pushVariable(GeneratorAdapter generatorAdapter,
+                              Context context,
+                              VariableDef variableDef) {
+        if (variableDef instanceof VariableDef.Local localVariableDef) {
+            int index = context.locals.get(localVariableDef.name());
+            generatorAdapter.loadLocal(index);
+            return;
+        }
         if (variableDef instanceof VariableDef.MethodParameter parameterVariableDef) {
-            if (methodDef == null) {
+            if (context.methodDef == null) {
                 throw new IllegalStateException("Accessing method parameters is not available");
             }
-            ParameterDef parameterDef = methodDef.getParameters().stream().filter(p -> p.getName().equals(parameterVariableDef.name())).findFirst().orElseThrow();
-            int parameterIndex = methodDef.getParameters().indexOf(parameterDef);
+            ParameterDef parameterDef = context.methodDef.getParameters().stream().filter(p -> p.getName().equals(parameterVariableDef.name())).findFirst().orElseThrow();
+            int parameterIndex = context.methodDef.getParameters().indexOf(parameterDef);
             generatorAdapter.loadArg(parameterIndex);
             return;
         }
-//        if (variableDef instanceof VariableDef.StaticField staticField) {
-//            return CodeBlock.of("$T.$L", asType(staticField.ownerType(), objectDef), staticField.name());
-//        }
-//        if (variableDef instanceof VariableDef.Field field) {
-//            if (objectDef == null) {
-//                throw new IllegalStateException("Accessing 'this' is not available");
-//            }
-//            if (objectDef instanceof ClassDef classDef) {
-//                if (!classDef.hasField(field.name())) {
-//                    throw new IllegalStateException("Field " + field.name() + " is not available in [" + classDef + "]:" + classDef.getFields());
-//                }
-//            } else {
-//                throw new IllegalStateException("Field access no supported on the object definition: " + objectDef);
-//            }
-//            return CodeBlock.of(renderExpression(objectDef, methodDef, field.instance()) + "." + field.name());
-//        }
+        if (variableDef instanceof VariableDef.StaticField field) {
+            TypeDef owner = field.ownerType();
+            TypeDef fieldType = field.type();
+            generatorAdapter.getStatic(TypeUtils.getType(owner, context.objectDef), field.name(), TypeUtils.getType(fieldType, context.objectDef));
+            return;
+        }
+        if (variableDef instanceof VariableDef.Field field) {
+            if (context.objectDef == null) {
+                throw new IllegalStateException("Accessing 'this' is not available");
+            }
+            if (context.objectDef instanceof ClassDef classDef) {
+                if (!classDef.hasField(field.name())) {
+                    throw new IllegalStateException("Field " + field.name() + " is not available in [" + classDef + "]:" + classDef.getFields());
+                }
+            } else {
+                throw new IllegalStateException("Field access no supported on the object definition: " + context.objectDef);
+            }
+
+            TypeDef owner = field.instance().type();
+            pushExpression(generatorAdapter, context, field.instance(), owner);
+            TypeDef fieldType = field.type();
+            generatorAdapter.getField(TypeUtils.getType(owner, context.objectDef), field.name(), TypeUtils.getType(fieldType, context.objectDef));
+            return;
+        }
         if (variableDef instanceof VariableDef.This) {
-            if (objectDef == null) {
+            if (context.objectDef == null) {
                 throw new IllegalStateException("Accessing 'this' is not available");
             }
             generatorAdapter.loadThis();
             return;
         }
         if (variableDef instanceof VariableDef.Super) {
-            if (objectDef == null) {
+            if (context.objectDef == null) {
                 throw new IllegalStateException("Accessing 'super' is not available");
             }
             generatorAdapter.loadThis();
@@ -808,8 +859,7 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
     }
 
     private void pushConstant(GeneratorAdapter generatorAdapter,
-                              ExpressionDef.Constant constant,
-                              TypeDef expectedType) {
+                              ExpressionDef.Constant constant) {
         TypeDef type = constant.type();
         Object value = constant.value();
         if (value == null) {
@@ -834,9 +884,9 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
                 default ->
                     throw new IllegalStateException("Unrecognized primitive type: " + primitive.name());
             }
-            if (!expectedType.isPrimitive()) {
-                generatorAdapter.box(TypeUtils.getType(primitive));
-            }
+//            if (!expectedType.isPrimitive()) {
+//                generatorAdapter.box(asType(primitive, null));
+//            }
             return;
         }
         if (value instanceof String string) {
@@ -853,16 +903,12 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
 //            return;
 //        }
         if (value instanceof ClassTypeDef aClass) {
-            System.out.println("XXX " + aClass);
-            System.out.println("XXX2 " + Type.getObjectType(aClass.getName().replace('.', '/')));
             generatorAdapter.push(Type.getObjectType(aClass.getName().replace('.', '/')));
             return;
         }
         if (value instanceof Integer integer) {
             generatorAdapter.push(integer);
-            if (!expectedType.isPrimitive()) {
-                generatorAdapter.box(Type.getType(int.class));
-            }
+            generatorAdapter.box(Type.getType(int.class));
             return;
         }
 //        } else if (type instanceof TypeDef.Array arrayDef) {
@@ -928,27 +974,32 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
     public void write(ObjectDef objectDef, VisitorContext context, Element... originatingElements) {
         try (OutputStream os = context.visitClass(objectDef.getName(), originatingElements)) {
             os.write(generateClassBytes(objectDef).toByteArray());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Element element = originatingElements.length > 0 ? originatingElements[0] : null;
+            throw new ProcessingException(element, "Failed to generate '" + objectDef.getName() + "': " + e.getMessage(), e);
         }
     }
 
-    /**
-     * @param returnType    The return type
-     * @param argumentTypes The argument types
-     * @return The method descriptor
-     */
-    private static String getMethodDescriptor(TypeDef returnType, Collection<ParameterDef> argumentTypes) {
+    private static String getConstructorDescriptor(@Nullable ObjectDef objectDef, Collection<TypeDef> types) {
         StringBuilder builder = new StringBuilder();
         builder.append('(');
 
+        for (TypeDef argumentType : types) {
+            builder.append(TypeUtils.getType(argumentType, objectDef).getDescriptor());
+        }
+
+        return builder.append(")V").toString();
+    }
+
+    private static String getMethodDescriptor(@Nullable ObjectDef objectDef, TypeDef returnType, Collection<ParameterDef> argumentTypes) {
+        StringBuilder builder = new StringBuilder();
+        builder.append('(');
         for (ParameterDef argumentType : argumentTypes) {
-            builder.append(TypeUtils.getType(argumentType.getType()));
+            builder.append(TypeUtils.getType(argumentType.getType(), objectDef));
         }
-
         builder.append(')');
-
-        builder.append(TypeUtils.getType(Objects.requireNonNullElse(returnType, TypeDef.VOID)));
+        builder.append(TypeUtils.getType(Objects.requireNonNullElse(returnType, TypeDef.VOID), objectDef));
         return builder.toString();
     }
 
@@ -957,18 +1008,27 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
      * @param argumentTypes The argument types
      * @return The method descriptor
      */
-    private static String getMethodDescriptor2(TypeDef returnType, Collection<ExpressionDef> argumentTypes) {
+    private static String getMethodDescriptor2(@Nullable ObjectDef objectDef, TypeDef returnType, Collection<ExpressionDef> argumentTypes) {
         StringBuilder builder = new StringBuilder();
         builder.append('(');
-
         for (ExpressionDef argumentType : argumentTypes) {
-            builder.append(TypeUtils.getType(argumentType.type()));
+            TypeDef instanceType = argumentType.type();
+            builder.append(TypeUtils.getType(instanceType, objectDef));
+        }
+        builder.append(')');
+        builder.append(TypeUtils.getType(Objects.requireNonNullElse(returnType, TypeDef.VOID), objectDef));
+        return builder.toString();
+    }
+
+    private record Context(@Nullable ObjectDef objectDef,
+                           MethodDef methodDef,
+                           Map<String, Integer> locals) {
+
+        public Context(@Nullable ObjectDef objectDef,
+                       MethodDef methodDef) {
+            this(objectDef, methodDef, new HashMap<>());
         }
 
-        builder.append(')');
-
-        builder.append(TypeUtils.getType(Objects.requireNonNullElse(returnType, TypeDef.VOID)));
-        return builder.toString();
     }
 
 }

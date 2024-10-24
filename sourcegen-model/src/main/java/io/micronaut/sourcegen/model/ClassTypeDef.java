@@ -123,9 +123,9 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @return the get static field expression
      * @since 1.4
      */
-    default ExpressionDef.GetStaticField getStatic(String name,
+    default VariableDef.StaticField getStaticField(String name,
                                                    TypeDef type) {
-        return new ExpressionDef.GetStaticField(this, name, type);
+        return new VariableDef.StaticField(this, name, type);
     }
 
     /**
@@ -135,32 +135,8 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @return the get static field expression
      * @since 1.4
      */
-    default ExpressionDef.GetStaticField getStatic(FieldDef field) {
-        return new ExpressionDef.GetStaticField(this, field.getName(), field.getType());
-    }
-
-    /**
-     * Put static field.
-     *
-     * @param name       The field name
-     * @param type       The field type
-     * @param expression The expression
-     * @return the put static field expression
-     * @since 1.4
-     */
-    default ExpressionDef.PutStaticField putStatic(String name, TypeDef type, ExpressionDef expression) {
-        return new ExpressionDef.PutStaticField(this, name, type, expression);
-    }
-
-    /**
-     * Put static field.
-     *
-     * @param field The field
-     * @return the put static field expression
-     * @since 1.4
-     */
-    default ExpressionDef.PutStaticField putStatic(FieldDef field, ExpressionDef expression) {
-        return putStatic(field.getName(), field.getType(), expression);
+    default VariableDef.StaticField getStaticField(FieldDef field) {
+        return getStaticField(field.getName(), field.getType());
     }
 
     /**

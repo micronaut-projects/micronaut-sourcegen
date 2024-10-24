@@ -91,7 +91,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                     throw new ProcessingException(element, "Super type [" + superType.getName() + "] must be annotated with @" + SuperBuilder.class.getSimpleName());
                 }
                 String abstractSuperBuilderName = getAbstractSuperBuilderName(superType);
-                abstractBuilder.superclass(new ClassTypeDef.Parameterized(
+                abstractBuilder.superclass(TypeDef.parameterized(
                     ClassTypeDef.of(abstractSuperBuilderName),
                     List.of(
                         new TypeDef.TypeVariable("C"),
@@ -105,7 +105,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 if (!beanProperty.getDeclaringType().equals(element)) {
                     continue;
                 }
-                createModifyPropertyMethod(abstractBuilder, beanProperty, self -> self.invoke("self", self.type()).convert(selfType).returning());
+                createModifyPropertyMethod(abstractBuilder, beanProperty, self -> self.invoke("self", self.type()).cast(selfType).returning());
             }
 
             abstractBuilder.addMethod(MethodDef.builder("self").addModifiers(Modifier.ABSTRACT).returns(selfType).build());
@@ -141,7 +141,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
 
                 builder.addMethod(MethodDef.constructor().build());
                 if (!properties.isEmpty()) {
-                    builder.addMethod(BuilderAnnotationVisitor.createAllPropertiesConstructor(builderType, properties));
+                    builder.addMethod(BuilderAnnotationVisitor.createAllPropertiesConstructor(properties));
                 }
 
                 builder.addMethod(createSelfMethod());

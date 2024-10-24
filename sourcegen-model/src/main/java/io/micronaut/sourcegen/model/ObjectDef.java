@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.model;
 
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.naming.NameUtils;
 
 /**
@@ -37,6 +38,34 @@ public interface ObjectDef {
 
     default ClassTypeDef asTypeDef() {
         return ClassTypeDef.of(getName());
+    }
+
+    default TypeDef getContextualType(TypeDef typeDef) {
+        if (typeDef == TypeDef.THIS) {
+            return asTypeDef();
+        } else if (typeDef == TypeDef.SUPER) {
+            if (this instanceof ClassDef classDef) {
+                if (classDef.getSuperclass() == null) {
+                    return TypeDef.of(Object.class);
+                }
+                return classDef.getSuperclass();
+            } else if (this instanceof EnumDef) {
+                return ClassTypeDef.of(Enum.class);
+            } else if (this instanceof InterfaceDef interfaceDef) {
+                throw new IllegalStateException("Super class is not supported for interface def: " + interfaceDef);
+            }
+        }
+        return typeDef;
+    }
+
+    static TypeDef getContextualType(@Nullable ObjectDef objectDef, TypeDef typeDef) {
+        if (objectDef == null) {
+            if ((typeDef == TypeDef.THIS || typeDef == TypeDef.SUPER)) {
+                throw new IllegalStateException("Cannot determine type: " + typeDef + " because object def is null");
+            }
+            return typeDef;
+        }
+        return objectDef.getContextualType(typeDef);
     }
 
 }

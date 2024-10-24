@@ -30,7 +30,7 @@ import java.util.Map;
  * @since 1.0
  */
 @Experimental
-public sealed interface StatementDef permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallInstanceMethod2, ExpressionDef.CallStaticMethod, ExpressionDef.GetStaticField, ExpressionDef.PutStaticField, StatementDef.Assign, StatementDef.DefineAndAssign, StatementDef.If, StatementDef.IfElse, StatementDef.Multi, StatementDef.Return, StatementDef.Switch, StatementDef.Throw, StatementDef.While {
+public sealed interface StatementDef permits ExpressionDef.CallInstanceMethod, ExpressionDef.CallInstanceMethod2, ExpressionDef.CallStaticMethod, StatementDef.Assign, StatementDef.DefineAndAssign, StatementDef.If, StatementDef.IfElse, StatementDef.Multi, StatementDef.PutField, StatementDef.PutStaticField, StatementDef.Return, StatementDef.Switch, StatementDef.Throw, StatementDef.While {
 
     /**
      * The helper method to turn this statement into a multi statement.
@@ -98,12 +98,12 @@ public sealed interface StatementDef permits ExpressionDef.CallInstanceMethod, E
     /**
      * The throw statement.
      *
-     * @param variableDef The exception
+     * @param expression The exception expression
      * @author Denis Stepanov
      * @since 1.2
      */
     @Experimental
-    record Throw(ExpressionDef variableDef) implements StatementDef {
+    record Throw(ExpressionDef expression) implements StatementDef {
     }
 
     /**
@@ -126,8 +126,42 @@ public sealed interface StatementDef permits ExpressionDef.CallInstanceMethod, E
      * @since 1.0
      */
     @Experimental
-    record Assign(VariableDef variable,
+    record Assign(VariableDef.Local variable,
                   ExpressionDef expression) implements StatementDef {
+    }
+
+    /**
+     * The put field expression.
+     *
+     * @param instance   The instance
+     * @param name       The field name
+     * @param type       The type
+     * @param expression The expression
+     * @author Denis Stepanov
+     * @since 1.4
+     */
+    @Experimental
+    record PutField(ExpressionDef instance,
+                    String name,
+                    TypeDef type,
+                    ExpressionDef expression) implements StatementDef {
+    }
+
+    /**
+     * The set a static field expression.
+     *
+     * @param classDef   The class
+     * @param name       The field name
+     * @param type       The field type
+     * @param expression The expression
+     * @author Denis Stepanov
+     * @since 1.4
+     */
+    @Experimental
+    record PutStaticField(ClassTypeDef classDef,
+                          String name,
+                          TypeDef type,
+                          ExpressionDef expression) implements StatementDef {
     }
 
     /**

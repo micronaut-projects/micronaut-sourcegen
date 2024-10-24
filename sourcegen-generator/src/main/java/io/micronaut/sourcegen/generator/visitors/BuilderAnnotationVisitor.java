@@ -46,18 +46,18 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
-import java.util.HashSet;
-import java.util.Set;
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -116,7 +116,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
             builder.addMethod(MethodDef.constructor().build());
             if (!properties.isEmpty()) {
-                builder.addMethod(createAllPropertiesConstructor(builderType, properties));
+                builder.addMethod(createAllPropertiesConstructor(properties));
             }
 
             builder.addMethod(createBuilderMethod(builderType));
@@ -152,69 +152,67 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             // Apply the default annotation
             builder.addAnnotation(Introspected.class);
         } else {
-            for (AnnotationClassValue<?> value: annotatedWith.get()) {
+            for (AnnotationClassValue<?> value : annotatedWith.get()) {
                 builder.addAnnotation(value.getName());
             }
         }
     }
 
-    static MethodDef createAllPropertiesConstructor(ClassTypeDef builderType, List<PropertyElement> properties) {
+    static MethodDef createAllPropertiesConstructor(List<PropertyElement> properties) {
         MethodDef.MethodDefBuilder builder = MethodDef.constructor()
             .addAnnotation(Creator.class);
-        VariableDef.This self = new VariableDef.This(builderType);
+        builder.addStatement((aThis, methodParameters) -> aThis.superRef().invoke(MethodDef.constructor().build()));
+        int index = 0;
         for (PropertyElement parameter : properties) {
-            ParameterDef parameterDef = ParameterDef.of(parameter.getName(), TypeDef.of(parameter.getType()));
-            builder.addParameter(parameterDef);
-            if (parameter.hasAnnotation(Singular.class)) {
-                if (parameter.getType().getName().equals(Iterable.class.getName())) {
-                    builder.addStatement(
-                        iterableToArrayListStatement(self, parameterDef)
-                    );
-                } else if (parameter.getType().isAssignable(Map.class)) {
-                    builder.addStatement(
-                        mapToArrayListStatement(self, parameterDef)
-                    );
+            int parameterIndex = index++;
+            builder.addParameter(ParameterDef.of(parameter.getName(), TypeDef.of(parameter.getType())));
+            builder.addStatement((aThis, methodParameters) -> {
+                VariableDef.MethodParameter methodParameter = methodParameters.get(parameterIndex);
+                VariableDef.Field propertyField = aThis.field(methodParameter.name(), methodParameter.type());
+                if (parameter.hasAnnotation(Singular.class)) {
+                    if (parameter.getType().getName().equals(Iterable.class.getName())) {
+                        return iterableToArrayListStatement(propertyField, methodParameter);
+                    } else if (parameter.getType().isAssignable(Map.class)) {
+                        return mapToArrayListStatement(propertyField, methodParameter);
+                    } else {
+                        return propertyField.put(ClassTypeDef.of(ArrayList.class)
+                                .instantiate(methodParameter)
+                            );
+                    }
                 } else {
-                    builder.addStatement(
-                        self.field(parameterDef.getName(), parameterDef.getType())
-                            .assign(ClassTypeDef.of(ArrayList.class).instantiate(parameterDef.asExpression()))
-                    );
+                    return propertyField.assign(methodParameter);
                 }
-            } else {
-                builder.addStatement(
-                    self.field(parameterDef.getName(), parameterDef.getType()).assign(parameterDef)
-                );
-            }
+            });
         }
         return builder.build();
     }
 
-    private static StatementDef iterableToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
+    private static StatementDef iterableToArrayListStatement(VariableDef.Field propertyField,
+                                                             VariableDef.MethodParameter parameter) {
         return ClassTypeDef.of(ArrayList.class)
             .instantiate()
-            .newLocal(parameterDef.getName() + "ArrayList", arrayListVar ->
-                parameterDef.asExpression()
+            .newLocal(parameter.name() + "ArrayList", arrayListVar ->
+                parameter
                     .invoke("iterator", ClassTypeDef.of(Iterator.class))
-                    .newLocal(parameterDef.getName() + "Iterator", iteratorVar ->
-                        parameterDef.asExpression().isNonNull().asConditionIf(
+                    .newLocal(parameter.name() + "Iterator", iteratorVar ->
+                        parameter.isNonNull().asConditionIf(
                                 iteratorVar.invoke("hasNext", TypeDef.primitive(boolean.class))
                                     .whileLoop(
                                         arrayListVar.invoke("add", TypeDef.of(boolean.class), iteratorVar.invoke("next", ClassTypeDef.OBJECT))
                                     )
                             )
                             .after(
-                                self.field(parameterDef.getName(), parameterDef.getType()).assign(arrayListVar)
+                                propertyField.assign(arrayListVar)
                             )));
     }
 
-    private static StatementDef mapToArrayListStatement(VariableDef.This self, ParameterDef parameterDef) {
-        return self.field(parameterDef.getName(), parameterDef.getType())
-            .assign(
-                ClassTypeDef.of(ArrayList.class)
-                    .instantiate(
-                        parameterDef.asExpression().invoke("entrySet", ClassTypeDef.of(Map.Entry.class))
-                    )
-            );
+    private static StatementDef mapToArrayListStatement(VariableDef.Field propertyField,
+                                                        VariableDef.MethodParameter parameter) {
+        return propertyField.put(
+            ClassTypeDef.of(ArrayList.class).instantiate(
+                parameter.invoke("entrySet", ClassTypeDef.of(Map.Entry.class))
+            )
+        );
     }
 
     private MethodDef createBuilderMethod(ClassTypeDef builderType) {
@@ -398,10 +396,11 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         TypeDef fieldType = TypeDef.of(parameter.getType()).makeNullable();
                         VariableDef.Field field = self.field(parameter.getName(), fieldType);
                         values.add(
-                            valueExpression(propertyElement, field).convert(TypeDef.of(parameter.getType()))
+                            valueExpression(propertyElement, field).cast(TypeDef.of(parameter.getType()))
                         );
                     }
                 }
+                System.out.println("*** BUILD " + values);
                 ClassTypeDef buildType = ClassTypeDef.of(producedType);
                 if (beanProperties.isEmpty()) {
                     return buildType.instantiate(values).returning();

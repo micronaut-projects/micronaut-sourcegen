@@ -16,29 +16,30 @@
 package io.micronaut.sourcegen;
 
 import io.micronaut.core.annotation.Nullable;
+import io.micronaut.inject.processing.JavaModelUtils;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.signature.SignatureVisitor;
 import org.objectweb.asm.signature.SignatureWriter;
 
+import java.util.Objects;
+
 public class SignatureWriterUtils {
 
     @Nullable
-    static String getFieldSignature(FieldDef fieldDef) {
+    static String getFieldSignature(@Nullable ObjectDef objectDef, FieldDef fieldDef) {
         if (!needsSignature(fieldDef.getType())) {
             return null;
         }
         SignatureWriter writer = new SignatureWriter();
-
-        writeSignature(writer, fieldDef.getType(), true);
-        writer.visitEnd();
-
+        writeSignature(writer, objectDef, fieldDef.getType(), true);
         return writer.toString();
     }
 
@@ -47,18 +48,14 @@ public class SignatureWriterUtils {
         SignatureWriter writer = new SignatureWriter();
 
         for (TypeDef.TypeVariable typeVariable : classDef.getTypeVariables()) {
-            writeSignature(writer, typeVariable, true);
-            writer.visitEnd();
+            writeSignature(writer, null, typeVariable, true);
         }
 
-        SignatureVisitor superclassVisitor = writer.visitSuperclass();
-        superclassVisitor.visitClassType(Type.getType(Object.class).getInternalName());
-        superclassVisitor.visitEnd();
+        TypeDef superclass = Objects.requireNonNullElse(classDef.getSuperclass(), TypeDef.OBJECT);
+        writeSignature(writer.visitSuperclass(), null, superclass, false);
 
         for (TypeDef superinterface : classDef.getSuperinterfaces()) {
-            SignatureVisitor signatureVisitor = writer.visitInterface();
-            writeSignature(signatureVisitor, superinterface, false);
-            signatureVisitor.visitEnd();
+            writeSignature(writer.visitInterface(), null, superinterface, false);
         }
 
         return writer.toString();
@@ -72,8 +69,7 @@ public class SignatureWriterUtils {
         SignatureWriter writer = new SignatureWriter();
 
         for (TypeDef.TypeVariable typeVariable : interfaceDef.getTypeVariables()) {
-            writeSignature(writer, typeVariable, true);
-            writer.visitEnd();
+            writeSignature(writer, null, typeVariable, true);
         }
 
         SignatureVisitor superclassVisitor = writer.visitSuperclass();
@@ -81,29 +77,24 @@ public class SignatureWriterUtils {
         superclassVisitor.visitEnd();
 
         for (TypeDef superinterface : interfaceDef.getSuperinterfaces()) {
-            SignatureVisitor signatureVisitor = writer.visitInterface();
-            writeSignature(signatureVisitor, superinterface, false);
-            signatureVisitor.visitEnd();
+            writeSignature(writer.visitInterface(), null, superinterface, false);
         }
 
         return writer.toString();
     }
 
     @Nullable
-    static String getMethodSignature(MethodDef methodDef) {
+    static String getMethodSignature(@Nullable ObjectDef objectDef, MethodDef methodDef) {
         if (!needsSignature(methodDef)) {
             return null;
         }
         SignatureWriter signatureWriter = new SignatureWriter();
         // TODO: method generic bounds
         for (ParameterDef parameter : methodDef.getParameters()) {
-            SignatureVisitor visitParameterType = signatureWriter.visitParameterType();
-            writeSignature(visitParameterType, parameter.getType(), false);
-//            visitParameterType.visitEnd();
+            writeSignature(signatureWriter.visitParameterType(), objectDef, parameter.getType(), false);
         }
 
-        SignatureVisitor signatureVisitor = signatureWriter.visitReturnType();
-        writeSignature(signatureVisitor, methodDef.getReturnType(), false);
+        writeSignature(signatureWriter.visitReturnType(), objectDef, methodDef.getReturnType(), false);
 
         return signatureWriter.toString();
     }
@@ -121,15 +112,11 @@ public class SignatureWriterUtils {
         return typeDef instanceof ClassTypeDef.Parameterized || typeDef instanceof TypeDef.TypeVariable;
     }
 
-    private static void writeSignature(SignatureVisitor signatureWriter, TypeDef typeDef, boolean isDefinition) {
-        if (typeDef == TypeDef.THIS) {
-            throw new IllegalStateException();
-        }
-        if (typeDef == TypeDef.SUPER) {
-            throw new IllegalStateException();
-        }
-        if (typeDef instanceof TypeDef.Primitive classDef) {
-            signatureWriter.visitBaseType(TypeUtils.getType(classDef).getDescriptor().charAt(0));
+    private static void writeSignature(SignatureVisitor signatureWriter, @Nullable ObjectDef objectDef, TypeDef typeDef, boolean isDefinition) {
+        typeDef = ObjectDef.getContextualType(objectDef, typeDef);
+        if (typeDef instanceof TypeDef.Primitive primitive) {
+            Type type = Type.getType(JavaModelUtils.NAME_TO_TYPE_MAP.get(primitive.name()));
+            signatureWriter.visitBaseType(type.getDescriptor().charAt(0));
             return;
         }
         if (typeDef instanceof TypeDef.TypeVariable typeVariable) {
@@ -137,8 +124,11 @@ public class SignatureWriterUtils {
                 signatureWriter.visitFormalTypeParameter(typeVariable.name());
                 if (typeVariable.bounds().isEmpty()) {
                     signatureWriter.visitClassType(Type.getType(Object.class).getInternalName());
+                    signatureWriter.visitEnd();
                 } else {
-                    throw new IllegalStateException("TODO");
+                    TypeDef bound = typeVariable.bounds().get(0);
+                    signatureWriter.visitClassBound();
+                    writeSignature(signatureWriter, objectDef, bound, false);
                 }
             } else {
                 signatureWriter.visitTypeVariable(typeVariable.name());
@@ -147,15 +137,18 @@ public class SignatureWriterUtils {
         }
         if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
             signatureWriter.visitClassType(TypeUtils.getType(parameterized.rawType()).getInternalName());
-            for (TypeDef typeArgument : parameterized.typeArguments()) {
-                SignatureVisitor signatureVisitor = signatureWriter.visitTypeArgument(SignatureVisitor.INSTANCEOF);
-                writeSignature(signatureWriter, typeArgument, false);
-                signatureVisitor.visitEnd();
+            if (!parameterized.typeArguments().isEmpty()) {
+                for (TypeDef typeArgument : parameterized.typeArguments()) {
+                    SignatureVisitor signatureVisitor = signatureWriter.visitTypeArgument(SignatureVisitor.INSTANCEOF);
+                    writeSignature(signatureVisitor, objectDef, typeArgument, false);
+                }
+                signatureWriter.visitEnd();
             }
             return;
         }
         if (typeDef instanceof ClassTypeDef classDef) {
             signatureWriter.visitClassType(TypeUtils.getType(classDef.getName()).getInternalName());
+            signatureWriter.visitEnd();
             return;
         }
         throw new IllegalStateException("Not recognized typedef: " + typeDef);

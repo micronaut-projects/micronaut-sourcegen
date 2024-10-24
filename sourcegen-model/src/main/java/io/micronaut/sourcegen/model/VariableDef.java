@@ -33,7 +33,7 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Fi
      * @return The statement
      */
     default StatementDef assign(ExpressionDef expression) {
-        return new StatementDef.Assign(this, expression);
+        throw new UnsupportedOperationException("VariableDef " + getClass() + "  does not support assign");
     }
 
     /**
@@ -43,10 +43,7 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Fi
      * @return The statement
      */
     default StatementDef assign(ParameterDef parameterDef) {
-        return new StatementDef.Assign(
-            this,
-            new MethodParameter(parameterDef.name, parameterDef.getType())
-        );
+        return assign(new MethodParameter(parameterDef.name, parameterDef.getType()));
     }
 
     /**
@@ -59,6 +56,11 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Fi
      */
     @Experimental
     record Local(String name, TypeDef type) implements VariableDef {
+
+        @Override
+        public StatementDef assign(ExpressionDef expression) {
+            return new StatementDef.Assign(this, expression);
+        }
 
         /**
          * Define and assign the variable.
@@ -102,6 +104,21 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Fi
     record Field(ExpressionDef instance,
                  String name,
                  TypeDef type) implements VariableDef {
+
+        @Override
+        public StatementDef.PutField assign(ExpressionDef expression) {
+            return put(expression);
+        }
+
+        /**
+         * @param expression The expression
+         * @return The put expression
+         * @since 1.4
+         */
+        public StatementDef.PutField put(ExpressionDef expression) {
+            return new StatementDef.PutField(instance, name, type, expression);
+        }
+
     }
 
     /**
@@ -114,9 +131,19 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Fi
      * @since 1.0
      */
     @Experimental
-    record StaticField(TypeDef ownerType,
+    record StaticField(ClassTypeDef ownerType,
                        String name,
                        TypeDef type) implements VariableDef {
+
+        /**
+         * @param expression The expression
+         * @return The put expression
+         * @since 1.4
+         */
+        public StatementDef.PutStaticField put(ExpressionDef expression) {
+            return new StatementDef.PutStaticField(ownerType, name, type, expression);
+        }
+
     }
 
     /**
@@ -127,7 +154,7 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Fi
      * @since 1.0
      */
     @Experimental
-    record This(TypeDef type) implements VariableDef {
+    record This(ClassTypeDef type) implements VariableDef {
 
         public Super superRef() {
             return new Super(TypeDef.SUPER);

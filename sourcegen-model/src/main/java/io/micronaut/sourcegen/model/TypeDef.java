@@ -48,12 +48,12 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
     /**
      * A simple type representing a special this-type, in context of a class def, method or field the type will be replaced by the current type.
      */
-    TypeDef THIS = of(ThisType.class);
+    ClassTypeDef THIS = ClassTypeDef.of(ThisType.class);
 
     /**
      * A simple type representing a special super-type, in context of a class def, method or field the type will be replaced by the current super type.
      */
-    TypeDef SUPER = of(SuperType.class);
+    ClassTypeDef SUPER = ClassTypeDef.of(SuperType.class);
 
     /**
      * Create an array type.
@@ -272,9 +272,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
     /**
      * @return A new nullable type
      */
-    default TypeDef makeNullable() {
-        return this;
-    }
+    TypeDef makeNullable();
 
     /**
      * The primitive type name.
@@ -390,6 +388,11 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
         public boolean isArray() {
             return false;
         }
+
+        @Override
+        public TypeDef makeNullable() {
+            return this;
+        }
     }
 
     /**
@@ -397,16 +400,25 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
      *
      * @param name   The variable name
      * @param bounds The bounds
+     * @param nullable The nullable
      * @author Denis Stepanov
      * @since 1.0
      */
     @Experimental
-    record TypeVariable(String name, List<TypeDef> bounds) implements TypeDef {
+    record TypeVariable(String name, List<TypeDef> bounds, boolean nullable) implements TypeDef {
 
         public TypeVariable(String name) {
             this(name, List.of());
         }
 
+        public TypeVariable(String name, List<TypeDef> bounds) {
+            this(name, bounds, false);
+        }
+
+        @Override
+        public TypeDef makeNullable() {
+            return new TypeVariable(name, bounds, true);
+        }
     }
 
     /**

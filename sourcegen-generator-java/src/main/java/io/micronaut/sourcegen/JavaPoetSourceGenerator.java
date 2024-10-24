@@ -63,6 +63,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.IntStream;
 
@@ -347,6 +348,18 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             return asType(objectDef.asTypeDef(), null);
         }
+        if (typeDef.equals(TypeDef.SUPER)) {
+            if (objectDef == null) {
+                throw new IllegalStateException("Super type is used outside of the instance scope!");
+            }
+            if (objectDef instanceof ClassDef classDef) {
+                return asType(Objects.requireNonNullElse(classDef.getSuperclass(), ClassTypeDef.OBJECT), objectDef);
+            }
+            if (objectDef instanceof EnumDef) {
+                return asClassType(ClassTypeDef.of(Enum.class));
+            }
+            throw new IllegalStateException("Super type is not supported for " + objectDef);
+        }
         if (typeDef instanceof TypeDef.Array array) {
             TypeName arrayTypeName = ArrayTypeName.of(asType(array.componentType(), objectDef));
             for (int i = 1; i < array.dimensions(); ++i) {
@@ -408,7 +421,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (statementDef instanceof StatementDef.Throw aThrow) {
             return CodeBlock.concat(
                 CodeBlock.of("throw "),
-                renderExpression(objectDef, methodDef, aThrow.variableDef())
+                renderExpression(objectDef, methodDef, aThrow.expression())
             );
         }
         if (statementDef instanceof StatementDef.Return aReturn) {
@@ -422,6 +435,20 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 renderExpression(objectDef, methodDef, assign.variable()),
                 CodeBlock.of(" = "),
                 renderExpression(objectDef, methodDef, assign.expression())
+            );
+        }
+        if (statementDef instanceof StatementDef.PutField putField) {
+            return CodeBlock.concat(
+                renderExpression(objectDef, methodDef, putField.instance()),
+                CodeBlock.of(".$L = ", putField.name()),
+                renderExpression(objectDef, methodDef, putField.expression())
+            );
+        }
+        if (statementDef instanceof StatementDef.PutStaticField putStaticField) {
+            return CodeBlock.concat(
+                CodeBlock.of("$T.$L", asType(putStaticField.type(), objectDef), putStaticField.name()),
+                CodeBlock.of(" = "),
+                renderExpression(objectDef, methodDef, putStaticField.expression())
             );
         }
         if (statementDef instanceof StatementDef.DefineAndAssign assign) {
@@ -564,7 +591,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (expressionDef instanceof ExpressionDef.CallInstanceMethod callInstanceMethod) {
             return CodeBlock.concat(
                 CodeBlock.of(renderExpression(objectDef, methodDef, callInstanceMethod.instance())
-                    + "." + callInstanceMethod.name()
+                    + (callInstanceMethod.name().equals("<init>") ? "" : "." +callInstanceMethod.name())
                     + "("),
                 callInstanceMethod.parameters()
                     .stream()
@@ -802,11 +829,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return CodeBlock.of("null");
         }
         if (type instanceof ClassTypeDef classTypeDef && classTypeDef.isEnum()) {
-            return renderExpression(null, null, new VariableDef.StaticField(
-                type,
-                value instanceof Enum<?> anEnum ? anEnum.name() : value.toString(),
-                type
-            ));
+            return renderExpression(
+                null,
+                null,
+                classTypeDef.getStaticField(value instanceof Enum<?> anEnum ? anEnum.name() : value.toString(), type)
+            );
         }
         if (type instanceof TypeDef.Primitive primitive) {
             return switch (primitive.name()) {
@@ -883,6 +910,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 throw new IllegalStateException("Accessing 'this' is not available");
             }
             return CodeBlock.of("this");
+        }
+        if (variableDef instanceof VariableDef.Super) {
+            if (objectDef == null) {
+                throw new IllegalStateException("Accessing 'super' is not available");
+            }
+            return CodeBlock.of("super");
         }
         throw new IllegalStateException("Unrecognized variable: " + variableDef);
     }

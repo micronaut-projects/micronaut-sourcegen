@@ -123,12 +123,12 @@ public final class AnnotationDef {
             return Optional.of(value);
         } else if (requiredType.getName().equals("java.lang.Class")) {
             return context.getClassElement(value.toString()).map(type ->
-                new VariableDef.StaticField(TypeDef.of(type), "class", TypeDef.of(Class.class))
+                ClassTypeDef.of(type).getStaticField("class", TypeDef.of(Class.class))
             );
         } else {
             // Must be an enum
-            TypeDef type = ClassTypeDef.of(requiredType);
-            return Optional.of(new VariableDef.StaticField(type, value.toString(), type));
+            ClassTypeDef type = ClassTypeDef.of(requiredType);
+            return Optional.of(type.getStaticField(value.toString(), type));
         }
     }
 

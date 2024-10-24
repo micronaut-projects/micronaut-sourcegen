@@ -6,6 +6,7 @@ dependencies {
     implementation(projects.sourcegenGenerator)
     implementation(libs.asm)
     implementation(libs.asm.commons)
+    implementation(libs.asm.util)
     testImplementation(libs.junit.jupiter.engine)
 }
 

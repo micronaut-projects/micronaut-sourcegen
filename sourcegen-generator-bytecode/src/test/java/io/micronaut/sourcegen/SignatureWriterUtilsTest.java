@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import javax.lang.model.element.Modifier;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class SignatureWriterUtilsTest {
@@ -95,20 +96,6 @@ public class SignatureWriterUtilsTest {
             "<E:Ljava/lang/Object;ID:Ljava/lang/Object;>Ljava/lang/Object;",
             SignatureWriterUtils.getInterfaceSignature(crudRepositoryDef)
         );
-        Assertions.assertEquals(
-            "(TID;)Ljava/util/Optional<TE;>;",
-            SignatureWriterUtils.getMethodSignature(findById)
-        );
-
-        Assertions.assertEquals(
-            "()Ljava/util/List<TE;>;",
-            SignatureWriterUtils.getMethodSignature(findAll)
-        );
-
-        Assertions.assertEquals(
-            "(TE;)V",
-            SignatureWriterUtils.getMethodSignature(save)
-        );
 
         Assertions.assertEquals(
             "Ljava/lang/Object;Lexample/CrudRepository1<Lexample/MyEntity1;Ljava/lang/Long;>;",
@@ -116,8 +103,26 @@ public class SignatureWriterUtilsTest {
         );
     }
 
-//    @Test
-//    public void methodSignature() {
+    @Test
+    public void interfaceMethodSignature() {
+        Assertions.assertEquals(
+            "(TID;)Ljava/util/Optional<TE;>;",
+            SignatureWriterUtils.getMethodSignature(null, findById)
+        );
+
+        Assertions.assertEquals(
+            "()Ljava/util/List<TE;>;",
+            SignatureWriterUtils.getMethodSignature(null, findAll)
+        );
+
+        Assertions.assertEquals(
+            "(TE;)V",
+            SignatureWriterUtils.getMethodSignature(null, save)
+        );
+    }
+
+    @Test
+    public void methodSignature() {
 //        Assertions.assertEquals(
 //            "()V",
 //            SignatureWriterUtils.getMethodSignature(
@@ -127,13 +132,62 @@ public class SignatureWriterUtilsTest {
 //                    .build()
 //            )
 //        );
-//    }
+
+        ClassTypeDef myBeanType = ClassTypeDef.of("example.MyBean");
+
+        String builderSimpleName = myBeanType.getSimpleName() + "Builder";
+        String builderClassName = myBeanType.getPackageName() + "." + builderSimpleName;
+        ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
+
+        MethodDef build = MethodDef.builder("with")
+            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .addParameter("consumer", TypeDef.parameterized(ClassTypeDef.of(Consumer.class), builderType))
+            .returns(myBeanType)
+            .build();
+
+        Assertions.assertEquals(
+            "(Ljava/util/function/Consumer<Lexample/MyBeanBuilder;>;)Lexample/MyBean;",
+            SignatureWriterUtils.getMethodSignature(
+                null,
+                build
+            )
+        );
+    }
 
     @Test
     public void classSignature() {
         Assertions.assertEquals(
             "Ljava/lang/Object;Ljava/util/function/Predicate<Ljava/lang/Object;>;",
             SignatureWriterUtils.getClassSignature(ifPredicateDef)
+        );
+    }
+
+    @Test
+    public void classSignature2() {
+        ClassTypeDef myBean = ClassTypeDef.of("example.MyBean");
+
+        ClassTypeDef abstractBuilderType = ClassTypeDef.of(myBean.getPackageName() + "." + "Abstract" + myBean.getSimpleName() + "SuperBuilder");
+
+        TypeDef.TypeVariable selfType = new TypeDef.TypeVariable("B");
+        TypeDef.TypeVariable producingType = new TypeDef.TypeVariable("C");
+        ClassDef abstractBuilder = ClassDef.builder(abstractBuilderType.getName())
+            .addTypeVariable(new TypeDef.TypeVariable("C", List.of(myBean)))
+            .addTypeVariable(new TypeDef.TypeVariable("B",
+                    List.of(
+                        TypeDef.parameterized(
+                            abstractBuilderType,
+                            producingType,
+                            selfType
+                        )
+                    )
+                )
+            )
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .build();
+
+        Assertions.assertEquals(
+            "<C:Lexample/MyBean;B:Lexample/AbstractMyBeanSuperBuilder<TC;TB;>;>Ljava/lang/Object;",
+            SignatureWriterUtils.getClassSignature(abstractBuilder)
         );
     }
 
@@ -154,7 +208,7 @@ public class SignatureWriterUtilsTest {
                 .returns(TypeDef.STRING.array(1))
                 .build())
             .build();
-        Assertions.assertNull(SignatureWriterUtils.getMethodSignature(arrayClassDef1.getMethods().get(0)));
+        Assertions.assertNull(SignatureWriterUtils.getMethodSignature(null, arrayClassDef1.getMethods().get(0)));
     }
 
 }

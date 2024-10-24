@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
@@ -49,9 +50,10 @@ public final class MethodDef extends AbstractElement {
               List<ParameterDef> parameters,
               List<StatementDef> statements,
               List<AnnotationDef> annotations,
-              List<String> javadoc, boolean override) {
+              List<String> javadoc,
+              boolean override) {
         super(name, modifiers, annotations, javadoc);
-        this.returnType = returnType;
+        this.returnType = Objects.requireNonNullElse(returnType, TypeDef.VOID);
         this.parameters = Collections.unmodifiableList(parameters);
         this.statements = statements;
         this.override = override;
@@ -67,24 +69,20 @@ public final class MethodDef extends AbstractElement {
     /**
      * Create a new constructor with parameters assigned to fields with the same name.
      *
-     * @param thisType      The type to be constructed
      * @param parameterDefs The parameters of the body
      * @return A new constructor with a body.
      */
-    public static MethodDef constructor(ClassTypeDef thisType, Collection<ParameterDef> parameterDefs) {
+    public static MethodDef constructor(Collection<ParameterDef> parameterDefs) {
         MethodDefBuilder builder = MethodDef.builder(CONSTRUCTOR);
         for (ParameterDef parameterDef : parameterDefs) {
             builder.addParameter(parameterDef);
-            builder.addStatement(new StatementDef.Assign(
-                new VariableDef.Field(
-                    new VariableDef.This(thisType),
-                    parameterDef.getName(),
-                    parameterDef.getType()
-                ),
-                parameterDef.asExpression()
-            ));
+            builder.addStatement((aThis, methodParameters) -> aThis.field(parameterDef.getName(), parameterDef.getType()).put(methodParameters.get(0)));
         }
         return builder.build();
+    }
+
+    public boolean isConstructor() {
+        return CONSTRUCTOR.equals(getName());
     }
 
     public TypeDef getReturnType() {
@@ -140,6 +138,7 @@ public final class MethodDef extends AbstractElement {
 
         private final List<ParameterDef> parameters = new ArrayList<>();
         private TypeDef returnType;
+        private final List<BodyBuilder> bodyBuilders = new ArrayList<>();
         private final List<StatementDef> statements = new ArrayList<>();
         private boolean overrides;
 
@@ -207,27 +206,30 @@ public final class MethodDef extends AbstractElement {
             return this;
         }
 
+        public MethodDefBuilder addStatement(BodyBuilder bodyBuilder) {
+            bodyBuilders.add(bodyBuilder);
+            return this;
+        }
+
         public MethodDefBuilder addStatements(Collection<StatementDef> newStatements) {
             statements.addAll(newStatements);
             return this;
         }
 
         public MethodDef build() {
-            return build((self, parameterDefs) -> null);
-        }
-
-        public MethodDef build(BiFunction<VariableDef.This, List<VariableDef.MethodParameter>, StatementDef> bodyBuilder) {
             List<VariableDef.MethodParameter> variables = parameters.stream()
                 .map(ParameterDef::asVariable)
                 .toList();
-            StatementDef statement = bodyBuilder.apply(new VariableDef.This(TypeDef.THIS), variables);
-            if (statement != null) {
-                addStatement(statement);
-                if (returnType == null && !statements.isEmpty()) {
-                    StatementDef lastStatement = statements.get(statements.size() - 1);
-                    if (lastStatement instanceof StatementDef.Return aReturn) {
-                        returnType = aReturn.expression().type();
-                    }
+            for (BodyBuilder bodyBuilder : bodyBuilders) {
+                StatementDef statement = bodyBuilder.apply(new VariableDef.This(TypeDef.THIS), variables);
+                if (statement != null) {
+                    addStatement(statement);
+                }
+            }
+            if (returnType == null && !statements.isEmpty()) {
+                StatementDef lastStatement = statements.get(statements.size() - 1);
+                if (lastStatement instanceof StatementDef.Return aReturn) {
+                    returnType = aReturn.expression().type();
                 }
             }
             if (returnType == null && !name.equals(CONSTRUCTOR)) {
@@ -236,5 +238,13 @@ public final class MethodDef extends AbstractElement {
             return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc, overrides);
         }
 
+        public MethodDef build(BodyBuilder bodyBuilder) {
+            bodyBuilders.add(bodyBuilder);
+            return build();
+        }
+
+    }
+
+    public interface BodyBuilder extends BiFunction<VariableDef.This, List<VariableDef.MethodParameter>, StatementDef> {
     }
 }

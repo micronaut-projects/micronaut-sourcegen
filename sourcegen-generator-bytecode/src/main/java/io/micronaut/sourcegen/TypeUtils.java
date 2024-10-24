@@ -15,12 +15,15 @@
  */
 package io.micronaut.sourcegen;
 
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.inject.processing.JavaModelUtils;
+import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.InterfaceDef;
+import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Type;
 
-import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,15 +31,10 @@ public class TypeUtils {
 
     private static final Pattern ARRAY_PATTERN = Pattern.compile("(\\[])+$");
 
-    public static Type getType(TypeDef typeDef) {
-        if (typeDef == TypeDef.THIS) {
-            throw new IllegalStateException("This type not replaced");
-        }
-        if (typeDef == TypeDef.SUPER) {
-            throw new IllegalStateException("Super type not replaced");
-        }
+    public static Type getType(TypeDef typeDef, @Nullable ObjectDef objectDef) {
+        typeDef = ObjectDef.getContextualType(objectDef, typeDef);
         if (typeDef instanceof TypeDef.Array array) {
-            return Type.getType("[".repeat(array.dimensions()) + 'L' +  getType(array.componentType()).getInternalName() + ";");
+            return Type.getType("[".repeat(array.dimensions()) + getType(array.componentType(), objectDef).getDescriptor());
         }
         if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
             return getType(
@@ -50,20 +48,28 @@ public class TypeUtils {
             return Type.getType(JavaModelUtils.NAME_TO_TYPE_MAP.get(primitive.name()));
         }
         if (typeDef instanceof TypeDef.TypeVariable typeVariable) {
-            return Type.getType(Object.class);
+            if (typeVariable.bounds().isEmpty()) {
+                if (objectDef instanceof ClassDef classDef) {
+                    TypeDef.TypeVariable tvDef = classDef.getTypeVariables().stream()
+                        .filter(tv -> tv.name().equals(typeVariable.name())).findFirst()
+                        .orElse(null);
+                    if (tvDef != null && !tvDef.bounds().isEmpty()) {
+                        return getType(tvDef.bounds().get(0), objectDef);
+                    }
+                }
+                if (objectDef instanceof InterfaceDef interfaceDef) {
+                    TypeDef.TypeVariable tvDef = interfaceDef.getTypeVariables().stream()
+                        .filter(tv -> tv.name().equals(typeVariable.name())).findFirst()
+                        .orElse(null);
+                    if (tvDef != null && !tvDef.bounds().isEmpty()) {
+                        return getType(tvDef.bounds().get(0), objectDef);
+                    }
+                }
+                return Type.getType(Object.class);
+            }
+            return getType(typeVariable.bounds().get(0), objectDef);
         }
         throw new IllegalStateException("Unsupported type: " + typeDef);
-    }
-
-    public static String getConstructorDescriptor(Collection<TypeDef> types) {
-        StringBuilder builder = new StringBuilder();
-        builder.append('(');
-
-        for (TypeDef argumentType : types) {
-            builder.append(TypeUtils.getType(argumentType).getDescriptor());
-        }
-
-        return builder.append(")V").toString();
     }
 
     private static String getTypeDescriptor(String className, Type... genericTypes) {
