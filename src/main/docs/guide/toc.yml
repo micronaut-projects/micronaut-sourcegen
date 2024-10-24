@@ -11,5 +11,6 @@ annotations:
   singular: Singular
   toString: ToString
   equalsAndHashCode: Equals and HashCode
+  delegate: Delegate
 repository: Repository
 

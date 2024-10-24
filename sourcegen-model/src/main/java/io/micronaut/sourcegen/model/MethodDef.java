@@ -69,9 +69,10 @@ public final class MethodDef extends AbstractElement {
      *
      * @param thisType      The type to be constructed
      * @param parameterDefs The parameters of the body
+     * @param modifiers     The constructor modifiers
      * @return A new constructor with a body.
      */
-    public static MethodDef constructor(ClassTypeDef thisType, Collection<ParameterDef> parameterDefs) {
+    public static MethodDef constructor(ClassTypeDef thisType, Collection<ParameterDef> parameterDefs, Modifier... modifiers) {
         MethodDefBuilder builder = MethodDef.builder(CONSTRUCTOR);
         for (ParameterDef parameterDef : parameterDefs) {
             builder.addParameter(parameterDef);
@@ -84,6 +85,7 @@ public final class MethodDef extends AbstractElement {
                 parameterDef.asExpression()
             ));
         }
+        builder.addModifiers(modifiers);
         return builder.build();
     }
 

@@ -220,6 +220,12 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
         if (classElement.isPrimitive()) {
             return primitive(classElement.getName());
         }
+        if (classElement instanceof GenericPlaceholderElement placeholderElement) {
+            return new TypeVariable(
+                placeholderElement.getVariableName(),
+                placeholderElement.getBounds().stream().map(TypeDef::of).toList()
+            );
+        }
         if (classElement instanceof WildcardElement wildcardElement) {
             return new Wildcard(
                 wildcardElement.getUpperBounds().stream().map(TypeDef::of).toList(),
@@ -395,6 +401,17 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
 
         public TypeVariable(String name) {
             this(name, List.of());
+        }
+
+        public static TypeVariable of(String name, ClassElement classElement) {
+            if (classElement instanceof GenericPlaceholderElement placeholderElement) {
+                return new TypeVariable(
+                    name,
+                    placeholderElement.getBounds().stream().map(TypeDef::of).toList()
+                );
+            } else {
+                return new TypeVariable(name);
+            }
         }
 
     }

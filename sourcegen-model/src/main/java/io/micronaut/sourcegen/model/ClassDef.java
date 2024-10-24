@@ -21,6 +21,8 @@ import io.micronaut.core.annotation.Nullable;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -93,6 +95,11 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
         for (FieldDef field : fields) {
             if (field.getName().equals(name)) {
                 return field;
+            }
+        }
+        for (PropertyDef property : properties) {
+            if (property.getName().equals(name)) {
+                return FieldDef.builder(property.getName()).ofType(property.getType()).build();
             }
         }
         return null;
@@ -190,6 +197,50 @@ public final class ClassDef extends AbstractElement implements ObjectDef {
 
         public ClassDef build() {
             return new ClassDef(name, modifiers, fields, methods, properties, annotations, javadoc, typeVariables, superinterfaces, superclass);
+        }
+
+        /**
+         * Add a constructor.
+         *
+         * @param parameterDefs The fields to set in the constructor
+         * @param modifiers The method modifiers
+         * @return this
+         */
+        public ClassDefBuilder addConstructor(Collection<ParameterDef> parameterDefs, Modifier... modifiers) {
+            return this.addMethod(
+                MethodDef.constructor(ClassTypeDef.of(name), parameterDefs, modifiers)
+            );
+        }
+
+        /**
+         * Add a constructor for all fields.
+         *
+         * @param modifiers The modifiers
+         * @return this
+         */
+        public ClassDefBuilder addAllFieldsConstructor(Modifier... modifiers) {
+            List<ParameterDef> constructorParameters = new ArrayList<>();
+            for (PropertyDef property : properties) {
+                constructorParameters.add(ParameterDef.of(property.getName(), property.getType()));
+            }
+            for (FieldDef field: fields) {
+                constructorParameters.add(ParameterDef.of(field.getName(), field.getType()));
+            }
+            return this.addMethod(
+                MethodDef.constructor(ClassTypeDef.of(name), constructorParameters, modifiers)
+            );
+        }
+
+        /**
+         * Add a constructor with no arguments.
+         *
+         * @param modifiers The method modifiers
+         * @return this
+         */
+        public ClassDefBuilder addNoFieldsConstructor(Modifier... modifiers) {
+            return this.addMethod(
+                MethodDef.constructor(ClassTypeDef.of(name), Collections.emptyList(), modifiers)
+            );
         }
 
     }

@@ -1,0 +1,25 @@
+If you annotate a Java interface with `@Delegate`, a `<type>Delegate` abstract class is generated at compilation-time.
+
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/delegate/Worker.java[tags=clazz,indent=0]
+----
+
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/delegate/SimpleWorker.java[tags=clazz,indent=0]
+----
+
+You can use a delegate pattern to change the behavior of a Worker delegatee:
+
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/delegate/OvertimeWorker.java[tags=clazz,indent=0]
+----
+
+The delegate will delegate the behavior to inner object except for changed methods:
+
+[source,java]
+----
+include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/delegate/DelegateWorkerTest.java[tags=test,indent=0]
+----
