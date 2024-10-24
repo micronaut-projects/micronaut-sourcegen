@@ -149,17 +149,20 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Fi
     /**
      * The variable of `this`.
      *
-     * @param type The type
      * @author Denis Stepanov
      * @since 1.0
      */
     @Experimental
-    record This(ClassTypeDef type) implements VariableDef {
+    record This() implements VariableDef {
 
         public Super superRef() {
             return new Super(TypeDef.SUPER);
         }
 
+        @Override
+        public TypeDef type() {
+            return TypeDef.THIS;
+        }
     }
 
     /**

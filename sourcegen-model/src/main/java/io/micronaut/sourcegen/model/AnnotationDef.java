@@ -85,8 +85,7 @@ public final class AnnotationDef {
         Map<String, ClassElement> fieldTypes = annotationElement.getMethods().stream()
             .collect(Collectors.toMap(MethodElement::getName, MethodElement::getReturnType));
 
-        String annotationTypeName = annotation.getAnnotationName().replace("$", ".");
-        ClassTypeDef annotationType = ClassTypeDef.of(annotationTypeName);
+        ClassTypeDef annotationType = ClassTypeDef.of(annotation.getAnnotationName());
         AnnotationDefBuilder builder = AnnotationDef.builder(annotationType);
         annotation.getConvertibleValues().asMap().forEach((key, value) ->
             copyAnnotationValue(value, fieldTypes.get(key), context)

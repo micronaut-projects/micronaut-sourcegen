@@ -46,7 +46,7 @@ public class ExpressionWriteTest extends AbstractWriteTest {
             ClassElement.of(String.class), STRING, "hello"
         );
         ExpressionDef equals = ExpressionDef.invoke(
-            new VariableDef.This(ClassTypeDef.of("test.Test")),
+            new VariableDef.This(),
             "equals", List.of(helloString), new TypeDef.Primitive("boolean"));
         String result = writeMethodWithExpression(equals);
 

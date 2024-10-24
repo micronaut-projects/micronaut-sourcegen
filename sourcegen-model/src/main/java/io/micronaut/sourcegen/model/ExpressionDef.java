@@ -25,7 +25,6 @@ import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.PropertyElement;
-import io.micronaut.inject.processing.JavaModelUtils;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -604,7 +603,7 @@ public sealed interface ExpressionDef
      *
      * @param instance      The instance
      * @param name          The method name
-     * @param parameters    The parameters
+     * @param values    The parameters
      * @param returningType The returning
      * @author Denis Stepanov
      * @since 1.0
@@ -612,7 +611,7 @@ public sealed interface ExpressionDef
     @Experimental
     record CallInstanceMethod(ExpressionDef instance,
                               String name,
-                              List<ExpressionDef> parameters,
+                              List<ExpressionDef> values,
                               TypeDef returningType) implements ExpressionDef, StatementDef {
 
         public CallInstanceMethod(ExpressionDef instance, MethodDef methodDef, ExpressionDef... parameters) {

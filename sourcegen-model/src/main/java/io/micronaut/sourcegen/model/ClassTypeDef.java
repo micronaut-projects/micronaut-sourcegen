@@ -72,6 +72,14 @@ public sealed interface ClassTypeDef extends TypeDef {
     }
 
     /**
+     * @return True if inner
+     * @since 1.4
+     */
+    default boolean isInner() {
+        return false;
+    }
+
+    /**
      * Instantiate this class.
      *
      * @return The instantiate expression
@@ -269,6 +277,11 @@ public sealed interface ClassTypeDef extends TypeDef {
         public boolean isInterface() {
             return type.isInterface();
         }
+
+        @Override
+        public boolean isInner() {
+            return type.isMemberClass();
+        }
     }
 
     /**
@@ -312,10 +325,10 @@ public sealed interface ClassTypeDef extends TypeDef {
 
         @Override
         public String getName() {
-            String name = classElement.getName();
-            if (classElement.isInner()) {
-                return name.replace("$", ".");
-            }
+//            String name = classElement.getName();
+//            if (classElement.isInner()) {
+//                return name.replace("$", ".");
+//            }
             return classElement.getName();
         }
 
@@ -337,6 +350,11 @@ public sealed interface ClassTypeDef extends TypeDef {
         @Override
         public boolean isInterface() {
             return classElement.isInterface();
+        }
+
+        @Override
+        public boolean isInner() {
+            return classElement.isInner();
         }
     }
 

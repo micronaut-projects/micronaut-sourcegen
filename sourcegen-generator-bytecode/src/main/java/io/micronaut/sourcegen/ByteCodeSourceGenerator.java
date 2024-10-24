@@ -18,6 +18,7 @@ package io.micronaut.sourcegen;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.core.reflect.ReflectionUtils;
+import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.inject.ast.Element;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.VisitorContext;
@@ -48,15 +49,12 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 import org.objectweb.asm.commons.TableSwitchGenerator;
 import org.objectweb.asm.util.CheckClassAdapter;
-import org.objectweb.asm.util.TraceClassVisitor;
 
 import javax.lang.model.element.Modifier;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -212,7 +210,7 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
         );
         for (AnnotationDef annotation : fieldDef.getAnnotations()) {
             AnnotationVisitor annotationVisitor = fieldVisitor.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
-            annotation.getValues().forEach(annotationVisitor::visit);
+            visitAnnotation(annotation, annotationVisitor);
         }
         fieldVisitor.visitEnd();
     }
@@ -227,7 +225,7 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
         );
         for (AnnotationDef annotation : interfaceDef.getAnnotations()) {
             AnnotationVisitor annotationVisitor = classWriter.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
-            annotation.getValues().forEach(annotationVisitor::visit);
+            visitAnnotation(annotation, annotationVisitor);
         }
         for (MethodDef method : interfaceDef.getMethods()) {
             writeMethod(classWriter, interfaceDef, method);
@@ -265,24 +263,20 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
         );
 
         for (AnnotationDef annotation : classDef.getAnnotations()) {
-            AnnotationVisitor annotationVisitor = classWriter.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
-            annotation.getValues().forEach(annotationVisitor::visit);
+            AnnotationVisitor annotationVisitor = classWriter.visitAnnotation(
+                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
+                true);
+            visitAnnotation(annotation, annotationVisitor);
         }
 
         for (FieldDef field : classDef.getFields()) {
             writeField(classWriter, classDef, field);
         }
 
-        if (classDef.getMethods().stream().noneMatch(MethodDef::isConstructor)) {
-            MethodVisitor defaultConstructor = classWriter.visitMethod(ACC_PUBLIC, CONSTRUCTOR_NAME, DESCRIPTOR_DEFAULT_CONSTRUCTOR, null, null);
-            GeneratorAdapter generatorAdapter = new GeneratorAdapter(defaultConstructor, ACC_PUBLIC, CONSTRUCTOR_NAME, DESCRIPTOR_DEFAULT_CONSTRUCTOR);
-
-            generatorAdapter.visitCode();
-            generatorAdapter.loadThis();
-            generatorAdapter.invokeConstructor(TypeUtils.getType(superclass, null), Method.getMethod("void <init> ()"));
-            generatorAdapter.returnValue();
-            generatorAdapter.visitMaxs(2, 1);
-            generatorAdapter.visitEnd();
+        if (classDef.getMethods().stream().noneMatch(MethodDef::isDefaultConstructor)) {
+            // Add default constructor
+            writeMethod(classWriter, classDef, MethodDef.constructor()
+                .build((aThis, methodParameters) -> aThis.superRef().invoke(MethodDef.constructor().build())));
         }
 
         for (PropertyDef property : classDef.getProperties()) {
@@ -290,6 +284,47 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
         }
         for (MethodDef method : classDef.getMethods()) {
             writeMethod(classWriter, classDef, method);
+        }
+    }
+
+    private void visitAnnotation(AnnotationDef annotation, AnnotationVisitor annotationVisitor) {
+        for (Map.Entry<String, Object> entry : annotation.getValues().entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            visitAnnotation(annotationVisitor, key, value);
+        }
+        annotationVisitor.visitEnd();
+    }
+
+    private void visitAnnotation(AnnotationVisitor annotationVisitor, String name, Object value) {
+        if (value instanceof VariableDef.StaticField staticField) {
+            annotationVisitor.visitEnum(
+                name,
+                TypeUtils.getType(staticField.ownerType(), null).getDescriptor(),
+                staticField.name()
+            );
+        } else if (value instanceof AnnotationDef nestedAnnotation) {
+            visitAnnotation(
+                nestedAnnotation,
+                annotationVisitor.visitAnnotation(name, TypeUtils.getType(nestedAnnotation.getType(), null).getDescriptor())
+            );
+        } else if (value instanceof AnnotationDef[] annotations) {
+            AnnotationVisitor arrayVisitor = annotationVisitor.visitArray(name);
+            for (AnnotationDef annotationDef : annotations) {
+                visitAnnotation(
+                    annotationDef,
+                    annotationVisitor.visitAnnotation(name, TypeUtils.getType(annotationDef.getType(), null).getDescriptor())
+                );
+            }
+            arrayVisitor.visitEnd();
+        } else if (value instanceof Collection<?> coll) {
+            AnnotationVisitor arrayVisitor = annotationVisitor.visitArray(name);
+            for (Object object : coll) {
+                visitAnnotation(arrayVisitor, name, object);
+            }
+            arrayVisitor.visitEnd();
+        } else {
+            annotationVisitor.visit(name, value);
         }
     }
 
@@ -346,7 +381,7 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
         for (ParameterDef parameter : methodDef.getParameters()) {
             for (AnnotationDef annotation : parameter.getAnnotations()) {
                 AnnotationVisitor annotationVisitor =  methodVisitor.visitParameterAnnotation(parameterIndex, TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
-                annotation.getValues().forEach(annotationVisitor::visit);
+                visitAnnotation(annotation, annotationVisitor);
             }
             parameterIndex++;
         }
@@ -361,16 +396,24 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
 //            .forEach(methodBuilder::addCode);
         Context context = new Context(objectDef, methodDef);
         List<StatementDef> statements = methodDef.getStatements();
-        if (methodDef.isConstructor() && objectDef instanceof ClassDef) {
+        if (methodDef.isConstructor() && objectDef instanceof ClassDef classDef) {
+            if (methodDef.getParameters().isEmpty()) {
+                // Default constructor
+                List<StatementDef> fieldInitializers = new ArrayList<>();
+                classDef.getFields().forEach(fieldDef -> fieldDef.getInitializer().ifPresent(expressionDef -> fieldInitializers.add(
+                    new VariableDef.This().field(fieldDef).put(expressionDef)
+                )));
+                if (!fieldInitializers.isEmpty()) {
+                    statements = CollectionUtils.concat(fieldInitializers, statements);
+                }
+            }
             if (statements.isEmpty()) {
                 statements = List.of(
                     superConstructoInvocation()
                 );
             } else {
                 if (statements.stream().noneMatch(this::isConstructorInvocation)) {
-                    statements = new ArrayList<>();
-                    statements.add(superConstructoInvocation());
-                    statements.addAll(methodDef.getStatements());
+                    statements = CollectionUtils.concat(List.<StatementDef>of(superConstructoInvocation()), statements);
                 }
             }
         }
@@ -599,24 +642,24 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
             ExpressionDef instance = callInstanceMethod.instance();
             TypeDef instanceType = instance.type();
             pushExpression(generatorAdapter, context, instance, instanceType);
-            for (ExpressionDef parameter : callInstanceMethod.parameters()) {
+            for (ExpressionDef parameter : callInstanceMethod.values()) {
                 pushExpression(generatorAdapter, context, parameter, parameter.type());
             }
             if (instance instanceof VariableDef.Super) {
                 generatorAdapter.invokeConstructor(
                     TypeUtils.getType(instanceType, context.objectDef),
-                    new Method(callInstanceMethod.name(), getMethodDescriptor2(context.objectDef, callInstanceMethod.returningType(), callInstanceMethod.parameters()))
+                    new Method(callInstanceMethod.name(), getMethodDescriptor2(context.objectDef, callInstanceMethod.returningType(), callInstanceMethod.values()))
                 );
             } else if (instanceType instanceof ClassTypeDef classTypeDef) {
                 if (classTypeDef.isInterface()) {
                     generatorAdapter.invokeInterface(
                         TypeUtils.getType(instanceType, context.objectDef),
-                        new Method(callInstanceMethod.name(), getMethodDescriptor2(context.objectDef, callInstanceMethod.returningType(), callInstanceMethod.parameters()))
+                        new Method(callInstanceMethod.name(), getMethodDescriptor2(context.objectDef, callInstanceMethod.returningType(), callInstanceMethod.values()))
                     );
                 } else {
                     generatorAdapter.invokeVirtual(
                         TypeUtils.getType(instanceType, context.objectDef),
-                        new Method(callInstanceMethod.name(), getMethodDescriptor2(context.objectDef, callInstanceMethod.returningType(), callInstanceMethod.parameters()))
+                        new Method(callInstanceMethod.name(), getMethodDescriptor2(context.objectDef, callInstanceMethod.returningType(), callInstanceMethod.values()))
                     );
                 }
             } else {
@@ -1031,6 +1074,11 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
         if (value instanceof Integer integer) {
             generatorAdapter.push(integer);
             generatorAdapter.valueOf(Type.getType(int.class));
+            return;
+        }
+        if (value instanceof Long aLong) {
+            generatorAdapter.push(aLong);
+            generatorAdapter.valueOf(Type.getType(long.class));
             return;
         }
 //        } else if (type instanceof TypeDef.Array arrayDef) {

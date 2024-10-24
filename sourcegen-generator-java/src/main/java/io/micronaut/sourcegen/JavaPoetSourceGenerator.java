@@ -312,7 +312,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private AnnotationSpec asAnnotationSpec(AnnotationDef annotationDef) {
-        AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.bestGuess(annotationDef.getType().getName()));
+        AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.bestGuess(annotationDef.getType().getName().replace("$", ".")));
         for (Map.Entry<String, Object> e : annotationDef.getValues().entrySet()) {
             addAnnotationValue(builder, e.getKey(), e.getValue());
         }
@@ -389,7 +389,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             };
         }
         if (typeDef instanceof ClassTypeDef classType) {
-            return ClassName.bestGuess(classType.getName());
+            String name;
+            if (classType.isInner()) {
+                name = classType.getName().replace("$", ".");
+            } else {
+                name = classType.getName();
+            }
+            return ClassName.bestGuess(name);
         }
         if (typeDef instanceof TypeDef.Wildcard wildcard) {
             if (!wildcard.lowerBounds().isEmpty()) {
@@ -590,7 +596,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 CodeBlock.of(renderExpression(objectDef, methodDef, callInstanceMethod.instance())
                     + (callInstanceMethod.name().equals("<init>") ? "" : "." +callInstanceMethod.name())
                     + "("),
-                callInstanceMethod.parameters()
+                callInstanceMethod.values()
                     .stream()
                     .map(exp -> renderExpression(objectDef, methodDef, exp))
                     .collect(CodeBlock.joining(", ")),

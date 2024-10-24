@@ -42,6 +42,9 @@ public class TypeUtils {
             );
         }
         if (typeDef instanceof ClassTypeDef classTypeDef) {
+            if (classTypeDef.getName().contains("State")) {
+                System.out.println("VVD " + classTypeDef.getName() + " " + getType(classTypeDef.getName()));
+            }
             return getType(classTypeDef.getName());
         }
         if (typeDef instanceof TypeDef.Primitive primitive) {

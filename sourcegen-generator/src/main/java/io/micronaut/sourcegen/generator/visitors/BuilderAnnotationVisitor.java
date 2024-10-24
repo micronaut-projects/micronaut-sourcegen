@@ -409,10 +409,27 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         Optional<MethodElement> writeMethod = beanProperty.getWriteMethod();
                         if (writeMethod.isPresent()) {
                             String propertyName = beanProperty.getSimpleName();
-                            TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
-                            statements.add(
-                                instanceVar.invoke(writeMethod.get(), valueExpression(beanProperty, self.field(propertyName, propertyTypeDef)))
-                            );
+                            TypeDef propertyType = TypeDef.of(beanProperty.getType());
+                            TypeDef fieldType = propertyType.makeNullable();
+                            if (fieldType.isNullable()) {
+                                statements.add(
+                                    self.field(propertyName, fieldType).isNonNull().asConditionIf(
+                                        instanceVar.invoke(
+                                            writeMethod.get(),
+                                            valueExpression(beanProperty, self.field(propertyName, fieldType))
+                                                .cast(propertyType)
+                                        )
+                                    )
+                                );
+                            } else {
+                                statements.add(
+                                    instanceVar.invoke(
+                                        writeMethod.get(),
+                                        valueExpression(beanProperty, self.field(propertyName, fieldType))
+                                            .cast(propertyType)
+                                    )
+                                );
+                            }
                         }
                     }
                     statements.add(instanceVar.returning());

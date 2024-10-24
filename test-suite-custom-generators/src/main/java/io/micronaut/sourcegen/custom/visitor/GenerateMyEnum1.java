@@ -58,16 +58,8 @@ public final class GenerateMyEnum1 implements TypeElementVisitor<io.micronaut.so
 
             .addMethod(MethodDef.builder("myName")
                 .addModifiers(Modifier.PUBLIC)
-                .addStatement(new StatementDef.Return(
-                    ExpressionDef.invoke(
-                        new VariableDef.This(enumTypeDef),
-                        "toString",
-                        List.of(),
-                        TypeDef.of(String.class)
-                    )
-                ))
                 .returns(String.class)
-                .build())
+                .build((aThis, methodParameters) -> aThis.invoke("toString", TypeDef.of(String.class)).returning()))
 
             .build();
 

@@ -85,6 +85,10 @@ public final class MethodDef extends AbstractElement {
         return CONSTRUCTOR.equals(getName());
     }
 
+    public boolean isDefaultConstructor() {
+        return CONSTRUCTOR.equals(getName()) && parameters.isEmpty();
+    }
+
     public TypeDef getReturnType() {
         return returnType;
     }
@@ -221,7 +225,7 @@ public final class MethodDef extends AbstractElement {
                 .map(ParameterDef::asVariable)
                 .toList();
             for (BodyBuilder bodyBuilder : bodyBuilders) {
-                StatementDef statement = bodyBuilder.apply(new VariableDef.This(TypeDef.THIS), variables);
+                StatementDef statement = bodyBuilder.apply(new VariableDef.This(), variables);
                 if (statement != null) {
                     addStatement(statement);
                 }

@@ -17,8 +17,9 @@ package io.micronaut.sourcegen.example;
 
 
 //tag::clazz[]
-import io.micronaut.sourcegen.annotations.Builder;
+
 import io.micronaut.sourcegen.annotations.Singular;
+import io.micronaut.sourcegen.annotations.SuperBuilder;
 
 import java.util.Collection;
 import java.util.List;
@@ -27,14 +28,14 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 
-@Builder
-public record UserBuilderSingular(Long id, String name,
-                                  @Singular Iterable<String> iterables,
-                                  @Singular Collection<String> collections,
-                                  @Singular List<String> lists,
-                                  @Singular Set<String> sets,
-                                  @Singular SortedSet<String> sortedSets,
-                                  @Singular Map<String, Integer> maps,
-                                  @Singular SortedMap<String, Integer> sortedMaps) {
+@SuperBuilder
+public record UserSuperSingular(Long id, String name,
+                                @Singular Iterable<String> iterables,
+                                @Singular Collection<String> collections,
+                                @Singular List<String> lists,
+                                @Singular Set<String> sets,
+                                @Singular SortedSet<String> sortedSets,
+                                @Singular Map<String, Integer> maps,
+                                @Singular SortedMap<String, Integer> sortedMaps) {
 }
 //end::clazz[]
