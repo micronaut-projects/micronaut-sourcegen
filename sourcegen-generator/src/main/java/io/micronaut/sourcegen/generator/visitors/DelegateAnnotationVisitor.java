@@ -38,7 +38,6 @@ import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeDef.TypeVariable;
-import io.micronaut.sourcegen.model.VariableDef;
 import io.micronaut.sourcegen.model.VariableDef.This;
 
 import javax.lang.model.element.Modifier;
@@ -188,9 +187,9 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
                 methodBuilder.addParameter(def);
                 parameters.add(def.asVariable());
             }
-            ExpressionDef.CallInstanceMethod delegateCall = ExpressionDef.invoke(new VariableDef.Field(
-                new This(delegateType), DELEGATEE_MEMBER, typeDef
-            ), method.getName(), parameters, returnType);
+            ExpressionDef.CallInstanceMethod delegateCall = new This(delegateType)
+                .field(DELEGATEE_MEMBER, typeDef)
+                .invoke(method.getName(), returnType, parameters);
             if (!method.getReturnType().isVoid()) {
                 methodBuilder.addStatement(new StatementDef.Return(delegateCall));
             } else {
