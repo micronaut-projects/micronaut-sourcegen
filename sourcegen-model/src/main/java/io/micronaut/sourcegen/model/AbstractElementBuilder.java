@@ -32,13 +32,13 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public sealed class AbstractElementBuilder<ThisType> permits ClassDef.ClassDefBuilder, EnumDef.EnumDefBuilder, FieldDef.FieldDefBuilder, InterfaceDef.InterfaceDefBuilder, MethodDef.MethodDefBuilder, ParameterDef.ParameterDefBuilder, PropertyDef.PropertyDefBuilder, RecordDef.RecordDefBuilder {
+public sealed class AbstractElementBuilder<ThisType> permits ObjectDefBuilder, FieldDef.FieldDefBuilder, MethodDef.MethodDefBuilder, ParameterDef.ParameterDefBuilder, PropertyDef.PropertyDefBuilder {
 
     protected final String name;
     protected EnumSet<Modifier> modifiers = EnumSet.noneOf(Modifier.class);
     protected List<AnnotationDef> annotations = new ArrayList<>();
     protected List<String> javadoc = new ArrayList<>();
-    private final ThisType thisInstance;
+    protected final ThisType thisInstance;
 
     protected AbstractElementBuilder(String name) {
         this.name = name;

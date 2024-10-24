@@ -15,27 +15,56 @@
  */
 package io.micronaut.sourcegen.model;
 
+import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.naming.NameUtils;
 
+import javax.lang.model.element.Modifier;
+import java.util.List;
+import java.util.Set;
+
 /**
- * The interface defining the object type.
+ * The abstract class representing a type: class, enum, interface or record.
  *
  * @author Denis Stepanov
  * @since 1.0
  */
-public interface ObjectDef {
+@Experimental
+public abstract sealed class ObjectDef extends AbstractElement permits ClassDef, EnumDef, InterfaceDef, RecordDef {
 
-    String getName();
+    private final List<MethodDef> methods;
+    private final List<TypeDef> superinterfaces;
 
-    default String getPackageName() {
+    ObjectDef(
+            String name, Set<Modifier> modifiers, List<AnnotationDef> annotations,
+            List<String> javadoc, List<MethodDef> methods, List<TypeDef> superinterfaces
+    ) {
+        super(name, modifiers, annotations, javadoc);
+        this.methods = methods;
+        this.superinterfaces = superinterfaces;
+    }
+
+    public final List<MethodDef> getMethods() {
+        return methods;
+    }
+
+    public final List<TypeDef> getSuperinterfaces() {
+        return superinterfaces;
+    }
+
+    public final String getPackageName() {
         return NameUtils.getPackageName(getName());
     }
 
-    default String getSimpleName() {
+    public final String getSimpleName() {
         return NameUtils.getSimpleName(getName());
     }
 
-    default ClassTypeDef asTypeDef() {
+    /**
+     * Get the type definition for this type.
+     *
+     * @return The type definition
+     */
+    public ClassTypeDef asTypeDef() {
         return ClassTypeDef.of(getName());
     }
 
