@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.example.delegate;
 
+//tag::clazz[]
 import io.micronaut.sourcegen.annotations.Delegate;
 
 import java.util.List;
@@ -37,3 +38,4 @@ public interface Worker<T> extends SimpleWorker {
     Set<?> complaints();
 
 }
+//end::clazz[]

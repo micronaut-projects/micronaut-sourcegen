@@ -15,8 +15,9 @@
  */
 package io.micronaut.sourcegen.example.delegate;
 
+// tag::clazz[]
 /**
- * An implementation of worker interface
+ * A delegate changing tasks per day.
  */
 public class OvertimeWorker<T> extends WorkerDelegate<T> {
 
@@ -29,3 +30,4 @@ public class OvertimeWorker<T> extends WorkerDelegate<T> {
         return super.tasksPerDay() * 1.2;
     }
 }
+// end::clazz[]

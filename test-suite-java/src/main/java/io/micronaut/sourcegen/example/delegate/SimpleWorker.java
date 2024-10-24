@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.example.delegate;
 
+// tag::clazz[]
 /**
  * A simple worker interface.
  */
@@ -25,3 +26,4 @@ public interface SimpleWorker {
     double tasksPerDay();
 
 }
+// end::clazz[]

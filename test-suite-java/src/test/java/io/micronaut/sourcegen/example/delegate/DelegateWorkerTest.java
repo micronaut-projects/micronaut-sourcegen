@@ -26,6 +26,7 @@ class DelegateWorkerTest {
 
     @Test
     void test() {
+        // tag::test[]
         OvertimeWorker<String> worker = new OvertimeWorker<>(new RobotWorker<String>(
             "robot",
             10,
@@ -38,6 +39,7 @@ class DelegateWorkerTest {
         assertEquals(12, worker.tasksPerDay()); // increased because of delegate
         assertEquals(List.of("does everything"), worker.competencies());
         assertEquals("wash flowers", worker.currentTask());
+        // end::test[]
     }
 
 }

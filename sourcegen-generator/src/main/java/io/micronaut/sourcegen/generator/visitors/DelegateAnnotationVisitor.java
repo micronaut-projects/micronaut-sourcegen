@@ -22,7 +22,6 @@ import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.GenericPlaceholderElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
-import io.micronaut.inject.ast.WildcardElement;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
@@ -40,7 +39,6 @@ import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeDef.TypeVariable;
-import io.micronaut.sourcegen.model.TypeDef.Wildcard;
 import io.micronaut.sourcegen.model.VariableDef;
 import io.micronaut.sourcegen.model.VariableDef.This;
 
