@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.example.delegate;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -25,15 +26,18 @@ class DelegateWorkerTest {
 
     @Test
     void test() {
-        OvertimeWorker worker = new OvertimeWorker(new RobotWorker(
+        OvertimeWorker<String> worker = new OvertimeWorker<>(new RobotWorker<String>(
             "robot",
             10,
-            List.of("does everything")
+            List.of("does everything"),
+            "wash flowers",
+            Set.of()
         ));
 
         assertEquals("robot", worker.name());
         assertEquals(12, worker.tasksPerDay()); // increased because of delegate
         assertEquals(List.of("does everything"), worker.competencies());
+        assertEquals("wash flowers", worker.currentTask());
     }
 
 }

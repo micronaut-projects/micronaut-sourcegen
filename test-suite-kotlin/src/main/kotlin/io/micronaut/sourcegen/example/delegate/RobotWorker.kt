@@ -18,11 +18,12 @@ package io.micronaut.sourcegen.example.delegate;
 /**
  * An implementation of worker interface
  */
-class RobotWorker (
+class RobotWorker<T> (
     var name: String,
     var tasksPerDay: Double,
-    var competencies: List<String>
-) : Worker {
+    var competencies: List<String>,
+    var currentTask: T
+) : Worker<T> {
 
     override fun name(): String {
         return name
@@ -36,8 +37,12 @@ class RobotWorker (
         return tasksPerDay
     }
 
-    override fun canComplete(tasks: List<String>): Boolean {
+    override fun canComplete(tasks: List<T>): Boolean {
         return tasks.size <= tasksPerDay()
+    }
+
+    override fun currentTask(): T {
+        return currentTask
     }
 
 }

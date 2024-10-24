@@ -22,15 +22,17 @@ internal class DelegateWorkerTest {
 
     @Test
     fun test() {
-        val worker = OvertimeWorker(RobotWorker(
+        val worker = OvertimeWorker<String>(RobotWorker<String>(
             "robot",
             10.0,
-            listOf("does everything")
+            listOf("does everything"),
+            "water flowers"
         ))
 
         Assertions.assertEquals("robot", worker.name())
         Assertions.assertEquals(12.0, worker.tasksPerDay()) // increased because of delegate
         Assertions.assertEquals(listOf("does everything"), worker.competencies())
+        Assertions.assertEquals("water flowers", worker.currentTask())
     }
 
 }

@@ -220,6 +220,12 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
         if (classElement.isPrimitive()) {
             return primitive(classElement.getName());
         }
+        if (classElement instanceof GenericPlaceholderElement placeholderElement) {
+            return new TypeVariable(
+                placeholderElement.getVariableName(),
+                placeholderElement.getBounds().stream().map(TypeDef::of).toList()
+            );
+        }
         if (classElement instanceof WildcardElement wildcardElement) {
             return new Wildcard(
                 wildcardElement.getUpperBounds().stream().map(TypeDef::of).toList(),

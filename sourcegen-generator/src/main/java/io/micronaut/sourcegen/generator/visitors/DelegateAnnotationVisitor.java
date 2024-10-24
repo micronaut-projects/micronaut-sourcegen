@@ -19,8 +19,10 @@ import io.micronaut.core.annotation.AnnotationValue;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.GenericPlaceholderElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
+import io.micronaut.inject.ast.WildcardElement;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
@@ -37,6 +39,8 @@ import io.micronaut.sourcegen.model.MethodDef.MethodDefBuilder;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.TypeDef.TypeVariable;
+import io.micronaut.sourcegen.model.TypeDef.Wildcard;
 import io.micronaut.sourcegen.model.VariableDef;
 import io.micronaut.sourcegen.model.VariableDef.This;
 
@@ -47,6 +51,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
@@ -111,10 +116,29 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
             ClassTypeDef typeDef = ClassTypeDef.of(element);
             ClassTypeDef delegateType = ClassTypeDef.of(delegateClassName);
             ClassDefBuilder delegate = ClassDef.builder(delegateClassName)
-                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
+
+            if (!element.getTypeArguments().isEmpty()) {
+                for (Entry<String, ClassElement> type: element.getTypeArguments().entrySet()) {
+                    if (type.getValue() instanceof GenericPlaceholderElement placeholderElement) {
+                        delegate.addTypeVariable(new TypeVariable(
+                            type.getKey(),
+                            placeholderElement.getBounds().stream().map(TypeDef::of).toList()
+                        ));
+                    } else {
+                        delegate.addTypeVariable(new TypeVariable(type.getKey()));
+                    }
+                }
+                typeDef = TypeDef.parameterized(
+                    typeDef,
+                    element.getTypeArguments().entrySet().stream().map(
+                        v -> (TypeDef) new TypeVariable(v.getKey())
+                    ).toList()
+                );
+            }
+            delegate.addSuperinterface(typeDef)
                 .addField(FieldDef.builder(DELEGATEE_MEMBER).ofType(typeDef).build())
-                .addAllFieldsConstructor()
-                .addSuperinterface(typeDef);
+                .addAllFieldsConstructor();
 
             Set<MethodSignature> createdMethods = new HashSet<>();
             addDelegateMethods(element, delegate, typeDef, delegateType, createdMethods);
@@ -191,7 +215,7 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
             }
             createdMethods.add(signature);
 
-            TypeDef returnType = TypeDef.of(method.getReturnType());
+            TypeDef returnType = TypeDef.of(method.getGenericReturnType());
             MethodDefBuilder methodBuilder = MethodDef.builder(method.getName())
                 .overrides()
                 .returns(returnType);
@@ -203,7 +227,7 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
             }
             for (ParameterElement parameter: method.getParameters()) {
                 ParameterDef def = ParameterDef.builder(
-                    parameter.getName(), TypeDef.of(parameter.getType())
+                    parameter.getName(), TypeDef.of(parameter.getGenericType())
                 ).build();
                 methodBuilder.addParameter(def);
                 parameters.add(def.asVariable());

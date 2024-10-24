@@ -18,17 +18,22 @@ package io.micronaut.sourcegen.example.delegate;
 import io.micronaut.sourcegen.annotations.Delegate;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * A worker interface that delegate will be generated for.
  */
 @Delegate
-public interface Worker extends SimpleWorker {
+public interface Worker<T> extends SimpleWorker {
 
     String name();
 
-    boolean canComplete(List<String> tasks);
+    boolean canComplete(List<T> tasks);
+
+    T currentTask();
 
     List<String> competencies();
+
+    Set<?> complaints();
 
 }

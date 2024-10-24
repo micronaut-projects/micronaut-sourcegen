@@ -18,9 +18,9 @@ package io.micronaut.sourcegen.example.delegate;
 /**
  * An implementation of worker interface
  */
-public class OvertimeWorker extends WorkerDelegate {
+public class OvertimeWorker<T> extends WorkerDelegate<T> {
 
-    OvertimeWorker(Worker delegatee) {
+    OvertimeWorker(Worker<T> delegatee) {
         super(delegatee);
     }
 

@@ -21,12 +21,14 @@ import io.micronaut.sourcegen.annotations.Delegate;
  * A worker interface that delegate will be generated for.
  */
 @Delegate
-interface Worker: SimpleWorker {
+interface Worker<T>: SimpleWorker {
 
     override fun name(): String
 
-    fun canComplete(tasks: List<String>): Boolean
+    fun canComplete(tasks: List<T>): Boolean
 
     fun competencies(): List<String>
+
+    fun currentTask(): T
 
 }

@@ -18,7 +18,7 @@ package io.micronaut.sourcegen.example.delegate;
 /**
  * An implementation of worker interface
  */
-class OvertimeWorker(delegatee: Worker) : WorkerDelegate(delegatee) {
+class OvertimeWorker<T>(delegatee: Worker<T>) : WorkerDelegate<T>(delegatee) {
 
     override fun tasksPerDay(): Double {
         return super.tasksPerDay() * 1.2

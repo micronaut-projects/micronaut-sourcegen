@@ -16,18 +16,21 @@
 package io.micronaut.sourcegen.example.delegate;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * An implementation of worker interface
  */
-public record RobotWorker(
+public record RobotWorker<T>(
     String name,
     double tasksPerDay,
-    List<String> competencies
-) implements Worker {
+    List<String> competencies,
+    T currentTask,
+    Set<?> complaints
+) implements Worker<T> {
 
     @Override
-    public boolean canComplete(List<String> tasks) {
+    public boolean canComplete(List<T> tasks) {
         return tasks.size() <= tasksPerDay;
     }
 
