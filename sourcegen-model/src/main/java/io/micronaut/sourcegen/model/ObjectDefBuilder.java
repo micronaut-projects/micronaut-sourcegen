@@ -50,4 +50,8 @@ public sealed class ObjectDefBuilder<ThisType>
         return thisInstance;
     }
 
+    public final VariableDef.This getThis() {
+        return new VariableDef.This(ClassTypeDef.of(name));
+    }
+
 }
