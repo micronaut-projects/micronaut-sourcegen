@@ -1,5 +1,7 @@
 package io.micronaut.sourcegen;
 
+import io.micronaut.annotation.processing.test.AbstractTypeElementSpec;
+import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.MethodDef;

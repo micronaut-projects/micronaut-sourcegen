@@ -45,7 +45,7 @@ public class TypeUtils {
             return getType(classTypeDef.getName());
         }
         if (typeDef instanceof TypeDef.Primitive primitive) {
-            return Type.getType(JavaModelUtils.NAME_TO_TYPE_MAP.get(primitive.name()));
+            return getType(primitive);
         }
         if (typeDef instanceof TypeDef.TypeVariable typeVariable) {
             if (typeVariable.bounds().isEmpty()) {
@@ -70,6 +70,10 @@ public class TypeUtils {
             return getType(typeVariable.bounds().get(0), objectDef);
         }
         throw new IllegalStateException("Unsupported type: " + typeDef);
+    }
+
+    public static Type getType(TypeDef.Primitive primitive) {
+        return Type.getType(JavaModelUtils.NAME_TO_TYPE_MAP.get(primitive.name()));
     }
 
     private static String getTypeDescriptor(String className, Type... genericTypes) {

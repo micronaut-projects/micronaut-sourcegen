@@ -41,7 +41,7 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallInstanceMethod2, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.Convert, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.IsNotNull, ExpressionDef.IsNull, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
+    permits ExpressionDef.And, ExpressionDef.CallInstanceMethod, ExpressionDef.CallInstanceMethod2, ExpressionDef.CallStaticMethod, ExpressionDef.Cast, ExpressionDef.Condition, ExpressionDef.Constant, ExpressionDef.EqualsReferentially, ExpressionDef.EqualsStructurally, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.IsNotNull, ExpressionDef.IsNull, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Or, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, TypeDef.Primitive.PrimitiveInstance, VariableDef {
 
     /**
      * The condition of this variable.
@@ -235,17 +235,6 @@ public sealed interface ExpressionDef
      */
     default StatementDef.While whileLoop(StatementDef statement) {
         return new StatementDef.While(this, statement);
-    }
-
-    /**
-     * Convert this variable to a different type.
-     *
-     * @param typeDef The type
-     * @return the convert expression
-     * @since 1.2
-     */
-    default ExpressionDef convert(TypeDef typeDef) {
-        return new ExpressionDef.Convert(typeDef, this);
     }
 
     /**
@@ -569,19 +558,6 @@ public sealed interface ExpressionDef
     @Experimental
     record NewInstance(ClassTypeDef type,
                        List<ExpressionDef> values) implements ExpressionDef {
-    }
-
-    /**
-     * The convert variable expression. (To support Kotlin's nullable -> not-null conversion)
-     *
-     * @param type          The type
-     * @param expressionDef The expression reference
-     * @author Denis Stepanov
-     * @since 1.0
-     */
-    @Experimental
-    record Convert(TypeDef type,
-                   ExpressionDef expressionDef) implements ExpressionDef {
     }
 
     /**

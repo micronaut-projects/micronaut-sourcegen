@@ -24,6 +24,7 @@ import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.signature.SignatureVisitor;
@@ -55,6 +56,23 @@ public class SignatureWriterUtils {
         writeSignature(writer.visitSuperclass(), null, superclass, false);
 
         for (TypeDef superinterface : classDef.getSuperinterfaces()) {
+            writeSignature(writer.visitInterface(), null, superinterface, false);
+        }
+
+        return writer.toString();
+    }
+
+    @Nullable
+    static String getRecordSignature(RecordDef recordDef) {
+        SignatureWriter writer = new SignatureWriter();
+
+        for (TypeDef.TypeVariable typeVariable : recordDef.getTypeVariables()) {
+            writeSignature(writer, null, typeVariable, true);
+        }
+
+        writeSignature(writer.visitSuperclass(), null, TypeDef.of(Record.class), false);
+
+        for (TypeDef superinterface : recordDef.getSuperinterfaces()) {
             writeSignature(writer.visitInterface(), null, superinterface, false);
         }
 

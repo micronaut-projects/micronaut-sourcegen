@@ -84,6 +84,7 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
     private ClassWriter generateClassBytes(ObjectDef objectDef) {
         ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         CheckClassAdapter cv = new CheckClassAdapter(classWriter);
+//        TraceClassVisitor traceClassVisitor = new TraceClassVisitor(classWriter, new PrintWriter(System.out));
         writeObject(cv, objectDef);
         classWriter.visitEnd();
         return classWriter;
@@ -221,7 +222,14 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
     }
 
     private void writeRecord(ClassVisitor classWriter, RecordDef recordDef) {
-        classWriter.visit(V17, ACC_RECORD | getModifiersFlag(recordDef.getModifiers()), TypeUtils.getType(recordDef.asTypeDef()).getInternalName(), null, null, null);
+        classWriter.visit(
+            V17,
+            ACC_RECORD | getModifiersFlag(recordDef.getModifiers()),
+            TypeUtils.getType(recordDef.asTypeDef()).getInternalName(),
+            SignatureWriterUtils.getRecordSignature(recordDef),
+            Type.getType(Record.class).getInternalName(),
+            recordDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, recordDef)).map(Type::getInternalName).toArray(String[]::new)
+        );
     }
 
     private void writeClass(ClassVisitor classWriter, ClassDef classDef) {
@@ -452,6 +460,10 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
     private void cast(GeneratorAdapter generatorAdapter, Context context, TypeDef from, TypeDef to) {
         from = ObjectDef.getContextualType(context.objectDef, from);
         to = ObjectDef.getContextualType(context.objectDef, to);
+        if ((from instanceof TypeDef.Primitive fromP && to instanceof TypeDef.Primitive toP) && !from.equals(to)) {
+            generatorAdapter.cast(TypeUtils.getType(fromP), TypeUtils.getType(toP));
+            return;
+        }
         if ((from.isPrimitive() || to.isPrimitive()) && !from.equals(to)) {
             if (from instanceof TypeDef.Primitive primitive && !to.isPrimitive()) {
                 box(generatorAdapter, context, from);
@@ -542,9 +554,6 @@ public class ByteCodeSourceGenerator implements SourceGenerator {
                     generatorAdapter.arrayStore(type);
                 }
             }
-            return;
-        }
-        if (expressionDef instanceof ExpressionDef.Convert convertExpressionDef) {
             return;
         }
         if (expressionDef instanceof ExpressionDef.Cast castExpressionDef) {

@@ -711,7 +711,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (statementDef is StatementDef.Throw) {
                 return CodeBlock.builder()
                     .add("throw ")
-                    .add(renderExpressionCode(objectDef, methodDef, statementDef.variableDef))
+                    .add(renderExpressionCode(objectDef, methodDef, statementDef.expression))
                     .build()
             }
             if (statementDef is StatementDef.Return) {
@@ -844,9 +844,6 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 codeBuilder.add(")")
                 return codeBuilder.build()
-            }
-            if (expressionDef is Convert) {
-                return renderExpressionCode(objectDef, methodDef, expressionDef.expressionDef, expressionDef.type)
             }
             if (expressionDef is Cast) {
                 val codeBuilder = CodeBlock.builder()
