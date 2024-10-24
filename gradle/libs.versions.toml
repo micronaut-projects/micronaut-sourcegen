@@ -2,7 +2,7 @@
 micronaut = "4.7.0"
 micronaut-docs = "2.0.0"
 micronaut-test = "4.1.0"
-managed-kotlinpoet = "1.18.1"
+managed-kotlinpoet = "2.0.0"
 google-truth = "1.4.4"
 google-compile-testing = "0.21.0"
 google-jimfs = "1.3.0"
