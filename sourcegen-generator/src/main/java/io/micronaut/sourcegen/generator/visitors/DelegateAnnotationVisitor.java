@@ -138,11 +138,7 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
                 .addField(FieldDef.builder(DELEGATEE_MEMBER).ofType(typeDef).build())
                 .addAllFieldsConstructor();
 
-            Set<MethodSignature> createdMethods = new HashSet<>();
-            addDelegateMethods(element, delegate, typeDef, delegateType, createdMethods);
-            for (ClassElement interfaceElement : getAllInterfaces(element)) {
-                addDelegateMethods(interfaceElement, delegate, typeDef, delegateType, createdMethods);
-            }
+            addDelegateMethods(element, delegate, typeDef, delegateType);
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
             if (sourceGenerator == null) {
@@ -179,39 +175,14 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
         }
     }
 
-    private Collection<ClassElement> getAllInterfaces(ClassElement element) {
-        Queue<ClassElement> interfaces = new LinkedList<>();
-        Set<ClassElement> visited = new HashSet<>();
-        interfaces.addAll(element.getInterfaces());
-
-        while (!interfaces.isEmpty()) {
-            ClassElement current = interfaces.poll();
-            visited.add(current);
-            for (ClassElement iface : current.getInterfaces()) {
-                if (!visited.contains(iface)) {
-                    interfaces.add(iface);
-                }
-            }
-        }
-        return visited;
-    }
-
     private void addDelegateMethods(
             ClassElement element, ClassDefBuilder builder,
-            TypeDef typeDef, TypeDef delegateType, Set<MethodSignature> createdMethods
+            TypeDef typeDef, TypeDef delegateType
     ) {
         for (MethodElement method: element.getMethods()) {
             if (method.isPrivate()) {
                 continue;
             }
-            MethodSignature signature = new MethodSignature(
-                method.getName(),
-                Arrays.stream(method.getParameters()).map(v -> v.getType().getName()).toList()
-            );
-            if (createdMethods.contains(signature)) {
-                continue;
-            }
-            createdMethods.add(signature);
 
             TypeDef returnType = TypeDef.of(method.getGenericReturnType());
             MethodDefBuilder methodBuilder = MethodDef.builder(method.getName())
@@ -240,12 +211,6 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
             }
             builder.addMethod(methodBuilder.build());
         }
-    }
-
-    private record MethodSignature(
-        String name,
-        List<String> parameterTypes
-    ) {
     }
 
 }
