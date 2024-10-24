@@ -64,6 +64,14 @@ public sealed interface ClassTypeDef extends TypeDef {
     }
 
     /**
+     * @return True if interface
+     * @since 1.4
+     */
+    default boolean isInterface() {
+        return false;
+    }
+
+    /**
      * Instantiate this class.
      *
      * @return The instantiate expression
@@ -256,6 +264,11 @@ public sealed interface ClassTypeDef extends TypeDef {
         public boolean isEnum() {
             return type.isEnum();
         }
+
+        @Override
+        public boolean isInterface() {
+            return type.isInterface();
+        }
     }
 
     /**
@@ -319,6 +332,11 @@ public sealed interface ClassTypeDef extends TypeDef {
         @Override
         public boolean isEnum() {
             return classElement.isEnum();
+        }
+
+        @Override
+        public boolean isInterface() {
+            return classElement.isInterface();
         }
     }
 

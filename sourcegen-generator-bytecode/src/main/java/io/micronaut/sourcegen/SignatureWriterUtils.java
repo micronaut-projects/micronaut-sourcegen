@@ -169,6 +169,11 @@ public class SignatureWriterUtils {
             signatureWriter.visitEnd();
             return;
         }
+        if (typeDef instanceof TypeDef.Wildcard) {
+            signatureWriter.visitClassType(Type.getType(Object.class).getInternalName());
+            signatureWriter.visitEnd();
+            return;
+        }
         throw new IllegalStateException("Not recognized typedef: " + typeDef);
     }
 

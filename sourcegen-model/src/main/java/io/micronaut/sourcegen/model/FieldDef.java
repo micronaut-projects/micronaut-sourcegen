@@ -49,6 +49,10 @@ public final class FieldDef extends AbstractElement {
         return new FieldDefBuilder(name);
     }
 
+    public static FieldDefBuilder builder(String name, TypeDef type) {
+        return new FieldDefBuilder(name, type);
+    }
+
     public TypeDef getType() {
         return type;
     }
@@ -71,6 +75,11 @@ public final class FieldDef extends AbstractElement {
 
         private FieldDefBuilder(String name) {
             super(name);
+        }
+
+        private FieldDefBuilder(String name, TypeDef type) {
+            this(name);
+            this.type = type;
         }
 
         public FieldDefBuilder ofType(TypeDef type) {

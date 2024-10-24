@@ -175,12 +175,10 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     } else if (parameter.getType().isAssignable(Map.class)) {
                         return mapToArrayListStatement(propertyField, methodParameter);
                     } else {
-                        return propertyField.put(ClassTypeDef.of(ArrayList.class)
-                                .instantiate(methodParameter)
-                            );
+                        return propertyField.put(ClassTypeDef.of(ArrayList.class).instantiate(methodParameter));
                     }
                 } else {
-                    return propertyField.assign(methodParameter);
+                    return propertyField.put(methodParameter);
                 }
             });
         }
@@ -400,7 +398,6 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         );
                     }
                 }
-                System.out.println("*** BUILD " + values);
                 ClassTypeDef buildType = ClassTypeDef.of(producedType);
                 if (beanProperties.isEmpty()) {
                     return buildType.instantiate(values).returning();
@@ -438,7 +435,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         ClassTypeDef elementType = propertyElement.getType().getFirstTypeArgument().map(ClassTypeDef::of).orElse(ClassTypeDef.OBJECT);
         TypeDef propertyType = TypeDef.of(propertyElement.getType());
         ExpressionDef collectionSize = field.isNull().asConditionIfElse(
-            ExpressionDef.constant(0),
+            ExpressionDef.primitiveConstant(0),
             field.invoke("size", TypeDef.primitive(int.class))
         );
         if (collectionType.equals(List.class.getName()) || collectionType.equals(Collection.class.getName()) || collectionType.equals(Iterable.class.getName())) {
@@ -524,10 +521,10 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 field.invoke("iterator", TypeDef.parameterized(Iterator.class, entryType))
                     .newLocal(field.name() + "Iterator", iteratorVar ->
                         iteratorVar.invoke("hasNext", TypeDef.primitive(boolean.class)).whileLoop(
-                            iteratorVar.invoke("next", entryType).newLocal(field.name() + "Entry", entryVar ->
+                            iteratorVar.invoke("next", TypeDef.OBJECT).cast(Map.Entry.class).newLocal(field.name() + "Entry", entryVar ->
                                 mapVar.invoke("put", TypeDef.of(boolean.class),
-                                    entryVar.invoke("getKey", keyType),
-                                    entryVar.invoke("getValue", valueType)
+                                    entryVar.invoke("getKey", TypeDef.OBJECT).cast(keyType),
+                                    entryVar.invoke("getValue", TypeDef.OBJECT).cast(valueType)
                                 ))
                         ).after(
                             ClassTypeDef.of(Collections.class).invokeStatic(unmodifiableMethodName, ClassTypeDef.of(propertyType), mapVar)

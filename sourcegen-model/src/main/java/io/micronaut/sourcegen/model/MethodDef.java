@@ -233,7 +233,7 @@ public final class MethodDef extends AbstractElement {
                 }
             }
             if (returnType == null && !name.equals(CONSTRUCTOR)) {
-                throw new IllegalStateException("Return type of method: " + name + " not specified!");
+                returnType = TypeDef.VOID;
             }
             return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc, overrides);
         }
