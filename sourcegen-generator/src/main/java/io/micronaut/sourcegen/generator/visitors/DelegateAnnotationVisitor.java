@@ -117,16 +117,9 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
 
             if (!element.getTypeArguments().isEmpty()) {
-                for (Entry<String, ClassElement> type: element.getTypeArguments().entrySet()) {
-                    if (type.getValue() instanceof GenericPlaceholderElement placeholderElement) {
-                        delegate.addTypeVariable(new TypeVariable(
-                            type.getKey(),
-                            placeholderElement.getBounds().stream().map(TypeDef::of).toList()
-                        ));
-                    } else {
-                        delegate.addTypeVariable(new TypeVariable(type.getKey()));
-                    }
-                }
+                element.getTypeArguments().forEach(
+                    (k, v) -> delegate.addTypeVariable(TypeVariable.of(k, v))
+                );
                 typeDef = TypeDef.parameterized(
                     typeDef,
                     element.getTypeArguments().entrySet().stream().map(

@@ -403,6 +403,17 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Array, TypeDef.Pri
             this(name, List.of());
         }
 
+        public static TypeVariable of(String name, ClassElement classElement) {
+            if (classElement instanceof GenericPlaceholderElement placeholderElement) {
+                return new TypeVariable(
+                    name,
+                    placeholderElement.getBounds().stream().map(TypeDef::of).toList()
+                );
+            } else {
+                return new TypeVariable(name);
+            }
+        }
+
     }
 
     /**
