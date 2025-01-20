@@ -1,12 +1,9 @@
 package io.micronaut.sourcegen.example.plugin.gradle;
 
-import org.gradle.testkit.runner.BuildTask;
 import org.gradle.testkit.runner.TaskOutcome;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,11 +26,6 @@ class TestPluginTest extends AbstractPluginTest {
                 spec.getProperties().put("age", "java.lang.Integer")
             })
             generateResource("generateHello", "META-INF/hello.txt", "Hello!");
-        }
-
-        repositories {
-            mavenLocal()
-            mavenCentral()
         }
 
         dependencies {
@@ -82,11 +74,6 @@ class TestPluginTest extends AbstractPluginTest {
             generateResource("generateHello", "META-INF/hello.txt", "Hello!");
         }
 
-        repositories {
-            mavenLocal()
-            mavenCentral()
-        }
-
         dependencies {
         }
         """);
@@ -111,11 +98,6 @@ class TestPluginTest extends AbstractPluginTest {
 
         test {
             generateSimpleRecord("generate1", spec -> {})
-        }
-
-        repositories {
-            mavenLocal()
-            mavenCentral()
         }
 
         dependencies {

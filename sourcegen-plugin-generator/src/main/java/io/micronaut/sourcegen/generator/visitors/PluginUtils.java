@@ -74,6 +74,7 @@ public class PluginUtils {
      *
      * @param sourceJavadoc The javadoc for the task type
      * @param property The property representing the parameter
+     * @param type The type to use for parameter
      * @return THe configuration
      */
     public static @NonNull ParameterConfig getParameterConfig(
@@ -178,6 +179,7 @@ public class PluginUtils {
      * @param output Whether it is an output
      * @param globalProperty A global property
      * @param javadoc The javadoc for property
+     * @param type The type to use for generated property
      */
     public record ParameterConfig(
         @NonNull PropertyElement source,

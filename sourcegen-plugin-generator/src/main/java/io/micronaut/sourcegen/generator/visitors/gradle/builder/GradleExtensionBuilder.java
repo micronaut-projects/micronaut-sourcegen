@@ -18,7 +18,6 @@ package io.micronaut.sourcegen.generator.visitors.gradle.builder;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.naming.NameUtils;
-import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.sourcegen.annotations.GenerateGradlePlugin.Type;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils.ParameterConfig;
 import io.micronaut.sourcegen.generator.visitors.gradle.GradlePluginUtils.GradlePluginConfig;

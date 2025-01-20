@@ -28,7 +28,6 @@ import io.micronaut.sourcegen.generator.visitors.PluginUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils.ParameterConfig;
 import io.micronaut.sourcegen.generator.visitors.gradle.GradlePluginUtils.GradlePluginConfig;
 import io.micronaut.sourcegen.generator.visitors.gradle.GradlePluginUtils.GradleTaskConfig;
-import io.micronaut.sourcegen.generator.visitors.maven.MavenPluginUtils.MavenTaskConfig;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassDef.ClassDefBuilder;
@@ -85,8 +84,10 @@ public class GradleTaskBuilder implements GradleTypeBuilder {
         ClassDefBuilder builder = ClassDef.builder(taskType)
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
             .superclass(ClassTypeDef.of("org.gradle.api.DefaultTask"))
-            .addAnnotation("org.gradle.api.tasks.CacheableTask")
             .addJavadoc(taskConfig.taskJavadoc());
+        if (taskConfig.cacheable()) {
+            builder.addAnnotation("org.gradle.api.tasks.CacheableTask");
+        }
         builder.addInnerType(createWorkAction(taskConfig));
         builder.addInnerType(createWorkActionParameters(taskConfig));
         builder.addInnerType(createWorkActionParameterConfigurator(TypeDef.of(taskType), taskConfig));
@@ -114,10 +115,11 @@ public class GradleTaskBuilder implements GradleTypeBuilder {
                     } else {
                         propBuilder.addAnnotation(AnnotationDef.builder(ClassTypeDef.of("org.gradle.api.tasks.InputFile")).build());
                     }
-                    propBuilder.addAnnotation(AnnotationDef.builder(ClassTypeDef.of("org.gradle.api.tasks.PathSensitive"))
-                        .addMember("value", ClassTypeDef.of("org.gradle.api.tasks.PathSensitivity")
-                            .getStaticField("NONE", TypeDef.of("org.gradle.api.tasks.PathSensitivity"))
-                        ).build()
+                    ClassTypeDef pathSensitivityType = ClassTypeDef.of("org.gradle.api.tasks.PathSensitivity");
+                    ClassTypeDef pathSensitiveType = ClassTypeDef.of("org.gradle.api.tasks.PathSensitive");
+                    propBuilder.addAnnotation(AnnotationDef.builder(pathSensitiveType)
+                        .addMember("value", pathSensitivityType.getStaticField(taskConfig.pathSensitivity(), pathSensitivityType))
+                        .build()
                     );
                 }
             }

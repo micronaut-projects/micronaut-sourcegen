@@ -4,6 +4,6 @@ plugins {
 
 micronautBuild {
     binaryCompatibility {
-        enabled.set(false)
+        enabledAfter("1.7.0")
     }
 }
