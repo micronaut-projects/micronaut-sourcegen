@@ -39,7 +39,7 @@ import java.util.Set;
  * @since 1.6.x
  */
 @Internal
-public final class MavenMojoGenerationTriggerAnnotationVisitor implements TypeElementVisitor<GenerateMavenMojo.List, Object> {
+public final class MavenMojoGenerationTriggerAnnotationVisitor implements TypeElementVisitor<Object, Object> {
 
     private final Set<String> processed = new HashSet<>();
     private final Set<String> generated = new HashSet<>();
@@ -58,16 +58,17 @@ public final class MavenMojoGenerationTriggerAnnotationVisitor implements TypeEl
     public Set<String> getSupportedAnnotationNames() {
         return Set.of(
             GenerateMavenMojo.class.getName(),
-            GenerateMavenMojo.List.class.getName()
+            GenerateMavenMojo.class.getName() + "$List"
         );
     }
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        context.info("Creating plugin classes");
-        if (processed.contains(element.getName())) {
+        if (!element.hasAnnotation(GenerateMavenMojo.List.class) || processed.contains(element.getName())) {
             return;
         }
+        context.info("Creating plugin classes");
+
         try {
             List<ObjectDef> definitions = new ArrayList<>();
             List<MavenTaskConfig> taskConfigs = MavenPluginUtils.getTaskConfigs(element, context);

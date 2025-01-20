@@ -58,7 +58,7 @@ public @interface GenerateMavenMojo {
     /**
      * The property prefix to use for parameters generated in Maven Mojo.
      *
-     * @see PluginTaskParameter#mavenProperty()
+     * @see PluginTaskParameter#globalProperty()
      * @return The property prefix
      */
     String mavenPropertyPrefix() default "";

@@ -89,12 +89,15 @@ public @interface GenerateGradlePlugin {
         GRADLE_PLUGIN
     }
 
+    /**
+     * A configuration for generating a gradle task as part of the plugin.
+     */
     @interface GenerateGradleTask {
 
         /**
          * @return The prefix to use for task name.
          */
-        String namePrefix();
+        String namePrefix() default "";
 
         /**
          * @return The task configuration class name that has {@link PluginTask} annotation
