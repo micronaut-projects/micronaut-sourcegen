@@ -18,11 +18,13 @@ package io.micronaut.sourcegen.generator.visitors;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.annotations.PluginTask;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -62,6 +64,22 @@ public final class PluginTaskConfigValidatingVisitor implements TypeElementVisit
         // Verify that method is present
         PluginUtils.getTaskExecutable(element);
 
+        writeJavaDocMetaInfFile(element, context);
+
+        for (PropertyElement property: element.getBeanProperties()) {
+            ClassElement propertyType = property.getType();
+            if (processed.contains(propertyType.getName())) {
+                continue;
+            }
+            if (!propertyType.isEnum() || propertyType.isAssignable(String.class) || propertyType.isAssignable(Collection.class)) {
+                continue;
+            }
+            processed.add(propertyType.getName());
+            writeJavaDocMetaInfFile(propertyType, context);
+        }
+    }
+
+    private void writeJavaDocMetaInfFile(ClassElement element, VisitorContext context) {
         String fileName = JavadocUtils.META_INF_FOLDER + element.getName() + JavadocUtils.META_INF_EXTENSION;
         context.visitMetaInfFile(fileName, element)
             .ifPresent(generatedFile -> {

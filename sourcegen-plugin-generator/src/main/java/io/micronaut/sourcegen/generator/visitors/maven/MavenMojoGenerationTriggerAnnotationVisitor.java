@@ -42,6 +42,7 @@ import java.util.Set;
 public final class MavenMojoGenerationTriggerAnnotationVisitor implements TypeElementVisitor<GenerateMavenMojo.List, Object> {
 
     private final Set<String> processed = new HashSet<>();
+    private final Set<String> generated = new HashSet<>();
 
     @Override
     public @NonNull VisitorKind getVisitorKind() {
@@ -71,6 +72,7 @@ public final class MavenMojoGenerationTriggerAnnotationVisitor implements TypeEl
             List<ObjectDef> definitions = new ArrayList<>();
             List<MavenTaskConfig> taskConfigs = MavenPluginUtils.getTaskConfigs(element, context);
             for (MavenTaskConfig taskConfig : taskConfigs) {
+                definitions.addAll(taskConfig.generatedModels());
                 definitions.add(new MavenMojoBuilder().build(taskConfig));
             }
 
@@ -80,6 +82,10 @@ public final class MavenMojoGenerationTriggerAnnotationVisitor implements TypeEl
             }
             processed.add(element.getName());
             for (ObjectDef definition : definitions) {
+                if (generated.contains(definition.getName())) {
+                    continue;
+                }
+                generated.add(definition.getName());
                 sourceGenerator.write(definition, context, element);
             }
         } catch (ProcessingException e) {

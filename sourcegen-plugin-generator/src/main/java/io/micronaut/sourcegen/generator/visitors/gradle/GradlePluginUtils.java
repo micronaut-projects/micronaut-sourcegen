@@ -26,8 +26,12 @@ import io.micronaut.sourcegen.annotations.GenerateGradlePlugin;
 import io.micronaut.sourcegen.annotations.GenerateGradlePlugin.GenerateGradleTask;
 import io.micronaut.sourcegen.generator.visitors.JavadocUtils;
 import io.micronaut.sourcegen.generator.visitors.JavadocUtils.TypeJavadoc;
+import io.micronaut.sourcegen.generator.visitors.ModelUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils.ParameterConfig;
+import io.micronaut.sourcegen.model.EnumDef;
+import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.TypeDef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,10 +86,18 @@ public final class GradlePluginUtils {
                 + annotation.stringValue("source"));
         }
 
+        List<ObjectDef> generatedModels = new ArrayList<>();
         TypeJavadoc javadoc = JavadocUtils.getTaskJavadoc(context, source);
         List<ParameterConfig> parameters = new ArrayList<>();
         for (PropertyElement property: source.getBeanProperties()) {
-            parameters.add(PluginUtils.getParameterConfig(javadoc, property));
+            TypeDef type = TypeDef.of(property.getType());
+            if (property.getType().isEnum()) {
+                EnumDef model = ModelUtils.copyEnum(
+                    context, element.getPackageName() + ".model", property.getType());
+                generatedModels.add(model);
+                type = model.asTypeDef();
+            }
+            parameters.add(PluginUtils.getParameterConfig(javadoc, property, type));
         }
 
         String namePrefix = annotation.stringValue("namePrefix").orElse(source.getSimpleName());
@@ -101,7 +113,8 @@ public final class GradlePluginUtils {
             namePrefix,
             annotation.stringValue("extensionMethodName").orElse(methodName),
             javadoc.javadoc().orElse(namePrefix + " Gradle task."),
-            methodJavadoc
+            methodJavadoc,
+            generatedModels
         );
     }
 
@@ -137,6 +150,7 @@ public final class GradlePluginUtils {
      * @param extensionMethodName The method name for gradle extension
      * @param methodJavadoc The javadoc for executable method
      * @param taskJavadoc The javadoc for the whole task
+     * @param generatedModels Additional generated models
      */
     public record GradleTaskConfig (
         @NonNull ClassElement source,
@@ -145,7 +159,8 @@ public final class GradlePluginUtils {
         @NonNull String namePrefix,
         @NonNull String extensionMethodName,
         @NonNull String taskJavadoc,
-        @NonNull String methodJavadoc
+        @NonNull String methodJavadoc,
+        @NonNull List<ObjectDef> generatedModels
     ) {
     }
 

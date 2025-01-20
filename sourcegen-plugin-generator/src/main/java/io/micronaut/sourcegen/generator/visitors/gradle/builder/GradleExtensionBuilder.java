@@ -228,10 +228,10 @@ public class GradleExtensionBuilder implements GradleTypeBuilder {
             String getterName = "get" + NameUtils.capitalize(parameter.source().getName());
             TypeDef getterType = createGradleProperty(parameter);
             if (parameter.defaultValue() != null && !parameter.internal()) {
-                ClassElement type = parameter.source().getType();
+                TypeDef type = parameter.type();
                 StatementDef convention = params.get(0)
                     .invoke(getterName, getterType)
-                    .invoke("convention", getterType, ExpressionDef.constant(type, TypeDef.of(type), parameter.defaultValue()));
+                    .invoke("convention", getterType, GradleTaskBuilder.createDefault(type, parameter.defaultValue()));
                 statements.add(convention);
             }
         }
@@ -250,7 +250,7 @@ public class GradleExtensionBuilder implements GradleTypeBuilder {
                 )
             )
         );
-        TypeDef objectFactoryType = TypeDef.of("org.gradle.api.model.ObjectFactory");
+        TypeDef objectFactoryType = TypeDef.of("org.gradle.api.type.ObjectFactory");
         Local spec = new Local("spec", specificationType);
         StatementDef specCreation = new StatementDef.DefineAndAssign(
             spec,

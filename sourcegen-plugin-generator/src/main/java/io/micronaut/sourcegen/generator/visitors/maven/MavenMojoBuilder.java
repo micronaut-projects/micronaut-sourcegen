@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.generator.visitors.maven;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.naming.NameUtils;
+import io.micronaut.sourcegen.generator.visitors.ModelUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils;
 import io.micronaut.sourcegen.generator.visitors.maven.MavenPluginUtils.MavenTaskConfig;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils.ParameterConfig;
@@ -80,7 +81,7 @@ public class MavenMojoBuilder {
         if (parameter.internal() || parameter.output()) {
             builder.addMethod(MethodDef
                 .builder("get" + NameUtils.capitalize(parameter.source().getName()))
-                .returns(TypeDef.of(parameter.source().getType()))
+                .returns(parameter.type())
                 .addModifiers(Modifier.PROTECTED, Modifier.ABSTRACT)
                 .addJavadoc(parameter.javadoc())
                 .build()
@@ -98,7 +99,7 @@ public class MavenMojoBuilder {
                     + "." + MavenPluginUtils.toDotSeparated(parameter.globalProperty()));
             }
             FieldDef field = FieldDef.builder(parameter.source().getName())
-                .ofType(TypeDef.of(parameter.source().getType()))
+                .ofType(parameter.type())
                 .addModifiers(Modifier.PROTECTED)
                 .addAnnotation(ann.build())
                 .addJavadoc(parameter.javadoc())
@@ -128,15 +129,19 @@ public class MavenMojoBuilder {
 
     private StatementDef runTask(MavenTaskConfig taskConfig, VariableDef.This t) {
         List<ExpressionDef> params = new ArrayList<>();
+        List<StatementDef> statements = new ArrayList<>();
         for (ParameterConfig parameter: taskConfig.parameters()) {
+            ExpressionDef expression;
             if (parameter.internal() || parameter.output()) {
                 String getter = "get" + NameUtils.capitalize(parameter.source().getName());
-                params.add(t.invoke(getter, TypeDef.of(parameter.source().getType())));
+                expression = t.invoke(getter, parameter.type());
             } else {
-                params.add(t.field(parameter.source().getName(), TypeDef.of(parameter.source().getType())));
+                expression = t.field(parameter.source().getName(), parameter.type());
             }
+            params.add(ModelUtils.convertParameterIfRequired(parameter, statements, expression));
         }
-        return PluginUtils.executeTaskMethod(taskConfig.source(), taskConfig.methodName(), taskConfig.parameters(), params);
+        statements.add(PluginUtils.executeTaskMethod(taskConfig.source(), taskConfig.methodName(), taskConfig.parameters(), params));
+        return StatementDef.multi(statements);
     }
 
 }

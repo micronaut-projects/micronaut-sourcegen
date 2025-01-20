@@ -26,8 +26,12 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.annotations.GenerateMavenMojo;
 import io.micronaut.sourcegen.generator.visitors.JavadocUtils;
 import io.micronaut.sourcegen.generator.visitors.JavadocUtils.TypeJavadoc;
+import io.micronaut.sourcegen.generator.visitors.ModelUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils.ParameterConfig;
+import io.micronaut.sourcegen.model.EnumDef;
+import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.TypeDef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -88,10 +92,18 @@ public final class MavenPluginUtils {
                 + annotation.stringValue("source"));
         }
 
+        List<ObjectDef> generatedModels = new ArrayList<>();
         TypeJavadoc javadoc = JavadocUtils.getTaskJavadoc(context, source);
         List<ParameterConfig> parameters = new ArrayList<>();
         for (PropertyElement property: source.getBeanProperties()) {
-            parameters.add(PluginUtils.getParameterConfig(javadoc, property));
+            TypeDef type = TypeDef.of(property.getType());
+            if (property.getType().isEnum()) {
+                EnumDef model = ModelUtils.copyEnum(
+                    context, element.getPackageName() + ".model", property.getType());
+                generatedModels.add(model);
+                type = model.asTypeDef();
+            }
+            parameters.add(PluginUtils.getParameterConfig(javadoc, property, type));
         }
 
         String namePrefix = annotation.stringValue("namePrefix").orElse(element.getSimpleName());
@@ -109,7 +121,8 @@ public final class MavenPluginUtils {
             annotation.booleanValue("micronautPlugin").orElse(true),
             annotation.stringValue("mavenPropertyPrefix").orElse(toDotSeparated(namePrefix)),
             javadoc.javadoc().orElse(namePrefix + " Maven Mojo."),
-            methodJavadoc
+            methodJavadoc,
+            generatedModels
         );
     }
 
@@ -125,6 +138,7 @@ public final class MavenPluginUtils {
      * @param mavenPropertyPrefix The prefix for maven properties
      * @param taskJavadoc The javadoc for the whole task
      * @param methodJavadoc The javadoc for the executable method
+     * @param generatedModels Additional generated models
      */
     public record MavenTaskConfig(
         ClassElement source,
@@ -135,7 +149,8 @@ public final class MavenPluginUtils {
         boolean micronautPlugin,
         @Nullable String mavenPropertyPrefix,
         @NonNull String taskJavadoc,
-        @NonNull String methodJavadoc
+        @NonNull String methodJavadoc,
+        @NonNull List<ObjectDef> generatedModels
     ) {
     }
 

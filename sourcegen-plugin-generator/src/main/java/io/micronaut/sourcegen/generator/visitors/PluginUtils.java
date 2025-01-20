@@ -29,6 +29,7 @@ import io.micronaut.sourcegen.annotations.PluginTaskParameter;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.StatementDef;
+import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef.Local;
 
 import java.util.ArrayList;
@@ -76,15 +77,18 @@ public class PluginUtils {
      * @return THe configuration
      */
     public static @NonNull ParameterConfig getParameterConfig(
-            @NonNull JavadocUtils.TypeJavadoc sourceJavadoc, @NonNull PropertyElement property
+            @NonNull JavadocUtils.TypeJavadoc sourceJavadoc, @NonNull PropertyElement property, @Nullable TypeDef type
     ) {
         AnnotationValue<PluginTaskParameter> annotation = property.getAnnotation(PluginTaskParameter.class);
         String javadoc = sourceJavadoc.elements().get(property.getName());
         if (javadoc == null) {
             javadoc = "Configurable " + property.getName() + " parameter.";
         }
+        if (type == null) {
+            type = TypeDef.of(property.getType());
+        }
         if (annotation == null) {
-            return new ParameterConfig(property, false, null, false, false, false, null, javadoc);
+            return new ParameterConfig(property, false, null, false, false, false, null, javadoc, type);
         }
         return new ParameterConfig(
             property,
@@ -94,7 +98,8 @@ public class PluginUtils {
             annotation.booleanValue("directory").orElse(false),
             annotation.booleanValue("output").orElse(false),
             annotation.stringValue("globalProperty").orElse(null),
-            javadoc
+            javadoc,
+            type
         );
     }
 
@@ -182,7 +187,8 @@ public class PluginUtils {
         boolean directory,
         boolean output,
         @Nullable String globalProperty,
-        @NonNull String javadoc
+        @NonNull String javadoc,
+        @NonNull TypeDef type
     ) {
     }
 

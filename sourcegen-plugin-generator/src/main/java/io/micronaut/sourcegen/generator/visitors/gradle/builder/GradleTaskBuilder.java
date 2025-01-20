@@ -17,19 +17,27 @@ package io.micronaut.sourcegen.generator.visitors.gradle.builder;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
+import io.micronaut.core.convert.ConversionService;
 import io.micronaut.core.naming.NameUtils;
+import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.sourcegen.annotations.GenerateGradlePlugin;
 import io.micronaut.sourcegen.annotations.GenerateGradlePlugin.Type;
+import io.micronaut.sourcegen.generator.visitors.ModelUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils.ParameterConfig;
 import io.micronaut.sourcegen.generator.visitors.gradle.GradlePluginUtils.GradlePluginConfig;
 import io.micronaut.sourcegen.generator.visitors.gradle.GradlePluginUtils.GradleTaskConfig;
+import io.micronaut.sourcegen.generator.visitors.maven.MavenPluginUtils.MavenTaskConfig;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassDef.ClassDefBuilder;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.ClassTypeDef.ClassDefType;
+import io.micronaut.sourcegen.model.ClassTypeDef.ClassElementType;
+import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.ExpressionDef.Constant;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.InterfaceDef.InterfaceDefBuilder;
@@ -181,14 +189,14 @@ public class GradleTaskBuilder implements GradleTypeBuilder {
                         ExpressionDef def = t.field(taskField).invoke(getterName, getterType);
                         if (!parameter.required()) {
                             if (parameter.defaultValue() != null) {
-                                ClassElement type = parameter.source().getType();
+                                TypeDef type = parameter.type();
                                 def = def.invoke(
                                     "orElse",
-                                    TypeDef.of(parameter.source().getType()),
-                                    ExpressionDef.constant(type, TypeDef.of(type), parameter.defaultValue())
+                                    type,
+                                    createDefault(type, parameter.defaultValue())
                                 );
                             } else {
-                                def = def.invoke("getOrNull", TypeDef.of(parameter.source().getType()));
+                                def = def.invoke("getOrNull", parameter.type());
                             }
                         }
                         statements.add(params.get(0)
@@ -200,6 +208,21 @@ public class GradleTaskBuilder implements GradleTypeBuilder {
                 })
             )
             .build();
+    }
+
+    static ExpressionDef createDefault(TypeDef type, String value) {
+        if (type instanceof ClassElementType classElementType) {
+            return ExpressionDef.constant(classElementType.classElement(), type, value);
+        } else if (type instanceof TypeDef.Primitive primitiveType) {
+            return ClassUtils.getPrimitiveType(primitiveType.name()).flatMap(t ->
+                ConversionService.SHARED.convert(value, t)
+            ).map(o -> new Constant(type, o)).orElse(null);
+        } else if (type instanceof ClassDefType classDefType) {
+            if (classDefType.objectDef() instanceof EnumDef enumDef) {
+                return classDefType.getStaticField(value, type);
+            }
+        }
+        throw new UnsupportedOperationException("Cannot create default value of type " + type);
     }
 
     private ClassDef createClasspathConfigurator(TypeDef taskType, GradleTaskConfig taskConfig) {
@@ -244,30 +267,12 @@ public class GradleTaskBuilder implements GradleTypeBuilder {
 
     private ClassDef createWorkAction(GradleTaskConfig taskConfig) {
         ClassTypeDef parametersType = ClassTypeDef.of(taskConfig.namePrefix() + "WorkActionParameters");
-        List<ExpressionDef> params = new ArrayList<>();
-        for (ParameterConfig parameter: taskConfig.parameters()) {
-            ExpressionDef expression = new VariableDef.Local("parameters", parametersType)
-                .invoke("get" + NameUtils.capitalize(parameter.source().getName()), createGradleProperty(parameter))
-                .invoke("get", TypeDef.of(parameter.source().getType()));
-            if (parameter.source().getType().isAssignable(File.class)) {
-                expression = expression.invoke("getAsFile", TypeDef.of(File.class));
-            }
-            params.add(expression);
-        }
         MethodDef executeMethod = MethodDef
             .builder("execute")
             .returns(TypeDef.VOID)
             .addModifiers(Modifier.PUBLIC)
             .overrides()
-            .addStatement(
-                new VariableDef.This()
-                    .invoke("getParameters", parametersType)
-                    .newLocal("parameters")
-            )
-            .addStatement(
-                PluginUtils.executeTaskMethod(taskConfig.source(), taskConfig.methodName(), taskConfig.parameters(), params)
-            )
-            .build();
+            .build((t, params) -> runTask(taskConfig, t, parametersType));
         return ClassDef.builder(taskConfig.namePrefix() + "WorkAction")
             .addSuperinterface(TypeDef.parameterized(
                 ClassTypeDef.of("org.gradle.workers.WorkAction"),
@@ -276,6 +281,24 @@ public class GradleTaskBuilder implements GradleTypeBuilder {
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT, Modifier.STATIC)
             .addMethod(executeMethod)
             .build();
+    }
+
+    private StatementDef runTask(GradleTaskConfig taskConfig, VariableDef.This t, ClassTypeDef parametersType) {
+        List<StatementDef> statements = new ArrayList<>();
+        List<ExpressionDef> params = new ArrayList<>();
+        statements.add(t.invoke("getParameters", parametersType).newLocal("parameters"));
+
+        for (ParameterConfig parameter: taskConfig.parameters()) {
+            ExpressionDef expression = new VariableDef.Local("parameters", parametersType)
+                .invoke("get" + NameUtils.capitalize(parameter.source().getName()), createGradleProperty(parameter))
+                .invoke("get", parameter.type());
+            if (parameter.source().getType().isAssignable(File.class)) {
+                expression = expression.invoke("getAsFile", TypeDef.of(File.class));
+            }
+            params.add(ModelUtils.convertParameterIfRequired(parameter, statements, expression));
+        }
+        statements.add(PluginUtils.executeTaskMethod(taskConfig.source(), taskConfig.methodName(), taskConfig.parameters(), params));
+        return StatementDef.multi(statements);
     }
 
     static TypeDef createGradleProperty(ParameterConfig parameter) {
@@ -308,7 +331,7 @@ public class GradleTaskBuilder implements GradleTypeBuilder {
         } else {
             return TypeDef.parameterized(
                 ClassTypeDef.of("org.gradle.api.provider.Property"),
-                ClassTypeDef.of(parameter.source().getGenericType())
+                parameter.type()
             );
         }
     }

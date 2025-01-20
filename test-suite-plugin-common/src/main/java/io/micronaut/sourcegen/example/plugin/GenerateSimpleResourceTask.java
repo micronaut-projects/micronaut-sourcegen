@@ -52,6 +52,12 @@ public final class GenerateSimpleResourceTask {
     private File outputFolder;
 
     /**
+     * How the file ends.
+     */
+    @PluginTaskParameter(defaultValue = "NONE")
+    private Ending ending;
+
+    /**
      * Generate a simple record in the supplied package and with the specified version.
      * This javadoc will be copied to the respected plugin implementations.
      */
@@ -62,7 +68,7 @@ public final class GenerateSimpleResourceTask {
         File outputFile = new File(outputFolder.getAbsolutePath() + File.separator + fileName);
         outputFile.getParentFile().mkdirs();
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
-            writer.write(content);
+            writer.write(content + (ending == Ending.NEWLINE ? "\n" : ""));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -80,5 +86,17 @@ public final class GenerateSimpleResourceTask {
 
     public void setOutputFolder(File outputFolder) {
         this.outputFolder = outputFolder;
+    }
+
+    public void setEnding(Ending ending) {
+        this.ending = ending;
+    }
+
+    /**
+     * An enum representing how the file ends.
+     */
+    public enum Ending {
+        NONE,
+        NEWLINE
     }
 }

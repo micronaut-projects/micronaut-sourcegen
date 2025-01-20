@@ -26,6 +26,7 @@ import io.micronaut.sourcegen.annotations.GenerateGradlePlugin.Type;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.generator.visitors.gradle.GradlePluginUtils.GradlePluginConfig;
+import io.micronaut.sourcegen.generator.visitors.gradle.GradlePluginUtils.GradleTaskConfig;
 import io.micronaut.sourcegen.generator.visitors.gradle.builder.GradleExtensionBuilder;
 import io.micronaut.sourcegen.generator.visitors.gradle.builder.GradlePluginBuilder;
 import io.micronaut.sourcegen.generator.visitors.gradle.builder.GradleSpecificationBuilder;
@@ -54,6 +55,7 @@ public final class GradlePluginGenerationTriggerAnnotationVisitor implements Typ
         new GradlePluginBuilder()
     );
 
+    private final Set<String> generated = new HashSet<>();
     private final Set<String> processed = new HashSet<>();
 
     @Override
@@ -82,8 +84,11 @@ public final class GradlePluginGenerationTriggerAnnotationVisitor implements Typ
                 return;
             }
 
-            GradlePluginConfig pluginConfig = GradlePluginUtils.getPluginConfig(element, context);
             List<ObjectDef> definitions = new ArrayList<>();
+            GradlePluginConfig pluginConfig = GradlePluginUtils.getPluginConfig(element, context);
+            for (GradleTaskConfig taskConfig: pluginConfig.tasks()) {
+                definitions.addAll(taskConfig.generatedModels());
+            }
             for (Type type: pluginConfig.types()) {
                 List<ObjectDef> typeDefinitions = new ArrayList<>();
                 for (GradleTypeBuilder gradleTypeBuilder : BUILDERS) {
@@ -103,6 +108,10 @@ public final class GradlePluginGenerationTriggerAnnotationVisitor implements Typ
             }
             processed.add(element.getName());
             for (ObjectDef definition : definitions) {
+                if (generated.contains(definition.getName())) {
+                    continue;
+                }
+                generated.add(definition.getName());
                 sourceGenerator.write(definition, context, element);
             }
         } catch (ProcessingException e) {
