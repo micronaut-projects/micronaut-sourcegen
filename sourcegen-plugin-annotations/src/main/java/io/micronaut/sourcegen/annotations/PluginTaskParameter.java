@@ -92,4 +92,26 @@ public @interface PluginTaskParameter {
      */
     boolean output() default false;
 
+    /**
+     * @return Path sensitivity to use for file parameters. This would reflect on how
+     * task executions are cached. If the path is considered equal, task won't be executed again.
+     * This has no effect for Maven.
+     */
+    PathSensitivity pathSensitivity() default PathSensitivity.ABSOLUTE;
+
+    /**
+     * Path sensitivity options.
+     * The specified part of the file path is used when detecting if the property has changed.
+     */
+    enum PathSensitivity {
+        /** The parameter is ignored for caching. **/
+        NONE,
+        /** Only name of the file is compared. **/
+        NAME_ONLY,
+        /** The relative path is compared. **/
+        RELATIVE,
+        /** The absolute path is compared. **/
+        ABSOLUTE
+    }
+
 }

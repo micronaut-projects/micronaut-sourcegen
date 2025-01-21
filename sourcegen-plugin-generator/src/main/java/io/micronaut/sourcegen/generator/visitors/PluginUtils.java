@@ -26,6 +26,7 @@ import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.sourcegen.annotations.PluginTaskExecutable;
 import io.micronaut.sourcegen.annotations.PluginTaskParameter;
+import io.micronaut.sourcegen.annotations.PluginTaskParameter.PathSensitivity;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.StatementDef;
@@ -89,7 +90,7 @@ public class PluginUtils {
             type = TypeDef.of(property.getType());
         }
         if (annotation == null) {
-            return new ParameterConfig(property, false, null, false, false, false, null, javadoc, type);
+            return new ParameterConfig(property, false, null, false, false, false, null, javadoc, type, PathSensitivity.ABSOLUTE);
         }
         return new ParameterConfig(
             property,
@@ -100,7 +101,8 @@ public class PluginUtils {
             annotation.booleanValue("output").orElse(false),
             annotation.stringValue("globalProperty").orElse(null),
             javadoc,
-            type
+            type,
+            annotation.enumValue("pathSensitivity", PathSensitivity.class).orElse(PathSensitivity.ABSOLUTE)
         );
     }
 
@@ -203,7 +205,8 @@ public class PluginUtils {
         boolean output,
         @Nullable String globalProperty,
         @NonNull String javadoc,
-        @NonNull TypeDef type
-    ) {
+        @NonNull TypeDef type,
+        @NonNull PathSensitivity pathSensitivity
+        ) {
     }
 }

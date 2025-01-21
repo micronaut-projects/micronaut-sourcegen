@@ -109,7 +109,6 @@ public final class GradlePluginUtils {
             javadoc.javadoc().orElse(namePrefix + " Gradle task."),
             methodJavadoc,
             generatedModels,
-            annotation.stringValue("pathSensitivity").orElse("ABSOLUTE"),
             annotation.booleanValue("cacheable").orElse(true)
         );
     }
@@ -147,7 +146,6 @@ public final class GradlePluginUtils {
      * @param methodJavadoc The javadoc for executable method
      * @param taskJavadoc The javadoc for the whole task
      * @param generatedModels Additional generated models
-     * @param pathSensitivity The path sensitivity
      * @param cacheable Whether the task should be cacheable
      */
     public record GradleTaskConfig (
@@ -159,7 +157,6 @@ public final class GradlePluginUtils {
         @NonNull String taskJavadoc,
         @NonNull String methodJavadoc,
         @NonNull List<ObjectDef> generatedModels,
-        @NonNull String pathSensitivity,
         boolean cacheable
     ) {
     }

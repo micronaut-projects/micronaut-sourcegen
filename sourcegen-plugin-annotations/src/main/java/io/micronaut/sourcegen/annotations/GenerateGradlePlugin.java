@@ -114,12 +114,6 @@ public @interface GenerateGradlePlugin {
          */
         boolean cacheable() default true;
 
-        /**
-         * @return Path sensitivity to use for file parameters must be one of
-         * {@code org.gradle.api.tasks.PathSensitivity} values: ABSOLUTE, RELATIVE, NAME_ONLY, NONE.
-         */
-        String pathSensitivity() default "ABSOLUTE";
-
     }
 
 

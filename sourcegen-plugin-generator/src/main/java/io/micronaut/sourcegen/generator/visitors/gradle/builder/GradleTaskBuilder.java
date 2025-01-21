@@ -119,7 +119,7 @@ public class GradleTaskBuilder implements GradleTypeBuilder {
                     ClassTypeDef pathSensitivityType = ClassTypeDef.of("org.gradle.api.tasks.PathSensitivity");
                     ClassTypeDef pathSensitiveType = ClassTypeDef.of("org.gradle.api.tasks.PathSensitive");
                     propBuilder.addAnnotation(AnnotationDef.builder(pathSensitiveType)
-                        .addMember("value", pathSensitivityType.getStaticField(taskConfig.pathSensitivity(), pathSensitivityType))
+                        .addMember("value", pathSensitivityType.getStaticField(parameter.pathSensitivity().name(), pathSensitivityType))
                         .build()
                     );
                 }
