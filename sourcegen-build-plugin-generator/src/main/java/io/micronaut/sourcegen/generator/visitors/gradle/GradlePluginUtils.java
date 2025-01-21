@@ -27,9 +27,9 @@ import io.micronaut.sourcegen.annotations.GenerateGradlePlugin.GenerateGradleTas
 import io.micronaut.sourcegen.generator.visitors.JavadocUtils;
 import io.micronaut.sourcegen.generator.visitors.JavadocUtils.TypeJavadoc;
 import io.micronaut.sourcegen.generator.visitors.ModelUtils;
+import io.micronaut.sourcegen.generator.visitors.ModelUtils.GeneratedModel;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils.ParameterConfig;
-import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
 import java.util.ArrayList;
@@ -85,7 +85,7 @@ public final class GradlePluginUtils {
                 + annotation.stringValue("source"));
         }
 
-        List<ObjectDef> generatedModels = new ArrayList<>();
+        List<GeneratedModel> generatedModels = new ArrayList<>();
         TypeJavadoc javadoc = JavadocUtils.getTaskJavadoc(context, source);
         List<ParameterConfig> parameters = new ArrayList<>();
         for (PropertyElement property: source.getBeanProperties()) {
@@ -156,7 +156,7 @@ public final class GradlePluginUtils {
         @NonNull String extensionMethodName,
         @NonNull String taskJavadoc,
         @NonNull String methodJavadoc,
-        @NonNull List<ObjectDef> generatedModels,
+        @NonNull List<GeneratedModel> generatedModels,
         boolean cacheable
     ) {
     }

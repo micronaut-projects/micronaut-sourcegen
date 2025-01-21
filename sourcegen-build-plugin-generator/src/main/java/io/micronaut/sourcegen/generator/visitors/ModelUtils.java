@@ -46,6 +46,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * A utility class for working with complex types, like enums and POJOs.
@@ -64,8 +65,14 @@ public class ModelUtils {
      * @return The type
      */
     public static TypeDef getType(
-            VisitorContext context, String packageName, ClassElement element, List<ObjectDef> objects
+            VisitorContext context, String packageName, ClassElement element, List<GeneratedModel> objects
     ) {
+        Optional<GeneratedModel> exists = objects.stream()
+            .filter(v -> v.source().getName().equals(element.getName()))
+            .findFirst();
+        if (exists.isPresent()) {
+            return exists.get().type();
+        }
         if (element.isEnum()) {
             context.info("Copying plugin model for enum: " + element.getName());
             return copyEnum(context, packageName, element, objects);
@@ -87,7 +94,7 @@ public class ModelUtils {
      * @return The type of copied enum
      */
     private static ClassTypeDef copyEnum(
-            VisitorContext context, String packageName, ClassElement element, List<ObjectDef> objects
+            VisitorContext context, String packageName, ClassElement element, List<GeneratedModel> objects
     ) {
         EnumDefBuilder enumDefBuilder = EnumDef.builder(packageName + "."
                 + element.getSimpleName().replaceAll(".+\\$", ""))
@@ -99,8 +106,9 @@ public class ModelUtils {
             }
         }
         EnumDef enumDef = enumDefBuilder.build();
-        objects.add(enumDef);
-        return enumDef.asTypeDef();
+        ClassTypeDef type = enumDef.asTypeDef();
+        objects.add(new GeneratedModel(enumDef, element, convertEnumMethod(type, element), type));
+        return type;
     }
 
     /**
@@ -113,7 +121,7 @@ public class ModelUtils {
      * @return The type of copied POJO
      */
     private static TypeDef copyPOJO(
-            VisitorContext context, String packageName, ClassElement element, List<ObjectDef> objects
+            VisitorContext context, String packageName, ClassElement element, List<GeneratedModel> objects
     ) {
         TypeJavadoc javadoc = JavadocUtils.getTaskJavadoc(context, element);
         ClassDefBuilder classDefBuilder = ClassDef.builder(packageName + "."
@@ -144,8 +152,9 @@ public class ModelUtils {
             .addAllFieldsConstructor(Modifier.PUBLIC)
             .addConstructor(Collections.emptyList(), Modifier.PUBLIC)
             .build();
-        objects.add(classDef);
-        return classDef.asTypeDef();
+        ClassTypeDef type = classDef.asTypeDef();
+        objects.add(new GeneratedModel(classDef, element, convertPOJOMethod(type, element), type));
+        return type;
     }
 
     /**
@@ -162,35 +171,13 @@ public class ModelUtils {
     public static ExpressionDef convertParameterIfRequired(
         ClassElement type, String name, List<StatementDef> statements, ExpressionDef paramExpression
     ) {
-        if (type.isEnum()) {
+        if (type.isEnum() || isPOJO(type)) {
             ClassTypeDef requiredType = ClassTypeDef.of(type);
             VariableDef.Local param = new VariableDef.Local(name, requiredType);
-            statements.add(param.defineAndAssign(paramExpression.ifNull(ExpressionDef.constant(null), requiredType
-                .invokeStatic("valueOf", requiredType, paramExpression.invoke("name", TypeDef.STRING)))));
+            String simpleName = type.getSimpleName().replaceAll(".+\\$", "");
+            statements.add(param.defineAndAssign(new VariableDef.This()
+                .invoke("convert" + simpleName, requiredType, paramExpression)));
             return param;
-        }
-        if (isPOJO(type)) {
-            List<StatementDef> ifNonNullStatements = new ArrayList<>();
-            Map<String, ExpressionDef> args = new HashMap<>();
-            for (PropertyElement property: type.getBeanProperties()) {
-                String capitalizedName = NameUtils.capitalize(property.getName());
-                args.put(property.getName(), convertParameterIfRequired(
-                    property.getType(),
-                    name + capitalizedName,
-                    ifNonNullStatements,
-                    paramExpression.invoke("get" + capitalizedName, TypeDef.OBJECT)
-                ));
-            }
-
-            Local pojo = new Local(name, TypeDef.of(type));
-            Local temp = PluginUtils.instantiateType(type, name + "Temp", args, ifNonNullStatements);
-            ifNonNullStatements.add(pojo.assign(temp));
-
-            statements.add(pojo.defineAndAssign(ExpressionDef.constant(null)));
-            statements.add(new StatementDef.If(
-                paramExpression.isNonNull(), StatementDef.multi(ifNonNullStatements)
-            ));
-            return pojo;
         }
         return paramExpression;
     }
@@ -227,6 +214,48 @@ public class ModelUtils {
             });
     }
 
+    private static MethodDef convertEnumMethod(TypeDef type, ClassElement requiredType) {
+        String simpleName = requiredType.getSimpleName().replaceAll(".+\\$", "");
+        ClassTypeDef outputType = ClassTypeDef.of(requiredType);
+        return MethodDef.builder("convert" + simpleName)
+            .returns(TypeDef.of(requiredType))
+            .addParameter("value", type)
+            .build((t, params) -> new StatementDef.IfElse(
+                params.get(0).isNull(),
+                ExpressionDef.constant(null).returning(),
+                outputType.invokeStatic("valueOf", outputType,
+                    params.get(0).invoke("name", TypeDef.STRING)
+                ).returning()
+            ));
+    }
+
+    private static MethodDef convertPOJOMethod(TypeDef type, ClassElement requiredType) {
+        String simpleName = requiredType.getSimpleName().replaceAll(".+\\$", "");
+        return MethodDef.builder("convert" + simpleName)
+            .returns(TypeDef.of(requiredType))
+            .addParameter("value", type)
+            .build((t, params) -> {
+                List<StatementDef> statements = new ArrayList<>();
+                Map<String, ExpressionDef> args = new HashMap<>();
+                for (PropertyElement property: requiredType.getBeanProperties()) {
+                    args.put(property.getName(), convertParameterIfRequired(
+                        property.getType(),
+                        NameUtils.capitalize(property.getName()) + "Param",
+                        statements,
+                        params.get(0).invoke("get" + NameUtils.capitalize(property.getName()), TypeDef.OBJECT)
+                    ));
+                }
+                Local result = PluginUtils.instantiateType(requiredType, "result", args, statements);
+                statements.add(result.returning());
+
+                return new StatementDef.IfElse(
+                    params.get(0).isNull(),
+                    ExpressionDef.constant(null).returning(),
+                    StatementDef.multi(statements)
+                );
+            });
+    }
+
     /**
      * Whether it is considered a POJO.
      *
@@ -239,6 +268,22 @@ public class ModelUtils {
             && !element.getPackageName().equals("java.util")
             && !element.getPackageName().equals("java.lang")
             && !element.getPackageName().equals("java.io");
+    }
+
+    /**
+     * A record for holding the generated model.
+     *
+     * @param model The generated model object def
+     * @param source The source of the model
+     * @param convertorMethod The method that converts model to source
+     * @param type The type of the mode
+     */
+    public record GeneratedModel(
+        ObjectDef model,
+        ClassElement source,
+        MethodDef convertorMethod,
+        TypeDef type
+    ) {
     }
 
 }

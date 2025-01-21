@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.generator.visitors.maven;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.sourcegen.generator.visitors.ModelUtils;
+import io.micronaut.sourcegen.generator.visitors.ModelUtils.GeneratedModel;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils;
 import io.micronaut.sourcegen.generator.visitors.maven.MavenPluginUtils.MavenTaskConfig;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils.ParameterConfig;
@@ -73,6 +74,7 @@ public class MavenMojoBuilder {
             .addJavadoc("Determines if this mojo must be executed.\n@return true if the mojo is enabled")
             .build()
         );
+        builder.addMethods(taskConfig.generatedModels().stream().map(GeneratedModel::convertorMethod).toList());
         builder.addMethod(createExecuteMethod(taskConfig));
         builder.addJavadoc(taskConfig.taskJavadoc());
 

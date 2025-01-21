@@ -24,6 +24,7 @@ import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.sourcegen.annotations.GenerateGradlePlugin;
 import io.micronaut.sourcegen.annotations.GenerateGradlePlugin.Type;
 import io.micronaut.sourcegen.generator.visitors.ModelUtils;
+import io.micronaut.sourcegen.generator.visitors.ModelUtils.GeneratedModel;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils.ParameterConfig;
 import io.micronaut.sourcegen.generator.visitors.gradle.GradlePluginUtils.GradlePluginConfig;
@@ -281,6 +282,7 @@ public class GradleTaskBuilder implements GradleTypeBuilder {
                 ClassTypeDef.of("org.gradle.workers.WorkAction"),
                 parametersType
             ))
+            .addMethods(taskConfig.generatedModels().stream().map(GeneratedModel::convertorMethod).toList())
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT, Modifier.STATIC)
             .addMethod(executeMethod)
             .build();

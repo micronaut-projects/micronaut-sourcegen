@@ -24,6 +24,7 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.annotations.GenerateMavenMojo;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
+import io.micronaut.sourcegen.generator.visitors.ModelUtils.GeneratedModel;
 import io.micronaut.sourcegen.generator.visitors.maven.MavenPluginUtils.MavenTaskConfig;
 import io.micronaut.sourcegen.model.ObjectDef;
 
@@ -73,7 +74,7 @@ public final class MavenMojoGenerationTriggerAnnotationVisitor implements TypeEl
             List<ObjectDef> definitions = new ArrayList<>();
             List<MavenTaskConfig> taskConfigs = MavenPluginUtils.getTaskConfigs(element, context);
             for (MavenTaskConfig taskConfig : taskConfigs) {
-                definitions.addAll(taskConfig.generatedModels());
+                definitions.addAll(taskConfig.generatedModels().stream().map(GeneratedModel::model).toList());
                 definitions.add(new MavenMojoBuilder().build(taskConfig));
             }
 
