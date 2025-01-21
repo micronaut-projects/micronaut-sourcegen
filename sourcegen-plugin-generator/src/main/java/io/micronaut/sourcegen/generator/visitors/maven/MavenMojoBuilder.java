@@ -35,7 +35,9 @@ import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A builder for Maven Mojos.
@@ -128,7 +130,7 @@ public class MavenMojoBuilder {
     }
 
     private StatementDef runTask(MavenTaskConfig taskConfig, VariableDef.This t) {
-        List<ExpressionDef> params = new ArrayList<>();
+        Map<String, ExpressionDef> params = new HashMap<>();
         List<StatementDef> statements = new ArrayList<>();
         for (ParameterConfig parameter: taskConfig.parameters()) {
             ExpressionDef expression;
@@ -138,9 +140,14 @@ public class MavenMojoBuilder {
             } else {
                 expression = t.field(parameter.source().getName(), parameter.type());
             }
-            params.add(ModelUtils.convertParameterIfRequired(parameter, statements, expression));
+            params.put(
+                parameter.source().getName(),
+                ModelUtils.convertParameterIfRequired(
+                    parameter.source().getType(), parameter.source().getName() + "Param", statements, expression
+                )
+            );
         }
-        statements.add(PluginUtils.executeTaskMethod(taskConfig.source(), taskConfig.methodName(), taskConfig.parameters(), params));
+        statements.add(PluginUtils.executeTaskMethod(taskConfig.source(), taskConfig.methodName(), params));
         return StatementDef.multi(statements);
     }
 

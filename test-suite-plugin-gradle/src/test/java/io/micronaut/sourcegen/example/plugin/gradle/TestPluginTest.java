@@ -88,6 +88,45 @@ class TestPluginTest extends AbstractPluginTest {
     }
 
     @Test
+    void generateSimpleResourceRepeated() {
+        settingsFile("rootProject.name = 'test-project'");
+        buildFile("""
+        import io.micronaut.sourcegen.example.plugin.gradle.model.Repeat
+        import io.micronaut.sourcegen.example.plugin.gradle.model.Ending
+
+        plugins {
+            id "io.micronaut.sourcegen.test"
+            id "java"
+        }
+
+        test {
+            generateSimpleResource("generateHello", spec -> {
+                spec.getFileName().set("META-INF/hello.txt")
+                spec.getContent().set("Hello!")
+                spec.getRepeat().set(
+                    new Repeat().withNumber(2).withRepeatSuffix("_").withEnding(Ending.NEWLINE)
+                )
+            });
+        }
+
+        dependencies {
+        }
+        """);
+
+        var result = configureRunner(":generateHello").build();
+
+        assertEquals(TaskOutcome.SUCCESS, result.task(":generateHello").getOutcome());
+
+        File generatedResource1 = file("build/generated/generateHello/META-INF/hello.txt_1");
+        assertTrue(generatedResource1.exists());
+        assertEquals("Hello!\n", content(generatedResource1));
+
+        File generatedResource2 = file("build/generated/generateHello/META-INF/hello.txt_2");
+        assertTrue(generatedResource2.exists());
+        assertEquals("Hello!\n", content(generatedResource2));
+    }
+
+    @Test
     void failOnRequiredProperty() {
         settingsFile("rootProject.name = 'test-project'");
         buildFile("""

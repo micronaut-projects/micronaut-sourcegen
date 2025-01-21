@@ -24,7 +24,6 @@ import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.annotations.PluginTask;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -64,6 +63,10 @@ public final class PluginTaskConfigValidatingVisitor implements TypeElementVisit
         // Verify that method is present
         PluginUtils.getTaskExecutable(element);
 
+        writeJavaDocForType(context, element);
+    }
+
+    private void writeJavaDocForType(VisitorContext context, ClassElement element) {
         writeJavaDocMetaInfFile(element, context);
 
         for (PropertyElement property: element.getBeanProperties()) {
@@ -71,15 +74,16 @@ public final class PluginTaskConfigValidatingVisitor implements TypeElementVisit
             if (processed.contains(propertyType.getName())) {
                 continue;
             }
-            if (!propertyType.isEnum() || propertyType.isAssignable(String.class) || propertyType.isAssignable(Collection.class)) {
+            if (!propertyType.isEnum() || !ModelUtils.isPOJO(propertyType)) {
                 continue;
             }
             processed.add(propertyType.getName());
-            writeJavaDocMetaInfFile(propertyType, context);
+            writeJavaDocForType(context, propertyType);
         }
     }
 
     private void writeJavaDocMetaInfFile(ClassElement element, VisitorContext context) {
+        context.info("Writing javadoc META-INF file for " + element.getName());
         String fileName = JavadocUtils.META_INF_FOLDER + element.getName() + JavadocUtils.META_INF_EXTENSION;
         context.visitMetaInfFile(fileName, element)
             .ifPresent(generatedFile -> {

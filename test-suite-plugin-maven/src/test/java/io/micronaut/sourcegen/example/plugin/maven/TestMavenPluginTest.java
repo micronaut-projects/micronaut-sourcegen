@@ -42,4 +42,20 @@ public class TestMavenPluginTest extends AbstractMavenPluginTest {
         assertEquals(content(generated), "Hello!");
     }
 
+    @Test
+    void generateSimpleResourceWithRepeat() throws Exception {
+        File pom = new File("src/test/resources/test-resource-repeat-pom.xml");
+
+        GenerateSimpleResourceMojo mojo = (GenerateSimpleResourceMojo) findConfiguredMojo("generateSimpleResource", pom);
+        mojo.execute();
+
+        File generated1 = file("META-INF/hello.txt_1");
+        assertTrue(generated1.exists());
+        assertEquals(content(generated1), "Hello!\n");
+
+        File generated2 = file("META-INF/hello.txt_2");
+        assertTrue(generated2.exists());
+        assertEquals(content(generated2), "Hello!\n");
+    }
+
 }

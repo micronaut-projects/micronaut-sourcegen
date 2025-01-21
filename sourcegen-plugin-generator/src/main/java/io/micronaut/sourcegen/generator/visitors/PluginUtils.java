@@ -30,10 +30,10 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.VariableDef;
 import io.micronaut.sourcegen.model.VariableDef.Local;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -105,65 +105,78 @@ public class PluginUtils {
     }
 
     /**
-     * A common method for executing the main task executable.
+     * Instantiate a type.
      *
-     * @param source The source annotated with {@link io.micronaut.sourcegen.annotations.PluginTask}
-     * @param methodName The name of the method annotated with {@link PluginTaskExecutable}
-     * @param parameters The parameters of the task
-     * @param arguments The prepared arguments for the task
-     * @return The statements to execute the task method
+     * @param element The class element
+     * @param name The name to use for the local variable
+     * @param arguments The arguments provided for type creation corresponding to properties
+     * @param statements A mutable statements list
+     * @return The local variable representing the instantiated type
      */
-    public static StatementDef executeTaskMethod(
-            ClassElement source, String methodName, List<ParameterConfig> parameters, List<ExpressionDef> arguments
-    ) {
-        List<StatementDef> statements = new ArrayList<>();
-        ClassTypeDef taskType = ClassTypeDef.of(source);
-        Local task = new Local("task", taskType);
+    static VariableDef.Local instantiateType(
+        ClassElement element, String name, Map<String, ExpressionDef> arguments, List<StatementDef> statements
+    )  {
+        ClassTypeDef taskType = ClassTypeDef.of(element);
+        Local local = new Local(name, taskType);
 
-        MethodElement constructor = source.getPrimaryConstructor().orElse(null);
+        MethodElement constructor = element.getPrimaryConstructor().orElse(null);
         if (constructor == null) {
-            throw new ProcessingException(source, "No constructor found for " + source.getName());
+            throw new ProcessingException(element, "No constructor found for " + element.getName());
         }
-        if (source.isRecord()) {
-            statements.add(new StatementDef.DefineAndAssign(task,
-                taskType.instantiate(constructor, arguments)
+        if (element.isRecord()) {
+            List<ExpressionDef> argsSorted = element.getBeanProperties().stream()
+                .map(prop -> arguments.get(prop.getName()))
+                .toList();
+            statements.add(new StatementDef.DefineAndAssign(local,
+                taskType.instantiate(constructor, argsSorted)
             ));
         } else {
             Set<String> fulfilledArgs = new HashSet<>();
-            Map<String, ExpressionDef> argsByName = new HashMap<>();
-            for (int i = 0; i < parameters.size(); i++) {
-                argsByName.put(parameters.get(i).source().getName(), arguments.get(i));
-            }
 
             constructor.getParameters();
             List<ExpressionDef> constructorArgs = new ArrayList<>();
             for (ParameterElement param : constructor.getParameters()) {
                 fulfilledArgs.add(param.getName());
-                constructorArgs.add(argsByName.containsValue(param.getName())
-                    ? argsByName.get(param.getName()) : ExpressionDef.constant(null));
+                constructorArgs.add(arguments.containsValue(param.getName())
+                    ? arguments.get(param.getName()) : ExpressionDef.constant(null));
             }
-            statements.add(task.defineAndAssign(
+            statements.add(local.defineAndAssign(
                 taskType.instantiate(constructor, constructorArgs)));
 
-            for (PropertyElement property : source.getBeanProperties()) {
+            for (PropertyElement property : element.getBeanProperties()) {
                 if (fulfilledArgs.contains(property.getName())
-                    || !argsByName.containsKey(property.getName())
+                    || !arguments.containsKey(property.getName())
                 ) {
                     continue;
                 }
                 Optional<MethodElement> writeMethod = property.getWriteMethod();
                 if (writeMethod.isPresent()) {
-                    statements.add(task.invoke(writeMethod.get(), argsByName.get(property.getName())));
+                    statements.add(local.invoke(writeMethod.get(), arguments.get(property.getName())));
                     fulfilledArgs.add(property.getName());
                 } else if (property.getField().isPresent()
                     && (property.isPublic() || property.isPackagePrivate())
                 ) {
-                    statements.add(task.field(property.getField().get()).assign(argsByName.get(property.getName())));
+                    statements.add(local.field(property.getField().get()).assign(arguments.get(property.getName())));
                     fulfilledArgs.add(property.getName());
                 }
             }
         }
+        return local;
+    }
 
+    /**
+     * A common method for executing the main task executable.
+     *
+     * @param source The source annotated with {@link io.micronaut.sourcegen.annotations.PluginTask}
+     * @param methodName The name of the method annotated with {@link PluginTaskExecutable}
+     * @param arguments The prepared arguments for the task by name
+     * @return The statements to execute the task method
+     */
+    public static StatementDef executeTaskMethod(
+            ClassElement source, String methodName, Map<String, ExpressionDef> arguments
+    ) {
+        List<StatementDef> statements = new ArrayList<>();
+        Local task = instantiateType(source, "task", arguments, statements);
         statements.add(task.invoke(methodName, ClassTypeDef.VOID));
         return StatementDef.multi(statements);
     }
@@ -193,5 +206,4 @@ public class PluginUtils {
         @NonNull TypeDef type
     ) {
     }
-
 }

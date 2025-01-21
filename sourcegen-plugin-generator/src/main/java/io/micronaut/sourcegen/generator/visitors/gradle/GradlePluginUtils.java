@@ -29,7 +29,6 @@ import io.micronaut.sourcegen.generator.visitors.JavadocUtils.TypeJavadoc;
 import io.micronaut.sourcegen.generator.visitors.ModelUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils;
 import io.micronaut.sourcegen.generator.visitors.PluginUtils.ParameterConfig;
-import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
@@ -90,13 +89,8 @@ public final class GradlePluginUtils {
         TypeJavadoc javadoc = JavadocUtils.getTaskJavadoc(context, source);
         List<ParameterConfig> parameters = new ArrayList<>();
         for (PropertyElement property: source.getBeanProperties()) {
-            TypeDef type = TypeDef.of(property.getType());
-            if (property.getType().isEnum()) {
-                EnumDef model = ModelUtils.copyEnum(
-                    context, element.getPackageName() + ".model", property.getType());
-                generatedModels.add(model);
-                type = model.asTypeDef();
-            }
+            TypeDef type = ModelUtils.getType(context, element.getPackageName() + ".model",
+                property.getType(), generatedModels);
             parameters.add(PluginUtils.getParameterConfig(javadoc, property, type));
         }
 

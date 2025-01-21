@@ -51,6 +51,7 @@ import io.micronaut.sourcegen.model.VariableDef;
 import javax.lang.model.element.Modifier;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -287,19 +288,28 @@ public class GradleTaskBuilder implements GradleTypeBuilder {
 
     private StatementDef runTask(GradleTaskConfig taskConfig, VariableDef.This t, ClassTypeDef parametersType) {
         List<StatementDef> statements = new ArrayList<>();
-        List<ExpressionDef> params = new ArrayList<>();
+        Map<String, ExpressionDef> params = new HashMap<>();
         statements.add(t.invoke("getParameters", parametersType).newLocal("parameters"));
 
         for (ParameterConfig parameter: taskConfig.parameters()) {
             ExpressionDef expression = new VariableDef.Local("parameters", parametersType)
-                .invoke("get" + NameUtils.capitalize(parameter.source().getName()), createGradleProperty(parameter))
-                .invoke("get", parameter.type());
+                .invoke("get" + NameUtils.capitalize(parameter.source().getName()), createGradleProperty(parameter));
+            if (!parameter.required() && parameter.defaultValue() == null) {
+                expression = expression.invoke("getOrNull", parameter.type());
+            } else {
+                expression = expression.invoke("get", parameter.type());
+            }
             if (parameter.source().getType().isAssignable(File.class)) {
                 expression = expression.invoke("getAsFile", TypeDef.of(File.class));
             }
-            params.add(ModelUtils.convertParameterIfRequired(parameter, statements, expression));
+            params.put(
+                parameter.source().getName(),
+                ModelUtils.convertParameterIfRequired(
+                    parameter.source().getType(), parameter.source().getName() + "Param", statements, expression
+                )
+            );
         }
-        statements.add(PluginUtils.executeTaskMethod(taskConfig.source(), taskConfig.methodName(), taskConfig.parameters(), params));
+        statements.add(PluginUtils.executeTaskMethod(taskConfig.source(), taskConfig.methodName(), params));
         return StatementDef.multi(statements);
     }
 

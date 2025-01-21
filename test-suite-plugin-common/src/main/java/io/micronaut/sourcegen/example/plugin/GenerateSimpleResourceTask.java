@@ -58,11 +58,27 @@ public final class GenerateSimpleResourceTask {
     private Ending ending;
 
     /**
+     * Configure generating repeated file.
+     */
+    @PluginTaskParameter()
+    private Repeat repeat;
+
+    /**
      * Generate a simple record in the supplied package and with the specified version.
      * This javadoc will be copied to the respected plugin implementations.
      */
     @PluginTaskExecutable
     public void generateSimpleResource() {
+        generateOne(fileName, ending);
+
+        if (repeat != null) {
+            for (int i = 0; i < repeat.number; ++i) {
+                generateOne(fileName + repeat.repeatSuffix + (i + 1), repeat.ending);
+            }
+        }
+    }
+
+    private void generateOne(String fileName, Ending ending) {
         System.out.println("Generating resource " + fileName);
 
         File outputFile = new File(outputFolder.getAbsolutePath() + File.separator + fileName);
@@ -92,11 +108,29 @@ public final class GenerateSimpleResourceTask {
         this.ending = ending;
     }
 
+    public void setRepeat(Repeat repeat) {
+        this.repeat = repeat;
+    }
+
     /**
      * An enum representing how the file ends.
      */
     public enum Ending {
         NONE,
         NEWLINE
+    }
+
+    /**
+     * Configuration for repeating the file.
+     *
+     * @param number Number of repeats
+     * @param repeatSuffix The suffix to use
+     * @param ending The file ending
+     */
+    public record Repeat(
+        int number,
+        String repeatSuffix,
+        Ending ending
+    ) {
     }
 }

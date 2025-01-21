@@ -29,8 +29,7 @@ import static java.lang.annotation.RetentionPolicy.CLASS;
  * <p>The annotation is used during generation of particular plugin implementations, like Maven
  * Mojos or Gradle Tasks.</p>
  *
- * <p>Java primitives, strings, lists, maps and enums are supported.</p>
- * TODO support simple records/POJOs.
+ * <p>Java primitives, strings, lists, maps, enums and simple records/POJOs are supported.</p>
  *
  * @author Andriy Dmytruk
  * @since 1.6.x
