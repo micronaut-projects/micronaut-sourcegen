@@ -12,7 +12,7 @@ dependencies {
     api(projects.sourcegenModel)
     implementation(projects.sourcegenGenerator)
     api(mn.micronaut.core.processor)
-    implementation(projects.sourcegenPluginAnnotations)
+    implementation(projects.sourcegenBuildPluginAnnotations)
 
     testImplementation(projects.sourcegenAnnotations)
     testImplementation(mn.micronaut.inject.java.test)

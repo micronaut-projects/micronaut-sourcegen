@@ -195,6 +195,7 @@ public class PluginUtils {
      * @param globalProperty A global property
      * @param javadoc The javadoc for property
      * @param type The type to use for generated property
+     * @param pathSensitivity The path sensitivity
      */
     public record ParameterConfig(
         @NonNull PropertyElement source,

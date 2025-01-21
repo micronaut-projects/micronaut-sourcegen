@@ -13,8 +13,8 @@ dependencies {
     annotationProcessor(mn.micronaut.inject)
     annotationProcessor(mn.micronaut.inject.java)
     annotationProcessor(projects.sourcegenGeneratorJava)
-    annotationProcessor(projects.sourcegenPluginGenerator)
-    implementation(projects.sourcegenPluginAnnotations)
+    annotationProcessor(projects.sourcegenBuildPluginGenerator)
+    implementation(projects.sourcegenBuildPluginAnnotations)
 
     compileOnly("org.apache.maven.plugin-tools:maven-plugin-annotations:3.9.0")
     implementation("org.apache.maven:maven-plugin-api:3.9.4")
