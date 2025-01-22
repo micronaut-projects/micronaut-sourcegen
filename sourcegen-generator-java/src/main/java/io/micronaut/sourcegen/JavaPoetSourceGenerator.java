@@ -513,6 +513,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             );
         }
         if (statementDef instanceof StatementDef.Return aReturn) {
+            if (aReturn.expression() == null) {
+                return CodeBlock.of("return");
+            }
             return CodeBlock.concat(
                 CodeBlock.of("return "),
                 renderExpression(objectDef, methodDef, aReturn.expression())
