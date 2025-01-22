@@ -40,6 +40,7 @@ public final class ClassDef extends ObjectDef {
     private final ClassTypeDef superclass;
     private final StatementDef staticInitializer;
 
+    @SuppressWarnings("ParameterNumber")
     private ClassDef(ClassTypeDef.ClassName className,
                      EnumSet<Modifier> modifiers,
                      List<FieldDef> fields,
