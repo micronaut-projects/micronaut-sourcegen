@@ -1,6 +1,7 @@
 package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.context.BeanResolutionContext;
+import io.micronaut.core.annotation.AnnotationClassValue;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInEnumVisitor;
@@ -25,6 +26,7 @@ import javax.lang.model.element.Modifier;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Constructor;
 import java.util.AbstractList;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +53,94 @@ import static io.micronaut.sourcegen.model.ExpressionDef.MathUnaryOperation.OpTy
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ByteCodeWriterTest {
+
+    @Test
+    void voidClassLoading() {
+        final Constructor<?> CONSTRUCTOR_CLASS_VALUE = ReflectionUtils.getRequiredInternalConstructor(
+            AnnotationClassValue.class,
+            String.class
+        );
+
+        final Constructor<?> CONSTRUCTOR_CLASS_VALUE_WITH_CLASS = ReflectionUtils.getRequiredInternalConstructor(
+            AnnotationClassValue.class,
+            Class.class
+        );
+        ClassTypeDef TYPE_ANNOTATION_CLASS_VALUE = ClassTypeDef.of(AnnotationClassValue.class);
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(
+                MethodDef.builder("loadClass")
+                    .addModifiers(Modifier.PRIVATE, Modifier.FINAL, Modifier.STATIC)
+                    .returns(TYPE_ANNOTATION_CLASS_VALUE)
+                    .buildStatic(methodParameters -> StatementDef.doTry(
+                        TYPE_ANNOTATION_CLASS_VALUE.instantiate(
+                            CONSTRUCTOR_CLASS_VALUE_WITH_CLASS,
+                            ExpressionDef.constant(TypeDef.VOID)
+                        ).returning()
+                    ).doCatch(Throwable.class, exceptionVar -> TYPE_ANNOTATION_CLASS_VALUE.instantiate(
+                        CONSTRUCTOR_CLASS_VALUE,
+                        ExpressionDef.constant(TypeDef.VOID.name())
+                    ).returning()))
+            )
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(def, bytecodeWriter);
+
+        String bytecode = bytecodeWriter.toString();
+        Assertions.assertEquals("""
+// class version 61.0 (61)
+// access flags 0x1
+// signature Ljava/lang/Object;
+// declaration: example/Example
+public class example/Example {
+
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1A
+  private final static loadClass()Lio/micronaut/core/annotation/AnnotationClassValue;
+    TRYCATCHBLOCK L0 L1 L2 java/lang/Throwable
+   L0
+    NEW io/micronaut/core/annotation/AnnotationClassValue
+    DUP
+    GETSTATIC java/lang/Void.TYPE : Ljava/lang/Class;
+    INVOKESPECIAL io/micronaut/core/annotation/AnnotationClassValue.<init> (Ljava/lang/Class;)V
+    ARETURN
+   L1
+    GOTO L3
+   L2
+    ASTORE 0
+    NEW io/micronaut/core/annotation/AnnotationClassValue
+    DUP
+    LDC "void"
+    INVOKESPECIAL io/micronaut/core/annotation/AnnotationClassValue.<init> (Ljava/lang/String;)V
+    ARETURN
+    GOTO L3
+   L3
+}
+""", bytecode);
+
+        Assertions.assertEquals("""
+package example;
+
+import io.micronaut.core.annotation.AnnotationClassValue;
+
+public class Example {
+   private static final AnnotationClassValue loadClass() {
+      try {
+         return new AnnotationClassValue(Void.TYPE);
+      } catch (Throwable var1) {
+         return new AnnotationClassValue("void");
+      }
+   }
+}
+""", decompileToJava(bytes));
+    }
 
     @Test
     void ifElseExpression() {
@@ -117,6 +207,7 @@ public class Example {
 }
 """, decompileToJava(bytes));
     }
+
 
     @Test
     void compareOpsCast() {
