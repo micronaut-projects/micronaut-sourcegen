@@ -1081,7 +1081,7 @@ public sealed interface ExpressionDef
                 }
             }
             this.opType = opType;
-            this.right = right.cast(left.type());
+            this.right = right.equals(ExpressionDef.nullValue()) ? right : right.cast(left.type());
             this.left = left;
         }
 
