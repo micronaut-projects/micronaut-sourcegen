@@ -52,7 +52,9 @@ public class ExpressionWriteTest extends AbstractWriteTest {
                             methodParameters.get(0).compare(GREATER_THAN, methodParameters.get(1)),
                             methodParameters.get(0).compare(LESS_THAN, methodParameters.get(1)),
                             methodParameters.get(0).compare(GREATER_THAN_OR_EQUAL, methodParameters.get(1)),
-                            methodParameters.get(0).compare(LESS_THAN_OR_EQUAL, methodParameters.get(1))
+                            methodParameters.get(0).compare(LESS_THAN_OR_EQUAL, methodParameters.get(1)),
+                            methodParameters.get(0).isNull(),
+                            methodParameters.get(0).isNonNull()
                         ).returning()))
                 .build()
         );
@@ -64,7 +66,7 @@ import java.lang.Object;
 
 public class Example {
   Object[] myMethod(int arg1, int arg2) {
-    return new Object[]{arg1 == arg2,arg1 != arg2,arg1 > arg2,arg1 < arg2,arg1 >= arg2,arg1 <= arg2};
+    return new Object[]{arg1 == arg2,arg1 != arg2,arg1 > arg2,arg1 < arg2,arg1 >= arg2,arg1 <= arg2,arg1 == null,arg1 != null};
   }
 }
 """, data);
