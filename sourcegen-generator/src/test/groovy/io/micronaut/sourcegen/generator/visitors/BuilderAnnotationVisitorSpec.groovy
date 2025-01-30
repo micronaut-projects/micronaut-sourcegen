@@ -47,4 +47,35 @@ class BuilderAnnotationVisitorSpec extends AbstractTypeElementSpec {
         walrus != null
     }
 
+    void "test builder for non-standard property"() {
+        given:
+        var classLoader = buildClassLoader("test.Walrus", """
+        package test;
+        import io.micronaut.sourcegen.annotations.Builder;
+
+        @Builder(annotatedWith = {})
+        public class Walrus {
+           private String aBC;
+
+           public Walrus(
+                   String aBC
+           ) {
+               this.aBC = aBC;
+           }
+
+           public void getABC(String aBC) {
+               this.aBC = aBC;
+           }
+
+        }
+        """)
+        var walrusBuilderClass = classLoader.loadClass("test.WalrusBuilder")
+
+        expect:
+        var walrusBuilder = walrusBuilderClass.newInstance(new Object[]{ "hello" })
+        var walrus = walrusBuilder.build()
+        walrus != null
+        walrus.aBC == "hello"
+    }
+
 }
