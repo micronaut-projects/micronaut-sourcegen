@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 original authors
+ * Copyright 2017-2025 original authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,28 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.example;
+package io.micronaut.sourcegen.custom.example;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-import io.micronaut.sourcegen.custom.example.*;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-import java.util.List;
-
-@GenerateMyBean1
-@GenerateMyBean2
-@GenerateMyBean3
-@GenerateMyRecord1
-@GenerateMyRecord3
-@GenerateInterface
-@GenerateMyRepository1
-@GenerateMyEnum1
-@GenerateIfsPredicate
-@GenerateSwitch
-@GenerateArray
-@GenerateAnnotatedType
-@GenerateInnerTypes
-@GenerateMyEnum2
-@GenerateJavadoc
-public class Trigger {
-    public List<String> copyAddresses;
+@Retention(RUNTIME)
+@Target(ElementType.TYPE)
+public @interface GenerateJavadoc {
 }

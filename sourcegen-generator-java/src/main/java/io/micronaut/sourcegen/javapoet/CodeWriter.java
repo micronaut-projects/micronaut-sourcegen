@@ -148,14 +148,31 @@ final class CodeWriter {
   public void emitJavadoc(CodeBlock javadocCodeBlock) throws IOException {
     if (javadocCodeBlock.isEmpty()) return;
 
+    CodeBlock cleanJavadocBlock = CodeBlock.of(formatJavadoc(javadocCodeBlock.toString()));
     emit("/**\n");
     javadoc = true;
     try {
-      emit(javadocCodeBlock, true);
+      emit(cleanJavadocBlock, true);
     } finally {
       javadoc = false;
     }
     emit(" */\n");
+  }
+
+  private String formatJavadoc(String input) {
+      String cleanStr = input
+          .replaceAll("& ", "&amp; ")
+          .replaceAll("'", "&apos;")
+          .replaceAll("\"", "&quot;")
+          .replaceAll("\\$", "\\$\\$")
+          .trim();
+
+      // all javadocs sentences should end with a period.
+//      var lastIndex = cleanStr.contains("@") ? cleanStr.indexOf("@"): cleanStr.length();
+//      if (cleanStr.charAt(lastIndex - 1) != '.') {
+//          cleanStr = cleanStr.substring(0, lastIndex) + '.' + cleanStr.substring(lastIndex);
+//      }
+      return cleanStr;
   }
 
   public void emitAnnotations(List<AnnotationSpec> annotations, boolean inline) throws IOException {
