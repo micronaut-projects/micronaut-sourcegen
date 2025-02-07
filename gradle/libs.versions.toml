@@ -8,7 +8,7 @@ intellij-java-decompiler = "243.23654.189"
 
 managed-asm = "9.7.1"
 
-micronaut = "4.7.13"
+micronaut = "4.8.0"
 micronaut-platform = "4.7.3"
 micronaut-docs = "2.0.0"
 micronaut-test = "4.6.2"
