@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 original authors
+ * Copyright 2017-2024 original authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,26 +15,22 @@
  */
 package io.micronaut.sourcegen.example;
 
+public interface MyRepository {
 
-import io.micronaut.sourcegen.custom.example.*;
+    static String staticMethod(String string, Integer integer, int i) {
+        return string + (integer + i);
+    }
 
-import java.util.List;
+    default String defaultMethod(String string, Integer integer, int i) {
+        return string + (integer + i);
+    }
 
-@GenerateMyBean1
-@GenerateMyBean2
-@GenerateMyBean3
-@GenerateMyRecord1
-@GenerateMyRecord3
-@GenerateInterface
-@GenerateMyRepository1
-@GenerateMyEnum1
-@GenerateIfsPredicate
-@GenerateSwitch
-@GenerateArray
-@GenerateAnnotatedType
-@GenerateInnerTypes
-@GenerateMyEnum2
-@GenerateMethodInvocation
-public class Trigger {
-    public List<String> copyAddresses;
+    String interfaceMethod(String string, Integer integer, int i);
+
+    double interfaceMethodReturnsDouble();
+
+    long interfaceMethodReturnsLong();
+
+    int interfaceMethodReturnsInt();
+
 }
