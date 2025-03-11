@@ -341,14 +341,14 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             );
         }
         if (typedElement instanceof ClassElement classElement) {
-            if (classElement.getFirstTypeArgument().isPresent()) {
-                return TypeDef.parameterized(
-                    ClassTypeDef.of(classElement),
-                    classElement.getBoundGenericTypes().stream().map(TypeDef::of).toList()
-                );
-            } else {
+            Map<String, ClassElement> typeArguments = classElement.getTypeArguments();
+            if (typeArguments.isEmpty()) {
                 return ClassTypeDef.of(classElement);
             }
+            return TypeDef.parameterized(
+                ClassTypeDef.of(classElement),
+                typeArguments.values().stream().map(TypeDef::of).toList()
+            );
         }
         throw new IllegalStateException("Unknown typed element: " + typedElement);
     }
