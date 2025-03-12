@@ -20,20 +20,14 @@ import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
-import io.micronaut.sourcegen.custom.example.GenerateMyRepository1;
 import io.micronaut.sourcegen.custom.example.GenerateMyRepository2;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
-import io.micronaut.sourcegen.model.ClassDef;
-import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
-import io.micronaut.sourcegen.model.MethodDef;
-import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
 import javax.lang.model.element.Modifier;
 import java.util.List;
-import java.util.Optional;
 
 @Internal
 public final class GenerateMyRepository2Visitor implements TypeElementVisitor<GenerateMyRepository2, Object> {

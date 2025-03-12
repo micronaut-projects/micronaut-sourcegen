@@ -19,6 +19,7 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.example.GenerateMethodInvocation;
@@ -28,6 +29,7 @@ import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
+import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -172,6 +174,22 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
 
         sourceGenerator.write(classDef, context, element);
 
+        ClassTypeDef myRepoType = ClassTypeDef.of(myRepository);
+        MethodElement defaultMethod = myRepository.findMethod("defaultMethod").get();
+        ClassDef interfaceSuperInvokerDef = ClassDef.builder("io.micronaut.sourcegen.example.MethodRepositoryInvoker")
+            .addModifiers(Modifier.ABSTRACT)
+            .addSuperinterface(myRepoType)
+            .addMethod(MethodDef.override(defaultMethod)
+                .build((aThis, methodParameters) ->
+                    JavaIdioms.concatStrings(
+                        ExpressionDef.constant("ABC"),
+                        aThis.superRef(myRepoType)
+                            .invoke(defaultMethod, methodParameters)
+                    ).returning())
+            ).build();
+
+        sourceGenerator.write(interfaceSuperInvokerDef, context, element);
+
         FieldDef targetField = FieldDef.builder("target", TypeDef.OBJECT).addModifiers(Modifier.PRIVATE).build();
         FieldDef lockField = FieldDef.builder("lock", ClassTypeDef.of(ReentrantReadWriteLock.class))
             .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
@@ -224,7 +242,9 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
                     methodParameters.get(1).invoke("getAndIncrement", TypeDef.Primitive.INT),
                     StatementDef.doTry(
                         StatementDef.multi(
-                            ClassTypeDef.of(IllegalStateException.class).instantiate().doThrow(),
+                            ExpressionDef.trueValue().isTrue().doIf(
+                                ClassTypeDef.of(IllegalStateException.class).instantiate().doThrow()
+                            ),
                             methodParameters.get(1).invoke("getAndIncrement", TypeDef.Primitive.INT),
                             aThis.field(targetField).returning()
                         )
@@ -238,7 +258,9 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
                     methodParameters.get(1).invoke("getAndIncrement", TypeDef.Primitive.INT),
                     StatementDef.doTry(
                             StatementDef.multi(
-                                ClassTypeDef.of(IllegalStateException.class).instantiate(ExpressionDef.constant("Bam")).doThrow(),
+                                    ExpressionDef.trueValue().isTrue().doIf(
+                                        ClassTypeDef.of(IllegalStateException.class).instantiate(ExpressionDef.constant("Bam")).doThrow()
+                                    ),
                                 methodParameters.get(1).invoke("getAndIncrement", TypeDef.Primitive.INT),
                                 aThis.field(targetField).returning()
                             )
