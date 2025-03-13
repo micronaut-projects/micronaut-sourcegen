@@ -130,13 +130,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             String capitalizedPropertyName = NameUtils.capitalize(propertyName);
             interfaceBuilder.addMethod(MethodSpec.methodBuilder("get" + capitalizedPropertyName)
                 .addModifiers(property.getModifiersArray())
-                .addJavadoc("Getter method for " + propertyName)
+                .addJavadoc("Getter method for " + propertyName + ".\n@return $L", propertyName)
                 .returns(propertyType)
 //                    .addStatement("return this." + propertyName)
                 .build());
             interfaceBuilder.addMethod(MethodSpec.methodBuilder("set" + capitalizedPropertyName)
                 .addModifiers(property.getModifiersArray())
-                .addJavadoc("Setter method for " + propertyName)
+                .addJavadoc("Setter method for " + propertyName + ".\n@param $L", propertyName)
                 .addParameter(ParameterSpec.builder(propertyType, propertyName).build())
 //                    .addStatement("this." + propertyName + " = " + propertyName)
                 .build());
@@ -343,16 +343,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
             builder.addMethod(MethodSpec.methodBuilder("get" + capitalizedPropertyName)
                 .addModifiers(property.getModifiersArray())
-                .addJavadoc("Getter method for " + propertyName)
-                .addJavadoc("\n@return $L", propertyName)
+                .addJavadoc("Getter method for " + propertyName + ".\n@return $L", propertyName)
                 .returns(propertyType)
                 .addStatement("return this." + propertyName)
                 .build());
             if (objectDef instanceof ClassDef) {
                 builder.addMethod(MethodSpec.methodBuilder("set" + capitalizedPropertyName)
                     .addModifiers(property.getModifiersArray())
-                    .addJavadoc("Setter method for " + propertyName)
-                    .addJavadoc("\n@param $L", propertyName)
+                    .addJavadoc("Setter method for " + propertyName + ".\n@param $L", propertyName)
                     .addParameter(ParameterSpec.builder(propertyType, propertyName).build())
                     .addStatement("this." + propertyName + " = " + propertyName)
                     .build());
