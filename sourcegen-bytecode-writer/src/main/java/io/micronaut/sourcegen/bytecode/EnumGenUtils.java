@@ -20,6 +20,7 @@ import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
+import io.micronaut.sourcegen.model.EnumDef.EnumConstantDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -71,14 +72,14 @@ public class EnumGenUtils {
         }
 
         int i = 0;
-        for (Map.Entry<String, List<ExpressionDef>> e : enumDef.getEnumConstants().entrySet()) {
+        for (EnumConstantDef e : enumDef.getEnumConstants()) {
 
             List<ExpressionDef> values = new ArrayList<>();
-            values.add(ExpressionDef.constant(e.getKey()));
+            values.add(ExpressionDef.constant(e.name()));
             values.add(TypeDef.Primitive.INT.constant(i++));
-            values.addAll(e.getValue());
+            values.addAll(e.constructorArgs());
 
-            FieldDef enumField = FieldDef.builder(e.getKey(), enumTypeDef)
+            FieldDef enumField = FieldDef.builder(e.name(), enumTypeDef)
                 .addModifiers(Modifier.FINAL, Modifier.STATIC, Modifier.PUBLIC)
                 .initializer(enumTypeDef.instantiate(values))
                 .build();
@@ -108,9 +109,8 @@ public class EnumGenUtils {
                 enumTypeDef.array()
                     .instantiate(
                         enumDef.getEnumConstants()
-                            .keySet()
                             .stream()
-                            .<ExpressionDef>map(name -> enumTypeDef.getStaticField(name, enumTypeDef))
+                            .<ExpressionDef>map(e -> enumTypeDef.getStaticField(e.name(), enumTypeDef))
                             .toList()
                     )
                     .returning());

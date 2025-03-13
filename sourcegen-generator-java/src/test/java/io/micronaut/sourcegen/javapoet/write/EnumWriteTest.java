@@ -2,6 +2,7 @@ package io.micronaut.sourcegen.javapoet.write;
 
 import io.micronaut.sourcegen.JavaPoetSourceGenerator;
 import io.micronaut.sourcegen.model.EnumDef;
+import io.micronaut.sourcegen.model.EnumDef.EnumConstantDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -37,6 +38,41 @@ public class EnumWriteTest {
 
           ACTIVE,
           IN_PROGRESS,
+          DELETED
+        }
+        """;
+        assertEquals(expected.strip(), result.strip());
+    }
+
+    @Test
+    public void writeEnumWithJavadoc() throws IOException {
+        EnumDef enumDef = EnumDef.builder("test.Status")
+            .addJavadoc("Enum representing the status of a process.")
+            .addEnumConstant(EnumConstantDef.builder("ACTIVE").addJavadoc("The active state.").build())
+            .addEnumConstant(EnumConstantDef.builder("IN_PROGRESS").addJavadoc("The in progress state.").build())
+            .addEnumConstant(EnumConstantDef.builder("DELETED").addJavadoc("The in deleted state.").build())
+            .build();
+        var result = writeEnum(enumDef);
+
+        var expected = """
+        package test;
+
+        /**
+         * Enum representing the status of a process.
+         */
+        enum Status {
+
+          /**
+           * The active state.
+           */
+          ACTIVE,
+          /**
+           * The in progress state.
+           */
+          IN_PROGRESS,
+          /**
+           * The in deleted state.
+           */
           DELETED
         }
         """;
@@ -205,7 +241,7 @@ public class EnumWriteTest {
         }
 
         // The regex will skip the imports and make sure it is a record
-        final Pattern ENUM_REGEX = Pattern.compile("package [^;]+;[^/]+" +
+        final Pattern ENUM_REGEX = Pattern.compile("package [^;]+;[^{]+" +
             "enum " + enumDef.getSimpleName() + " \\{\\s+" +
             "([\\s\\S]+)\\s+}\\s+");
         Matcher matcher = ENUM_REGEX.matcher(result);
