@@ -186,14 +186,14 @@ public final class EnumDef extends ObjectDef {
 
         public EnumDefBuilder addEnumConstant(String name) {
             String constName = getConstantName(name);
-            enumConstants.add(new EnumConstantDef(constName, Collections.emptyList(), null));
+            enumConstants.add(new EnumConstantDef(constName, Collections.emptyList(), Collections.emptyList()));
             return this;
         }
 
         public EnumDefBuilder addEnumConstant(String name, ExpressionDef... values) {
             Objects.requireNonNull(values, "Values cannot be null");
             String constName = getConstantName(name);
-            enumConstants.add(new EnumConstantDef(constName, List.of(values), null));
+            enumConstants.add(new EnumConstantDef(constName, List.of(values), Collections.emptyList()));
             return this;
         }
 
