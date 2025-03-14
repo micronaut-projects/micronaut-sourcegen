@@ -19,5 +19,3 @@ io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInClassVisitor
 io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInInterfaceVisitor
 io.micronaut.sourcegen.custom.visitor.GenerateAnnotatedTypeVisitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyEnum2Visitor
-io.micronaut.sourcegen.custom.visitor.GenerateJavadocVisitor
-

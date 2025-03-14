@@ -122,7 +122,7 @@ public final class FieldSpec {
     }
 
     public Builder addJavadoc(String format, Object... args) {
-      javadoc.add(format, args);
+      javadoc.add(format.replaceAll("\\$", "\\$\\$"), args);
       return this;
     }
 

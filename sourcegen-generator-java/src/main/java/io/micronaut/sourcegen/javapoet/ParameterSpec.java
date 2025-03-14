@@ -148,7 +148,7 @@ public final class ParameterSpec {
     }
 
       public Builder addJavadoc(String value) {
-          javadoc.add(value);
+          javadoc.add(value.replaceAll("\\$", "\\$\\$"));
           return this;
       }
 

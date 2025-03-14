@@ -500,7 +500,7 @@ public final class TypeSpec {
     }
 
     public Builder addJavadoc(String value) {
-        javadoc.add(value);
+        javadoc.add(value.replaceAll("\\$", "\\$\\$"));
         return this;
     }
 

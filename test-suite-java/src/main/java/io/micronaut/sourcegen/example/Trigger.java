@@ -35,7 +35,6 @@ import java.util.List;
 @GenerateInnerTypes
 @GenerateMyEnum2
 @GenerateMethodInvocation
-@GenerateJavadoc
 public class Trigger {
     public List<String> copyAddresses;
 }
