@@ -345,7 +345,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     .build()
             );
             String capitalizedPropertyName = NameUtils.capitalize(propertyName);
-
             builder.addMethod(MethodSpec.methodBuilder("get" + capitalizedPropertyName)
                 .addModifiers(property.getModifiersArray())
                 .addJavadoc("Getter method for " + propertyName + ".\n@return $L", propertyName)
