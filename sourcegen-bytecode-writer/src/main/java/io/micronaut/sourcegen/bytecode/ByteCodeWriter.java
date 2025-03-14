@@ -38,6 +38,7 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.util.CheckClassAdapter;
@@ -445,13 +446,14 @@ public final class ByteCodeWriter {
         if (methodDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
-        GeneratorAdapter generatorAdapter = new GeneratorAdapter(classVisitor.visitMethod(
+        MethodVisitor methodVisitor = classVisitor.visitMethod(
             modifiersFlag,
             name,
             methodDescriptor,
             SignatureWriterUtils.getMethodSignature(objectDef, methodDef),
             null
-        ), modifiersFlag, name, methodDescriptor);
+        );
+        GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, methodDescriptor);
         for (AnnotationDef annotation : methodDef.getAnnotations()) {
             generatorAdapter.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
         }
@@ -510,7 +512,7 @@ public final class ByteCodeWriter {
             generatorAdapter.visitLabel(endMethod);
         }
         for (MethodContext.LocalData localsDatum : context.locals().values()) {
-            generatorAdapter.getDelegate().visitLocalVariable(
+            methodVisitor.visitLocalVariable(
                 localsDatum.name(),
                 localsDatum.type().getDescriptor(),
                 null,
