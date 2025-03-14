@@ -288,7 +288,7 @@ public final class MethodSpecTest {
         .addJavadoc("Gets the best Taco\n")
         .build();
     assertThat(methodSpec.toString()).isEqualTo("/**\n"
-        + " * Gets the best Taco\n"
+        + " * Gets the best Taco.\n"
         + " */\n"
         + "private void getTaco(double money) {\n"
         + "}\n");

@@ -187,6 +187,10 @@ public class EnumWriteTest {
 
           private String value;
 
+          /**
+           * Getter method for value.
+           * @return value
+           */
           public String getValue() {
             return this.value;
           }

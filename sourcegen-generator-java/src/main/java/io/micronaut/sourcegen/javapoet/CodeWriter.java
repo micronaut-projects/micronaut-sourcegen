@@ -169,13 +169,13 @@ final class CodeWriter {
 
       // all javadocs sentences should end with a period.
       var lastIndex = cleanStr.contains("@") ? cleanStr.indexOf("@"): cleanStr.length();
-      while (lastIndex != cleanStr.length() && cleanStr.charAt(lastIndex - 1) == '{') {
+      while (lastIndex > 1 && lastIndex != cleanStr.length() && cleanStr.charAt(lastIndex - 1) == '{') {
           lastIndex = cleanStr.substring(lastIndex + 1).contains("@") ? cleanStr.indexOf("@", lastIndex + 1): cleanStr.length();
       }
-      if (lastIndex != cleanStr.length() && cleanStr.charAt(lastIndex - 1) == '\n') {
+      while (lastIndex > 1 && cleanStr.charAt(lastIndex - 1) == '\n') {
           lastIndex--;
       }
-      if (cleanStr.charAt(lastIndex - 1) != '.') {
+      if (lastIndex > 1 && cleanStr.charAt(lastIndex - 1) != '.') {
           cleanStr = cleanStr.substring(0, lastIndex) + '.' + cleanStr.substring(lastIndex);
       }
       return cleanStr;

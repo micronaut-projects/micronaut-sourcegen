@@ -63,8 +63,8 @@ public class RecordWriteTest {
         /**
          * A record representing a person.
          *
-         * @param name The person's name
-         * @param age The person's age
+         * @param name The person&apos;s name
+         * @param age The person&apos;s age
          */
         record TestRecord(
             String name,
@@ -92,8 +92,8 @@ public class RecordWriteTest {
         /**
          * A record representing a $person.
          *
-         * @param name$ The person's $name
-         * @param age The person's age
+         * @param name$ The person&apos;s $name
+         * @param age The person&apos;s age
          */
         record $TestRecord(
             String name$,
@@ -114,7 +114,7 @@ public class RecordWriteTest {
 
         var expected = """
         /**
-         * @param name The person's name
+         * @param name The person&apos;s name
          */
         record TestRecord(
             String name

@@ -17,7 +17,7 @@ public class CodeWriterTest {
                 "/**\n" +
                         " * A\n" +
                         " *\n" +
-                        " * B\n" +
+                        " * B.\n" +
                         " */\n");
     }
 }
