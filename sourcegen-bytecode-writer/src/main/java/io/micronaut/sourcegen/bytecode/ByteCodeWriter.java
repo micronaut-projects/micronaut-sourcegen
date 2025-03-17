@@ -523,6 +523,10 @@ public final class ByteCodeWriter {
             generatorAdapter.visitMaxs(20, 20);
         }
         generatorAdapter.visitEnd();
+
+        for (MethodDef lambdaDef: context.lambdaMethods()) {
+            writeMethod(classVisitor, objectDef, lambdaDef);
+        }
     }
 
     private List<StatementDef> adjustConstructorStatements(ObjectDef objectDef, List<StatementDef> statements) {

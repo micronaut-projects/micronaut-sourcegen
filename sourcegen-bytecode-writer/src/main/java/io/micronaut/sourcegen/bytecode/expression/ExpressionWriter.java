@@ -94,6 +94,9 @@ public sealed interface ExpressionWriter permits AbstractStatementAwareExpressio
         if (expressionDef instanceof ExpressionDef.InvokeHashCodeMethod invokeHashCodeMethod) {
             return new InvokeHashCodeMethodExpressionWriter(invokeHashCodeMethod);
         }
+        if (expressionDef instanceof ExpressionDef.InlineLambda inlineLambda) {
+            return new InlineLambdaExpressionWriter(inlineLambda);
+        }
         throw new UnsupportedOperationException("Unrecognized expression: " + expressionDef);
     }
 

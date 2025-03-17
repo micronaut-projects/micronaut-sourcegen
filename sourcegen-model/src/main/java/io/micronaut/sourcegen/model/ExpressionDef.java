@@ -23,9 +23,13 @@ import io.micronaut.core.convert.ConversionService;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.ast.FieldElement;
 import io.micronaut.inject.ast.MethodElement;
+import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.ast.PropertyElement;
+import io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder;
+import io.micronaut.sourcegen.model.MethodDef.MethodDefBuilder;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -44,7 +48,7 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.ArrayElement, ExpressionDef.Cast, ExpressionDef.ConditionExpressionDef, ExpressionDef.Constant, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InstanceOf, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.InvokeInstanceMethod, ExpressionDef.InvokeStaticMethod, ExpressionDef.MathBinaryOperation, ExpressionDef.MathUnaryOperation, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef {
+    permits ExpressionDef.ArrayElement, ExpressionDef.Cast, ExpressionDef.ConditionExpressionDef, ExpressionDef.Constant, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InstanceOf, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.InvokeInstanceMethod, ExpressionDef.InvokeStaticMethod, ExpressionDef.MathBinaryOperation, ExpressionDef.MathUnaryOperation, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef, ExpressionDef.InlineLambda {
 
     /**
      * Check an array element.
@@ -1473,6 +1477,55 @@ public sealed interface ExpressionDef
             throw new IllegalArgumentException(arrayType + " is not an array");
         }
 
+    }
+
+    /**
+     * A type that represents a lambda created inline in the code.
+     *
+     * @param type The type of the lambda, e.g. {@code Function<String, String>}
+     * @param method The lambda method implementation
+     * @param overriddenMethod The method signature as defined in the interface,
+     *                         e.g. {@code Object apply(Object)}
+     *                         for {@link java.util.function.Function} implementation
+     */
+    @Experimental
+    record InlineLambda(
+        ClassTypeDef type,
+        MethodDef method,
+        MethodDef overriddenMethod
+    ) implements ExpressionDef {
+
+        /**
+         * Create a lambda that extends a particular type.
+         *
+         * @param parent The parent to extend from
+         * @param bodyBuilder The builder for the lambda body
+         * @return The lambda
+         */
+        public static InlineLambda extend(ClassElement parent, MethodBodyBuilder bodyBuilder) {
+            List<MethodElement> abstractMethods = parent.getEnclosedElements(
+                ElementQuery.of(MethodElement.class).onlyAbstract());
+            if (abstractMethods.size() != 1) {
+                throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
+                    "abstract method but has " + abstractMethods.size());
+            }
+            MethodElement method = abstractMethods.get(0);
+            MethodDefBuilder builder = MethodDef.builder(method.getName())
+                // Make sure that it is not a generic, but a deduced type
+                .returns(TypeDef.of(method.getGenericReturnType().getName()));
+            for (ParameterElement parameter : method.getParameters()) {
+                builder.addParameter(ParameterDef.of(parameter.getName(),
+                    TypeDef.of(parameter.getGenericType().getName())));
+            }
+
+            MethodDefBuilder overridden = MethodDef.builder(method.getName())
+                .returns(TypeDef.of(method.getReturnType().getRawClassElement()));
+            for (ParameterElement parameter : method.getParameters()) {
+                overridden.addParameter(ParameterDef.of(parameter.getName(),
+                    TypeDef.of(parameter.getType().getRawClassElement())));
+            }
+            return new InlineLambda(ClassTypeDef.of(parent), builder.build(bodyBuilder), overridden.build());
+        }
     }
 
     /**

@@ -45,6 +45,7 @@ import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
@@ -833,6 +834,29 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         if (expressionDef instanceof ExpressionDef.InvokeHashCodeMethod invokeHashCodeMethod) {
             return renderExpression(objectDef, methodDef, remappedLocals, JavaIdioms.hashCode(invokeHashCodeMethod));
+        }
+        if (expressionDef instanceof ExpressionDef.InlineLambda inlineLambda) {
+            CodeBlock.Builder builder = CodeBlock.builder();
+            builder.add("(");
+            Iterator<ParameterDef> parameter = inlineLambda.method().getParameters().iterator();
+            while (parameter.hasNext()) {
+                builder.add(parameter.next().getName());
+                if (parameter.hasNext()) {
+                    builder.add(", ");
+                }
+            }
+            builder.add(") -> ");
+            List<StatementDef> statements = inlineLambda.method().getStatements();
+            if (statements.size() == 1 && statements.get(0) instanceof StatementDef.Return returnStatement) {
+                 builder.add(renderExpression(objectDef, inlineLambda.method(), remappedLocals, returnStatement.expression()));
+            } else {
+                builder.add("{").indent();
+                for (StatementDef statement : statements) {
+                    builder.addStatement(renderStatementCodeBlock(objectDef, inlineLambda.method(), remappedLocals, statement));
+                }
+                builder.unindent().add("}");
+            }
+            return builder.build();
         }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
