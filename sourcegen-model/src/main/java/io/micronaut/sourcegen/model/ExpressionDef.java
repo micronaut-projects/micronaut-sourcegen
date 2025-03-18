@@ -1630,6 +1630,8 @@ public sealed interface ExpressionDef
      * @param overriddenMethod The method signature as defined in the interface,
      *                         e.g. {@code Object apply(Object)}
      *                         for {@link java.util.function.Function} implementation
+     * @author Andriy Dmytruk
+     * @since 1.7
      */
     @Experimental
     record Lambda(

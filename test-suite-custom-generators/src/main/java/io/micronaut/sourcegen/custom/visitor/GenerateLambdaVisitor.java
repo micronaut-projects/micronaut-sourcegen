@@ -49,31 +49,26 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        try {
-            SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null); // <3>
-            if (sourceGenerator == null) {
-                return;
-            }
-
-            InterfaceDef lambdaType = createLambdaType(element.getPackageName() + ".StringFunction");
-            String className = element.getPackageName() + ".MyClassWithLambda";
-
-            FieldDef field = FieldDef.builder("name").ofType(TypeDef.STRING).build();
-            ClassDef interfaceDef = ClassDef.builder(className) // <4>
-                .addModifiers(Modifier.PUBLIC)
-                .addField(field)
-                .addMethod(MethodDef.builder("toString").returns(TypeDef.STRING).addModifiers(Modifier.PUBLIC)
-                    .build((t, params) -> ExpressionDef.constant("MyClass").returning()))
-                .addMethod(createStatelessLambda(context, element, lambdaType))
-                .addMethod(createStatefulLambda(context, element, lambdaType, field))
-                .build();
-
-            sourceGenerator.write(lambdaType, context, element);
-            sourceGenerator.write(interfaceDef, context, element);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
+        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null); // <3>
+        if (sourceGenerator == null) {
+            return;
         }
+
+        InterfaceDef lambdaType = createLambdaType(element.getPackageName() + ".StringFunction");
+        String className = element.getPackageName() + ".MyClassWithLambda";
+
+        FieldDef field = FieldDef.builder("name").ofType(TypeDef.STRING).build();
+        ClassDef interfaceDef = ClassDef.builder(className) // <4>
+            .addModifiers(Modifier.PUBLIC)
+            .addField(field)
+            .addMethod(MethodDef.builder("toString").returns(TypeDef.STRING).addModifiers(Modifier.PUBLIC)
+                .build((t, params) -> ExpressionDef.constant("MyClass").returning()))
+            .addMethod(createStatelessLambda(context, element, lambdaType))
+            .addMethod(createStatefulLambda(context, element, lambdaType, field))
+            .build();
+
+        sourceGenerator.write(lambdaType, context, element);
+        sourceGenerator.write(interfaceDef, context, element);
     }
 
     private InterfaceDef createLambdaType(String className) {
