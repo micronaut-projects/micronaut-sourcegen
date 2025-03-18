@@ -32,9 +32,6 @@ final class VariableExpressionWriter implements ExpressionWriter {
 
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
-        System.out.println("Variable: " + variableDef);
-        System.out.println("isLambda: " + context.isLambda());
-
         if (context.isLambda()) {
             writeLambdaVariable(generatorAdapter, context);
             return;

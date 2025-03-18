@@ -61,7 +61,6 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
 
         // The captured variables are the parameters to the called bootstrap method
         for (VariableDef variable: capturedVariables) {
-            System.out.println("Writing variable: " + variable);
             new VariableExpressionWriter(variable).write(generatorAdapter, context);
         }
 
