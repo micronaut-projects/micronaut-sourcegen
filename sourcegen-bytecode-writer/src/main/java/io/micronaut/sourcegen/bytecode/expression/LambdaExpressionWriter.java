@@ -18,7 +18,7 @@ package io.micronaut.sourcegen.bytecode.expression;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.model.ExpressionDef;
-import io.micronaut.sourcegen.model.ExpressionDef.InlineLambda;
+import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.StatementDef;
@@ -34,7 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-final class InlineLambdaExpressionWriter extends AbstractStatementAwareExpressionWriter {
+final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWriter {
 
     public static final String EXCEPTION_VAR_NAME = "exception";
     public static final String THIS_VAR_NAME = "this";
@@ -47,9 +47,9 @@ final class InlineLambdaExpressionWriter extends AbstractStatementAwareExpressio
         "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;" +
         "Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;";
 
-    private final ExpressionDef.InlineLambda lambda;
+    private final Lambda lambda;
 
-    public InlineLambdaExpressionWriter(ExpressionDef.InlineLambda lambda) {
+    public LambdaExpressionWriter(Lambda lambda) {
         this.lambda = lambda;
     }
 
@@ -108,7 +108,7 @@ final class InlineLambdaExpressionWriter extends AbstractStatementAwareExpressio
         return dynamicDescriptor.toString();
     }
 
-    private MethodDef createLambdaMethodDef(MethodContext context, InlineLambda lambda, List<VariableDef> capturedVariables) {
+    private MethodDef createLambdaMethodDef(MethodContext context, Lambda lambda, List<VariableDef> capturedVariables) {
         MethodDef original = lambda.method();
         List<ParameterDef> parameters = new ArrayList<>();
 

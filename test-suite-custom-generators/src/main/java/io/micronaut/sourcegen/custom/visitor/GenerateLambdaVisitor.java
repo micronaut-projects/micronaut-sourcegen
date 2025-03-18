@@ -26,6 +26,7 @@ import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -89,7 +90,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
 
     private MethodDef createStatelessLambda(VisitorContext context, ClassElement element, ObjectDef lambdaType) {
         Local function = new Local("function", lambdaType.asTypeDef());
-        ExpressionDef.InlineLambda lambda = ExpressionDef.InlineLambda.extend(lambdaType.asTypeDef(), (t, params) ->
+        Lambda lambda = Lambda.extend(lambdaType.asTypeDef(), (t, params) ->
                 params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1)).returning());
 
         // callLambda(String input) {
@@ -111,7 +112,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
     ) {
         Local constant = new Local("constant", TypeDef.STRING);
         Local function = new Local("function", lambdaType.asTypeDef());
-        ExpressionDef.InlineLambda lambda = ExpressionDef.InlineLambda.extend(lambdaType.asTypeDef(), (t, params) -> constant.invoke("concat", TypeDef.STRING,
+        Lambda lambda = Lambda.extend(lambdaType.asTypeDef(), (t, params) -> constant.invoke("concat", TypeDef.STRING,
             params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
                 .invoke("concat", TypeDef.STRING, t.invoke("toString", TypeDef.STRING))
                 .invoke("concat", TypeDef.STRING, t.field(field))
@@ -150,7 +151,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         Local constant = new Local("constant", TypeDef.STRING);
         Local function = new Local("function", TypeDef.of(functionType));
 
-        ExpressionDef.InlineLambda lambda = ExpressionDef.InlineLambda.extend(
+        Lambda lambda = Lambda.extend(
             functionType, (t, params) -> constant.invoke("concat", TypeDef.STRING,
                 params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
             ).returning());

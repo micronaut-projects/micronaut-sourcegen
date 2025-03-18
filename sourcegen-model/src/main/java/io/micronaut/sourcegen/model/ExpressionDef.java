@@ -30,6 +30,7 @@ import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.sourcegen.model.ClassTypeDef.ClassDefType;
 import io.micronaut.sourcegen.model.ClassTypeDef.ClassElementType;
+import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder;
 import io.micronaut.sourcegen.model.MethodDef.MethodDefBuilder;
 
@@ -54,7 +55,7 @@ import java.util.function.Function;
  */
 @Experimental
 public sealed interface ExpressionDef
-    permits ExpressionDef.ArrayElement, ExpressionDef.Cast, ExpressionDef.ConditionExpressionDef, ExpressionDef.Constant, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InstanceOf, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.InvokeInstanceMethod, ExpressionDef.InvokeStaticMethod, ExpressionDef.MathBinaryOperation, ExpressionDef.MathUnaryOperation, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef, ExpressionDef.InlineLambda {
+    permits ExpressionDef.ArrayElement, ExpressionDef.Cast, ExpressionDef.ConditionExpressionDef, ExpressionDef.Constant, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InstanceOf, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.InvokeInstanceMethod, ExpressionDef.InvokeStaticMethod, ExpressionDef.MathBinaryOperation, ExpressionDef.MathUnaryOperation, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef, Lambda {
 
     /**
      * Get the operands that the expression applies to.
@@ -1622,7 +1623,7 @@ public sealed interface ExpressionDef
     }
 
     /**
-     * A type that represents a lambda created inline in the code.
+     * A type that represents a lambda.
      *
      * @param type The type of the lambda, e.g. {@code Function<String, String>}
      * @param method The lambda method implementation
@@ -1631,7 +1632,7 @@ public sealed interface ExpressionDef
      *                         for {@link java.util.function.Function} implementation
      */
     @Experimental
-    record InlineLambda(
+    record Lambda(
         ClassTypeDef type,
         MethodDef method,
         MethodDef overriddenMethod
@@ -1644,7 +1645,7 @@ public sealed interface ExpressionDef
          * @param bodyBuilder The builder for the lambda body
          * @return The lambda
          */
-        public static InlineLambda extend(ClassTypeDef typeDef, MethodBodyBuilder bodyBuilder) {
+        public static Lambda extend(ClassTypeDef typeDef, MethodBodyBuilder bodyBuilder) {
             ClassTypeDef rawType = typeDef;
             if (rawType instanceof ClassTypeDef.Parameterized parameterized) {
                 rawType = parameterized.rawType();
@@ -1668,7 +1669,7 @@ public sealed interface ExpressionDef
          * @param bodyBuilder The builder for the lambda body
          * @return The lambda
          */
-        public static InlineLambda extend(ClassTypeDef lambdaType, ObjectDef lambdaTypeDef, MethodBodyBuilder bodyBuilder) {
+        public static Lambda extend(ClassTypeDef lambdaType, ObjectDef lambdaTypeDef, MethodBodyBuilder bodyBuilder) {
             List<MethodDef> abstractMethods = lambdaTypeDef.getMethods()
                 .stream().filter(v -> v.getModifiers().contains(Modifier.ABSTRACT)).toList();
             if (abstractMethods.size() != 1) {
@@ -1679,7 +1680,7 @@ public sealed interface ExpressionDef
             MethodDefBuilder builder = MethodDef.builder(method.getName())
                 .returns(method.getReturnType())
                 .addParameters(method.getParameters());
-            return new InlineLambda(lambdaType, builder.build(bodyBuilder), method);
+            return new Lambda(lambdaType, builder.build(bodyBuilder), method);
         }
 
         /**
@@ -1689,7 +1690,7 @@ public sealed interface ExpressionDef
          * @param bodyBuilder The builder for the lambda body
          * @return The lambda
          */
-        public static InlineLambda extend(ClassElement parent, MethodBodyBuilder bodyBuilder) {
+        public static Lambda extend(ClassElement parent, MethodBodyBuilder bodyBuilder) {
             List<MethodElement> abstractMethods = parent.getEnclosedElements(
                 ElementQuery.of(MethodElement.class).onlyAbstract());
             if (abstractMethods.size() != 1) {
@@ -1711,7 +1712,7 @@ public sealed interface ExpressionDef
                 overridden.addParameter(ParameterDef.of(parameter.getName(),
                     TypeDef.of(parameter.getType().getRawClassElement())));
             }
-            return new InlineLambda(ClassTypeDef.of(parent), builder.build(bodyBuilder), overridden.build());
+            return new Lambda(ClassTypeDef.of(parent), builder.build(bodyBuilder), overridden.build());
         }
 
         @Override

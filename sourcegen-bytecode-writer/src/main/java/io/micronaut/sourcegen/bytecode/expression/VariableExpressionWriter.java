@@ -111,11 +111,11 @@ final class VariableExpressionWriter implements ExpressionWriter {
         }
         String name = null;
         if (variableDef instanceof VariableDef.ExceptionVar) {
-            name = InlineLambdaExpressionWriter.EXCEPTION_VAR_NAME;
+            name = LambdaExpressionWriter.EXCEPTION_VAR_NAME;
         } else if (variableDef instanceof VariableDef.This) {
-            name = InlineLambdaExpressionWriter.THIS_VAR_NAME;
+            name = LambdaExpressionWriter.THIS_VAR_NAME;
         } else if (variableDef instanceof VariableDef.Super) {
-            name = InlineLambdaExpressionWriter.SUPER_VAR_NAME;
+            name = LambdaExpressionWriter.SUPER_VAR_NAME;
         } else if (variableDef instanceof VariableDef.Local local) {
             name = local.name();
         } else if (variableDef instanceof VariableDef.MethodParameter methodParameter) {

@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.bytecode.expression;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -94,8 +95,8 @@ public sealed interface ExpressionWriter permits AbstractStatementAwareExpressio
         if (expressionDef instanceof ExpressionDef.InvokeHashCodeMethod invokeHashCodeMethod) {
             return new InvokeHashCodeMethodExpressionWriter(invokeHashCodeMethod);
         }
-        if (expressionDef instanceof ExpressionDef.InlineLambda inlineLambda) {
-            return new InlineLambdaExpressionWriter(inlineLambda);
+        if (expressionDef instanceof Lambda lambda) {
+            return new LambdaExpressionWriter(lambda);
         }
         throw new UnsupportedOperationException("Unrecognized expression: " + expressionDef);
     }

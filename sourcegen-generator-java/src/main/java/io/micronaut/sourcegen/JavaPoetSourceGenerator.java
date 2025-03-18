@@ -40,6 +40,7 @@ import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
@@ -835,10 +836,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (expressionDef instanceof ExpressionDef.InvokeHashCodeMethod invokeHashCodeMethod) {
             return renderExpression(objectDef, methodDef, remappedLocals, JavaIdioms.hashCode(invokeHashCodeMethod));
         }
-        if (expressionDef instanceof ExpressionDef.InlineLambda inlineLambda) {
+        if (expressionDef instanceof Lambda lambda) {
             CodeBlock.Builder builder = CodeBlock.builder();
             builder.add("(");
-            Iterator<ParameterDef> parameter = inlineLambda.method().getParameters().iterator();
+            Iterator<ParameterDef> parameter = lambda.method().getParameters().iterator();
             while (parameter.hasNext()) {
                 builder.add(parameter.next().getName());
                 if (parameter.hasNext()) {
@@ -846,13 +847,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 }
             }
             builder.add(") -> ");
-            List<StatementDef> statements = inlineLambda.method().getStatements();
+            List<StatementDef> statements = lambda.method().getStatements();
             if (statements.size() == 1 && statements.get(0) instanceof StatementDef.Return returnStatement) {
-                 builder.add(renderExpression(objectDef, inlineLambda.method(), remappedLocals, returnStatement.expression()));
+                 builder.add(renderExpression(objectDef, lambda.method(), remappedLocals, returnStatement.expression()));
             } else {
                 builder.add("{").indent();
                 for (StatementDef statement : statements) {
-                    builder.addStatement(renderStatementCodeBlock(objectDef, inlineLambda.method(), remappedLocals, statement));
+                    builder.addStatement(renderStatementCodeBlock(objectDef, lambda.method(), remappedLocals, statement));
                 }
                 builder.unindent().add("}");
             }
