@@ -34,4 +34,10 @@ class LambdaTest {
         assertEquals("prefix_ello!MyClassTree", owner.callStatefulLambda("Hello!"));
     }
 
+    @Test
+    public void testGenericLambda() throws Exception {
+        MyClassWithLambda owner = new MyClassWithLambda();
+        assertEquals("prefix_ello!", owner.callGenericLambda("Hello!"));
+    }
+
 }

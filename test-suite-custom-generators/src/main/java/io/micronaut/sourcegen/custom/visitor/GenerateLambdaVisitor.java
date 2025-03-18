@@ -65,6 +65,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
                 .build((t, params) -> ExpressionDef.constant("MyClass").returning()))
             .addMethod(createStatelessLambda(context, element, lambdaType))
             .addMethod(createStatefulLambda(context, element, lambdaType, field))
+            .addMethod(createGenericLambda(context, element))
             .build();
 
         sourceGenerator.write(lambdaType, context, element);
@@ -158,8 +159,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             .build((t, params) -> StatementDef.multi(
                 constant.defineAndAssign(ExpressionDef.constant("prefix_")),
                 function.defineAndAssign(lambda),
-                // TODO the virtual call needs to be TypeDef.STRING instead with a cast
-                function.invoke("apply", TypeDef.OBJECT, params.get(0).cast(TypeDef.OBJECT))
+                function.invoke("apply", List.of(TypeDef.OBJECT), TypeDef.OBJECT, List.of(params.get(0)))
                     .cast(TypeDef.STRING).returning()
             ));
     }
