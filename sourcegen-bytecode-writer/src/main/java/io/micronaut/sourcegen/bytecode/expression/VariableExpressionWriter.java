@@ -32,6 +32,13 @@ final class VariableExpressionWriter implements ExpressionWriter {
 
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
+        System.out.println("Variable: " + variableDef);
+        System.out.println("isLambda: " + context.isLambda());
+
+        if (context.isLambda()) {
+            writeLambdaVariable(generatorAdapter, context);
+            return;
+        }
         if (variableDef instanceof VariableDef.ExceptionVar) {
             MethodContext.LocalData localData = context.locals().get(TryCatchStatementWriter.EXCEPTION_NAME);
             generatorAdapter.loadLocal(localData.index(), localData.type());
@@ -43,27 +50,15 @@ final class VariableExpressionWriter implements ExpressionWriter {
             return;
         }
         if (variableDef instanceof VariableDef.MethodParameter parameterVariableDef) {
-            if (context.methodDef() == null) {
-                throw new IllegalStateException("Accessing method parameters is not available");
-            }
-            ParameterDef parameterDef = context.methodDef().getParameters().stream().filter(p -> p.getName().equals(parameterVariableDef.name())).findFirst().orElseThrow();
-            int parameterIndex = context.methodDef().getParameters().indexOf(parameterDef);
-            generatorAdapter.loadArg(parameterIndex);
+            writeParameterVariable(generatorAdapter, context, parameterVariableDef.name());
             return;
         }
         if (variableDef instanceof VariableDef.StaticField field) {
-            TypeDef owner = field.ownerType();
-            TypeDef fieldType = field.type();
-
-            generatorAdapter.getStatic(TypeUtils.getType(owner, context.objectDef()), field.name(), TypeUtils.getType(fieldType, context.objectDef()));
+            writeStaticField(generatorAdapter, context, field);
             return;
         }
         if (variableDef instanceof VariableDef.Field field) {
-
-            ExpressionWriter.writeExpression(generatorAdapter, context, field.instance());
-            TypeDef fieldType = field.type();
-            TypeDef owner = field.instance().type();
-            generatorAdapter.getField(TypeUtils.getType(owner, context.objectDef()), field.name(), TypeUtils.getType(fieldType, context.objectDef()));
+            writeField(generatorAdapter, context, field);
             return;
         }
         if (variableDef instanceof VariableDef.This) {
@@ -82,4 +77,56 @@ final class VariableExpressionWriter implements ExpressionWriter {
         }
         throw new UnsupportedOperationException("Unrecognized variable: " + variableDef);
     }
+
+    private void writeField(GeneratorAdapter generatorAdapter, MethodContext context, VariableDef.Field field) {
+        ExpressionWriter.writeExpression(generatorAdapter, context, field.instance());
+        TypeDef fieldType = field.type();
+        TypeDef owner = field.instance().type();
+        generatorAdapter.getField(TypeUtils.getType(owner, context.objectDef()), field.name(), TypeUtils.getType(fieldType, context.objectDef()));
+    }
+
+    private void writeParameterVariable(GeneratorAdapter generatorAdapter, MethodContext context, String name) {
+        if (context.methodDef() == null) {
+            throw new IllegalStateException("Accessing method parameters is not available");
+        }
+        ParameterDef parameterDef = context.methodDef().getParameters().stream().filter(p -> p.getName().equals(name)).findFirst().orElseThrow();
+        int parameterIndex = context.methodDef().getParameters().indexOf(parameterDef);
+        generatorAdapter.loadArg(parameterIndex);
+    }
+
+    private void writeStaticField(GeneratorAdapter generatorAdapter, MethodContext context, VariableDef.StaticField field) {
+        TypeDef owner = field.ownerType();
+        TypeDef fieldType = field.type();
+
+        generatorAdapter.getStatic(TypeUtils.getType(owner, context.objectDef()), field.name(), TypeUtils.getType(fieldType, context.objectDef()));
+    }
+
+    public void writeLambdaVariable(GeneratorAdapter generatorAdapter, MethodContext context) {
+        if (variableDef instanceof VariableDef.StaticField field) {
+            writeStaticField(generatorAdapter, context, field);
+            return;
+        } else if (variableDef instanceof VariableDef.Field field) {
+            writeField(generatorAdapter, context, field);
+            return;
+        }
+        String name = null;
+        if (variableDef instanceof VariableDef.ExceptionVar) {
+            name = InlineLambdaExpressionWriter.EXCEPTION_VAR_NAME;
+        } else if (variableDef instanceof VariableDef.This) {
+            name = InlineLambdaExpressionWriter.THIS_VAR_NAME;
+        } else if (variableDef instanceof VariableDef.Super) {
+            name = InlineLambdaExpressionWriter.SUPER_VAR_NAME;
+        } else if (variableDef instanceof VariableDef.Local local) {
+            name = local.name();
+        } else if (variableDef instanceof VariableDef.MethodParameter methodParameter) {
+            name = methodParameter.name();
+        }
+
+        if (name != null) {
+            writeParameterVariable(generatorAdapter, context, name);
+            return;
+        }
+        throw new UnsupportedOperationException("Unrecognized lambda variable: " + variableDef);
+    }
+
 }

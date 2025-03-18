@@ -432,13 +432,17 @@ public final class ByteCodeWriter {
     }
 
     /**
-     * Write an interface.
+     * Write a method.
      *
      * @param classVisitor The class visitor
      * @param objectDef    The object definition
      * @param methodDef    The method definition
      */
-    public void writeMethod(ClassVisitor classVisitor, @Nullable ObjectDef objectDef, MethodDef methodDef) {
+    private void writeMethod(ClassVisitor classVisitor, @Nullable ObjectDef objectDef, MethodDef methodDef) {
+        writeMethod(classVisitor, objectDef, methodDef, false);
+    }
+
+    private void writeMethod(ClassVisitor classVisitor, @Nullable ObjectDef objectDef, MethodDef methodDef, boolean isLambda) {
         String name = methodDef.getName();
         String methodDescriptor = TypeUtils.getMethodDescriptor(objectDef, methodDef);
         int modifiersFlag = getModifiersFlag(methodDef.getModifiers());
@@ -460,7 +464,7 @@ public final class ByteCodeWriter {
             generatorAdapter.visitAnnotableParameterCount(methodDef.getParameters().size(), true);
         }
 
-        MethodContext context = new MethodContext(objectDef, methodDef);
+        MethodContext context = new MethodContext(objectDef, methodDef, isLambda);
         Label startMethod = null;
 
         int parameterIndex = 0;
@@ -525,7 +529,7 @@ public final class ByteCodeWriter {
         generatorAdapter.visitEnd();
 
         for (MethodDef lambdaDef: context.lambdaMethods()) {
-            writeMethod(classVisitor, objectDef, lambdaDef);
+            writeMethod(classVisitor, objectDef, lambdaDef, true);
         }
     }
 

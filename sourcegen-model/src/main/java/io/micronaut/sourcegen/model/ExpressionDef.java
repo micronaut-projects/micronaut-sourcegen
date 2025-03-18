@@ -28,12 +28,18 @@ import io.micronaut.inject.ast.FieldElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.ast.PropertyElement;
+import io.micronaut.sourcegen.model.ClassTypeDef.ClassDefType;
+import io.micronaut.sourcegen.model.ClassTypeDef.ClassElementType;
 import io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder;
 import io.micronaut.sourcegen.model.MethodDef.MethodDefBuilder;
 
+import javax.lang.model.element.Modifier;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +55,12 @@ import java.util.function.Function;
 @Experimental
 public sealed interface ExpressionDef
     permits ExpressionDef.ArrayElement, ExpressionDef.Cast, ExpressionDef.ConditionExpressionDef, ExpressionDef.Constant, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InstanceOf, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.InvokeInstanceMethod, ExpressionDef.InvokeStaticMethod, ExpressionDef.MathBinaryOperation, ExpressionDef.MathUnaryOperation, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef, ExpressionDef.InlineLambda {
+
+    /**
+     * Get the operands that the expression applies to.
+     * @return The operands
+     */
+    Collection<? extends ExpressionDef> operands();
 
     /**
      * Check an array element.
@@ -961,6 +973,11 @@ public sealed interface ExpressionDef
                 throw new IllegalStateException("Cannot create a new instance of " + type.getName() + " parameters: " + parameterTypes.size() + " doesn't match values provided: " + values.size());
             }
         }
+
+        @Override
+        public List<? extends ExpressionDef> operands() {
+            return values;
+        }
     }
 
     /**
@@ -974,6 +991,10 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record Cast(TypeDef type, ExpressionDef expressionDef) implements ExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.singletonList(expressionDef);
+        }
     }
 
     /**
@@ -988,6 +1009,10 @@ public sealed interface ExpressionDef
     record Constant(TypeDef type,
                     @Nullable
                     Object value) implements ExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -1017,6 +1042,14 @@ public sealed interface ExpressionDef
         }
 
         @Override
+        public Collection<? extends ExpressionDef> operands() {
+            ArrayList<ExpressionDef> result = new ArrayList<>();
+            result.add(instance);
+            result.addAll(values);
+            return result;
+        }
+
+        @Override
         public TypeDef type() {
             return method.getReturnType();
         }
@@ -1040,6 +1073,11 @@ public sealed interface ExpressionDef
             if (method.getParameters().size() != values.size()) {
                 throw new IllegalStateException("Method " + classDef.getName() + "#" + method.getName() + " parameters: " + method.getParameters().size() + " doesn't match values provided: " + values.size());
             }
+        }
+
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return values;
         }
 
         @Override
@@ -1093,6 +1131,11 @@ public sealed interface ExpressionDef
             return (v instanceof Constant constant) && constant.value == null;
         }
 
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(left, right);
+        }
+
         /**
          * The operation type.
          */
@@ -1133,6 +1176,11 @@ public sealed interface ExpressionDef
         }
 
         @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(left, right);
+        }
+
+        @Override
         public TypeDef type() {
             return left.type();
         }
@@ -1167,6 +1215,11 @@ public sealed interface ExpressionDef
     record MathUnaryOperation(OpType opType,
                               ExpressionDef expression) implements ExpressionDef {
         @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.singletonList(expression);
+        }
+
+        @Override
         public TypeDef type() {
             return expression.type();
         }
@@ -1187,6 +1240,10 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record IsNull(ExpressionDef expression) implements ConditionExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.singletonList(expression);
+        }
     }
 
     /**
@@ -1197,6 +1254,10 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record IsNotNull(ExpressionDef expression) implements ConditionExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.singletonList(expression);
+        }
     }
 
     /**
@@ -1207,6 +1268,10 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record IsTrue(ExpressionDef expression) implements ConditionExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.singletonList(expression);
+        }
     }
 
     /**
@@ -1217,6 +1282,10 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record IsFalse(ExpressionDef expression) implements ConditionExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.singletonList(expression);
+        }
     }
 
     /**
@@ -1229,6 +1298,10 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record And(ConditionExpressionDef left, ConditionExpressionDef right) implements ConditionExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(left, right);
+        }
     }
 
     /**
@@ -1241,6 +1314,10 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record Or(ConditionExpressionDef left, ConditionExpressionDef right) implements ConditionExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(left, right);
+        }
     }
 
     /**
@@ -1265,6 +1342,11 @@ public sealed interface ExpressionDef
                 ifExpression.type().equals(elseExpression.type()) ? ifExpression.type() : TypeDef.OBJECT
             );
         }
+
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(condition, ifExpression, elseExpression);
+        }
     }
 
     /**
@@ -1282,6 +1364,14 @@ public sealed interface ExpressionDef
                   TypeDef type,
                   Map<Constant, ? extends ExpressionDef> cases,
                   ExpressionDef defaultCase) implements ExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            List<ExpressionDef> result = new ArrayList<>();
+            result.add(expression);
+            result.add(defaultCase);
+            result.addAll(cases.values());
+            return result;
+        }
     }
 
     /**
@@ -1293,6 +1383,10 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record SwitchYieldCase(TypeDef type, StatementDef statement) implements ExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -1305,6 +1399,10 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record NewArrayOfSize(TypeDef.Array type, int size) implements ExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -1318,6 +1416,10 @@ public sealed interface ExpressionDef
     @Experimental
     record NewArrayInitialized(TypeDef.Array type,
                                List<? extends ExpressionDef> expressions) implements ExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return expressions;
+        }
     }
 
     /**
@@ -1336,6 +1438,11 @@ public sealed interface ExpressionDef
         public TypeDef type() {
             return TypeDef.of(propertyElement.getType());
         }
+
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.singletonList(instance);
+        }
     }
 
     /**
@@ -1351,6 +1458,11 @@ public sealed interface ExpressionDef
         @Override
         public TypeDef type() {
             return TypeDef.of(Class.class);
+        }
+
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.singletonList(instance);
         }
     }
 
@@ -1368,6 +1480,11 @@ public sealed interface ExpressionDef
         public TypeDef type() {
             return TypeDef.of(int.class);
         }
+
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.singletonList(instance);
+        }
     }
 
     /**
@@ -1381,6 +1498,10 @@ public sealed interface ExpressionDef
     @Experimental
     record EqualsStructurally(ExpressionDef instance,
                               ExpressionDef other) implements ConditionExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(instance, other);
+        }
     }
 
     /**
@@ -1394,6 +1515,10 @@ public sealed interface ExpressionDef
     @Experimental
     record NotEqualsStructurally(ExpressionDef instance,
                                  ExpressionDef other) implements ConditionExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(instance, other);
+        }
     }
 
     /**
@@ -1407,6 +1532,10 @@ public sealed interface ExpressionDef
     @Experimental
     record EqualsReferentially(ExpressionDef instance,
                                ExpressionDef other) implements ConditionExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(instance, other);
+        }
     }
 
     /**
@@ -1420,6 +1549,10 @@ public sealed interface ExpressionDef
     @Experimental
     record NotEqualsReferentially(ExpressionDef instance,
                                  ExpressionDef other) implements ConditionExpressionDef {
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(instance, other);
+        }
     }
 
     /**
@@ -1437,6 +1570,11 @@ public sealed interface ExpressionDef
         public InstanceOf(ExpressionDef expression, ClassTypeDef instanceType) {
             this.expression = expression.type().isPrimitive() ? expression.cast(TypeDef.OBJECT) : expression;
             this.instanceType = instanceType;
+        }
+
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.singletonList(expression);
         }
     }
 
@@ -1477,6 +1615,10 @@ public sealed interface ExpressionDef
             throw new IllegalArgumentException(arrayType + " is not an array");
         }
 
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(expression, indexExpression);
+        }
     }
 
     /**
@@ -1494,6 +1636,51 @@ public sealed interface ExpressionDef
         MethodDef method,
         MethodDef overriddenMethod
     ) implements ExpressionDef {
+
+        /**
+         * Create a lambda that extends a particular type.
+         *
+         * @param typeDef The type of lambda
+         * @param bodyBuilder The builder for the lambda body
+         * @return The lambda
+         */
+        public static InlineLambda extend(ClassTypeDef typeDef, MethodBodyBuilder bodyBuilder) {
+            ClassTypeDef rawType = typeDef;
+            if (rawType instanceof ClassTypeDef.Parameterized parameterized) {
+                rawType = parameterized.rawType();
+            }
+
+            if (rawType instanceof ClassElementType classElement) {
+                return extend(classElement.classElement(), bodyBuilder);
+            } else if (typeDef instanceof ClassDefType classDef) {
+                return extend(typeDef, classDef.objectDef(), bodyBuilder);
+            } else {
+                throw new UnsupportedOperationException("Can extend lambda only from ClassTypeDef that was " +
+                    "created from ObjectDef or a ClassElement. Use constructor otherwise.");
+            }
+        }
+
+        /**
+         * Create a lambda that extends a particular type.
+         *
+         * @param lambdaType The type of lambda
+         * @param lambdaTypeDef The type def of lambda required to deduce parent method
+         * @param bodyBuilder The builder for the lambda body
+         * @return The lambda
+         */
+        public static InlineLambda extend(ClassTypeDef lambdaType, ObjectDef lambdaTypeDef, MethodBodyBuilder bodyBuilder) {
+            List<MethodDef> abstractMethods = lambdaTypeDef.getMethods()
+                .stream().filter(v -> v.getModifiers().contains(Modifier.ABSTRACT)).toList();
+            if (abstractMethods.size() != 1) {
+                throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
+                    "abstract method but has " + abstractMethods.size());
+            }
+            MethodDef method = abstractMethods.get(0);
+            MethodDefBuilder builder = MethodDef.builder(method.getName())
+                .returns(method.getReturnType())
+                .addParameters(method.getParameters());
+            return new InlineLambda(lambdaType, builder.build(bodyBuilder), method);
+        }
 
         /**
          * Create a lambda that extends a particular type.
@@ -1525,6 +1712,11 @@ public sealed interface ExpressionDef
                     TypeDef.of(parameter.getType().getRawClassElement())));
             }
             return new InlineLambda(ClassTypeDef.of(parent), builder.build(bodyBuilder), overridden.build());
+        }
+
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return Collections.emptyList();
         }
     }
 
