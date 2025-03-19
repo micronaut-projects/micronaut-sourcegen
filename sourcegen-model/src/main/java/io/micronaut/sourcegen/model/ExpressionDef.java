@@ -45,7 +45,29 @@ import java.util.stream.Stream;
  * @since 1.0
  */
 @Experimental
-public sealed interface ExpressionDef permits ExpressionDef.ArrayElement, ExpressionDef.Cast, ExpressionDef.ConditionExpressionDef, ExpressionDef.Constant, ExpressionDef.GetPropertyValue, ExpressionDef.IfElse, ExpressionDef.InstanceOf, ExpressionDef.InvokeGetClassMethod, ExpressionDef.InvokeHashCodeMethod, ExpressionDef.InvokeInstanceMethod, ExpressionDef.InvokeStaticMethod, ExpressionDef.MathBinaryOperation, ExpressionDef.MathUnaryOperation, ExpressionDef.NewArrayInitialized, ExpressionDef.NewArrayOfSize, ExpressionDef.NewInstance, ExpressionDef.Switch, ExpressionDef.SwitchYieldCase, VariableDef, Lambda {
+public sealed interface ExpressionDef
+        permits ExpressionDef.ArrayElement,
+        ExpressionDef.Cast,
+        ExpressionDef.ConditionExpressionDef,
+        ExpressionDef.Constant,
+        ExpressionDef.GetPropertyValue,
+        ExpressionDef.IfElse,
+        ExpressionDef.InstanceOf,
+        ExpressionDef.InvokeGetClassMethod,
+        ExpressionDef.InvokeHashCodeMethod,
+        ExpressionDef.InvokeInstanceMethod,
+        ExpressionDef.InvokeStaticMethod,
+        ExpressionDef.MathBinaryOperation,
+        ExpressionDef.MathUnaryOperation,
+        ExpressionDef.NewArrayInitialized,
+        ExpressionDef.NewArrayOfSize,
+        ExpressionDef.NewInstance,
+        ExpressionDef.Switch,
+        ExpressionDef.SwitchYieldCase,
+        VariableDef,
+        Lambda,
+        ExpressionDef.StringConcatenation
+{
 
     /**
      * Stream of nested expressions included in this expression.
@@ -122,6 +144,17 @@ public sealed interface ExpressionDef permits ExpressionDef.ArrayElement, Expres
      */
     default ExpressionDef math(MathBinaryOperation.OpType op, ExpressionDef expression) {
         return new MathBinaryOperation(op, this, expression);
+    }
+
+    /**
+     * Concatenate this to another string.
+     *
+     * @param expression The expression to concatenate
+     * @return The math expression
+     * @since 1.7
+     */
+    default ExpressionDef stringConcat(ExpressionDef expression) {
+        return new StringConcatenation(this, expression);
     }
 
     /**
@@ -1203,6 +1236,28 @@ public sealed interface ExpressionDef permits ExpressionDef.ArrayElement, Expres
             BITWISE_LEFT_SHIFT,
             BITWISE_RIGHT_SHIFT,
             BITWISE_UNSIGNED_RIGHT_SHIFT,
+        }
+    }
+
+    /**
+     * The string concatenation operation.
+     *
+     * @param left     The left expression
+     * @param right    The right expression
+     * @author Andriy Dmytruk
+     * @since 1.7
+     */
+    @Experimental
+    record StringConcatenation(ExpressionDef left, ExpressionDef right) implements ExpressionDef {
+
+        @Override
+        public Collection<? extends ExpressionDef> operands() {
+            return List.of(left, right);
+        }
+
+        @Override
+        public TypeDef type() {
+            return TypeDef.STRING;
         }
     }
 
