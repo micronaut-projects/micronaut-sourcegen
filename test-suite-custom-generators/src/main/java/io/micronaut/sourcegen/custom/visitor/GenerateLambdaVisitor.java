@@ -29,6 +29,7 @@ import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
+import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.StatementDef;
@@ -70,7 +71,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         InterfaceDef lambdaType = createLambdaType(packageName + ".StringFunction");
         String className = packageName + ".MyClassWithLambda";
 
-        FieldDef field = FieldDef.builder("name").ofType(TypeDef.STRING).build();
+        FieldDef field = FieldDef.builder("name").ofType(TypeDef.STRING.makeNullable()).build();
         MethodDef methodInvokerDef = MethodDef.builder("methodInvoker")
             .addParameter(TypeDef.parameterized(Function.class, String.class, String.class))
             .addParameter(String.class)
@@ -86,7 +87,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             .addModifiers(Modifier.PUBLIC)
             .addField(field)
             .addMethod(methodInvokerDef)
-            .addMethod(MethodDef.builder("toString").returns(TypeDef.STRING).addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("toString").overrides().returns(TypeDef.STRING).addModifiers(Modifier.PUBLIC)
                 .build((t, params) -> ExpressionDef.constant("MyClass").returning()))
             .addMethod(createStatelessLambda(lambdaType))
             .addMethod(createStatefulLambda(lambdaType, field))
@@ -112,6 +113,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
                 .addParameter(TypeDef.STRING)
                 .build()
             )
+            .addAnnotation(FunctionalInterface.class)
             .build();
     }
 
@@ -141,10 +143,11 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         Local function = new Local("function", lambdaType.asTypeDef());
         Lambda lambda = lambdaType.asTypeDef()
             .getLambda()
-            .implement((t, params) -> constant.invoke("concat", TypeDef.STRING,
-                params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
-                    .invoke("concat", TypeDef.STRING, t.invoke("toString", TypeDef.STRING))
-                    .invoke("concat", TypeDef.STRING, t.field(field))
+            .implement((t, params) -> JavaIdioms.concatStrings(
+                    constant,
+                    params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1)),
+                    t.invoke("toString", TypeDef.STRING),
+                    t.field(field)
             ).returning());
 
         // callStatefulLambda(String input) {
@@ -188,7 +191,8 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
                 .addParameters(TypeDef.STRING)
                 .returns(TypeDef.STRING)
                 .addModifiers(Modifier.ABSTRACT)
-                .build((t, params) -> constant.invoke("concat", TypeDef.STRING,
+                .build((t, params) -> JavaIdioms.concatStrings(
+                    constant,
                     params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
                 ).returning())
         );
@@ -227,8 +231,9 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         ClassTypeDef funcType = funcDef.asTypeDef();
 
         Lambda lambda = funcType.getLambda()
-            .implement(Map.of("T", TypeDef.STRING, "R", TypeDef.STRING), (aThis, params) -> constant.invoke("concat", TypeDef.STRING,
-                params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
+            .implement(Map.of("T", TypeDef.STRING, "R", TypeDef.STRING), (aThis, params) -> JavaIdioms.concatStrings(
+                    constant,
+                    params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
             ).returning());
 
         return MethodDef.builder("callGenericLambda2")
@@ -258,10 +263,10 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             .getLambda()
             .implement(
                 resolvedVariables,
-                (t, params) ->
-                    constant.invoke("concat", TypeDef.STRING, params.get(0)
-                            .invoke("substring", TypeDef.STRING, ExpressionDef.constant(1)))
-                        .returning()
+                (t, params) -> JavaIdioms.concatStrings(
+                        constant,
+                        params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
+                ).returning()
             );
 
         return MethodDef.builder("callGenericLambdaAst")

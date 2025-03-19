@@ -163,17 +163,20 @@ public class example/MyClassWithLambda {
   // access flags 0xA
   private static lambda$callStatefulLambda$0(Ljava/lang/String;Lexample/MyClassWithLambda;Ljava/lang/String;)Ljava/lang/String;
    L0
+    NEW java/lang/StringBuilder
+    DUP
     ALOAD 0
+    INVOKESPECIAL java/lang/StringBuilder.<init> (Ljava/lang/String;)V
     ALOAD 2
     ICONST_1
     INVOKEVIRTUAL java/lang/String.substring (I)Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/StringBuilder.append (Ljava/lang/String;)Ljava/lang/StringBuilder;
     ALOAD 1
-    INVOKEVIRTUAL example/MyClassWithLambda.toString ()Ljava/lang/String;
-    INVOKEVIRTUAL java/lang/String.concat (Ljava/lang/String;)Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/StringBuilder.append (Ljava/lang/Object;)Ljava/lang/StringBuilder;
     ALOAD 1
     GETFIELD example/MyClassWithLambda.name : Ljava/lang/String;
-    INVOKEVIRTUAL java/lang/String.concat (Ljava/lang/String;)Ljava/lang/String;
-    INVOKEVIRTUAL java/lang/String.concat (Ljava/lang/String;)Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/StringBuilder.append (Ljava/lang/Object;)Ljava/lang/StringBuilder;
+    INVOKEVIRTUAL java/lang/StringBuilder.toString ()Ljava/lang/String;
     ARETURN
    L1
     LOCALVARIABLE constant Ljava/lang/String; L0 L1 1
@@ -211,11 +214,15 @@ public class example/MyClassWithLambda {
   // access flags 0xA
   private static lambda$callGenericLambda$0(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
    L0
+    NEW java/lang/StringBuilder
+    DUP
     ALOAD 0
+    INVOKESPECIAL java/lang/StringBuilder.<init> (Ljava/lang/String;)V
     ALOAD 1
     ICONST_1
     INVOKEVIRTUAL java/lang/String.substring (I)Ljava/lang/String;
-    INVOKEVIRTUAL java/lang/String.concat (Ljava/lang/String;)Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/StringBuilder.append (Ljava/lang/String;)Ljava/lang/StringBuilder;
+    INVOKEVIRTUAL java/lang/StringBuilder.toString ()Ljava/lang/String;
     ARETURN
    L1
     LOCALVARIABLE constant Ljava/lang/String; L0 L1 1
@@ -292,7 +299,7 @@ public class MyClassWithLambda {
    }
 
    private static String lambda$callStatefulLambda$0(String var0, MyClassWithLambda constant, String var2) {
-      return var0.concat(((String)var2).substring(1).concat(((MyClassWithLambda)constant).toString()).concat(constant.name));
+      return var0 + ((String)var2).substring(1) + constant + constant.name;
    }
 
    public String callGenericLambda(String input) {
@@ -302,7 +309,7 @@ public class MyClassWithLambda {
    }
 
    private static String lambda$callGenericLambda$0(String var0, String constant) {
-      return var0.concat(constant.substring(1));
+      return var0 + constant.substring(1);
    }
 
    public String callGenericLambda2(String input) {
