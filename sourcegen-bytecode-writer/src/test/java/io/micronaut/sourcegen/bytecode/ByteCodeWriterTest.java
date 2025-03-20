@@ -23,6 +23,7 @@ import org.objectweb.asm.util.CheckClassAdapter;
 import org.objectweb.asm.util.TraceClassVisitor;
 
 import javax.lang.model.element.Modifier;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -3189,6 +3190,58 @@ class Test {
         tcv.visitEnd();
 
         return classWriter.toByteArray();
+    }
+
+    @Test
+    void testMethodThrows() {
+        MethodDef method = MethodDef.builder("test")
+            .returns(TypeDef.VOID)
+            .addThrows(TypeDef.of(IOException.class))
+            .build((aThis, methodParameters) ->
+                ClassTypeDef.of(IOException.class).instantiate().doThrow()
+            );
+        ClassDef classDef = ClassDef.builder("example.Test")
+            .addMethod(method)
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;
+// declaration: example/Test
+class example/Test {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x0
+  test()V throws java/io/IOException
+    NEW java/io/IOException
+    DUP
+    INVOKESPECIAL java/io/IOException.<init> ()V
+    ATHROW
+}
+""", bytecode);
+
+        assertEquals("""
+package example;
+
+import java.io.IOException;
+
+class Test {
+   void test() throws IOException {
+      throw new IOException();
+   }
+}
+""", decompileToJava(bytes));
     }
 
 }
