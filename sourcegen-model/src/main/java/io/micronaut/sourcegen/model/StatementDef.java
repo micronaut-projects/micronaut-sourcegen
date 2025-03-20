@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * The statement definition.
@@ -53,6 +54,29 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      */
     default List<StatementDef> flatten() {
         return List.of(this);
+    }
+
+    /**
+     * All the statements that are represented by this statement.
+     *
+     * @return all the statements
+     * @since 1.7
+     */
+    default List<StatementDef> statements() {
+        return List.of();
+    }
+
+    /**
+     * All the expressions that are represented by this statement.
+     *
+     * @return all the statements
+     * @since 1.7
+     */
+    default List<? extends ExpressionDef> expressions() {
+        return statements().stream()
+            .flatMap(s -> s.expressions().stream())
+            .flatMap(e -> e.expressions().stream())
+            .collect(Collectors.toList());
     }
 
     /**
@@ -107,6 +131,11 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      */
     @Experimental
     record Multi(@NonNull List<StatementDef> statements) implements StatementDef {
+
+        @Override
+        public List<StatementDef> statements() {
+            return flatten();
+        }
 
         @Override
         public List<StatementDef> flatten() {
@@ -214,6 +243,11 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      */
     @Experimental
     record If(ExpressionDef condition, StatementDef statement) implements StatementDef {
+
+        @Override
+        public List<StatementDef> statements() {
+            return List.of(statement);
+        }
     }
 
     /**
@@ -224,8 +258,14 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      * @param elseStatement The statement if the condition is false
      */
     @Experimental
-    record IfElse(ExpressionDef condition, StatementDef statement,
+    record IfElse(ExpressionDef condition,
+                  StatementDef statement,
                   StatementDef elseStatement) implements StatementDef {
+
+        @Override
+        public List<StatementDef> statements() {
+            return List.of(statement, elseStatement);
+        }
     }
 
     /**
@@ -243,6 +283,15 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
                   TypeDef type,
                   Map<ExpressionDef.Constant, StatementDef> cases,
                   @Nullable StatementDef defaultCase) implements StatementDef {
+
+        @Override
+        public List<StatementDef> statements() {
+            List<StatementDef> result = new ArrayList<>(cases.values());
+            if (defaultCase != null) {
+                result.add(defaultCase);
+            }
+            return result;
+        }
     }
 
     /**
@@ -254,6 +303,11 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      */
     @Experimental
     record While(ExpressionDef expression, StatementDef statement) implements StatementDef {
+
+        @Override
+        public List<StatementDef> statements() {
+            return List.of(statement);
+        }
     }
 
     /**
@@ -271,6 +325,15 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
 
         public Try(StatementDef statement) {
             this(statement, List.of(), null);
+        }
+
+        @Override
+        public List<StatementDef> statements() {
+            List<StatementDef> result = new ArrayList<>(catches.stream().map(Catch::statement).toList());
+            if (finallyStatement != null) {
+                result.add(finallyStatement);
+            }
+            return result;
         }
 
         public Try doCatch(Class<?> exception, Function<VariableDef.ExceptionVar, StatementDef> catchBlock) {
@@ -315,6 +378,11 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      */
     @Experimental
     record Synchronized(ExpressionDef monitor, StatementDef statement) implements StatementDef {
+
+        @Override
+        public List<StatementDef> statements() {
+            return List.of(statement);
+        }
     }
 
 }

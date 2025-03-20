@@ -1,9 +1,12 @@
 package io.micronaut.sourcegen.bytecode;
 
+import com.sun.jdi.ClassType;
 import io.micronaut.context.BeanResolutionContext;
 import io.micronaut.core.annotation.AnnotationClassValue;
 import io.micronaut.core.reflect.ReflectionUtils;
+import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.custom.visitor.GenerateLambdaVisitor;
 import io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInEnumVisitor;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
@@ -30,6 +33,7 @@ import java.lang.reflect.Constructor;
 import java.util.AbstractList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import static io.micronaut.sourcegen.bytecode.DecompilerUtils.decompileToJava;
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
@@ -51,8 +55,99 @@ import static io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpT
 import static io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpType.SUBTRACTION;
 import static io.micronaut.sourcegen.model.ExpressionDef.MathUnaryOperation.OpType.NEGATE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 class ByteCodeWriterTest {
+
+    @Test
+    void lambda() {
+        ClassDef lambdaType = ClassDef.builder(Function.class.getName())
+            .addMethod(MethodDef.of(Function.class.getDeclaredMethods()[0]))
+            .build();
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(
+                MethodDef.builder("callLambda")
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(TypeDef.STRING)
+                    .addParameter("input", TypeDef.STRING)
+                    .build((t, params) ->
+                        ExpressionDef.Lambda.of(lambdaType.asTypeDef(), (lambaThis, lambdaParams) ->
+                                lambdaParams.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1)).returning())
+                            .newLocal("function", l -> l.invoke("apply", TypeDef.STRING, params.get(0)).returning())
+                    )
+            )
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(def, bytecodeWriter);
+
+        String bytecode = bytecodeWriter.toString();
+        Assertions.assertEquals("""
+// class version 61.0 (61)
+// access flags 0x1
+// signature Ljava/lang/Object;
+// declaration: example/Example
+public class example/Example {
+
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public callLambda(Ljava/lang/String;)Ljava/lang/String;
+   L0
+   L1
+    INVOKEDYNAMIC apply()Ljava/util/function/Function; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/LambdaMetafactory.metafactory(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      (Ljava/lang/Object;)Ljava/lang/Object;,\s
+      // handle kind 0x6 : INVOKESTATIC
+      example/Example.lambda$callLambda$0(Ljava/lang/Object;)Ljava/lang/Object;,\s
+      (Ljava/lang/Object;)Ljava/lang/Object;
+    ]
+    ASTORE 2
+    ALOAD 2
+    ALOAD 1
+    INVOKEVIRTUAL java/util/function/Function.apply (Ljava/lang/String;)Ljava/lang/String;
+    ARETURN
+   L2
+    LOCALVARIABLE input Ljava/lang/String; L0 L2 1
+    LOCALVARIABLE function Ljava/util/function/Function; L1 L2 2
+
+  // access flags 0xA
+  private static lambda$callLambda$0(Ljava/lang/Object;)Ljava/lang/Object;
+   L0
+    ALOAD 0
+    ICONST_1
+    INVOKEVIRTUAL java/lang/Object.substring (I)Ljava/lang/String;
+    ARETURN
+   L1
+    LOCALVARIABLE arg0 Ljava/lang/Object; L0 L1 1
+}
+""", bytecode);
+
+        Assertions.assertEquals("""
+package example;
+
+import java.util.function.Function;
+
+public class Example {
+   public String callLambda(String input) {
+      Function function = Example::lambda$callLambda$0;
+      return function.apply(input);
+   }
+
+   private static Object lambda$callLambda$0(Object var0) {
+      return var0.substring(1);
+   }
+}
+""", decompileToJava(bytes));
+    }
 
     @Test
     void voidClassLoading() {

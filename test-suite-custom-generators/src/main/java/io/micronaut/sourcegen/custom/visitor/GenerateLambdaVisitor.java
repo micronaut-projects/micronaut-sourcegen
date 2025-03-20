@@ -40,16 +40,16 @@ import java.util.List;
 import java.util.function.Function;
 
 @Internal
-public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateLambda, Object> { // <1>
+public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateLambda, Object> {
 
     @Override
     public @NonNull VisitorKind getVisitorKind() {
         return VisitorKind.ISOLATING;
-    } // <2>
+    }
 
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
-        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null); // <3>
+        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
         if (sourceGenerator == null) {
             return;
         }
@@ -58,7 +58,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         String className = element.getPackageName() + ".MyClassWithLambda";
 
         FieldDef field = FieldDef.builder("name").ofType(TypeDef.STRING).build();
-        ClassDef interfaceDef = ClassDef.builder(className) // <4>
+        ClassDef interfaceDef = ClassDef.builder(className)
             .addModifiers(Modifier.PUBLIC)
             .addField(field)
             .addMethod(MethodDef.builder("toString").returns(TypeDef.STRING).addModifiers(Modifier.PUBLIC)
@@ -86,7 +86,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
 
     private MethodDef createStatelessLambda(VisitorContext context, ClassElement element, ObjectDef lambdaType) {
         Local function = new Local("function", lambdaType.asTypeDef());
-        Lambda lambda = Lambda.extend(lambdaType.asTypeDef(), (t, params) ->
+        Lambda lambda = Lambda.of(lambdaType.asTypeDef(), (t, params) ->
                 params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1)).returning());
 
         // callLambda(String input) {
@@ -99,7 +99,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             .addParameter("input", TypeDef.STRING)
             .build((t, params) -> StatementDef.multi(
                 function.defineAndAssign(lambda),
-                function.invoke("apply", TypeDef.STRING, params.get(0)).returning()
+                function.invoke(lambda, params.get(0)).returning()
             ));
     }
 
@@ -108,7 +108,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
     ) {
         Local constant = new Local("constant", TypeDef.STRING);
         Local function = new Local("function", lambdaType.asTypeDef());
-        Lambda lambda = Lambda.extend(lambdaType.asTypeDef(), (t, params) -> constant.invoke("concat", TypeDef.STRING,
+        Lambda lambda = Lambda.of(lambdaType.asTypeDef(), (t, params) -> constant.invoke("concat", TypeDef.STRING,
             params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
                 .invoke("concat", TypeDef.STRING, t.invoke("toString", TypeDef.STRING))
                 .invoke("concat", TypeDef.STRING, t.field(field))
@@ -129,8 +129,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             .build((t, params) -> StatementDef.multi(
                 constant.defineAndAssign(ExpressionDef.constant("prefix_")),
                 function.defineAndAssign(lambda),
-                function.invoke("apply", TypeDef.STRING, params.get(0))
-                    .returning()
+                function.invoke(lambda, params.get(0)).returning()
             ));
     }
 
@@ -147,7 +146,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         Local constant = new Local("constant", TypeDef.STRING);
         Local function = new Local("function", TypeDef.of(functionType));
 
-        Lambda lambda = Lambda.extend(
+        Lambda lambda = Lambda.of(
             functionType, (t, params) -> constant.invoke("concat", TypeDef.STRING,
                 params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
             ).returning());
@@ -159,8 +158,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             .build((t, params) -> StatementDef.multi(
                 constant.defineAndAssign(ExpressionDef.constant("prefix_")),
                 function.defineAndAssign(lambda),
-                function.invoke("apply", List.of(TypeDef.OBJECT), TypeDef.OBJECT, List.of(params.get(0)))
-                    .cast(TypeDef.STRING).returning()
+                function.invoke(lambda, params.get(0)).cast(TypeDef.STRING).returning()
             ));
     }
 }
