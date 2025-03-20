@@ -49,8 +49,7 @@ public sealed interface ExpressionWriter
         NewInstanceExpressionWriter,
         SwitchExpressionWriter,
         SwitchYieldCaseExpressionWriter,
-        VariableExpressionWriter,
-        StringConcatenationExpressionWriter
+        VariableExpressionWriter
 {
 
     /**

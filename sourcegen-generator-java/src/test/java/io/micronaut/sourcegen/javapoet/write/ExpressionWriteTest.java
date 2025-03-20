@@ -310,4 +310,19 @@ public class Example {
 
         assertEquals("0", result);
     }
+
+    @Test
+    public void stringConcatenation() throws IOException {
+        ExpressionDef concat = ExpressionDef.constant("Hello ")
+            .stringConcat(ExpressionDef.constant(1));
+        String result = writeMethodWithExpression(concat);
+
+        assertEquals("\"Hello \" + 1", result);
+
+        concat = concat.stringConcat(ExpressionDef.constant("Welcome!"));
+        result = writeMethodWithExpression(concat);
+
+        assertEquals("\"Hello \" + 1 + \"Welcome!\"", result);
+    }
+
 }

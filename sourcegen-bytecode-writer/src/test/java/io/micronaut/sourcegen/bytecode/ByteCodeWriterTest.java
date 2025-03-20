@@ -3517,6 +3517,69 @@ class Test {
 """, decompileToJava(bytes));
     }
 
+    @Test
+    void testStringConcatenation() {
+        ClassDef classDef = ClassDef.builder("example.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("testConcatenation")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("arg", TypeDef.OBJECT)
+                .returns(TypeDef.STRING)
+                .build((t, params) ->
+                    ExpressionDef.constant("Hello, ")
+                        .stringConcat(params.get(0))
+                        .stringConcat(ExpressionDef.constant("!"))
+                        .returning()
+                )
+            )
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x1
+// signature Ljava/lang/Object;
+// declaration: example/MyClass
+public class example/MyClass {
+
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public testConcatenation(Ljava/lang/Object;)Ljava/lang/String;
+   L0
+    LDC "Hello, "
+    ALOAD 1
+    LDC "!"
+    INVOKEDYNAMIC makeConcatWithConstants(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/StringConcatFactory.makeConcatWithConstants(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      "\\u0001\\u0001\\u0001"
+    ]
+    ARETURN
+   L1
+    LOCALVARIABLE arg Ljava/lang/Object; L0 L1 1
+}
+""", bytecode);
+        assertEquals("""
+package example;
+
+public class MyClass {
+   public String testConcatenation(Object arg) {
+      return "Hello, " + arg + "!";
+   }
+}
+""", decompileToJava(bytes));
+    }
+
     private String toBytecode(ObjectDef objectDef) {
         StringWriter stringWriter = new StringWriter();
         generateFile(objectDef, stringWriter);
