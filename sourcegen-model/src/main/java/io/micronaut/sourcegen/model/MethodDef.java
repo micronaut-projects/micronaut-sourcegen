@@ -48,7 +48,7 @@ public final class MethodDef extends AbstractElement {
     private final List<ParameterDef> parameters;
     private final List<StatementDef> statements;
     private final boolean override;
-    private final List<ClassTypeDef> throwTypes;
+    private final List<TypeDef> throwTypes;
 
     MethodDef(String name,
               EnumSet<Modifier> modifiers,
@@ -59,7 +59,7 @@ public final class MethodDef extends AbstractElement {
               List<String> javadoc,
               boolean override,
               boolean synthetic,
-              List<ClassTypeDef> throwTypes) {
+              List<TypeDef> throwTypes) {
         super(name, modifiers, annotations, javadoc, synthetic);
         this.returnType = Objects.requireNonNullElse(returnType, TypeDef.VOID);
         this.parameters = Collections.unmodifiableList(parameters);
@@ -240,7 +240,7 @@ public final class MethodDef extends AbstractElement {
     /**
      * @return The exception types this method throws
      */
-    public List<ClassTypeDef> getThrowTypes() {
+    public List<TypeDef> getThrowTypes() {
         return throwTypes;
     }
 
@@ -274,7 +274,7 @@ public final class MethodDef extends AbstractElement {
         private final List<MethodBodyBuilder> bodyBuilders = new ArrayList<>();
         private final List<StatementDef> statements = new ArrayList<>();
         private boolean overrides;
-        private final List<ClassTypeDef> throwTypes = new ArrayList<>();
+        private final List<TypeDef> throwTypes = new ArrayList<>();
 
         private MethodDefBuilder(String name) {
             super(name);
@@ -495,7 +495,7 @@ public final class MethodDef extends AbstractElement {
          * @return The builder
          */
         @NonNull
-        public MethodDefBuilder addThrows(@NonNull ClassTypeDef... types) {
+        public MethodDefBuilder addThrows(@NonNull TypeDef... types) {
             throwTypes.addAll(Arrays.asList(types));
             return this;
         }
@@ -507,7 +507,7 @@ public final class MethodDef extends AbstractElement {
          * @return The builder
          */
         @NonNull
-        public MethodDefBuilder addThrows(@NonNull List<ClassTypeDef> types) {
+        public MethodDefBuilder addThrows(@NonNull List<TypeDef> types) {
             throwTypes.addAll(types);
             return this;
         }

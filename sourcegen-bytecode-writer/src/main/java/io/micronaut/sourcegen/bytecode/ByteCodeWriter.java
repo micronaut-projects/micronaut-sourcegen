@@ -449,7 +449,7 @@ public final class ByteCodeWriter {
         String[] exceptions = null;
         if (!methodDef.getThrowTypes().isEmpty()) {
             exceptions = methodDef.getThrowTypes().stream()
-                .map(t -> TypeUtils.getType(t).getClassName().replace(".", "/"))
+                .map(t -> TypeUtils.getType(t, objectDef).getClassName().replace(".", "/"))
                 .toArray(String[]::new);
         }
         MethodVisitor methodVisitor = classVisitor.visitMethod(
