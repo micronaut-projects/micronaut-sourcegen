@@ -150,7 +150,7 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
     }
 
     private void captureVariables(StatementDef statement, Set<String> variables, List<VariableDef> capturedVariables) {
-        statement.expressionsStream()
+        statement.nestedExpressionsStream()
             .forEach(expressionDef -> captureVariables(expressionDef, variables, capturedVariables));
     }
 
@@ -185,7 +185,7 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
                 }
             }
         } else {
-            expression.expressionsStream()
+            expression.nestedExpressionsStream()
                 .forEach(expressionDef -> captureVariables(expressionDef, variables, capturedVariables));
         }
     }
