@@ -1,10 +1,8 @@
 package io.micronaut.sourcegen.bytecode;
 
-import com.sun.jdi.ClassType;
 import io.micronaut.context.BeanResolutionContext;
 import io.micronaut.core.annotation.AnnotationClassValue;
 import io.micronaut.core.reflect.ReflectionUtils;
-import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.visitor.GenerateLambdaVisitor;
 import io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInEnumVisitor;
@@ -33,7 +31,6 @@ import java.lang.reflect.Constructor;
 import java.util.AbstractList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import static io.micronaut.sourcegen.bytecode.DecompilerUtils.decompileToJava;
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
@@ -55,41 +52,27 @@ import static io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpT
 import static io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpType.SUBTRACTION;
 import static io.micronaut.sourcegen.model.ExpressionDef.MathUnaryOperation.OpType.NEGATE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class ByteCodeWriterTest {
 
     @Test
     void lambda() {
-        ClassDef lambdaType = ClassDef.builder(Function.class.getName())
-            .addMethod(MethodDef.of(Function.class.getDeclaredMethods()[0]))
-            .build();
-        ClassDef def = ClassDef.builder("example.Example")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(
-                MethodDef.builder("callLambda")
-                    .addModifiers(Modifier.PUBLIC)
-                    .returns(TypeDef.STRING)
-                    .addParameter("input", TypeDef.STRING)
-                    .build((t, params) ->
-                        ExpressionDef.Lambda.of(lambdaType.asTypeDef(), (lambaThis, lambdaParams) ->
-                                lambdaParams.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1)).returning())
-                            .newLocal("function", l -> l.invoke("apply", TypeDef.STRING, params.get(0)).returning())
-                    )
-            )
-            .build();
+        ClassDef classDef = GenerateLambdaVisitor.getSpec("example").theClass();
 
         StringWriter bytecodeWriter = new StringWriter();
-        byte[] bytes = generateFile(def, bytecodeWriter);
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
 
         String bytecode = bytecodeWriter.toString();
         Assertions.assertEquals("""
 // class version 61.0 (61)
 // access flags 0x1
 // signature Ljava/lang/Object;
-// declaration: example/Example
-public class example/Example {
+// declaration: example/MyClassWithLambda
+public class example/MyClassWithLambda {
 
+
+  // access flags 0x0
+  Ljava/lang/String; name
 
   // access flags 0x1
   public <init>()V
@@ -98,36 +81,130 @@ public class example/Example {
     RETURN
 
   // access flags 0x1
+  public toString()Ljava/lang/String;
+    LDC "MyClass"
+    ARETURN
+
+  // access flags 0x1
   public callLambda(Ljava/lang/String;)Ljava/lang/String;
    L0
    L1
-    INVOKEDYNAMIC apply()Ljava/util/function/Function; [
+    INVOKEDYNAMIC apply()Lexample/StringFunction; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/LambdaMetafactory.metafactory(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      (Ljava/lang/String;)Ljava/lang/String;,\s
+      // handle kind 0x6 : INVOKESTATIC
+      example/MyClassWithLambda.lambda$callLambda$0(Ljava/lang/String;)Ljava/lang/String;,\s
+      (Ljava/lang/String;)Ljava/lang/String;
+    ]
+    ASTORE 2
+    ALOAD 2
+    ALOAD 1
+    INVOKEINTERFACE example/StringFunction.apply (Ljava/lang/String;)Ljava/lang/String; (itf)
+    ARETURN
+   L2
+    LOCALVARIABLE input Ljava/lang/String; L0 L2 1
+    LOCALVARIABLE function Lexample/StringFunction; L1 L2 2
+
+  // access flags 0xA
+  private static lambda$callLambda$0(Ljava/lang/String;)Ljava/lang/String;
+   L0
+    ALOAD 0
+    ICONST_1
+    INVOKEVIRTUAL java/lang/String.substring (I)Ljava/lang/String;
+    ARETURN
+   L1
+    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 1
+
+  // access flags 0x1
+  public callStatefulLambda(Ljava/lang/String;)Ljava/lang/String;
+   L0
+   L1
+    LDC "prefix_"
+    ASTORE 2
+   L2
+    ALOAD 2
+    ALOAD 0
+    INVOKEDYNAMIC apply(Ljava/lang/String;Lexample/MyClassWithLambda;)Lexample/StringFunction; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/LambdaMetafactory.metafactory(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      (Ljava/lang/String;)Ljava/lang/String;,\s
+      // handle kind 0x6 : INVOKESTATIC
+      example/MyClassWithLambda.lambda$callStatefulLambda$0(Ljava/lang/String;Lexample/MyClassWithLambda;Ljava/lang/String;)Ljava/lang/String;,\s
+      (Ljava/lang/String;)Ljava/lang/String;
+    ]
+    ASTORE 3
+    ALOAD 3
+    ALOAD 1
+    INVOKEINTERFACE example/StringFunction.apply (Ljava/lang/String;)Ljava/lang/String; (itf)
+    ARETURN
+   L3
+    LOCALVARIABLE input Ljava/lang/String; L0 L3 1
+    LOCALVARIABLE constant Ljava/lang/String; L1 L3 2
+    LOCALVARIABLE function Lexample/StringFunction; L2 L3 3
+
+  // access flags 0xA
+  private static lambda$callStatefulLambda$0(Ljava/lang/String;Lexample/MyClassWithLambda;Ljava/lang/String;)Ljava/lang/String;
+   L0
+    ALOAD 0
+    ALOAD 2
+    ICONST_1
+    INVOKEVIRTUAL java/lang/String.substring (I)Ljava/lang/String;
+    ALOAD 1
+    INVOKEVIRTUAL example/MyClassWithLambda.toString ()Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/String.concat (Ljava/lang/String;)Ljava/lang/String;
+    ALOAD 1
+    GETFIELD example/MyClassWithLambda.name : Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/String.concat (Ljava/lang/String;)Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/String.concat (Ljava/lang/String;)Ljava/lang/String;
+    ARETURN
+   L1
+    LOCALVARIABLE constant Ljava/lang/String; L0 L1 1
+    LOCALVARIABLE this Lexample/MyClassWithLambda; L0 L1 2
+    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 3
+
+  // access flags 0x1
+  public callGenericLambda(Ljava/lang/String;)Ljava/lang/String;
+   L0
+   L1
+    LDC "prefix_"
+    ASTORE 2
+   L2
+    ALOAD 2
+    INVOKEDYNAMIC apply(Ljava/lang/String;)Ljava/util/function/Function; [
       // handle kind 0x6 : INVOKESTATIC
       java/lang/invoke/LambdaMetafactory.metafactory(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;
       // arguments:
       (Ljava/lang/Object;)Ljava/lang/Object;,\s
       // handle kind 0x6 : INVOKESTATIC
-      example/Example.lambda$callLambda$0(Ljava/lang/Object;)Ljava/lang/Object;,\s
-      (Ljava/lang/Object;)Ljava/lang/Object;
+      example/MyClassWithLambda.lambda$callGenericLambda$0(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;,\s
+      (Ljava/lang/String;)Ljava/lang/String;
     ]
-    ASTORE 2
-    ALOAD 2
+    ASTORE 3
+    ALOAD 3
     ALOAD 1
-    INVOKEVIRTUAL java/util/function/Function.apply (Ljava/lang/String;)Ljava/lang/String;
+    INVOKEINTERFACE java/util/function/Function.apply (Ljava/lang/Object;)Ljava/lang/Object; (itf)
+    CHECKCAST java/lang/String
     ARETURN
-   L2
-    LOCALVARIABLE input Ljava/lang/String; L0 L2 1
-    LOCALVARIABLE function Ljava/util/function/Function; L1 L2 2
+   L3
+    LOCALVARIABLE input Ljava/lang/String; L0 L3 1
+    LOCALVARIABLE constant Ljava/lang/String; L1 L3 2
+    LOCALVARIABLE function Ljava/util/function/Function; L2 L3 3
 
   // access flags 0xA
-  private static lambda$callLambda$0(Ljava/lang/Object;)Ljava/lang/Object;
+  private static lambda$callGenericLambda$0(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
    L0
     ALOAD 0
+    ALOAD 1
     ICONST_1
-    INVOKEVIRTUAL java/lang/Object.substring (I)Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/String.substring (I)Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/String.concat (Ljava/lang/String;)Ljava/lang/String;
     ARETURN
    L1
-    LOCALVARIABLE arg0 Ljava/lang/Object; L0 L1 1
+    LOCALVARIABLE constant Ljava/lang/String; L0 L1 1
+    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 2
 }
 """, bytecode);
 
@@ -136,14 +213,40 @@ package example;
 
 import java.util.function.Function;
 
-public class Example {
+public class MyClassWithLambda {
+   String name;
+
+   public String toString() {
+      return "MyClass";
+   }
+
    public String callLambda(String input) {
-      Function function = Example::lambda$callLambda$0;
+      StringFunction function = MyClassWithLambda::lambda$callLambda$0;
       return function.apply(input);
    }
 
-   private static Object lambda$callLambda$0(Object var0) {
+   private static String lambda$callLambda$0(String var0) {
       return var0.substring(1);
+   }
+
+   public String callStatefulLambda(String input) {
+      String constant = "prefix_";
+      StringFunction function = MyClassWithLambda::lambda$callStatefulLambda$0;
+      return function.apply(input);
+   }
+
+   private static String lambda$callStatefulLambda$0(String var0, MyClassWithLambda constant, String var2) {
+      return var0.concat(((String)var2).substring(1).concat(((MyClassWithLambda)constant).toString()).concat(constant.name));
+   }
+
+   public String callGenericLambda(String input) {
+      String constant = "prefix_";
+      Function function = MyClassWithLambda::lambda$callGenericLambda$0;
+      return (String)function.apply(input);
+   }
+
+   private static String lambda$callGenericLambda$0(String var0, String constant) {
+      return var0.concat(constant.substring(1));
    }
 }
 """, decompileToJava(bytes));

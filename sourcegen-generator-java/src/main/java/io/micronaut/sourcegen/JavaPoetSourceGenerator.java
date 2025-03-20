@@ -697,7 +697,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (expressionDef instanceof ExpressionDef.NewArrayInitialized newArray) {
             CodeBlock.Builder builder = CodeBlock.builder();
             builder.add("new $T[]{", asType(newArray.type().componentType(), objectDef));
-            for (Iterator<? extends ExpressionDef> iterator = newArray.expressions().iterator(); iterator.hasNext(); ) {
+            for (Iterator<? extends ExpressionDef> iterator = newArray.expressionsStream().iterator(); iterator.hasNext(); ) {
                 ExpressionDef expression = iterator.next();
                 builder.add(renderExpression(objectDef, methodDef, remappedLocals, expression));
                 if (iterator.hasNext()) {

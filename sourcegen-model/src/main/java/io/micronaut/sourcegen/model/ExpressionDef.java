@@ -35,14 +35,13 @@ import io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder;
 import javax.lang.model.element.Modifier;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * The expression definition.
@@ -60,7 +59,7 @@ public sealed interface ExpressionDef
      * @return The expressions
      * @since 1.7
      */
-    List<? extends ExpressionDef> expressions();
+    Stream<? extends ExpressionDef> expressionsStream();
 
     /**
      * Check an array element.
@@ -987,8 +986,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return values;
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return values.stream();
         }
     }
 
@@ -1004,8 +1003,8 @@ public sealed interface ExpressionDef
     @Experimental
     record Cast(TypeDef type, ExpressionDef expressionDef) implements ExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(expressionDef);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(expressionDef);
         }
     }
 
@@ -1022,8 +1021,8 @@ public sealed interface ExpressionDef
                     @Nullable
                     Object value) implements ExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of();
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of();
         }
     }
 
@@ -1054,11 +1053,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            List<ExpressionDef> result = new ArrayList<>();
-            result.add(instance);
-            result.addAll(values);
-            return result;
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.concat(Stream.of(instance), values.stream());
         }
 
         @Override
@@ -1088,8 +1084,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return values;
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return values.stream();
         }
 
         @Override
@@ -1144,8 +1140,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(left, right);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(left, right);
         }
 
         /**
@@ -1188,8 +1184,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(left, right);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(left, right);
         }
 
         @Override
@@ -1227,8 +1223,8 @@ public sealed interface ExpressionDef
     record MathUnaryOperation(OpType opType,
                               ExpressionDef expression) implements ExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(expression);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(expression);
         }
 
         @Override
@@ -1253,8 +1249,8 @@ public sealed interface ExpressionDef
     @Experimental
     record IsNull(ExpressionDef expression) implements ConditionExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(expression);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(expression);
         }
     }
 
@@ -1267,8 +1263,8 @@ public sealed interface ExpressionDef
     @Experimental
     record IsNotNull(ExpressionDef expression) implements ConditionExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(expression);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(expression);
         }
     }
 
@@ -1281,8 +1277,8 @@ public sealed interface ExpressionDef
     @Experimental
     record IsTrue(ExpressionDef expression) implements ConditionExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(expression);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(expression);
         }
     }
 
@@ -1295,8 +1291,8 @@ public sealed interface ExpressionDef
     @Experimental
     record IsFalse(ExpressionDef expression) implements ConditionExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(expression);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(expression);
         }
     }
 
@@ -1311,8 +1307,8 @@ public sealed interface ExpressionDef
     @Experimental
     record And(ConditionExpressionDef left, ConditionExpressionDef right) implements ConditionExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(left, right);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(left, right);
         }
     }
 
@@ -1327,8 +1323,8 @@ public sealed interface ExpressionDef
     @Experimental
     record Or(ConditionExpressionDef left, ConditionExpressionDef right) implements ConditionExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(left, right);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(left, right);
         }
     }
 
@@ -1356,8 +1352,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(condition, ifExpression, elseExpression);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(condition, ifExpression, elseExpression);
         }
     }
 
@@ -1377,12 +1373,14 @@ public sealed interface ExpressionDef
                   Map<Constant, ? extends ExpressionDef> cases,
                   ExpressionDef defaultCase) implements ExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            List<ExpressionDef> result = new ArrayList<>();
-            result.add(expression);
-            result.add(defaultCase);
-            result.addAll(cases.values());
-            return result;
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.concat(
+                Stream.concat(
+                    Stream.of(expression),
+                    Stream.of(defaultCase)
+                ),
+                cases.values().stream()
+            );
         }
     }
 
@@ -1396,8 +1394,8 @@ public sealed interface ExpressionDef
     @Experimental
     record SwitchYieldCase(TypeDef type, StatementDef statement) implements ExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of();
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of();
         }
     }
 
@@ -1412,15 +1410,15 @@ public sealed interface ExpressionDef
     @Experimental
     record NewArrayOfSize(TypeDef.Array type, int size) implements ExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of();
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of();
         }
     }
 
     /**
      * The new array expression.
      *
-     * @param type        The type
+     * @param type  The type
      * @param expressions The items expression
      * @author Denis Stepanov
      * @since 1.2
@@ -1429,8 +1427,8 @@ public sealed interface ExpressionDef
     record NewArrayInitialized(TypeDef.Array type,
                                List<? extends ExpressionDef> expressions) implements ExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return expressions;
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return expressions.stream();
         }
     }
 
@@ -1452,8 +1450,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(instance);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(instance);
         }
     }
 
@@ -1473,8 +1471,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(instance);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(instance);
         }
     }
 
@@ -1494,8 +1492,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(instance);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(instance);
         }
     }
 
@@ -1511,8 +1509,8 @@ public sealed interface ExpressionDef
     record EqualsStructurally(ExpressionDef instance,
                               ExpressionDef other) implements ConditionExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(instance, other);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(instance, other);
         }
     }
 
@@ -1528,8 +1526,8 @@ public sealed interface ExpressionDef
     record NotEqualsStructurally(ExpressionDef instance,
                                  ExpressionDef other) implements ConditionExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(instance, other);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(instance, other);
         }
     }
 
@@ -1545,8 +1543,8 @@ public sealed interface ExpressionDef
     record EqualsReferentially(ExpressionDef instance,
                                ExpressionDef other) implements ConditionExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(instance, other);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(instance, other);
         }
     }
 
@@ -1562,8 +1560,8 @@ public sealed interface ExpressionDef
     record NotEqualsReferentially(ExpressionDef instance,
                                  ExpressionDef other) implements ConditionExpressionDef {
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(instance, other);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(instance, other);
         }
     }
 
@@ -1585,8 +1583,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(expression);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(expression);
         }
     }
 
@@ -1628,8 +1626,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of(expression, indexExpression);
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of(expression, indexExpression);
         }
     }
 
@@ -1663,15 +1661,14 @@ public sealed interface ExpressionDef
             if (rawType instanceof ClassTypeDef.Parameterized parameterized) {
                 rawType = parameterized.rawType();
             }
-
             if (rawType instanceof ClassElementType classElement) {
                 return of(classElement.classElement(), bodyBuilder);
-            } else if (typeDef instanceof ClassDefType classDef) {
-                return of(typeDef, classDef.objectDef(), bodyBuilder);
-            } else {
-                throw new UnsupportedOperationException("Can extend lambda only from ClassTypeDef that was " +
-                    "created from ObjectDef or a ClassElement. Use constructor otherwise.");
             }
+            if (rawType instanceof ClassDefType classDef) {
+                return of(typeDef, classDef.objectDef(), bodyBuilder);
+            }
+            throw new UnsupportedOperationException("Can extend lambda only from ClassTypeDef that was " +
+                "created from ObjectDef or a ClassElement. Use constructor otherwise. Got: " + rawType);
         }
 
         /**
@@ -1687,12 +1684,6 @@ public sealed interface ExpressionDef
                 .stream()
                 .filter(v -> v.getModifiers().contains(Modifier.ABSTRACT))
                 .toList();
-            if (methods.isEmpty()) {
-                methods = lambdaTypeDef.getMethods()
-                    .stream()
-                    .filter(v -> !v.getModifiers().contains(Modifier.FINAL))
-                    .toList();
-            }
             if (methods.size() != 1) {
                 throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
                     "abstract method but has " + methods.size());
@@ -1703,17 +1694,18 @@ public sealed interface ExpressionDef
         /**
          * Create a lambda that extends a particular type.
          *
-         * @param lambdaType   The type of lambda
-         * @param lambdaMethod The lambda method
-         * @param bodyBuilder  The builder for the lambda body
+         * @param lambdaType  The type of lambda
+         * @param target      The lambda target method
+         * @param bodyBuilder The builder for the lambda body
          * @return The lambda
          */
-        private static Lambda of(ClassTypeDef lambdaType, MethodDef lambdaMethod, MethodBodyBuilder bodyBuilder) {
+        public static Lambda of(ClassTypeDef lambdaType, MethodDef target, MethodBodyBuilder bodyBuilder) {
             return new Lambda(
                 lambdaType,
-                lambdaMethod, MethodDef.builder(lambdaMethod.getName())
-                    .returns(lambdaMethod.getReturnType())
-                    .addParameters(lambdaMethod.getParameters())
+                target,
+                MethodDef.builder(target.getName())
+                    .returns(target.getReturnType())
+                    .addParameters(target.getParameters())
                     .build(bodyBuilder)
             );
         }
@@ -1736,8 +1728,8 @@ public sealed interface ExpressionDef
         }
 
         @Override
-        public List<? extends ExpressionDef> expressions() {
-            return List.of();
+        public Stream<? extends ExpressionDef> expressionsStream() {
+            return Stream.of();
         }
     }
 

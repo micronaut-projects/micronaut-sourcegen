@@ -30,11 +30,9 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWriter {
 
@@ -151,27 +149,8 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
         return capturedVariables;
     }
 
-    private Stream<StatementDef> flatten(StatementDef statementDef) {
-        List<StatementDef> statements = statementDef.statements();
-        if (statements.isEmpty() || statements.size() == 1) {
-            return statements.stream();
-        }
-        return statements.stream()
-            .flatMap(this::flatten);
-    }
-
-    private Stream<? extends ExpressionDef> flatten(ExpressionDef expressionDef) {
-        List<? extends ExpressionDef> expressions = expressionDef.expressions();
-        if (expressions.isEmpty() || expressions.size() == 1) {
-            return expressions.stream();
-        }
-        return expressions.stream().flatMap(this::flatten);
-    }
-
     private void captureVariables(StatementDef statement, Set<String> variables, List<VariableDef> capturedVariables) {
-        flatten(statement)
-            .flatMap(s -> statement.expressions().stream())
-            .flatMap(this::flatten)
+        statement.expressionsStream()
             .forEach(expressionDef -> captureVariables(expressionDef, variables, capturedVariables));
     }
 
@@ -206,9 +185,8 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
                 }
             }
         } else {
-            for (ExpressionDef operand : expression.expressions()) {
-                captureVariables(operand, variables, capturedVariables);
-            }
+            expression.expressionsStream()
+                .forEach(expressionDef -> captureVariables(expressionDef, variables, capturedVariables));
         }
     }
 
