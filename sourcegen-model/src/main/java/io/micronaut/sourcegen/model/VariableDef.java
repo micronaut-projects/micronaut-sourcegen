@@ -17,8 +17,7 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 
-import java.util.Collection;
-import java.util.Collections;
+import java.util.stream.Stream;
 
 /**
  * The variable definition.
@@ -30,8 +29,8 @@ import java.util.Collections;
 public sealed interface VariableDef extends ExpressionDef permits VariableDef.ExceptionVar, VariableDef.Field, VariableDef.Local, VariableDef.MethodParameter, VariableDef.StaticField, VariableDef.Super, VariableDef.This {
 
     @Override
-    default Collection<? extends ExpressionDef> operands() {
-        return Collections.emptyList();
+    default Stream<? extends ExpressionDef> nestedExpressionsStream() {
+        return Stream.empty();
     }
 
     /**

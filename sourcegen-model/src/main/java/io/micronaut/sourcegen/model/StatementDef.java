@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * The statement definition.
@@ -54,6 +55,14 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
     default List<StatementDef> flatten() {
         return List.of(this);
     }
+
+    /**
+     * Stream of nested expressions included in this statement.
+     *
+     * @return all the expressions
+     * @since 1.7
+     */
+    Stream<? extends ExpressionDef> nestedExpressionsStream();
 
     /**
      * Try statement.
@@ -109,6 +118,15 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
     record Multi(@NonNull List<StatementDef> statements) implements StatementDef {
 
         @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return statements.stream().flatMap(StatementDef::nestedExpressionsStream);
+        }
+
+        public List<StatementDef> statements() {
+            return flatten();
+        }
+
+        @Override
         public List<StatementDef> flatten() {
             List<StatementDef> result = new ArrayList<>(statements.size());
             for (StatementDef statement : statements) {
@@ -127,6 +145,11 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      */
     @Experimental
     record Throw(ExpressionDef expression) implements StatementDef {
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.of(expression);
+        }
     }
 
     /**
@@ -152,6 +175,10 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
             }
         }
 
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return expression == null ? Stream.empty() : Stream.of(expression);
+        }
     }
 
     /**
@@ -165,6 +192,11 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
     @Experimental
     record Assign(VariableDef.Local variable,
                   ExpressionDef expression) implements StatementDef {
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.of(variable, expression);
+        }
     }
 
     /**
@@ -178,6 +210,11 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
     @Experimental
     record PutField(VariableDef.Field field,
                     ExpressionDef expression) implements StatementDef {
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.of(field, expression);
+        }
     }
 
     /**
@@ -191,6 +228,11 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
     @Experimental
     record PutStaticField(VariableDef.StaticField field,
                           ExpressionDef expression) implements StatementDef {
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.of(field, expression);
+        }
     }
 
     /**
@@ -204,6 +246,11 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
     @Experimental
     record DefineAndAssign(VariableDef.Local variable,
                            ExpressionDef expression) implements StatementDef {
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.of(variable, expression);
+        }
     }
 
     /**
@@ -214,6 +261,15 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      */
     @Experimental
     record If(ExpressionDef condition, StatementDef statement) implements StatementDef {
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.concat(
+                Stream.of(condition),
+                statement.nestedExpressionsStream()
+            );
+        }
+
     }
 
     /**
@@ -224,8 +280,21 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      * @param elseStatement The statement if the condition is false
      */
     @Experimental
-    record IfElse(ExpressionDef condition, StatementDef statement,
+    record IfElse(ExpressionDef condition,
+                  StatementDef statement,
                   StatementDef elseStatement) implements StatementDef {
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.concat(
+                Stream.of(condition),
+                Stream.concat(
+                    statement.nestedExpressionsStream(),
+                    elseStatement.nestedExpressionsStream()
+                )
+            );
+        }
+
     }
 
     /**
@@ -243,6 +312,18 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
                   TypeDef type,
                   Map<ExpressionDef.Constant, StatementDef> cases,
                   @Nullable StatementDef defaultCase) implements StatementDef {
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.concat(
+                Stream.of(expression),
+                Stream.concat(
+                    cases.values().stream().flatMap(StatementDef::nestedExpressionsStream),
+                    defaultCase == null ? Stream.empty() : defaultCase.nestedExpressionsStream()
+                )
+            );
+        }
+
     }
 
     /**
@@ -254,6 +335,15 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      */
     @Experimental
     record While(ExpressionDef expression, StatementDef statement) implements StatementDef {
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.concat(
+                Stream.of(expression),
+                statement.nestedExpressionsStream()
+            );
+        }
+
     }
 
     /**
@@ -271,6 +361,17 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
 
         public Try(StatementDef statement) {
             this(statement, List.of(), null);
+        }
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.concat(
+                statement.nestedExpressionsStream(),
+                Stream.concat(
+                    catches.stream().flatMap(c -> c.statement.nestedExpressionsStream()),
+                    finallyStatement == null ? Stream.empty() : finallyStatement.nestedExpressionsStream()
+                )
+            );
         }
 
         public Try doCatch(Class<?> exception, Function<VariableDef.ExceptionVar, StatementDef> catchBlock) {
@@ -315,6 +416,15 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      */
     @Experimental
     record Synchronized(ExpressionDef monitor, StatementDef statement) implements StatementDef {
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.concat(
+                Stream.of(monitor),
+                statement.nestedExpressionsStream()
+            );
+        }
+
     }
 
 }

@@ -30,7 +30,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -44,8 +44,8 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
     private static final String METAFACTORY_METHOD = "metafactory";
     private static final String METAFACTORY_DESCRIPTOR =
         "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;" +
-        "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;" +
-        "Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;";
+            "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;" +
+            "Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;";
 
     private final Lambda lambda;
 
@@ -55,12 +55,12 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
 
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
-        List<VariableDef> capturedVariables = captureVariables(lambda.method());
+        List<VariableDef> capturedVariables = captureVariables(lambda.implementation());
         MethodDef implementationMethodDef = createLambdaMethodDef(context, lambda, capturedVariables);
         context.lambdaMethods().add(implementationMethodDef);
 
         // The captured variables are the parameters to the called bootstrap method
-        for (VariableDef variable: capturedVariables) {
+        for (VariableDef variable : capturedVariables) {
             new VariableExpressionWriter(variable).write(generatorAdapter, context);
         }
 
@@ -87,19 +87,19 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
         );
 
         generatorAdapter.visitInvokeDynamicInsn(
-            lambda.method().getName(),
+            lambda.implementation().getName(),
             createDynamicInvocationDescriptor(capturedVariables, context),
             bootstrapMethodHandle,
-            Type.getType(TypeUtils.getMethodDescriptor(context.objectDef(), lambda.overriddenMethod())),
+            Type.getType(TypeUtils.getMethodDescriptor(context.objectDef(), lambda.target())),
             lambdaMethodHandle,
-            Type.getType(TypeUtils.getMethodDescriptor(context.objectDef(), lambda.method()))
+            Type.getType(TypeUtils.getMethodDescriptor(context.objectDef(), lambda.implementation()))
         );
         popValueIfNeeded(generatorAdapter, lambda.type());
     }
 
     private String createDynamicInvocationDescriptor(List<VariableDef> capturedVariables, MethodContext context) {
         StringBuilder dynamicDescriptor = new StringBuilder("(");
-        for (VariableDef variable: capturedVariables) {
+        for (VariableDef variable : capturedVariables) {
             dynamicDescriptor.append(TypeUtils.getType(variable.type(), context.objectDef()));
         }
         dynamicDescriptor.append(")");
@@ -108,11 +108,11 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
     }
 
     private MethodDef createLambdaMethodDef(MethodContext context, Lambda lambda, List<VariableDef> capturedVariables) {
-        MethodDef original = lambda.method();
+        MethodDef original = lambda.implementation();
         List<ParameterDef> parameters = new ArrayList<>();
 
         // The captured variables are parameters
-        for (VariableDef variable: capturedVariables) {
+        for (VariableDef variable : capturedVariables) {
             if (variable instanceof VariableDef.Local local) {
                 parameters.add(ParameterDef.builder(local.name(), local.type()).build());
             } else if (variable instanceof VariableDef.MethodParameter parameter) {
@@ -130,7 +130,7 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
 
         parameters.addAll(original.getParameters());
         return MethodDef.builder("lambda$" + context.methodDef().getName() + "$" +
-            context.lambdaMethods().size())
+                context.lambdaMethods().size())
             .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
             .addParameters(parameters)
             .returns(original.getReturnType())
@@ -139,59 +139,19 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
     }
 
     private List<VariableDef> captureVariables(MethodDef method) {
-        Set<String> variables = new HashSet<>(
+        Set<String> variables = new LinkedHashSet<>(
             method.getParameters().stream().map(v -> v.getName()).toList()
         );
         List<VariableDef> capturedVariables = new ArrayList<>();
-        for (StatementDef statement: method.getStatements()) {
+        for (StatementDef statement : method.getStatements()) {
             captureVariables(statement, variables, capturedVariables);
         }
         return capturedVariables;
     }
 
     private void captureVariables(StatementDef statement, Set<String> variables, List<VariableDef> capturedVariables) {
-        if (statement instanceof StatementDef.Multi multi) {
-            for (StatementDef s: multi.statements()) {
-                captureVariables(s, variables, capturedVariables);
-            }
-        } else if (statement instanceof StatementDef.Return returnStatement) {
-            captureVariables(returnStatement.expression(), variables, capturedVariables);
-        } else if (statement instanceof StatementDef.Synchronized sync) {
-            captureVariables(sync.monitor(), variables, capturedVariables);
-            captureVariables(sync.statement(), variables, capturedVariables);
-        } else if (statement instanceof StatementDef.Throw throwStatement) {
-            captureVariables(throwStatement.expression(), variables, capturedVariables);
-        } else if (statement instanceof StatementDef.Assign assign) {
-            captureVariables(assign.variable(), variables, capturedVariables);
-            captureVariables(assign.expression(), variables, capturedVariables);
-        } else if (statement instanceof StatementDef.DefineAndAssign assign) {
-            variables.add(assign.variable().name());
-            captureVariables(assign.expression(), variables, capturedVariables);
-        } else if (statement instanceof StatementDef.While w) {
-            captureVariables(w.expression(), variables, capturedVariables);
-            captureVariables(w.statement(), variables, capturedVariables);
-        } else if (statement instanceof StatementDef.If ifStatement) {
-            captureVariables(ifStatement.condition(), variables, capturedVariables);
-            captureVariables(ifStatement.statement(), variables, capturedVariables);
-        } else if (statement instanceof StatementDef.Try tryStatement) {
-            captureVariables(tryStatement.statement(), variables, capturedVariables);
-            captureVariables(tryStatement.finallyStatement(), variables, capturedVariables);
-            for (StatementDef.Try.Catch cat: tryStatement.catches()) {
-                captureVariables(cat.statement(), variables, capturedVariables);
-            }
-        } else if (statement instanceof StatementDef.IfElse ifElse) {
-            captureVariables(ifElse.condition(), variables, capturedVariables);
-            captureVariables(ifElse.statement(), variables, capturedVariables);
-            captureVariables(ifElse.elseStatement(), variables, capturedVariables);
-        } else if (statement instanceof StatementDef.PutField putField) {
-            capturedVariables.add(putField.field());
-            variables.add(putField.field().name());
-            captureVariables(putField.expression(), variables, capturedVariables);
-        } else if (statement instanceof StatementDef.PutStaticField putStaticField) {
-            captureVariables(putStaticField.expression(), variables, capturedVariables);
-        } else {
-            throw new IllegalStateException("Unsupported statement type in lambda: " + statement.getClass().getName());
-        }
+        statement.nestedExpressionsStream()
+            .forEach(expressionDef -> captureVariables(expressionDef, variables, capturedVariables));
     }
 
     private void captureVariables(ExpressionDef expression, Set<String> variables, List<VariableDef> capturedVariables) {
@@ -225,9 +185,8 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
                 }
             }
         } else {
-            for (ExpressionDef operand: expression.operands()) {
-                captureVariables(operand, variables, capturedVariables);
-            }
+            expression.nestedExpressionsStream()
+                .forEach(expressionDef -> captureVariables(expressionDef, variables, capturedVariables));
         }
     }
 

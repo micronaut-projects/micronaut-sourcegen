@@ -18,13 +18,13 @@ package io.micronaut.sourcegen.custom.visitor;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
-import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.example.GenerateLambda;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.FieldDef;
@@ -54,25 +54,34 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             return;
         }
 
-        InterfaceDef lambdaType = createLambdaType(element.getPackageName() + ".StringFunction");
-        String className = element.getPackageName() + ".MyClassWithLambda";
+        String packageName = element.getPackageName();
+        Spec result = getSpec(packageName);
+
+        sourceGenerator.write(result.lambdaType(), context, element);
+        sourceGenerator.write(result.theClass(), context, element);
+    }
+
+    public static Spec getSpec(String packageName) {
+        InterfaceDef lambdaType = createLambdaType(packageName + ".StringFunction");
+        String className = packageName + ".MyClassWithLambda";
 
         FieldDef field = FieldDef.builder("name").ofType(TypeDef.STRING).build();
-        ClassDef interfaceDef = ClassDef.builder(className) // <4>
+        ClassDef theClass = ClassDef.builder(className) // <4>
             .addModifiers(Modifier.PUBLIC)
             .addField(field)
             .addMethod(MethodDef.builder("toString").returns(TypeDef.STRING).addModifiers(Modifier.PUBLIC)
                 .build((t, params) -> ExpressionDef.constant("MyClass").returning()))
-            .addMethod(createStatelessLambda(context, element, lambdaType))
-            .addMethod(createStatefulLambda(context, element, lambdaType, field))
-            .addMethod(createGenericLambda(context, element))
+            .addMethod(createStatelessLambda(lambdaType))
+            .addMethod(createStatefulLambda(lambdaType, field))
+            .addMethod(createGenericLambda())
             .build();
-
-        sourceGenerator.write(lambdaType, context, element);
-        sourceGenerator.write(interfaceDef, context, element);
+        return new Spec(lambdaType, theClass);
     }
 
-    private InterfaceDef createLambdaType(String className) {
+    public record Spec(InterfaceDef lambdaType, ClassDef theClass) {
+    }
+
+    private static InterfaceDef createLambdaType(String className) {
         return InterfaceDef.builder(className)
             .addModifiers(Modifier.PUBLIC)
             .addMethod(MethodDef.builder("apply")
@@ -84,10 +93,10 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             .build();
     }
 
-    private MethodDef createStatelessLambda(VisitorContext context, ClassElement element, ObjectDef lambdaType) {
+    private static MethodDef createStatelessLambda(ObjectDef lambdaType) {
         Local function = new Local("function", lambdaType.asTypeDef());
-        Lambda lambda = Lambda.extend(lambdaType.asTypeDef(), (t, params) ->
-                params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1)).returning());
+        Lambda lambda = Lambda.of(lambdaType.asTypeDef(), (t, params) ->
+            params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1)).returning());
 
         // callLambda(String input) {
         //    StringFunction function = (arg0) -> arg0.substring(1);
@@ -103,12 +112,10 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             ));
     }
 
-    private MethodDef createStatefulLambda(
-            VisitorContext context, ClassElement element, ObjectDef lambdaType, FieldDef field
-    ) {
+    private static MethodDef createStatefulLambda(ObjectDef lambdaType, FieldDef field) {
         Local constant = new Local("constant", TypeDef.STRING);
         Local function = new Local("function", lambdaType.asTypeDef());
-        Lambda lambda = Lambda.extend(lambdaType.asTypeDef(), (t, params) -> constant.invoke("concat", TypeDef.STRING,
+        Lambda lambda = Lambda.of(lambdaType.asTypeDef(), (t, params) -> constant.invoke("concat", TypeDef.STRING,
             params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
                 .invoke("concat", TypeDef.STRING, t.invoke("toString", TypeDef.STRING))
                 .invoke("concat", TypeDef.STRING, t.field(field))
@@ -139,18 +146,26 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
     //    Function<String, String> function = (arg0) -> constant.concat(arg0.substring(1));
     //    return function.apply(input);
     // }
-    private MethodDef createGenericLambda(VisitorContext context, ClassElement element) {
-        ClassElement stringType = context.getClassElement(String.class).get();
-        ClassElement functionType = context.getClassElement(Function.class)
-            .orElseThrow(() -> new ProcessingException(element, "Could not find Function type"))
-            .withTypeArguments(List.of(stringType, stringType));
+    private static MethodDef createGenericLambda() {
         Local constant = new Local("constant", TypeDef.STRING);
-        Local function = new Local("function", TypeDef.of(functionType));
+        Local function = new Local("function", TypeDef.parameterized(Function.class, String.class, String.class));
 
-        Lambda lambda = Lambda.extend(
-            functionType, (t, params) -> constant.invoke("concat", TypeDef.STRING,
-                params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
-            ).returning());
+        MethodDef target = MethodDef.builder("apply")
+            .addParameters(TypeDef.OBJECT)
+            .returns(TypeDef.OBJECT)
+            .addModifiers(Modifier.ABSTRACT)
+            .build();
+        Lambda lambda = new Lambda(
+            ClassTypeDef.of(Function.class),
+            target,
+            MethodDef.builder("apply")
+                .addParameters(TypeDef.STRING)
+                .returns(TypeDef.STRING)
+                .addModifiers(Modifier.ABSTRACT)
+                .build((t, params) -> constant.invoke("concat", TypeDef.STRING,
+                    params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
+                ).returning())
+        );
 
         return MethodDef.builder("callGenericLambda")
             .addModifiers(Modifier.PUBLIC)
