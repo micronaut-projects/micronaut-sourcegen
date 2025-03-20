@@ -48,6 +48,7 @@ public final class MethodDef extends AbstractElement {
     private final List<ParameterDef> parameters;
     private final List<StatementDef> statements;
     private final boolean override;
+    private final List<ClassTypeDef> throwTypes;
 
     MethodDef(String name,
               EnumSet<Modifier> modifiers,
@@ -57,12 +58,14 @@ public final class MethodDef extends AbstractElement {
               List<AnnotationDef> annotations,
               List<String> javadoc,
               boolean override,
-              boolean synthetic) {
+              boolean synthetic,
+              List<ClassTypeDef> throwTypes) {
         super(name, modifiers, annotations, javadoc, synthetic);
         this.returnType = Objects.requireNonNullElse(returnType, TypeDef.VOID);
         this.parameters = Collections.unmodifiableList(parameters);
         this.statements = statements;
         this.override = override;
+        this.throwTypes = throwTypes;
     }
 
     /**
@@ -234,6 +237,13 @@ public final class MethodDef extends AbstractElement {
         return CONSTRUCTOR.equals(getName());
     }
 
+    /**
+     * @return The exception types this method throws
+     */
+    public List<ClassTypeDef> getThrowTypes() {
+        return throwTypes;
+    }
+
     public static MethodDefBuilder builder(String name) {
         return new MethodDefBuilder(name);
     }
@@ -264,6 +274,7 @@ public final class MethodDef extends AbstractElement {
         private final List<MethodBodyBuilder> bodyBuilders = new ArrayList<>();
         private final List<StatementDef> statements = new ArrayList<>();
         private boolean overrides;
+        private final List<ClassTypeDef> throwTypes = new ArrayList<>();
 
         private MethodDefBuilder(String name) {
             super(name);
@@ -477,6 +488,30 @@ public final class MethodDef extends AbstractElement {
             return this;
         }
 
+        /**
+         * Add throw expressions to the method.
+         *
+         * @param types The types that this method throws
+         * @return The builder
+         */
+        @NonNull
+        public MethodDefBuilder addThrows(@NonNull ClassTypeDef... types) {
+            throwTypes.addAll(Arrays.asList(types));
+            return this;
+        }
+
+        /**
+         * Add throw expressions to the method.
+         *
+         * @param types The types that this method throws
+         * @return The builder
+         */
+        @NonNull
+        public MethodDefBuilder addThrows(@NonNull List<ClassTypeDef> types) {
+            throwTypes.addAll(types);
+            return this;
+        }
+
         public MethodDef build() {
             List<VariableDef.MethodParameter> variables = parameters.stream()
                 .map(ParameterDef::asVariable)
@@ -493,7 +528,7 @@ public final class MethodDef extends AbstractElement {
             if (returnType == null && !name.equals(CONSTRUCTOR)) {
                 returnType = TypeDef.VOID;
             }
-            return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc, overrides, synthetic);
+            return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc, overrides, synthetic, throwTypes);
         }
 
         private static TypeDef findReturnType(StatementDef statement) {

@@ -380,6 +380,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 asAnnotationSpec(annotation)
             );
         }
+        for (TypeDef type: method.getThrowTypes()) {
+            methodBuilder.addException(asType(type, objectDef));
+        }
         method.getStatements().stream()
             .map(st -> renderStatementCodeBlock(objectDef, method, Map.of(), st))
             .forEach(methodBuilder::addCode);

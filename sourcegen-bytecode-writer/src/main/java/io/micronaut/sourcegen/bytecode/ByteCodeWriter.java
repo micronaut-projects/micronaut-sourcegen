@@ -446,12 +446,18 @@ public final class ByteCodeWriter {
         if (methodDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
+        String[] exceptions = null;
+        if (!methodDef.getThrowTypes().isEmpty()) {
+            exceptions = methodDef.getThrowTypes().stream()
+                .map(t -> TypeUtils.getType(t).getClassName().replace(".", "/"))
+                .toArray(String[]::new);
+        }
         MethodVisitor methodVisitor = classVisitor.visitMethod(
             modifiersFlag,
             name,
             methodDescriptor,
             SignatureWriterUtils.getMethodSignature(objectDef, methodDef),
-            null
+            exceptions
         );
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, methodDescriptor);
         for (AnnotationDef annotation : methodDef.getAnnotations()) {

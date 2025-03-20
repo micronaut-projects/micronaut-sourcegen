@@ -566,6 +566,16 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 asAnnotationSpec(annotation)
             )
         }
+        if (method.throwTypes.isNotEmpty()) {
+            funBuilder.addAnnotation(
+                AnnotationSpec.builder(Throws::class)
+                    .addMember(
+                        method.throwTypes.joinToString { "%T::class" },
+                        *method.throwTypes.map { asType(it, objectDef) }.toTypedArray()
+                    )
+                    .build(),
+            )
+        }
         method.statements.stream()
             .map { st: StatementDef -> renderStatementCodeBlock(objectDef, method, st) }
             .forEach(funBuilder::addCode)
