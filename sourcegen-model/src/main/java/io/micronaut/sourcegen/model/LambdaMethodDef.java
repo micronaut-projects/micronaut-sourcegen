@@ -44,9 +44,7 @@ public final class LambdaMethodDef {
      * @since 1.7
      */
     public ExpressionDef.Lambda implement(MethodDef.MethodBodyBuilder lambdaBuilder) {
-        if (!method.getTypeVariables().isEmpty()) {
-            throw new IllegalStateException("");
-        }
+        // TODO: check for not resolved variables
         return ExpressionDef.Lambda.of(
             type,
             method,
