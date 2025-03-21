@@ -16,6 +16,9 @@ dependencies {
 
     compileOnly(mn.micronaut.core.processor)
 
+    testImplementation(projects.sourcegenAnnotations)
+    testImplementation(projects.sourcegenGenerator)
+    testImplementation(mn.micronaut.inject.java.test)
     testImplementation(mn.micronaut.core.processor)
     testImplementation(mnTest.junit.jupiter.api)
     testImplementation(libs.intellij.java.decompiler)

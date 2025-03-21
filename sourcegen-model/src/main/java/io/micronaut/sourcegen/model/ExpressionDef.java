@@ -27,12 +27,9 @@ import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.ast.FieldElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.PropertyElement;
-import io.micronaut.sourcegen.model.ClassTypeDef.ClassDefType;
-import io.micronaut.sourcegen.model.ClassTypeDef.ClassElementType;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder;
 
-import javax.lang.model.element.Modifier;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -1650,45 +1647,21 @@ public sealed interface ExpressionDef
     ) implements ExpressionDef {
 
         /**
-         * Create a lambda that extends a particular type.
-         *
-         * @param typeDef The type of lambda
-         * @param bodyBuilder The builder for the lambda body
-         * @return The lambda
+         * Invoke the lambda.
+         * @param expressions The expressions
+         * @return The method invocation
          */
-        public static Lambda of(ClassTypeDef typeDef, MethodBodyBuilder bodyBuilder) {
-            ClassTypeDef rawType = typeDef;
-            if (rawType instanceof ClassTypeDef.Parameterized parameterized) {
-                rawType = parameterized.rawType();
-            }
-            if (rawType instanceof ClassElementType classElement) {
-                return of(classElement.classElement(), bodyBuilder);
-            }
-            if (rawType instanceof ClassDefType classDef) {
-                return of(typeDef, classDef.objectDef(), bodyBuilder);
-            }
-            throw new UnsupportedOperationException("Can extend lambda only from ClassTypeDef that was " +
-                "created from ObjectDef or a ClassElement. Use constructor otherwise. Got: " + rawType);
+        public InvokeInstanceMethod invoke(List<? extends ExpressionDef> expressions) {
+            return invoke(target, expressions);
         }
 
         /**
-         * Create a lambda that extends a particular type.
-         *
-         * @param lambdaType The type of lambda
-         * @param lambdaTypeDef The type def of lambda required to deduce parent method
-         * @param bodyBuilder The builder for the lambda body
-         * @return The lambda
+         * Invoke the lambda.
+         * @param expressions The expressions
+         * @return The method invocation
          */
-        public static Lambda of(ClassTypeDef lambdaType, ObjectDef lambdaTypeDef, MethodBodyBuilder bodyBuilder) {
-            List<MethodDef> methods = lambdaTypeDef.getMethods()
-                .stream()
-                .filter(v -> v.getModifiers().contains(Modifier.ABSTRACT))
-                .toList();
-            if (methods.size() != 1) {
-                throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
-                    "abstract method but has " + methods.size());
-            }
-            return of(lambdaType, methods.get(0), bodyBuilder);
+        public InvokeInstanceMethod invoke(ExpressionDef... expressions) {
+            return invoke(Arrays.asList(expressions));
         }
 
         /**
@@ -1700,6 +1673,7 @@ public sealed interface ExpressionDef
          * @return The lambda
          */
         public static Lambda of(ClassTypeDef lambdaType, MethodDef target, MethodBodyBuilder bodyBuilder) {
+            // TODO: check for not resolved variables
             return new Lambda(
                 lambdaType,
                 target,
