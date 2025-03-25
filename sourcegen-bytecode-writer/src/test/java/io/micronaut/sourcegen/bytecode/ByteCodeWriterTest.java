@@ -3526,7 +3526,8 @@ class Test {
                 .addParameter("arg", TypeDef.OBJECT)
                 .returns(TypeDef.STRING)
                 .build((t, params) ->
-                    ExpressionDef.constant("Hello, ")
+                    ExpressionDef.constant("Hello")
+                        .stringConcat(ExpressionDef.constant(", "))
                         .stringConcat(params.get(0))
                         .stringConcat(ExpressionDef.constant("!"))
                         .returning()
@@ -3555,14 +3556,12 @@ public class example/MyClass {
   // access flags 0x1
   public testConcatenation(Ljava/lang/Object;)Ljava/lang/String;
    L0
-    LDC "Hello, "
     ALOAD 1
-    LDC "!"
-    INVOKEDYNAMIC makeConcatWithConstants(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/String; [
+    INVOKEDYNAMIC makeConcatWithConstants(Ljava/lang/Object;)Ljava/lang/String; [
       // handle kind 0x6 : INVOKESTATIC
       java/lang/invoke/StringConcatFactory.makeConcatWithConstants(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;
       // arguments:
-      "\\u0001\\u0001\\u0001"
+      "Hello, \\u0001!"
     ]
     ARETURN
    L1

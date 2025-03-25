@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.bytecode.expression;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.ExpressionDef.Constant;
 import io.micronaut.sourcegen.model.ExpressionDef.StringConcatenation;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Handle;
@@ -36,6 +37,7 @@ final class StringConcatenationExpressionWriter extends AbstractStatementAwareEx
             "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;" +
             "Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)" +
             "Ljava/lang/invoke/CallSite;";
+    private static final char ARG_CODE = '\u0001';
     private final List<ExpressionDef> concatParts;
 
     public StringConcatenationExpressionWriter(StringConcatenation concat) {
@@ -47,8 +49,14 @@ final class StringConcatenationExpressionWriter extends AbstractStatementAwareEx
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
         // Write the parameters
+        StringBuilder stringExpression = new StringBuilder();
         for (ExpressionDef value : concatParts) {
-            ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, value, TypeDef.OBJECT);
+            if (isCompileTimeConstant(value)) {
+                stringExpression.append(((Constant) value).value());
+            } else {
+                stringExpression.append(ARG_CODE);
+                ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, value, TypeDef.OBJECT);
+            }
         }
 
         // Call to StringConcatFactory.makeConcatWithConstants
@@ -63,9 +71,14 @@ final class StringConcatenationExpressionWriter extends AbstractStatementAwareEx
             MAKE_CONCAT_DYNAMIC_METHOD,
             createDynamicMethodDescriptor(concatParts, context),
             bootstrapMethodHandle,
-            "\u0001".repeat(concatParts.size())
+            stringExpression.toString()
         );
         popValueIfNeeded(generatorAdapter, TypeDef.STRING);
+    }
+
+    private static boolean isCompileTimeConstant(ExpressionDef expression) {
+        return expression instanceof Constant
+                && (expression.type().isPrimitive() || expression.type().equals(TypeDef.STRING));
     }
 
     /**
@@ -89,7 +102,9 @@ final class StringConcatenationExpressionWriter extends AbstractStatementAwareEx
     String createDynamicMethodDescriptor(List<ExpressionDef> concatParts, MethodContext context) {
         StringBuilder dynamicDescriptor = new StringBuilder("(");
         for (ExpressionDef part : concatParts) {
-            dynamicDescriptor.append(TypeUtils.getType(part.type(), context.objectDef()));
+            if (!isCompileTimeConstant(part)) {
+                dynamicDescriptor.append(TypeUtils.getType(part.type(), context.objectDef()));
+            }
         }
         dynamicDescriptor.append(")");
         dynamicDescriptor.append(TypeUtils.getType(TypeDef.STRING).getDescriptor());

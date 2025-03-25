@@ -67,6 +67,11 @@ public final class GenerateMyBean3Visitor implements TypeElementVisitor<Generate
                 .returns(TypeDef.primitive(Float.TYPE))
                 .build((aThis, methodParameters) -> methodParameters.get(0).cast(TypeDef.primitive(Float.TYPE)).returning())
             )
+            .addMethod(MethodDef.builder("concatenation")
+                .addParameter(ParameterDef.of("input", TypeDef.STRING))
+                .returns(TypeDef.STRING)
+                .build((t, params) -> ExpressionDef.constant("Hello, ").stringConcat(params.get(0)).returning())
+            )
             .addMethod(createMethodWithThrows())
             .build();
 
