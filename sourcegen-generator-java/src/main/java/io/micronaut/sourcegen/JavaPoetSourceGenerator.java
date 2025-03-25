@@ -170,19 +170,21 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             enumBuilder.addAnnotation(asAnnotationSpec(annotation));
         }
 
-        enumDef.getEnumConstants().forEach((name, exps) -> {
-            if (exps != null) {
+        enumDef.getEnumConstants().forEach(e -> {
+            TypeSpec.Builder type = anonymousClassBuilder("");
+            if (e.constructorArgs() != null) {
+                List<ExpressionDef> constructorArgs = e.constructorArgs();
                 CodeBlock.Builder expBuilder = CodeBlock.builder();
-                for (int i = 0; i < exps.size(); i++) {
-                    expBuilder.add(renderExpression(null, null, Map.of(), exps.get(i)));
-                    if (i < exps.size() - 1) {
+                for (int i = 0; i < constructorArgs.size(); i++) {
+                    expBuilder.add(renderExpression(null, null, Map.of(), constructorArgs.get(i)));
+                    if (i < constructorArgs.size() - 1) {
                         expBuilder.add(", ");
                     }
                 }
-                enumBuilder.addEnumConstant(name, anonymousClassBuilder(expBuilder.build()).build());
-            } else {
-                enumBuilder.addEnumConstant(name);
+                type = anonymousClassBuilder(expBuilder.build());
             }
+            e.javadoc().forEach(type::addJavadoc);
+            enumBuilder.addEnumConstant(e.name(), type.build());
         });
 
         buildProperties(enumDef, enumBuilder);
@@ -379,6 +381,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             methodBuilder.addAnnotation(
                 asAnnotationSpec(annotation)
             );
+        }
+        for (TypeDef type: method.getThrowTypes()) {
+            methodBuilder.addException(asType(type, objectDef));
         }
         method.getStatements().stream()
             .map(st -> renderStatementCodeBlock(objectDef, method, Map.of(), st))

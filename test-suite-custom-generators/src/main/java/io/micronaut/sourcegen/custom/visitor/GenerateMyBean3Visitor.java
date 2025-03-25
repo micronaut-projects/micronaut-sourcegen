@@ -36,6 +36,7 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
+import java.io.IOException;
 
 @Internal
 public final class GenerateMyBean3Visitor implements TypeElementVisitor<GenerateMyBean3, Object> {
@@ -66,6 +67,7 @@ public final class GenerateMyBean3Visitor implements TypeElementVisitor<Generate
                 .returns(TypeDef.primitive(Float.TYPE))
                 .build((aThis, methodParameters) -> methodParameters.get(0).cast(TypeDef.primitive(Float.TYPE)).returning())
             )
+            .addMethod(createMethodWithThrows())
             .build();
 
         SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
@@ -73,6 +75,14 @@ public final class GenerateMyBean3Visitor implements TypeElementVisitor<Generate
             return;
         }
         sourceGenerator.write(beanDef, context, element);
+    }
+
+    private MethodDef createMethodWithThrows() {
+        return MethodDef.builder("getStringUnsafe")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(TypeDef.STRING)
+            .addThrows(ClassTypeDef.of(IOException.class))
+            .build((t, params) -> ClassTypeDef.of(IOException.class).instantiate().doThrow());
     }
 
 }

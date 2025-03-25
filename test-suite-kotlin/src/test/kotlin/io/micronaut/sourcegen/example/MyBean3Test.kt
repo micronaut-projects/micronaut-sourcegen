@@ -3,6 +3,8 @@ package io.micronaut.sourcegen.example
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import java.io.IOException
 
 class MyBean3Test {
 
@@ -14,6 +16,13 @@ class MyBean3Test {
 
         val bean2: MyBean3 = MyBean3("xyz")
         assertEquals("xyz", bean2.otherName)
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun testThrows() {
+        val bean3 = MyBean3()
+        assertThrows<IOException> { bean3.getStringUnsafe() }
     }
 }
 

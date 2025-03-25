@@ -25,9 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -43,7 +41,7 @@ import static java.lang.String.join;
 public final class EnumDef extends ObjectDef {
 
     private final List<FieldDef> fields;
-    private final LinkedHashMap<String, List<ExpressionDef>> enumConstants;
+    private final List<EnumConstantDef> enumConstants;
 
     private EnumDef(ClassTypeDef.ClassName className,
                     EnumSet<Modifier> modifiers,
@@ -52,7 +50,7 @@ public final class EnumDef extends ObjectDef {
                     List<PropertyDef> properties,
                     List<AnnotationDef> annotations,
                     List<String> javadoc,
-                    LinkedHashMap<String, List<ExpressionDef>> enumConstants,
+                    List<EnumConstantDef> enumConstants,
                     List<TypeDef> superinterfaces,
                     List<ObjectDef> innerTypes,
                     boolean synthetic) {
@@ -74,7 +72,7 @@ public final class EnumDef extends ObjectDef {
         return fields;
     }
 
-    public LinkedHashMap<String, List<ExpressionDef>> getEnumConstants() {
+    public List<EnumConstantDef> getEnumConstants() {
         return enumConstants;
     }
 
@@ -95,8 +93,10 @@ public final class EnumDef extends ObjectDef {
 
     @NonNull
     public FieldDef getField(String name) {
-        if (enumConstants.containsKey(name)) {
-            return FieldDef.builder(name, asTypeDef()).build();
+        for (EnumConstantDef constant: enumConstants) {
+            if (constant.name().equals(name)) {
+                return FieldDef.builder(name, asTypeDef()).build();
+            }
         }
         FieldDef field = findField(name);
         if (field == null) {
@@ -111,6 +111,54 @@ public final class EnumDef extends ObjectDef {
     }
 
     /**
+     * A type defining an enum constant.
+     * @since 1.7
+     * @param name The enum constant name
+     * @param constructorArgs The arguments passed to the enum constructor
+     * @param javadoc The documentation
+     */
+    @Experimental
+    public record EnumConstantDef(
+        String name,
+        List<ExpressionDef> constructorArgs,
+        List<String> javadoc
+    ) {
+        public static EnumConstantDefBuilder builder(String name) {
+            return new EnumConstantDefBuilder(name);
+        }
+    }
+
+    /**
+     * Builder for {@link EnumConstantDef}.
+     * @since 1.7
+     */
+    @Experimental
+    public static final class EnumConstantDefBuilder {
+        private final String name;
+        private List<ExpressionDef> constructorArgs;
+        private List<String> javadoc = new ArrayList<>();
+
+        public EnumConstantDefBuilder(String name) {
+            this.name = name;
+        }
+
+        public EnumConstantDefBuilder withConstructorArgs(List<ExpressionDef> constructorArgs) {
+            this.constructorArgs = constructorArgs;
+            return this;
+        }
+
+        public EnumConstantDefBuilder addJavadoc(String javadoc) {
+            this.javadoc.add(javadoc);
+            return this;
+        }
+
+        public EnumConstantDef build() {
+            return new EnumConstantDef(name, constructorArgs, javadoc);
+        }
+
+    }
+
+    /**
      * The enum definition builder.
      *
      * @author Denis Stepanov
@@ -120,7 +168,7 @@ public final class EnumDef extends ObjectDef {
     public static final class EnumDefBuilder extends ObjectDefBuilder<EnumDefBuilder> {
 
         private final List<FieldDef> fields = new ArrayList<>();
-        private final LinkedHashMap<String, List<ExpressionDef>> enumConstants = new LinkedHashMap<>();
+        private final List<EnumConstantDef> enumConstants = new ArrayList<>();
 
         private EnumDefBuilder(String name) {
             super(name);
@@ -131,28 +179,33 @@ public final class EnumDef extends ObjectDef {
             return this;
         }
 
+        public EnumDefBuilder addEnumConstant(EnumConstantDef constant) {
+            enumConstants.add(constant);
+            return this;
+        }
+
         public EnumDefBuilder addEnumConstant(String name) {
             String constName = getConstantName(name);
-            enumConstants.put(constName, List.of());
+            enumConstants.add(new EnumConstantDef(constName, Collections.emptyList(), Collections.emptyList()));
             return this;
         }
 
         public EnumDefBuilder addEnumConstant(String name, ExpressionDef... values) {
             Objects.requireNonNull(values, "Values cannot be null");
             String constName = getConstantName(name);
-            enumConstants.put(constName, List.of(values));
+            enumConstants.add(new EnumConstantDef(constName, List.of(values), Collections.emptyList()));
             return this;
         }
 
         public EnumDef build() {
             if (!enumConstants.isEmpty()) {
                 Set<Integer> valueCount = new HashSet<>();
-                for (Map.Entry<String, List<ExpressionDef>> entry : enumConstants.entrySet()) {
-                    if (entry.getValue() == null || entry.getValue().isEmpty()) {
+                for (EnumConstantDef constantDef : enumConstants) {
+                    if (constantDef.constructorArgs == null || constantDef.constructorArgs.isEmpty()) {
                         continue;
                     }
 
-                    int constCount = entry.getValue().size();
+                    int constCount = constantDef.constructorArgs.size();
                     if (valueCount.contains(constCount)) {
                         continue;
                     } else {
@@ -169,7 +222,7 @@ public final class EnumDef extends ObjectDef {
                         }
                     }
                     if (!hasConstructor) {
-                        throw new IllegalStateException("Enum: " + name + " doesn't have a constructor for constant " + entry.getKey());
+                        throw new IllegalStateException("Enum: " + name + " doesn't have a matching constructor for constant " + constantDef.name);
                     }
                 }
             }

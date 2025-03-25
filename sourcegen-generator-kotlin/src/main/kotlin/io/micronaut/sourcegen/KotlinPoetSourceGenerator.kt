@@ -28,6 +28,7 @@ import io.micronaut.core.reflect.ClassUtils
 import io.micronaut.inject.visitor.VisitorContext
 import io.micronaut.sourcegen.generator.SourceGenerator
 import io.micronaut.sourcegen.model.*
+import io.micronaut.sourcegen.model.EnumDef.EnumConstantDef
 import io.micronaut.sourcegen.model.ExpressionDef.*
 import io.micronaut.sourcegen.model.StatementDef.Assign
 import io.micronaut.sourcegen.model.StatementDef.DefineAndAssign
@@ -295,8 +296,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         enumDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
             .forEach { annotationSpec: AnnotationSpec -> enumBuilder.addAnnotation(annotationSpec) }
 
-        enumDef.enumConstants.forEach { (name: String?, exps: List<ExpressionDef>?) ->
-            if (exps != null && exps.isNotEmpty()) {
+        enumDef.enumConstants.forEach { enumConstant: EnumConstantDef ->
+            if (enumConstant.constructorArgs != null && enumConstant.constructorArgs.isNotEmpty()) {
+                val exps = enumConstant.constructorArgs
                 val expBuilder: CodeBlock.Builder = CodeBlock.builder()
                 for (i in exps.indices) {
                     expBuilder.add(renderExpressionCode(null,
@@ -307,13 +309,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     }
                 }
                 enumBuilder.addEnumConstant(
-                    name,
+                    enumConstant.name,
                     TypeSpec.companionObjectBuilder()
                         .addSuperclassConstructorParameter(expBuilder.build())
                         .build()
                 )
             } else {
-                enumBuilder.addEnumConstant(name)
+                enumBuilder.addEnumConstant(enumConstant.name)
             }
         }
 
@@ -562,6 +564,16 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         for (annotation in method.annotations) {
             funBuilder.addAnnotation(
                 asAnnotationSpec(annotation)
+            )
+        }
+        if (method.throwTypes.isNotEmpty()) {
+            funBuilder.addAnnotation(
+                AnnotationSpec.builder(Throws::class)
+                    .addMember(
+                        method.throwTypes.joinToString { "%T::class" },
+                        *method.throwTypes.map { asType(it, objectDef) }.toTypedArray()
+                    )
+                    .build(),
             )
         }
         method.statements.stream()
