@@ -40,4 +40,16 @@ class LambdaTest {
         assertEquals("prefix_ello!", owner.callGenericLambda("Hello!"));
     }
 
+    @Test
+    public void testGenericLambda2() throws Exception {
+        MyClassWithLambda owner = new MyClassWithLambda();
+        assertEquals("prefix_ello!", owner.callGenericLambda2("Hello!"));
+    }
+
+    @Test
+    public void testGenericLambdaAst() throws Exception {
+        MyClassWithLambda owner = new MyClassWithLambda();
+        assertEquals("prefix_ello!", owner.callGenericLambdaAst("Hello!"));
+    }
+
 }

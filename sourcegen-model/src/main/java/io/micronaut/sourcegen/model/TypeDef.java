@@ -60,6 +60,15 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
     ClassTypeDef SUPER = ClassTypeDef.of(SuperType.class);
 
     /**
+     * Resolve the type variables.
+     * @param resolvedTypeVariables The resolved type variables.
+     * @return The resolved type or the previous.
+     */
+    default TypeDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
+        return this;
+    }
+
+    /**
      * Define a type with annotations.
      *
      * @param annotations the annotation definitions to be added
@@ -325,14 +334,14 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
         if (typedElement.isPrimitive()) {
             return primitive(typedElement.getName());
         }
-        if (erasure && typedElement instanceof ClassElement classElement) {
-            return ClassTypeDef.of(classElement);
-        }
         if (typedElement instanceof GenericPlaceholderElement placeholderElement) {
             return TypeDef.variable(
                 placeholderElement.getVariableName(),
                 placeholderElement.getBounds().stream().map(TypeDef::of).toList()
             );
+        }
+        if (erasure && typedElement instanceof ClassElement classElement) {
+            return ClassTypeDef.of(classElement);
         }
         if (typedElement instanceof WildcardElement wildcardElement) {
             return new Wildcard(
@@ -560,6 +569,11 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             } else {
                 return new TypeVariable(name);
             }
+        }
+
+        @Override
+        public TypeDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
+            return resolvedTypeVariables.getOrDefault(name, this);
         }
 
         @Override

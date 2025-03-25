@@ -17,14 +17,17 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
 
+import javax.lang.model.element.Modifier;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The class type definition.
@@ -128,6 +131,16 @@ public sealed interface ClassTypeDef extends TypeDef {
      */
     default boolean isInner() {
         return false;
+    }
+
+    /**
+     * Find the method that can be represented as a lambda.
+     *
+     * @return The lambda method
+     * @since 1.7
+     */
+    default LambdaDef getLambda() {
+        throw new UnsupportedOperationException("ClassTypeDef: " + getName() + " doesn't support lambdas");
     }
 
     /**
@@ -442,6 +455,15 @@ public sealed interface ClassTypeDef extends TypeDef {
         if (classElement.isPrimitive()) {
             throw new IllegalStateException("Primitive classes cannot be of type: " + ClassTypeDef.class.getName());
         }
+        if (!classElement.getTypeArguments().isEmpty()) {
+            return new Parameterized(
+                new ClassElementType(classElement, classElement.isNullable()),
+                classElement.getTypeArguments().entrySet()
+                    .stream()
+                    .<TypeDef>map(e -> TypeDef.variable(e.getKey(), TypeDef.erasure(e.getValue())))
+                    .toList()
+            );
+        }
         return new ClassElementType(classElement, classElement.isNullable());
     }
 
@@ -604,6 +626,17 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassElementType(ClassElement classElement, boolean nullable) implements ClassTypeDef {
 
         @Override
+        public LambdaDef getLambda() {
+            List<MethodElement> abstractMethods = classElement.getEnclosedElements(
+                ElementQuery.of(MethodElement.class).onlyAbstract());
+            if (abstractMethods.size() != 1) {
+                throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
+                    "abstract method but has " + abstractMethods.size());
+            }
+            return new LambdaDef(ClassTypeDef.of(classElement), MethodDef.of(abstractMethods.get(0)));
+        }
+
+        @Override
         public String getName() {
             return classElement.getName();
         }
@@ -666,6 +699,19 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassDefType(ObjectDef objectDef, boolean nullable) implements ClassTypeDef {
 
         @Override
+        public LambdaDef getLambda() {
+            List<MethodDef> methods = objectDef.getMethods()
+                .stream()
+                .filter(v -> v.getModifiers().contains(Modifier.ABSTRACT))
+                .toList();
+            if (methods.size() != 1) {
+                throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
+                    "abstract method but has " + methods.size());
+            }
+            return new LambdaDef(ClassTypeDef.of(objectDef), methods.get(0));
+        }
+
+        @Override
         public String getName() {
             return objectDef.className.name;
         }
@@ -713,6 +759,17 @@ public sealed interface ClassTypeDef extends TypeDef {
     @Experimental
     record Parameterized(ClassTypeDef rawType,
                          List<TypeDef> typeArguments) implements ClassTypeDef {
+
+        @Override
+        public TypeDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
+            return new Parameterized(rawType, typeArguments.stream().map(t -> t.resolveTypeVariables(resolvedTypeVariables)).toList());
+        }
+
+        @Override
+        public LambdaDef getLambda() {
+            return new LambdaDef(rawType, rawType.getLambda().getMethod());
+        }
+
         @Override
         public String getName() {
             return rawType.getName();

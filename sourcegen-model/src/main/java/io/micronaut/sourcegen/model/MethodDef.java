@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -48,6 +49,7 @@ public final class MethodDef extends AbstractElement {
     private final List<ParameterDef> parameters;
     private final List<StatementDef> statements;
     private final boolean override;
+    private final List<TypeDef.TypeVariable> typeVariables;
 
     MethodDef(String name,
               EnumSet<Modifier> modifiers,
@@ -56,6 +58,7 @@ public final class MethodDef extends AbstractElement {
               List<StatementDef> statements,
               List<AnnotationDef> annotations,
               List<String> javadoc,
+              List<TypeDef.TypeVariable> typeVariables,
               boolean override,
               boolean synthetic) {
         super(name, modifiers, annotations, javadoc, synthetic);
@@ -63,6 +66,7 @@ public final class MethodDef extends AbstractElement {
         this.parameters = Collections.unmodifiableList(parameters);
         this.statements = statements;
         this.override = override;
+        this.typeVariables = Collections.unmodifiableList(typeVariables);
     }
 
     /**
@@ -104,6 +108,10 @@ public final class MethodDef extends AbstractElement {
     public static MethodDef of(@NonNull MethodElement methodElement) {
         return MethodDef.builder(methodElement.getName())
             .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getType()))).toList())
+            .addTypeVariables(methodElement.getTypeArguments().entrySet()
+                .stream()
+                .map(e -> TypeDef.variable(e.getKey(), TypeDef.erasure(e.getValue())))
+                .toList())
             .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(methodElement.getReturnType()))
             .build();
     }
@@ -154,6 +162,21 @@ public final class MethodDef extends AbstractElement {
     }
 
     /**
+     * Creates a method definition builder from {@link Method}.
+     *
+     * @param method The method
+     * @return The method definition builder
+     * @since 1.7
+     */
+    @NonNull
+    public static MethodDefBuilder override(@NonNull MethodDef method) {
+        return MethodDef.builder(method.getName())
+            .addModifiers(toOverrideModifiers(method))
+            .addParameters(method.getParameters())
+            .returns(method.getReturnType());
+    }
+
+    /**
      * Creates a constructor definition builder from {@link Method}.
      *
      * @param constructor The method
@@ -165,6 +188,29 @@ public final class MethodDef extends AbstractElement {
         return MethodDef.constructor()
             .addModifiers(toOverrideModifiers(constructor.getModifiers()))
             .addParameters(Arrays.stream(constructor.getParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList());
+    }
+
+    public MethodDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
+        if (!statements.isEmpty()) {
+            throw new IllegalStateException("Method " + this + " resolving variables with statements not supported");
+        }
+        return MethodDef.builder(name)
+            .addModifiers(modifiers)
+            .addParameters(parameters.stream().map(p -> p.resolveTypeVariables(resolvedTypeVariables)).toList())
+            .returns(returnType.resolveTypeVariables(resolvedTypeVariables))
+            .addJavadoc(javadoc)
+            .build();
+    }
+
+    private static Modifier[] toOverrideModifiers(MethodDef methodDef) {
+        List<Modifier> modifiersList = new ArrayList<>();
+        if (methodDef.modifiers.contains(Modifier.PUBLIC)) {
+            modifiersList.add(Modifier.PUBLIC);
+        }
+        if (methodDef.modifiers.contains(Modifier.PROTECTED)) {
+            modifiersList.add(Modifier.PROTECTED);
+        }
+        return modifiersList.toArray(new Modifier[0]);
     }
 
     private static Modifier[] toOverrideModifiers(int modifiers) {
@@ -234,6 +280,13 @@ public final class MethodDef extends AbstractElement {
         return CONSTRUCTOR.equals(getName());
     }
 
+    /**
+     * @return The type variables
+     */
+    public List<TypeDef.TypeVariable> getTypeVariables() {
+        return typeVariables;
+    }
+
     public static MethodDefBuilder builder(String name) {
         return new MethodDefBuilder(name);
     }
@@ -264,9 +317,30 @@ public final class MethodDef extends AbstractElement {
         private final List<MethodBodyBuilder> bodyBuilders = new ArrayList<>();
         private final List<StatementDef> statements = new ArrayList<>();
         private boolean overrides;
+        private final List<TypeDef.TypeVariable> typeVariables = new ArrayList<>();
 
         private MethodDefBuilder(String name) {
             super(name);
+        }
+
+        /**
+         * Add a type variable.
+         * @param typeVariable The type variable
+         * @return The type variable
+         */
+        public MethodDef.MethodDefBuilder addTypeVariable(TypeDef.TypeVariable typeVariable) {
+            typeVariables.add(typeVariable);
+            return this;
+        }
+
+        /**
+         * Add a type variable.
+         * @param typeVariables The type variables
+         * @return The type variable
+         */
+        public MethodDef.MethodDefBuilder addTypeVariables(List<TypeDef.TypeVariable> typeVariables) {
+            this.typeVariables.addAll(typeVariables);
+            return this;
         }
 
         /**
@@ -493,7 +567,7 @@ public final class MethodDef extends AbstractElement {
             if (returnType == null && !name.equals(CONSTRUCTOR)) {
                 returnType = TypeDef.VOID;
             }
-            return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc, overrides, synthetic);
+            return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc, typeVariables, overrides, synthetic);
         }
 
         private static TypeDef findReturnType(StatementDef statement) {

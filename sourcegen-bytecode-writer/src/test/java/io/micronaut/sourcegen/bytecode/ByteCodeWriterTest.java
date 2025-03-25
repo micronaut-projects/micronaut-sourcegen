@@ -80,6 +80,20 @@ public class example/MyClassWithLambda {
     INVOKESPECIAL java/lang/Object.<init> ()V
     RETURN
 
+  // access flags 0x0
+  // signature (Ljava/util/function/Function<Ljava/lang/String;Ljava/lang/String;>;Ljava/lang/String;)Ljava/lang/String;
+  // declaration: java.lang.String methodInvoker(java.util.function.Function<java.lang.String, java.lang.String>, java.lang.String)
+  methodInvoker(Ljava/util/function/Function;Ljava/lang/String;)Ljava/lang/String;
+   L0
+    ALOAD 1
+    ALOAD 2
+    INVOKEINTERFACE java/util/function/Function.apply (Ljava/lang/Object;)Ljava/lang/Object; (itf)
+    CHECKCAST java/lang/String
+    ARETURN
+   L1
+    LOCALVARIABLE arg1 Ljava/util/function/Function; L0 L1 1
+    LOCALVARIABLE arg2 Ljava/lang/String; L0 L1 2
+
   // access flags 0x1
   public toString()Ljava/lang/String;
     LDC "MyClass"
@@ -205,6 +219,43 @@ public class example/MyClassWithLambda {
    L1
     LOCALVARIABLE constant Ljava/lang/String; L0 L1 1
     LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 2
+
+  // access flags 0x1
+  public callGenericLambda2(Ljava/lang/String;)Ljava/lang/String;
+   L0
+   L1
+    LDC "prefix_"
+    ASTORE 2
+    ALOAD 0
+    ALOAD 2
+    INVOKEDYNAMIC apply(Ljava/lang/String;)Ljava/util/function/Function; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/LambdaMetafactory.metafactory(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      (Ljava/lang/Object;)Ljava/lang/Object;,\s
+      // handle kind 0x6 : INVOKESTATIC
+      example/MyClassWithLambda.lambda$callGenericLambda2$0(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;,\s
+      (Ljava/lang/String;)Ljava/lang/String;
+    ]
+    ALOAD 1
+    INVOKEVIRTUAL example/MyClassWithLambda.methodInvoker (Ljava/util/function/Function;Ljava/lang/String;)Ljava/lang/String;
+    ARETURN
+   L2
+    LOCALVARIABLE input Ljava/lang/String; L0 L2 1
+    LOCALVARIABLE constant Ljava/lang/String; L1 L2 2
+
+  // access flags 0xA
+  private static lambda$callGenericLambda2$0(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+   L0
+    ALOAD 0
+    ALOAD 1
+    ICONST_1
+    INVOKEVIRTUAL java/lang/String.substring (I)Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/String.concat (Ljava/lang/String;)Ljava/lang/String;
+    ARETURN
+   L1
+    LOCALVARIABLE constant Ljava/lang/String; L0 L1 1
+    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 2
 }
 """, bytecode);
 
@@ -215,6 +266,10 @@ import java.util.function.Function;
 
 public class MyClassWithLambda {
    String name;
+
+   String methodInvoker(Function arg1, String arg2) {
+      return (String)arg1.apply(arg2);
+   }
 
    public String toString() {
       return "MyClass";
@@ -246,6 +301,15 @@ public class MyClassWithLambda {
    }
 
    private static String lambda$callGenericLambda$0(String var0, String constant) {
+      return var0.concat(constant.substring(1));
+   }
+
+   public String callGenericLambda2(String input) {
+      String constant = "prefix_";
+      return this.methodInvoker(MyClassWithLambda::lambda$callGenericLambda2$0, input);
+   }
+
+   private static String lambda$callGenericLambda2$0(String var0, String constant) {
       return var0.concat(constant.substring(1));
    }
 }

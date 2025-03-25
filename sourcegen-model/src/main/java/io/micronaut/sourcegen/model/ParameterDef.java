@@ -20,6 +20,7 @@ import io.micronaut.core.annotation.Experimental;
 import javax.lang.model.element.Modifier;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The parameter definition.
@@ -32,7 +33,8 @@ public final class ParameterDef extends AbstractElement {
 
     private final TypeDef type;
 
-    private ParameterDef(String name, EnumSet<Modifier> modifiers,
+    private ParameterDef(String name,
+                         EnumSet<Modifier> modifiers,
                          List<AnnotationDef> annotations,
                          List<String> javadoc,
                          TypeDef type, boolean synthetic) {
@@ -46,6 +48,21 @@ public final class ParameterDef extends AbstractElement {
 
     public static ParameterDefBuilder builder(String name, TypeDef type) {
         return new ParameterDefBuilder(name, type);
+    }
+
+    /**
+     * Resolve the type variables for this parameter.
+     * @param resolvedTypeVariables The resolved type variables
+     * @return The resolved parameter
+     * @since 1.7
+     */
+    public ParameterDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
+        return ParameterDef.builder(name, type.resolveTypeVariables(resolvedTypeVariables))
+            .addAnnotations(annotations)
+            .addModifiers(modifiers)
+            .addJavadoc(javadoc)
+            .synthetic(synthetic)
+            .build();
     }
 
     public TypeDef getType() {
