@@ -20,24 +20,25 @@ import io.micronaut.core.annotation.Experimental;
 import java.util.Map;
 
 /**
- * The lambda method definition.
+ * Definition holding information about a lambda interface that can be implemented.
+ * Use {@link ClassTypeDef#getLambda()} to create an instance from an existing type definition.
  *
  * @author Denis Stepanov
  * @since 1.7
  */
 @Experimental
-public final class LambdaMethodDef {
+public final class LambdaDef {
 
     private final ClassTypeDef type;
     private final MethodDef method;
 
-    LambdaMethodDef(ClassTypeDef type, MethodDef method) {
+    LambdaDef(ClassTypeDef type, MethodDef method) {
         this.type = type;
         this.method = method;
     }
 
     /**
-     * Implement the method as lambda.
+     * Implement lambda by providing the method body.
      *
      * @param lambdaBuilder The lambda builder
      * @return the lambda expression
@@ -53,7 +54,8 @@ public final class LambdaMethodDef {
     }
 
     /**
-     * Implement the method as lambda.
+     * Implement lambda by providing the method body and the particular
+     * type variables for implementing a generic lambda.
      *
      * @param resolvedTypeVariables The resolved type variables of the method.
      * @param lambdaBuilder The lambda builder

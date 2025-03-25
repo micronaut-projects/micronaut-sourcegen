@@ -1630,6 +1630,7 @@ public sealed interface ExpressionDef
 
     /**
      * A type that represents a lambda.
+     * Use {@link LambdaDef#implement} to create an instance of {@link Lambda}.
      *
      * @param type           The type of the lambda, e.g. {@code Function<String, String>}
      * @param target         The target method as defined in the interface,

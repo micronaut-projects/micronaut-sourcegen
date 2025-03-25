@@ -139,7 +139,7 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @return The lambda method
      * @since 1.7
      */
-    default LambdaMethodDef getLambdaMethod() {
+    default LambdaDef getLambda() {
         throw new UnsupportedOperationException("ClassTypeDef: " + getName() + " doesn't support lambdas");
     }
 
@@ -626,14 +626,14 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassElementType(ClassElement classElement, boolean nullable) implements ClassTypeDef {
 
         @Override
-        public LambdaMethodDef getLambdaMethod() {
+        public LambdaDef getLambda() {
             List<MethodElement> abstractMethods = classElement.getEnclosedElements(
                 ElementQuery.of(MethodElement.class).onlyAbstract());
             if (abstractMethods.size() != 1) {
                 throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
                     "abstract method but has " + abstractMethods.size());
             }
-            return new LambdaMethodDef(ClassTypeDef.of(classElement), MethodDef.of(abstractMethods.get(0)));
+            return new LambdaDef(ClassTypeDef.of(classElement), MethodDef.of(abstractMethods.get(0)));
         }
 
         @Override
@@ -699,7 +699,7 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassDefType(ObjectDef objectDef, boolean nullable) implements ClassTypeDef {
 
         @Override
-        public LambdaMethodDef getLambdaMethod() {
+        public LambdaDef getLambda() {
             List<MethodDef> methods = objectDef.getMethods()
                 .stream()
                 .filter(v -> v.getModifiers().contains(Modifier.ABSTRACT))
@@ -708,7 +708,7 @@ public sealed interface ClassTypeDef extends TypeDef {
                 throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
                     "abstract method but has " + methods.size());
             }
-            return new LambdaMethodDef(ClassTypeDef.of(objectDef), methods.get(0));
+            return new LambdaDef(ClassTypeDef.of(objectDef), methods.get(0));
         }
 
         @Override
@@ -766,8 +766,8 @@ public sealed interface ClassTypeDef extends TypeDef {
         }
 
         @Override
-        public LambdaMethodDef getLambdaMethod() {
-            return new LambdaMethodDef(rawType, rawType.getLambdaMethod().getMethod());
+        public LambdaDef getLambda() {
+            return new LambdaDef(rawType, rawType.getLambda().getMethod());
         }
 
         @Override

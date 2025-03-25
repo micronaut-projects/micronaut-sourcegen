@@ -118,7 +118,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
     private static MethodDef createStatelessLambda(ObjectDef lambdaType) {
         Local function = new Local("function", lambdaType.asTypeDef());
         Lambda lambda = lambdaType.asTypeDef()
-            .getLambdaMethod()
+            .getLambda()
             .implement((t, params) ->
                 params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1)).returning());
 
@@ -140,7 +140,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         Local constant = new Local("constant", TypeDef.STRING);
         Local function = new Local("function", lambdaType.asTypeDef());
         Lambda lambda = lambdaType.asTypeDef()
-            .getLambdaMethod()
+            .getLambda()
             .implement((t, params) -> constant.invoke("concat", TypeDef.STRING,
                 params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
                     .invoke("concat", TypeDef.STRING, t.invoke("toString", TypeDef.STRING))
@@ -226,7 +226,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         Local constant = new Local("constant", TypeDef.STRING);
         ClassTypeDef funcType = funcDef.asTypeDef();
 
-        Lambda lambda = funcType.getLambdaMethod()
+        Lambda lambda = funcType.getLambda()
             .implement(Map.of("T", TypeDef.STRING, "R", TypeDef.STRING), (aThis, params) -> constant.invoke("concat", TypeDef.STRING,
                 params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
             ).returning());
@@ -255,7 +255,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         Local function = new Local("function", TypeDef.of(functionType).resolveTypeVariables(resolvedVariables));
 
         Lambda lambda = ClassTypeDef.of(functionType)
-            .getLambdaMethod()
+            .getLambda()
             .implement(
                 resolvedVariables,
                 (t, params) ->
