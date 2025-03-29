@@ -180,6 +180,16 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Add a statement to the static method body.</div>
 </div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>@NonNull <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addThrows(io.micronaut.sourcegen.model.TypeDef...)" class="member-name-link">addThrows</a><wbr>(@NonNull <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>...&nbsp;types)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Add throw expressions to the method.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>@NonNull <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addThrows(java.util.List)" class="member-name-link">addThrows</a><wbr>(@NonNull <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;types)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Add throw expressions to the method.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#build()" class="member-name-link">build</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
@@ -489,6 +499,36 @@ loadScripts(document, 'script');</script>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>newStatements</code> - The new statements</dd>
+<dt>Returns:</dt>
+<dd>The builder</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="addThrows(io.micronaut.sourcegen.model.TypeDef...)">
+<h3>addThrows</h3>
+<div class="member-signature"><span class="annotations">@NonNull
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">@NonNull <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">addThrows</span><wbr><span class="parameters">(@NonNull
+ @NonNull <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>...&nbsp;types)</span></div>
+<div class="block">Add throw expressions to the method.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>types</code> - The types that this method throws</dd>
+<dt>Returns:</dt>
+<dd>The builder</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="addThrows(java.util.List)">
+<h3>addThrows</h3>
+<div class="member-signature"><span class="annotations">@NonNull
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">@NonNull <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">addThrows</span><wbr><span class="parameters">(@NonNull
+ @NonNull <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;types)</span></div>
+<div class="block">Add throw expressions to the method.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>types</code> - The types that this method throws</dd>
 <dt>Returns:</dt>
 <dd>The builder</dd>
 </dl>
