@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
+import io.micronaut.sourcegen.model.AnnotationObjectDef.AnnotationMemberDef;
 
 import javax.lang.model.element.Modifier;
 import java.util.Collections;
@@ -30,7 +31,7 @@ import java.util.Set;
  * @since 1.0
  */
 @Experimental
-abstract sealed class AbstractElement permits ObjectDef, FieldDef, MethodDef, ParameterDef, PropertyDef {
+abstract sealed class AbstractElement permits ObjectDef, FieldDef, MethodDef, ParameterDef, PropertyDef, AnnotationMemberDef {
 
     protected final String name;
     protected final EnumSet<Modifier> modifiers;

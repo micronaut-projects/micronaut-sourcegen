@@ -36,6 +36,8 @@ import io.micronaut.sourcegen.javapoet.TypeVariableName;
 import io.micronaut.sourcegen.javapoet.Util;
 import io.micronaut.sourcegen.javapoet.WildcardTypeName;
 import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.AnnotationObjectDef;
+import io.micronaut.sourcegen.model.AnnotationObjectDef.AnnotationMemberDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -56,6 +58,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Array;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -90,6 +93,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             writeInterface(writer, interfaceDef);
         } else if (objectDef instanceof EnumDef enumDef) {
             writeEnum(writer, enumDef);
+        } else if (objectDef instanceof AnnotationObjectDef annotationDef) {
+            writeAnnotationObject(writer, annotationDef);
         } else {
             throw new IllegalStateException("Unknown object definition: " + objectDef);
         }
@@ -187,7 +192,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
         buildProperties(enumDef, enumBuilder);
 
-        buildFields(enumDef, enumBuilder);
+        buildFields(enumDef, enumDef.getFields(), enumBuilder);
 
         for (MethodDef method : enumDef.getMethods()) {
             enumBuilder.addMethod(
@@ -196,6 +201,37 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         addInnerTypes(enumDef.getInnerTypes(), enumBuilder, false);
         return enumBuilder;
+    }
+
+    private void writeAnnotationObject(Writer writer, AnnotationObjectDef annotationDef) throws IOException {
+        TypeSpec.Builder annotationBuilder = getAnnotationObjectBuilder(annotationDef);
+        JavaFile javaFile = JavaFile.builder(annotationDef.getPackageName(), annotationBuilder.build()).build();
+        javaFile.writeTo(writer);
+    }
+
+    private TypeSpec.Builder getAnnotationObjectBuilder(AnnotationObjectDef def) {
+        TypeSpec.Builder builder = TypeSpec.annotationBuilder(def.getSimpleName());
+        builder.addModifiers(def.getModifiersArray());
+        def.getJavadoc().forEach(builder::addJavadoc);
+        for (AnnotationDef annotation : def.getAnnotations()) {
+            builder.addAnnotation(asAnnotationSpec(annotation));
+        }
+        buildFields(def, def.getFields(), builder);
+        for (AnnotationMemberDef member: def.getMembers()) {
+            MethodSpec.Builder method = MethodSpec.methodBuilder(member.getName());
+            method.returns(asType(member.getType(), def));
+            method.addModifiers(member.getModifiersArray());
+            for (AnnotationDef annotation : member.getAnnotations()) {
+                method.addAnnotation(asAnnotationSpec(annotation));
+            }
+            member.getJavadoc().forEach(method::addJavadoc);
+            if (member.getDefaultValue() != null) {
+                method.defaultValue(renderExpression(def, null, Collections.emptyMap(), member.getDefaultValue()));
+            }
+            builder.addMethod(method.build());
+        }
+        addInnerTypes(def.getInnerTypes(), builder, false);
+        return builder;
     }
 
     private void writeClass(Writer writer, ClassDef classDef) throws IOException {
@@ -220,7 +256,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
         buildProperties(classDef, classBuilder);
 
-        buildFields(classDef, classBuilder);
+        buildFields(classDef, classDef.getFields(), classBuilder);
 
         addInnerTypes(classDef.getInnerTypes(), classBuilder, false);
 
@@ -294,10 +330,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
     }
 
-    private void buildFields(ObjectDef objectDef, TypeSpec.Builder builder) {
-        var fields = objectDef instanceof ClassDef ?
-            ((ClassDef) objectDef).getFields() :
-            ((EnumDef) objectDef).getFields();
+    private void buildFields(ObjectDef objectDef, List<FieldDef> fields, TypeSpec.Builder builder) {
         for (FieldDef field : fields) {
             FieldSpec.Builder fieldBuilder = FieldSpec.builder(
                 asType(field.getType(), objectDef),
