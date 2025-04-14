@@ -81,7 +81,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             boolean hasBuilder = recordElement.hasStereotype(Builder.class);
             ClassTypeDef recordType = ClassTypeDef.of(recordElement);
 
-            InterfaceDef.InterfaceDefBuilder wither = createWither(recordType, properties, parameters, hasBuilder);
+            InterfaceDef.InterfaceDefBuilder wither = createWither(recordElement.getPackageName(), recordType, properties, parameters, hasBuilder);
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
             if (sourceGenerator == null) {
@@ -109,15 +109,16 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
 
     /**
      * Builds a wither interface for the given arguments.
+     * @param packageName The package name
      * @param recordType The record type
      * @param properties The properties
      * @param parameters The parameters
      * @param hasBuilder Is there a builder
      * @return The interface
      */
-    public static InterfaceDef.InterfaceDefBuilder createWither(ClassTypeDef recordType, List<PropertyElement> properties, List<ParameterElement> parameters, boolean hasBuilder) {
+    public static InterfaceDef.InterfaceDefBuilder createWither(String packageName, ClassTypeDef recordType, List<PropertyElement> properties, List<ParameterElement> parameters, boolean hasBuilder) {
         String simpleName = recordType.getSimpleName() + "Wither";
-        String witherClassName = recordType.getPackageName() + "." + simpleName;
+        String witherClassName = packageName + "." + simpleName;
         InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
             .addModifiers(Modifier.PUBLIC);
 

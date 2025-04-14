@@ -57,6 +57,7 @@ public class TestRecordGenerator implements TypeElementVisitor<TestAnn, Object> 
         List<PropertyElement> beanProperties = recordDef.getBeanProperties(context);
         List<ParameterElement> constructorParameters = recordDef.getConstructorParameters(context);
         ClassDef.ClassDefBuilder builderDef = BuilderAnnotationVisitor.createBuilder(
+            element.getPackageName(),
             recordDef.asTypeDef(),
             null,
             beanProperties,
@@ -78,6 +79,7 @@ public class TestRecordGenerator implements TypeElementVisitor<TestAnn, Object> 
         );
 
         InterfaceDef.InterfaceDefBuilder witherInterface = WitherAnnotationVisitor.createWither(
+            element.getPackageName(),
             recordDef.asTypeDef(),
             beanProperties,
             constructorParameters,

@@ -110,7 +110,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             AnnotationValue<Builder> builderAnnotationValue = element.getAnnotation(Builder.class);
             ClassTypeDef elementType = ClassTypeDef.of(element);
 
-            ClassDefBuilder builder = createBuilder(elementType, builderAnnotationValue, properties, constructorParameters);
+            ClassDefBuilder builder = createBuilder(element.getPackageName(), elementType, builderAnnotationValue, properties, constructorParameters);
             ClassDef builderDef = builder.build();
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
@@ -137,7 +137,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     /**
      * Create a builder for the given arguments.
-     *
+     * @param packageName            The package name
      * @param elementType            The element type
      * @param builderAnnotationValue The builder annotation value.
      * @param properties             The properties
@@ -145,17 +145,19 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
      * @return A class definition builder for the builder
      */
     public static @NonNull ClassDefBuilder createBuilder(
+        String packageName,
         @NonNull ClassTypeDef elementType,
         @Nullable AnnotationValue<Builder> builderAnnotationValue,
         @NonNull List<PropertyElement> properties,
         @NonNull List<ParameterElement> constructorParameters) {
         Function<BuildContext, StatementDef> returnSelf = (context) -> context.aThis.returning();
-        return createBuilder(elementType, builderAnnotationValue, properties, constructorParameters, returnSelf);
+        return createBuilder(packageName, elementType, builderAnnotationValue, properties, constructorParameters, returnSelf);
     }
 
     /**
      * Create a builder for the given arguments.
      *
+     * @param packageName            The package name
      * @param elementType            The element type
      * @param builderAnnotationValue The builder annotation value.
      * @param properties             The properties
@@ -163,9 +165,15 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
      * @param buildReturnStatement   The return statement to use for building.
      * @return A class definition builder for the builder
      */
-    public static ClassDefBuilder createBuilder(ClassTypeDef elementType, AnnotationValue<Builder> builderAnnotationValue, List<PropertyElement> properties, List<ParameterElement> constructorParameters, Function<BuildContext, StatementDef> buildReturnStatement) {
+    public static ClassDefBuilder createBuilder(
+        String packageName,
+        ClassTypeDef elementType,
+        AnnotationValue<Builder> builderAnnotationValue,
+        List<PropertyElement> properties,
+        List<ParameterElement> constructorParameters,
+        Function<BuildContext, StatementDef> buildReturnStatement) {
         String simpleName = elementType.getSimpleName() + "Builder";
-        String builderClassName = elementType.getPackageName() + "." + simpleName;
+        String builderClassName = packageName + "." + simpleName;
         ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
 
         ClassDefBuilder builder = ClassDef.builder(builderClassName)
@@ -593,9 +601,11 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     /**
      * Invocation context for when a builder method is called.
+     *
      * @param aThis A this
      * @param field The field being assigned
      */
-    public record BuildContext(VariableDef.This aThis, FieldDef field) { }
+    public record BuildContext(VariableDef.This aThis, FieldDef field) {
+    }
 
 }
