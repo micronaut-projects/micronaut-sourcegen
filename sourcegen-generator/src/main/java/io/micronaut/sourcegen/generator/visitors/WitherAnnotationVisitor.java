@@ -76,41 +76,12 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             if (!recordElement.isRecord()) {
                 throw new ProcessingException(recordElement, "Only records can be annotated with @Wither");
             }
-            String simpleName = recordElement.getSimpleName() + "Wither";
-            String witherClassName = recordElement.getPackageName() + "." + simpleName;
-
+            List<PropertyElement> properties = recordElement.getBeanProperties();
+            List<ParameterElement> parameters = Arrays.asList(recordElement.getPrimaryConstructor().orElseThrow().getParameters());
+            boolean hasBuilder = recordElement.hasStereotype(Builder.class);
             ClassTypeDef recordType = ClassTypeDef.of(recordElement);
 
-            InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
-                .addModifiers(Modifier.PUBLIC);
-
-            List<PropertyElement> properties = recordElement.getBeanProperties();
-            Map<String, MethodDef> propertyAccessMethods = CollectionUtils.newHashMap(properties.size());
-            for (PropertyElement beanProperty : properties) {
-                MethodDef methodDef = MethodDef.builder(beanProperty.getSimpleName())
-                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                    .returns(TypeDef.of(beanProperty.getType()))
-                    .build();
-                wither.addMethod(
-                    methodDef
-                );
-                propertyAccessMethods.put(beanProperty.getName(), methodDef);
-            }
-            for (PropertyElement beanProperty : properties) {
-                wither.addMethod(
-                    withMethod(recordElement, beanProperty, recordType, propertyAccessMethods)
-                );
-            }
-
-            if (recordElement.hasStereotype(Builder.class)) {
-                String builderSimpleName = recordElement.getSimpleName() + "Builder";
-                String builderClassName = recordElement.getPackageName() + "." + builderSimpleName;
-                ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
-
-                MethodDef withMethod = createWithMethod(recordElement, builderType, propertyAccessMethods);
-                wither.addMethod(withMethod);
-                wither.addMethod(createWithConsumerMethod(recordType, builderType, withMethod));
-            }
+            InterfaceDef.InterfaceDefBuilder wither = createWither(recordType, properties, parameters, hasBuilder);
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
             if (sourceGenerator == null) {
@@ -118,6 +89,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             }
 
             InterfaceDef witherDef = wither.build();
+
             processed.add(recordElement.getName());
             sourceGenerator.write(witherDef, context, recordElement);
         } catch (ProcessingException e) {
@@ -135,7 +107,50 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         }
     }
 
-    private MethodDef createWithConsumerMethod(ClassTypeDef recordType, ClassTypeDef builderType, MethodDef withMethod) {
+    /**
+     * Builds a wither interface for the given arguments.
+     * @param recordType The record type
+     * @param properties The properties
+     * @param parameters The parameters
+     * @param hasBuilder Is there a builder
+     * @return The interface
+     */
+    public static InterfaceDef.InterfaceDefBuilder createWither(ClassTypeDef recordType, List<PropertyElement> properties, List<ParameterElement> parameters, boolean hasBuilder) {
+        String simpleName = recordType.getSimpleName() + "Wither";
+        String witherClassName = recordType.getPackageName() + "." + simpleName;
+        InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
+            .addModifiers(Modifier.PUBLIC);
+
+        Map<String, MethodDef> propertyAccessMethods = CollectionUtils.newHashMap(properties.size());
+        for (PropertyElement beanProperty : properties) {
+            MethodDef methodDef = MethodDef.builder(beanProperty.getSimpleName())
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(TypeDef.of(beanProperty.getType()))
+                .build();
+            wither.addMethod(
+                methodDef
+            );
+            propertyAccessMethods.put(beanProperty.getName(), methodDef);
+        }
+        for (PropertyElement beanProperty : properties) {
+            wither.addMethod(
+                withMethod(parameters, beanProperty, recordType, propertyAccessMethods)
+            );
+        }
+
+        if (hasBuilder) {
+            String builderSimpleName = recordType.getSimpleName() + "Builder";
+            String builderClassName = recordType.getPackageName() + "." + builderSimpleName;
+            ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
+
+            MethodDef withMethod = createWithMethod(parameters, builderType, propertyAccessMethods);
+            wither.addMethod(withMethod);
+            wither.addMethod(createWithConsumerMethod(recordType, builderType, withMethod));
+        }
+        return wither;
+    }
+
+    private static MethodDef createWithConsumerMethod(ClassTypeDef recordType, ClassTypeDef builderType, MethodDef withMethod) {
         return MethodDef.builder("with")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter("consumer", TypeDef.parameterized(ClassTypeDef.of(Consumer.class), builderType))
@@ -148,25 +163,25 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             );
     }
 
-    private MethodDef createWithMethod(ClassElement recordElement, ClassTypeDef builderType, Map<String, MethodDef> propertyAccessMethods) {
+    private static MethodDef createWithMethod(List<ParameterElement> parameters, ClassTypeDef builderType, Map<String, MethodDef> propertyAccessMethods) {
         return MethodDef.builder("with")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(builderType)
             .build((self, parameterDefs) -> builderType.instantiate(
-                Arrays.stream(recordElement.getPrimaryConstructor().orElseThrow().getParameters())
+                parameters.stream()
                     .<ExpressionDef>map(parameter -> self.invoke(propertyAccessMethods.get(parameter.getName())))
                     .toList()
             ).returning());
     }
 
-    private MethodDef withMethod(ClassElement recordElement, PropertyElement beanProperty, ClassTypeDef recordType, Map<String, MethodDef> propertyAccessMethods) {
+    private static MethodDef withMethod(List<ParameterElement> parameters, PropertyElement beanProperty, ClassTypeDef recordType, Map<String, MethodDef> propertyAccessMethods) {
         return MethodDef.builder("with" + NameUtils.capitalize(beanProperty.getSimpleName()))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(recordType)
             .addParameter(beanProperty.getSimpleName(), TypeDef.of(beanProperty.getType()))
             .build((self, parameterDefs) -> {
                 List<ExpressionDef> values = new ArrayList<>();
-                for (ParameterElement parameter : recordElement.getPrimaryConstructor().orElseThrow().getParameters()) {
+                for (ParameterElement parameter : parameters) {
                     ExpressionDef exp;
                     if (parameter.getName().equals(beanProperty.getName())) {
                         exp = parameterDefs.get(0);
