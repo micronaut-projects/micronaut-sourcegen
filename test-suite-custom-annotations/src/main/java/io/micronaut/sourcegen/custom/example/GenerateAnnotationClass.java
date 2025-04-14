@@ -13,30 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen.example;
+package io.micronaut.sourcegen.custom.example;
 
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-import io.micronaut.sourcegen.custom.example.*;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-import java.util.List;
-
-@GenerateMyBean1
-@GenerateMyBean2
-@GenerateMyBean3
-@GenerateMyRecord1
-@GenerateMyRecord3
-@GenerateInterface
-@GenerateMyRepository1
-@GenerateMyEnum1
-@GenerateIfsPredicate
-@GenerateSwitch
-@GenerateArray
-@GenerateAnnotatedType
-@GenerateInnerTypes
-@GenerateMyEnum2
-@GenerateMethodInvocation
-@GenerateLambda
-@GenerateAnnotationClass
-public class Trigger {
-    public List<String> copyAddresses;
+@Documented
+@Retention(RUNTIME)
+@Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
+public @interface GenerateAnnotationClass {
 }

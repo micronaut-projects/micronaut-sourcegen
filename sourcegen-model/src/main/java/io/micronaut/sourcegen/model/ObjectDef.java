@@ -30,7 +30,7 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public abstract sealed class ObjectDef extends AbstractElement permits ClassDef, EnumDef, InterfaceDef, RecordDef {
+public abstract sealed class ObjectDef extends AbstractElement permits ClassDef, EnumDef, InterfaceDef, RecordDef, AnnotationObjectDef {
 
     protected final ClassTypeDef.ClassName className;
     protected final List<MethodDef> methods;

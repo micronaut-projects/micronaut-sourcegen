@@ -16,6 +16,12 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
+import io.micronaut.sourcegen.model.AnnotationObjectDef.AnnotationMemberDefBuilder;
+import io.micronaut.sourcegen.model.AnnotationObjectDef.AnnotationObjectDefBuilder;
+import io.micronaut.sourcegen.model.FieldDef.FieldDefBuilder;
+import io.micronaut.sourcegen.model.MethodDef.MethodDefBuilder;
+import io.micronaut.sourcegen.model.ParameterDef.ParameterDefBuilder;
+import io.micronaut.sourcegen.model.PropertyDef.PropertyDefBuilder;
 
 import javax.lang.model.element.Modifier;
 import java.lang.annotation.Annotation;
@@ -34,7 +40,7 @@ import java.util.List;
  * @since 1.0
  */
 @Experimental
-public sealed class AbstractElementBuilder<ThisType> permits ObjectDefBuilder, FieldDef.FieldDefBuilder, MethodDef.MethodDefBuilder, ParameterDef.ParameterDefBuilder, PropertyDef.PropertyDefBuilder {
+public sealed class AbstractElementBuilder<ThisType> permits AnnotationMemberDefBuilder, AnnotationObjectDefBuilder, FieldDefBuilder, MethodDefBuilder, ObjectDefBuilder, ParameterDefBuilder, PropertyDefBuilder {
 
     protected final String name;
     protected final EnumSet<Modifier> modifiers = EnumSet.noneOf(Modifier.class);
