@@ -668,6 +668,10 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/ParameterDef.html#asVariable()" class="member-name-link">asVariable()</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ParameterDef.html" title="class in io.micronaut.sourcegen.model">ParameterDef</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html#aThis()" class="member-name-link">aThis()</a> - Method in record class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a></dt>
+<dd>
+<div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html#param-aThis"><code>aThis</code></a> record component.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/TypeSpec.Builder.html#avoidClashesWithNestedClasses(java.lang.Class)" class="member-name-link">avoidClashesWithNestedClasses(Class&lt;?&gt;)</a> - Method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/TypeSpec.Builder.html" title="class in io.micronaut.sourcegen.javapoet">TypeSpec.Builder</a></dt>
 <dd>
 <div class="block">Call this to always fully qualify any types that would conflict with possibly nested types of
@@ -766,6 +770,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Build a method with a body builder.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html#%3Cinit%3E(io.micronaut.sourcegen.model.VariableDef.This,io.micronaut.sourcegen.model.FieldDef)" class="member-name-link">BuildContext(VariableDef.This, FieldDef)</a> - Constructor for record class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a></dt>
+<dd>
+<div class="block">Creates an instance of a <code>BuildContext</code> record class.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/CodeBlock.html#builder()" class="member-name-link">builder()</a> - Static method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/CodeBlock.html" title="class in io.micronaut.sourcegen.javapoet">CodeBlock</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/FieldDef.html#builder(java.lang.String)" class="member-name-link">builder(String)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/FieldDef.html" title="class in io.micronaut.sourcegen.model">FieldDef</a></dt>
@@ -832,6 +840,16 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.html#%3Cinit%3E()" class="member-name-link">BuilderAnnotationVisitor()</a> - Constructor for class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator</a> - Class in <a href="io/micronaut/sourcegen/generator/visitors/package-summary.html">io.micronaut.sourcegen.generator.visitors</a></dt>
+<dd>
+<div class="block">Exposes methods that can be used to create builders from other processors.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.html#%3Cinit%3E()" class="member-name-link">BuilderGenerator()</a> - Constructor for class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a> - Record Class in <a href="io/micronaut/sourcegen/generator/visitors/package-summary.html">io.micronaut.sourcegen.generator.visitors</a></dt>
+<dd>
+<div class="block">Invocation context for when a builder method is called.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/MethodDef.MethodDefBuilder.html#buildStatic(java.util.function.Function)" class="member-name-link">buildStatic(Function&lt;List&lt;VariableDef.MethodParameter&gt;, StatementDef&gt;)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></dt>
 <dd>
 <div class="block">Build a static method with a body builder.</div>
@@ -1107,6 +1125,18 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Convert the expression to <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link"><code>String</code></a> if it's not one.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.html#createBuilder(java.lang.String,io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.core.annotation.AnnotationValue,java.util.List,java.util.List)" class="member-name-link">createBuilder(String, ClassTypeDef, AnnotationValue&lt;Builder&gt;, List&lt;PropertyElement&gt;, List&lt;ParameterElement&gt;)</a> - Static method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator</a></dt>
+<dd>
+<div class="block">Create a builder for the given arguments.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.html#createBuilder(java.lang.String,io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.core.annotation.AnnotationValue,java.util.List,java.util.List,java.util.function.Function)" class="member-name-link">createBuilder(String, ClassTypeDef, AnnotationValue&lt;Builder&gt;, List&lt;PropertyElement&gt;, List&lt;ParameterElement&gt;, Function&lt;BuilderGenerator.BuildContext, StatementDef&gt;)</a> - Static method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator</a></dt>
+<dd>
+<div class="block">Create a builder for the given arguments.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/WitherGenerator.html#createWither(java.lang.String,io.micronaut.sourcegen.model.ClassTypeDef,java.util.List,java.util.List,boolean)" class="member-name-link">createWither(String, ClassTypeDef, List&lt;PropertyElement&gt;, List&lt;ParameterElement&gt;, boolean)</a> - Static method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/WitherGenerator.html" title="class in io.micronaut.sourcegen.generator.visitors">WitherGenerator</a></dt>
+<dd>
+<div class="block">Builds a wither interface for the given arguments.</div>
+</dd>
 </dl>
 <h2 class="title" id="I:D">D</h2>
 <dl class="index">
@@ -1254,6 +1284,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Indicates whether some other object is "equal to" this one.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a></dt>
+<dd>
+<div class="block">Indicates whether some other object is "equal to" this one.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in record class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a></dt>
 <dd>
 <div class="block">Indicates whether some other object is "equal to" this one.</div>
 </dd>
@@ -1796,6 +1830,10 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.html#falseValue()" class="member-name-link">falseValue()</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html#field()" class="member-name-link">field()</a> - Method in record class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a></dt>
+<dd>
+<div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html#param-field"><code>field</code></a> record component.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.PutField.html#field()" class="member-name-link">field()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.PutField.html" title="class in io.micronaut.sourcegen.model">StatementDef.PutField</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/model/StatementDef.PutField.html#param-field"><code>field</code></a> record component.</div>
@@ -1949,6 +1987,10 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/EnumDef.html#getAnnotations()" class="member-name-link">getAnnotations()</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/EnumDef.html" title="class in io.micronaut.sourcegen.model">EnumDef</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/RecordDef.html#getBeanProperties(io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">getBeanProperties(VisitorContext)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a></dt>
+<dd>
+<div class="block">Turn the record components into bean properties.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassElementType.html#getCanonicalName()" class="member-name-link">getCanonicalName()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassElementType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassElementType</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#getCanonicalName()" class="member-name-link">getCanonicalName()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
@@ -1960,6 +2002,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/micronaut/sourcegen/model/JavaIdioms.html#getClass(io.micronaut.sourcegen.model.ExpressionDef.InvokeGetClassMethod)" class="member-name-link">getClass(ExpressionDef.InvokeGetClassMethod)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/JavaIdioms.html" title="class in io.micronaut.sourcegen.model">JavaIdioms</a></dt>
 <dd>
 <div class="block">The get class idiom.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/RecordDef.html#getConstructorParameters(io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">getConstructorParameters(VisitorContext)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a></dt>
+<dd>
+<div class="block">Turn the record components into constructor parameters.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/ObjectDef.html#getContextualType(io.micronaut.sourcegen.model.TypeDef)" class="member-name-link">getContextualType(TypeDef)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a></dt>
 <dd>
@@ -2171,6 +2217,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns a hash code value for this object.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html#hashCode()" class="member-name-link">hashCode()</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a></dt>
+<dd>
+<div class="block">Returns a hash code value for this object.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html#hashCode()" class="member-name-link">hashCode()</a> - Method in record class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a></dt>
 <dd>
 <div class="block">Returns a hash code value for this object.</div>
 </dd>
@@ -4186,6 +4236,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns a string representation of this record class.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html#toString()" class="member-name-link">toString()</a> - Method in record class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a></dt>
+<dd>
+<div class="block">Returns a string representation of this record class.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.AnnotationSpecValue.html#toString()" class="member-name-link">toString()</a> - Method in record class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.AnnotationSpecValue.html" title="class in io.micronaut.sourcegen.javapoet">AnnotationSpec.AnnotationSpecValue</a></dt>
 <dd>
 <div class="block">Returns a string representation of this record class.</div>
@@ -4846,6 +4900,10 @@ the order they are declared.</div>
 </dl>
 <h2 class="title" id="I:W">W</h2>
 <dl class="index">
+<dt><a href="io/micronaut/sourcegen/generator/visitors/WitherGenerator.html#weaveWithMethods(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.RecordDef.RecordDefBuilder,java.util.List,java.util.List,boolean)" class="member-name-link">weaveWithMethods(ClassTypeDef, RecordDef.RecordDefBuilder, List&lt;PropertyElement&gt;, List&lt;ParameterElement&gt;, boolean)</a> - Static method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/WitherGenerator.html" title="class in io.micronaut.sourcegen.generator.visitors">WitherGenerator</a></dt>
+<dd>
+<div class="block">Add with methods to an existing record type being generated.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.While.html#%3Cinit%3E(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.StatementDef)" class="member-name-link">While(ExpressionDef, StatementDef)</a> - Constructor for record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.While.html" title="class in io.micronaut.sourcegen.model">StatementDef.While</a></dt>
 <dd>
 <div class="block">Creates an instance of a <code>While</code> record class.</div>
@@ -4901,6 +4959,12 @@ the order they are declared.</div>
 <div class="block">The visitor that is generation a builder.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/WitherAnnotationVisitor.html#%3Cinit%3E()" class="member-name-link">WitherAnnotationVisitor()</a> - Constructor for class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/WitherAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">WitherAnnotationVisitor</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/WitherGenerator.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">WitherGenerator</a> - Class in <a href="io/micronaut/sourcegen/generator/visitors/package-summary.html">io.micronaut.sourcegen.generator.visitors</a></dt>
+<dd>
+<div class="block">Provides methods for creating withers from other processors.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/WitherGenerator.html#%3Cinit%3E()" class="member-name-link">WitherGenerator()</a> - Constructor for class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/WitherGenerator.html" title="class in io.micronaut.sourcegen.generator.visitors">WitherGenerator</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/ArrayTypeName.html#withoutAnnotations()" class="member-name-link">withoutAnnotations()</a> - Method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/ArrayTypeName.html" title="class in io.micronaut.sourcegen.javapoet">ArrayTypeName</a></dt>
 <dd>&nbsp;</dd>
