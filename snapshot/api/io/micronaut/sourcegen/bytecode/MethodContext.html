@@ -81,10 +81,12 @@ loadScripts(document, 'script');</script>
 <dd><code><span id="param-objectDef">objectDef</span></code> - The current object definition</dd>
 <dd><code><span id="param-methodDef">methodDef</span></code> - The current method definition.</dd>
 <dd><code><span id="param-locals">locals</span></code> - The locals</dd>
+<dd><code><span id="param-lambdaMethods">lambdaMethods</span></code> - Lambda methods created by this method</dd>
+<dd><code><span id="param-isLambda">isLambda</span></code> - Whether this method is a lambda</dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="annotations">@Internal
-</span><span class="modifiers">public record </span><span class="element-name type-name-label">MethodContext</span>(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef, <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals)
+</span><span class="modifiers">public record </span><span class="element-name type-name-label">MethodContext</span>(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef, <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;&nbsp;lambdaMethods, boolean&nbsp;isLambda)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a></span></div>
 <div class="block">The statement context.</div>
 <dl class="notes">
@@ -119,12 +121,15 @@ loadScripts(document, 'script');</script>
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">MethodContext</a><wbr>(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
- <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
-<div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map)" class="member-name-link">MethodContext</a><wbr>(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,boolean)" class="member-name-link">MethodContext</a><wbr>(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals)</code></div>
+ boolean&nbsp;isLambda)</code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map,java.util.List,boolean)" class="member-name-link">MethodContext</a><wbr>(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;&nbsp;lambdaMethods,
+ boolean&nbsp;isLambda)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Creates an instance of a <code>MethodContext</code> record class.</div>
 </div>
@@ -151,6 +156,16 @@ loadScripts(document, 'script');</script>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hashCode()" class="member-name-link">hashCode</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a hash code value for this object.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isLambda()" class="member-name-link">isLambda</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns the value of the <a href="#param-isLambda"><code>isLambda</code></a> record component.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#lambdaMethods()" class="member-name-link">lambdaMethods</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns the value of the <a href="#param-lambdaMethods"><code>lambdaMethods</code></a> record component.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#locals()" class="member-name-link">locals</a>()</code></div>
@@ -190,26 +205,31 @@ loadScripts(document, 'script');</script>
 <h2>Constructor Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)">
-<h3>MethodContext</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">MethodContext</span><wbr><span class="parameters">(@Nullable
- @Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
- <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map)">
+<section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,boolean)">
 <h3>MethodContext</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">MethodContext</span><wbr><span class="parameters">(@Nullable
  @Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals)</span></div>
+ boolean&nbsp;isLambda)</span></div>
+</section>
+</li>
+<li>
+<section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map,java.util.List,boolean)">
+<h3>MethodContext</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">MethodContext</span><wbr><span class="parameters">(@Nullable
+ @Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;&nbsp;lambdaMethods,
+ boolean&nbsp;isLambda)</span></div>
 <div class="block">Creates an instance of a <code>MethodContext</code> record class.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>objectDef</code> - the value for the <a href="#param-objectDef"><code>objectDef</code></a> record component</dd>
 <dd><code>methodDef</code> - the value for the <a href="#param-methodDef"><code>methodDef</code></a> record component</dd>
 <dd><code>locals</code> - the value for the <a href="#param-locals"><code>locals</code></a> record component</dd>
+<dd><code>lambdaMethods</code> - the value for the <a href="#param-lambdaMethods"><code>lambdaMethods</code></a> record component</dd>
+<dd><code>isLambda</code> - the value for the <a href="#param-isLambda"><code>isLambda</code></a> record component</dd>
 </dl>
 </section>
 </li>
@@ -251,7 +271,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="equals(java.lang.Object)">
 <h3>equals</h3>
 <div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">equals</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;o)</span></div>
-<div class="block">Indicates whether some other object is "equal to" this one. The objects are equal if the other object is of the same class and if all the record components are equal. All components in this record class are compared with <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Objects.html#equals(java.lang.Object,java.lang.Object)" title="class or interface in java.util" class="external-link"><code>Objects::equals(Object,Object)</code></a>.</div>
+<div class="block">Indicates whether some other object is "equal to" this one. The objects are equal if the other object is of the same class and if all the record components are equal. Reference components are compared with <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Objects.html#equals(java.lang.Object,java.lang.Object)" title="class or interface in java.util" class="external-link"><code>Objects::equals(Object,Object)</code></a>; primitive components are compared with '=='.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Record.html#equals(java.lang.Object)" title="class or interface in java.lang" class="external-link">equals</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a></code></dd>
@@ -293,6 +313,28 @@ loadScripts(document, 'script');</script>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>the value of the <a href="#param-locals"><code>locals</code></a> record component</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="lambdaMethods()">
+<h3>lambdaMethods</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;</span>&nbsp;<span class="element-name">lambdaMethods</span>()</div>
+<div class="block">Returns the value of the <a href="#param-lambdaMethods"><code>lambdaMethods</code></a> record component.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>the value of the <a href="#param-lambdaMethods"><code>lambdaMethods</code></a> record component</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="isLambda()">
+<h3>isLambda</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isLambda</span>()</div>
+<div class="block">Returns the value of the <a href="#param-isLambda"><code>isLambda</code></a> record component.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>the value of the <a href="#param-isLambda"><code>isLambda</code></a> record component</dd>
 </dl>
 </section>
 </li>

@@ -187,9 +187,14 @@ implements <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.mod
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#of(java.lang.String,io.micronaut.inject.ast.ClassElement)" class="member-name-link">of</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
  io.micronaut.inject.ast.ClassElement&nbsp;classElement)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Resolve the type variables.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a string representation of this record class.</div>
 </div>
 </div>
@@ -253,6 +258,22 @@ implements <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.mod
 <h3>of</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="TypeDef.TypeVariable.html" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a></span>&nbsp;<span class="element-name">of</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
  io.micronaut.inject.ast.ClassElement&nbsp;classElement)</span></div>
+</section>
+</li>
+<li>
+<section class="detail" id="resolveTypeVariables(java.util.Map)">
+<h3>resolveTypeVariables</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></span>&nbsp;<span class="element-name">resolveTypeVariables</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="TypeDef.html#resolveTypeVariables(java.util.Map)">TypeDef</a></code></span></div>
+<div class="block">Resolve the type variables.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="TypeDef.html#resolveTypeVariables(java.util.Map)">resolveTypeVariables</a></code>&nbsp;in interface&nbsp;<code><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></dd>
+<dt>Parameters:</dt>
+<dd><code>resolvedTypeVariables</code> - The resolved type variables.</dd>
+<dt>Returns:</dt>
+<dd>The resolved type or the previous.</dd>
+</dl>
 </section>
 </li>
 <li>
