@@ -167,6 +167,7 @@ public final class AnnotationObjectDef extends ObjectDef {
         /**
          * Create a builder.
          * @param memberName The name of the member
+         * @param type The member type
          * @return The builder
          */
         public static AnnotationMemberDefBuilder builder(String memberName, TypeDef type) {
