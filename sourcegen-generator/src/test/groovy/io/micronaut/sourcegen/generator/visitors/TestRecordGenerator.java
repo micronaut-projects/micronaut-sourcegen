@@ -53,7 +53,7 @@ public class TestRecordGenerator implements TypeElementVisitor<TestAnn, Object> 
         RecordDef recordDef = builder.build();
         List<PropertyElement> beanProperties = recordDef.getBeanProperties(context);
         List<ParameterElement> constructorParameters = recordDef.getConstructorParameters(context);
-        ClassDef.ClassDefBuilder builderDef = BuilderAnnotationVisitor.createBuilder(
+        ClassDef.ClassDefBuilder builderDef = BuilderGenerator.createBuilder(
             element.getPackageName(),
             recordDef.asTypeDef(),
             null,
