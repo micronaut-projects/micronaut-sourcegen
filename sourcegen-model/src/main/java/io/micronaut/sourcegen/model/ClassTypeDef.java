@@ -460,7 +460,7 @@ public sealed interface ClassTypeDef extends TypeDef {
                 new ClassElementType(classElement, classElement.isNullable()),
                 classElement.getTypeArguments().entrySet()
                     .stream()
-                    .<TypeDef>map(e -> TypeDef.variable(e.getKey(), TypeDef.erasure(e.getValue())))
+                    .map(e -> TypeDef.erasure(e.getValue()))
                     .toList()
             );
         }
