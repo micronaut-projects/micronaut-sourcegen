@@ -144,13 +144,13 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
      * @param constructorParameters  The constructor parameters
      * @return A class definition builder for the builder
      */
-    public static @NonNull ClassDefBuilder createBuilder(
+    static @NonNull ClassDefBuilder createBuilder(
         String packageName,
         @NonNull ClassTypeDef elementType,
         @Nullable AnnotationValue<Builder> builderAnnotationValue,
         @NonNull List<PropertyElement> properties,
         @NonNull List<ParameterElement> constructorParameters) {
-        Function<BuildContext, StatementDef> returnSelf = (context) -> context.aThis.returning();
+        Function<BuilderGenerator.BuildContext, StatementDef> returnSelf = (context) -> context.aThis().returning();
         return createBuilder(packageName, elementType, builderAnnotationValue, properties, constructorParameters, returnSelf);
     }
 
@@ -165,13 +165,13 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
      * @param buildReturnStatement   The return statement to use for building.
      * @return A class definition builder for the builder
      */
-    public static ClassDefBuilder createBuilder(
+    static ClassDefBuilder createBuilder(
         String packageName,
         ClassTypeDef elementType,
         AnnotationValue<Builder> builderAnnotationValue,
         List<PropertyElement> properties,
         List<ParameterElement> constructorParameters,
-        Function<BuildContext, StatementDef> buildReturnStatement) {
+        Function<BuilderGenerator.BuildContext, StatementDef> buildReturnStatement) {
         String simpleName = elementType.getSimpleName() + "Builder";
         String builderClassName = packageName + "." + simpleName;
         ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
@@ -278,7 +278,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     static void createModifyPropertyMethod(ClassDef.ClassDefBuilder classDefBuilder,
                                            PropertyElement beanProperty,
-                                           Function<BuildContext, StatementDef> returningExpressionProvider) {
+                                           Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
         if (beanProperty.hasAnnotation(Singular.class)) {
             createSingularPropertyMethods(classDefBuilder, beanProperty, returningExpressionProvider);
         } else {
@@ -288,7 +288,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     private static void createDefaultModifyPropertyMethod(ClassDef.ClassDefBuilder classDefBuilder,
                                                           PropertyElement beanProperty,
-                                                          Function<BuildContext, StatementDef> returningExpressionProvider) {
+                                                          Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
         TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
         FieldDef field = createField(beanProperty, propertyTypeDef);
         classDefBuilder.addField(field);
@@ -298,7 +298,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             .addParameter(propertyName, propertyTypeDef)
             .build((self, parameterDefs) -> StatementDef.multi(
                 self.field(field).assign(parameterDefs.get(0)),
-                returningExpressionProvider.apply(new BuildContext(self, field))
+                returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
             )));
     }
 
@@ -322,7 +322,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     private static void createSingularPropertyMethods(ClassDef.ClassDefBuilder classBuilder,
                                                       PropertyElement beanProperty,
-                                                      Function<BuildContext, StatementDef> returningExpressionProvider) {
+                                                      Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
         String propertyName = beanProperty.getSimpleName();
         String singularName = beanProperty.stringValue(Singular.class).orElse(null);
         if (singularName == null) {
@@ -349,7 +349,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         self.field(field).assign(ClassTypeDef.of(ArrayList.class).instantiate())
                     ),
                     self.field(field).invoke("addAll", TypeDef.primitive(boolean.class), parameterDefs.get(0)),
-                    returningExpressionProvider.apply(new BuildContext(self, field))
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
             classBuilder.addMethod(MethodDef.builder(singularName)
                 .addModifiers(Modifier.PUBLIC)
@@ -359,7 +359,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         self.field(field).assign(ClassTypeDef.of(ArrayList.class).instantiate())
                     ),
                     self.field(field).invoke("add", TypeDef.of(boolean.class), parameterDefs.get(0)),
-                    returningExpressionProvider.apply(new BuildContext(self, field))
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
             classBuilder.addMethod(MethodDef.builder("clear" + StringUtils.capitalize(propertyName))
                 .addModifiers(Modifier.PUBLIC)
@@ -367,7 +367,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     self.field(field).isNonNull().doIf(
                         self.field(field).invoke("clear", TypeDef.VOID)
                     ),
-                    returningExpressionProvider.apply(new BuildContext(self, field))
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
         } else if (beanProperty.getType().isAssignable(Map.class)) {
             TypeDef keyType = beanProperty.getType().getFirstTypeArgument().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
@@ -397,7 +397,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         TypeDef.primitive(boolean.class),
                         parameterDefs.get(0).invoke("entrySet", ClassTypeDef.of(Set.class))
                     ),
-                    returningExpressionProvider.apply(new BuildContext(self, field))
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
             classBuilder.addMethod(MethodDef.builder(singularName)
                 .addModifiers(Modifier.PUBLIC)
@@ -417,7 +417,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                             parameterDefs.get(1)
                         )
                     ),
-                    returningExpressionProvider.apply(new BuildContext(self, field))
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
             classBuilder.addMethod(MethodDef.builder("clear" + StringUtils.capitalize(propertyName))
                 .addModifiers(Modifier.PUBLIC)
@@ -425,7 +425,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     self.field(field).isNonNull().doIf(
                         self.field(field).invoke("clear", TypeDef.VOID)
                     ),
-                    returningExpressionProvider.apply(new BuildContext(self, field))
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
         } else {
             throw new IllegalStateException("Unsupported singular collection type [" + beanProperty.getType().getName() + "] for property: " + beanProperty.getName());
@@ -597,15 +597,6 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         )
                     ));
 
-    }
-
-    /**
-     * Invocation context for when a builder method is called.
-     *
-     * @param aThis A this
-     * @param field The field being assigned
-     */
-    public record BuildContext(VariableDef.This aThis, FieldDef field) {
     }
 
 }

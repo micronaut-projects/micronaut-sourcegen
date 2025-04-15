@@ -1,6 +1,5 @@
 package io.micronaut.sourcegen.generator.visitors;
 
-import io.micronaut.core.annotation.AnnotationValue;
 import io.micronaut.core.annotation.Introspected;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.util.CollectionUtils;
@@ -16,7 +15,6 @@ import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
-import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
@@ -25,7 +23,6 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -78,13 +75,13 @@ public class TestRecordGenerator implements TypeElementVisitor<TestAnn, Object> 
             }
         );
 
-        InterfaceDef.InterfaceDefBuilder witherInterface = WitherAnnotationVisitor.createWither(
-            element.getPackageName(),
+        WitherGenerator.weaveWithMethods(
             recordDef.asTypeDef(),
-            beanProperties,
+            builder, beanProperties,
             constructorParameters,
             true
         );
+
         ClassDef builderType = builderDef.build();
         ClassTypeDef builderTypeDef = builderType.asTypeDef();
 
@@ -93,13 +90,9 @@ public class TestRecordGenerator implements TypeElementVisitor<TestAnn, Object> 
         ).addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .build((aThis, parameters) -> builderTypeDef.invokeStatic("builder", builderTypeDef).returning()));
 
-        InterfaceDef wither = witherInterface.build();
-        builder.addSuperinterface(wither.asTypeDef());
-
         byLanguage.ifPresent(generator -> {
             generator.write(builderType, context, element);
             generator.write(builder.build(), context, element);
-            generator.write(wither, context, element);
         });
     }
 }

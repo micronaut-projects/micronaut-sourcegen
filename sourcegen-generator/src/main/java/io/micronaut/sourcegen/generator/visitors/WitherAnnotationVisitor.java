@@ -33,6 +33,8 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ObjectDefBuilder;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
@@ -116,26 +118,48 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
      * @param hasBuilder Is there a builder
      * @return The interface
      */
-    public static InterfaceDef.InterfaceDefBuilder createWither(String packageName, ClassTypeDef recordType, List<PropertyElement> properties, List<ParameterElement> parameters, boolean hasBuilder) {
+    static InterfaceDef.InterfaceDefBuilder createWither(
+        String packageName,
+        ClassTypeDef recordType,
+        List<PropertyElement> properties,
+        List<ParameterElement> parameters, boolean hasBuilder) {
         String simpleName = recordType.getSimpleName() + "Wither";
         String witherClassName = packageName + "." + simpleName;
         InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
             .addModifiers(Modifier.PUBLIC);
 
+        weaveWithMethodsInternal(recordType, properties, parameters, hasBuilder, wither);
+        return wither;
+    }
+
+    static void weaveWithMethodsInternal(
+        ClassTypeDef recordType,
+        List<PropertyElement> properties,
+        List<ParameterElement> parameters,
+        boolean hasBuilder,
+        ObjectDefBuilder<?> wither) {
         Map<String, MethodDef> propertyAccessMethods = CollectionUtils.newHashMap(properties.size());
         for (PropertyElement beanProperty : properties) {
-            MethodDef methodDef = MethodDef.builder(beanProperty.getSimpleName())
-                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                .returns(TypeDef.of(beanProperty.getType()))
-                .build();
-            wither.addMethod(
-                methodDef
-            );
+            MethodDef methodDef;
+            if (wither instanceof InterfaceDef.InterfaceDefBuilder) {
+                methodDef = MethodDef.builder(beanProperty.getSimpleName())
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .returns(TypeDef.of(beanProperty.getType()))
+                    .build();
+                wither.addMethod(
+                    methodDef
+                );
+            } else {
+                methodDef = MethodDef.builder(beanProperty.getSimpleName())
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(TypeDef.of(beanProperty.getType()))
+                    .build();
+            }
             propertyAccessMethods.put(beanProperty.getName(), methodDef);
         }
         for (PropertyElement beanProperty : properties) {
             wither.addMethod(
-                withMethod(parameters, beanProperty, recordType, propertyAccessMethods)
+                withMethod(wither, parameters, beanProperty, recordType, propertyAccessMethods)
             );
         }
 
@@ -144,16 +168,21 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             String builderClassName = recordType.getPackageName() + "." + builderSimpleName;
             ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
 
-            MethodDef withMethod = createWithMethod(parameters, builderType, propertyAccessMethods);
+            MethodDef withMethod = createWithMethod(wither, parameters, builderType, propertyAccessMethods);
             wither.addMethod(withMethod);
-            wither.addMethod(createWithConsumerMethod(recordType, builderType, withMethod));
+            MethodDef withConsumer = createWithConsumerMethod(wither, recordType, builderType, withMethod);
+            wither.addMethod(withConsumer);
         }
-        return wither;
     }
 
-    private static MethodDef createWithConsumerMethod(ClassTypeDef recordType, ClassTypeDef builderType, MethodDef withMethod) {
-        return MethodDef.builder("with")
-            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+    private static MethodDef createWithConsumerMethod(ObjectDefBuilder<?> wither, ClassTypeDef recordType, ClassTypeDef builderType, MethodDef withMethod) {
+        MethodDef.MethodDefBuilder methodDefBuilder = MethodDef.builder("with");
+        if (wither instanceof InterfaceDef.InterfaceDefBuilder) {
+            methodDefBuilder.addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+        } else {
+            methodDefBuilder.addModifiers(Modifier.PUBLIC);
+        }
+        return methodDefBuilder
             .addParameter("consumer", TypeDef.parameterized(ClassTypeDef.of(Consumer.class), builderType))
             .returns(recordType).build((self, parameterDefs) ->
                 self.invoke(withMethod).newLocal("builder", builderVar ->
@@ -164,9 +193,14 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             );
     }
 
-    private static MethodDef createWithMethod(List<ParameterElement> parameters, ClassTypeDef builderType, Map<String, MethodDef> propertyAccessMethods) {
-        return MethodDef.builder("with")
-            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+    private static MethodDef createWithMethod(ObjectDefBuilder<?> wither, List<ParameterElement> parameters, ClassTypeDef builderType, Map<String, MethodDef> propertyAccessMethods) {
+        MethodDef.MethodDefBuilder methodDefBuilder = MethodDef.builder("with");
+        if (wither instanceof InterfaceDef.InterfaceDefBuilder) {
+            methodDefBuilder.addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+        } else {
+            methodDefBuilder.addModifiers(Modifier.PUBLIC);
+        }
+        return methodDefBuilder
             .returns(builderType)
             .build((self, parameterDefs) -> builderType.instantiate(
                 parameters.stream()
@@ -175,9 +209,14 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             ).returning());
     }
 
-    private static MethodDef withMethod(List<ParameterElement> parameters, PropertyElement beanProperty, ClassTypeDef recordType, Map<String, MethodDef> propertyAccessMethods) {
-        return MethodDef.builder("with" + NameUtils.capitalize(beanProperty.getSimpleName()))
-            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+    private static MethodDef withMethod(ObjectDefBuilder<?> wither, List<ParameterElement> parameters, PropertyElement beanProperty, ClassTypeDef recordType, Map<String, MethodDef> propertyAccessMethods) {
+        MethodDef.MethodDefBuilder methodBuilder = MethodDef.builder("with" + NameUtils.capitalize(beanProperty.getSimpleName()));
+        if (wither instanceof InterfaceDef.InterfaceDefBuilder) {
+            methodBuilder.addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+        } else {
+            methodBuilder.addModifiers(Modifier.PUBLIC);
+        }
+        return methodBuilder
             .returns(recordType)
             .addParameter(beanProperty.getSimpleName(), TypeDef.of(beanProperty.getType()))
             .build((self, parameterDefs) -> {
