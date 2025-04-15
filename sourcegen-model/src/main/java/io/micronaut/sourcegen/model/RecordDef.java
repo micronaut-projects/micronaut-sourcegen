@@ -15,11 +15,22 @@
  */
 package io.micronaut.sourcegen.model;
 
+import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.annotation.Experimental;
+import io.micronaut.core.annotation.NonNull;
+import io.micronaut.inject.annotation.MutableAnnotationMetadata;
+import io.micronaut.inject.ast.ArrayableClassElement;
+import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.ParameterElement;
+import io.micronaut.inject.ast.PrimitiveElement;
+import io.micronaut.inject.ast.PropertyElement;
+import io.micronaut.inject.visitor.VisitorContext;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -58,6 +69,147 @@ public final class RecordDef extends ObjectDef {
 
     public List<TypeDef.TypeVariable> getTypeVariables() {
         return typeVariables;
+    }
+
+    /**
+     * Turn the record components into bean properties.
+     * @param visitorContext The visitor context.
+     * @return The property elements.
+     */
+    public List<PropertyElement> getBeanProperties(VisitorContext visitorContext) {
+        List<PropertyElement> propertyElements = new ArrayList<>(properties.size());
+        MutableAnnotationMetadata annotationMetadata = new MutableAnnotationMetadata();
+        for (AnnotationDef annotation : annotations) {
+            annotationMetadata.addDeclaredAnnotation(annotation.getType().getName(), new LinkedHashMap<>(annotation.getValues()));
+        }
+        for (PropertyDef property : properties) {
+            propertyElements.add(new PropertyElement() {
+                @Override
+                public @NonNull ClassElement getType() {
+                    TypeDef type = property.getType();
+                    return toClassElement(type, visitorContext);
+                }
+
+                @Override
+                public ClassElement getDeclaringType() {
+                    return ClassElement.of(className.getCanonicalName());
+                }
+
+                @Override
+                public @NonNull String getName() {
+                    return property.getName();
+                }
+
+                @Override
+                public boolean isProtected() {
+                    return false;
+                }
+
+                @Override
+                public boolean isPublic() {
+                    return true;
+                }
+
+                @Override
+                public @NonNull Object getNativeType() {
+                    return property;
+                }
+
+                @Override
+                public @NonNull AnnotationMetadata getAnnotationMetadata() {
+                    return annotationMetadata;
+                }
+
+                @Override
+                public AccessKind getReadAccessKind() {
+                    return AccessKind.METHOD;
+                }
+            });
+        }
+        return Collections.unmodifiableList(propertyElements);
+    }
+
+    /**
+     * Turn the record components into constructor parameters.
+     * @param visitorContext The visitor context.
+     * @return The constructor parameters.
+     */
+    public List<ParameterElement> getConstructorParameters(VisitorContext visitorContext) {
+        List<ParameterElement> propertyElements = new ArrayList<>(properties.size());
+        MutableAnnotationMetadata annotationMetadata = new MutableAnnotationMetadata();
+        for (AnnotationDef annotation : annotations) {
+            annotationMetadata.addDeclaredAnnotation(annotation.getType().getName(), new LinkedHashMap<>(annotation.getValues()));
+        }
+        for (PropertyDef property : properties) {
+            propertyElements.add(new ParameterElement() {
+                @Override
+                public @NonNull ClassElement getType() {
+                    TypeDef type = property.getType();
+                    return toClassElement(type, visitorContext);
+                }
+
+                @Override
+                public @NonNull String getName() {
+                    return property.getName();
+                }
+
+                @Override
+                public boolean isProtected() {
+                    return false;
+                }
+
+                @Override
+                public boolean isPublic() {
+                    return true;
+                }
+
+                @Override
+                public @NonNull Object getNativeType() {
+                    return property;
+                }
+
+                @Override
+                public @NonNull AnnotationMetadata getAnnotationMetadata() {
+                    return annotationMetadata;
+                }
+            });
+        }
+        return Collections.unmodifiableList(propertyElements);
+    }
+
+    private static ClassElement toClassElement(TypeDef type, VisitorContext visitorContext) {
+        if (type instanceof TypeDef.Primitive primitive) {
+            return PrimitiveElement.valueOf(primitive.name());
+        } else if (type instanceof ClassTypeDef.ClassElementType cet) {
+            return cet.classElement();
+        } else if (type instanceof ClassTypeDef.JavaClass javaClass) {
+            return visitorContext.getClassElement(javaClass.getName())
+                .orElseThrow(() -> new IllegalStateException("Class missing from compilation path: " + javaClass.getName()));
+        } else if (type instanceof ClassTypeDef.ClassName javaClass) {
+            return visitorContext.getClassElement(javaClass.getName())
+                .orElseThrow(() -> new IllegalStateException("Class missing from compilation path: " + javaClass.getName()));
+        } else if (type instanceof ClassTypeDef.ClassDefType classDefType) {
+            return visitorContext.getClassElement(classDefType.getName())
+                .orElseThrow(() -> new IllegalStateException("Class missing from compilation path: " + classDefType.getName()));
+        } else if (type instanceof ClassTypeDef.Parameterized parameterized) {
+            ClassTypeDef rawType = parameterized.rawType();
+            if (rawType instanceof ClassTypeDef.ClassElementType cet) {
+                return cet.classElement();
+            } else {
+                ClassElement classElement = toClassElement(rawType, visitorContext);
+                return classElement.withTypeArguments(
+                    parameterized.typeArguments().stream().map(tf -> toClassElement(tf, visitorContext)).toList()
+                );
+            }
+
+        } else if (type instanceof TypeDef.Array array) {
+            TypeDef typeDef = array.componentType();
+            ClassElement componentType = toClassElement(typeDef, visitorContext);
+            if (componentType instanceof ArrayableClassElement arrayableClassElement) {
+                return arrayableClassElement.withArrayDimensions(array.dimensions());
+            }
+        }
+        throw new IllegalStateException("Only properties constructed from source elements are supported");
     }
 
     /**

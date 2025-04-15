@@ -18,6 +18,8 @@ package io.micronaut.sourcegen.generator.visitors;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.MethodElement;
+import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
@@ -31,6 +33,7 @@ import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
 import javax.lang.model.element.Modifier;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -96,7 +99,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 if (!beanProperty.getDeclaringType().equals(element)) {
                     continue;
                 }
-                createModifyPropertyMethod(abstractBuilder, beanProperty, self -> self.invoke("self", self.type()).cast(selfType).returning());
+                createModifyPropertyMethod(abstractBuilder, beanProperty, buildContext -> buildContext.aThis().invoke("self", buildContext.aThis().type()).cast(selfType).returning());
             }
 
             abstractBuilder.addMethod(MethodDef.builder("self").addModifiers(Modifier.ABSTRACT).returns(selfType).build());
@@ -135,8 +138,14 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                     builder.addMethod(BuilderAnnotationVisitor.createAllPropertiesConstructor(properties));
                 }
 
+                @NonNull ParameterElement[] constructorElement = element.getPrimaryConstructor()
+                    .filter(c -> !c.isPrivate())
+                    .or(element::getDefaultConstructor)
+                    .map(MethodElement::getParameters).orElse(ParameterElement.ZERO_PARAMETER_ELEMENTS);
+                List<ParameterElement> constructorParameters = Arrays.asList(constructorElement);
+
                 builder.addMethod(createSelfMethod());
-                builder.addMethod(BuilderAnnotationVisitor.createBuildMethod(element));
+                builder.addMethod(BuilderAnnotationVisitor.createBuildMethod(ClassTypeDef.of(element), properties, constructorParameters));
                 builder.addMethod(createBuilderMethod(builderType));
 
                 ClassDef builderDef = builder.build();

@@ -48,6 +48,7 @@ import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -100,34 +101,23 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             return;
         }
         try {
-            String simpleName = element.getSimpleName() + "Builder";
-            String builderClassName = element.getPackageName() + "." + simpleName;
-
-            ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
-
-            ClassDef.ClassDefBuilder builder = ClassDef.builder(builderClassName)
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-            addAnnotations(builder, element.getAnnotation(Builder.class));
-
             List<PropertyElement> properties = element.getBeanProperties();
-            for (PropertyElement beanProperty : properties) {
-                createModifyPropertyMethod(builder, beanProperty, ExpressionDef::returning);
-            }
+            @NonNull ParameterElement[] constructorElement = element.getPrimaryConstructor()
+                .filter(c -> !c.isPrivate())
+                .or(element::getDefaultConstructor)
+                .map(MethodElement::getParameters).orElse(ParameterElement.ZERO_PARAMETER_ELEMENTS);
+            List<ParameterElement> constructorParameters = Arrays.asList(constructorElement);
+            AnnotationValue<Builder> builderAnnotationValue = element.getAnnotation(Builder.class);
+            ClassTypeDef elementType = ClassTypeDef.of(element);
 
-            builder.addMethod(MethodDef.constructor().build());
-            if (!properties.isEmpty()) {
-                builder.addMethod(createAllPropertiesConstructor(properties));
-            }
-
-            builder.addMethod(createBuilderMethod(builderType));
-            builder.addMethod(createBuildMethod(element));
+            ClassDefBuilder builder = createBuilder(element.getPackageName(), elementType, builderAnnotationValue, properties, constructorParameters);
+            ClassDef builderDef = builder.build();
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
             if (sourceGenerator == null) {
                 return;
             }
 
-            ClassDef builderDef = builder.build();
             processed.add(element.getName());
             sourceGenerator.write(builderDef, context, element);
         } catch (ProcessingException e) {
@@ -143,6 +133,72 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 })
             );
         }
+    }
+
+    /**
+     * Create a builder for the given arguments.
+     * @param packageName            The package name
+     * @param elementType            The element type
+     * @param builderAnnotationValue The builder annotation value.
+     * @param properties             The properties
+     * @param constructorParameters  The constructor parameters
+     * @return A class definition builder for the builder
+     */
+    static @NonNull ClassDefBuilder createBuilder(
+        String packageName,
+        @NonNull ClassTypeDef elementType,
+        @Nullable AnnotationValue<Builder> builderAnnotationValue,
+        @NonNull List<PropertyElement> properties,
+        @NonNull List<ParameterElement> constructorParameters) {
+        Function<BuilderGenerator.BuildContext, StatementDef> returnSelf = (context) -> context.aThis().returning();
+        return createBuilder(packageName, elementType, builderAnnotationValue, properties, constructorParameters, returnSelf);
+    }
+
+    /**
+     * Create a builder for the given arguments.
+     *
+     * @param packageName            The package name
+     * @param elementType            The element type
+     * @param builderAnnotationValue The builder annotation value.
+     * @param properties             The properties
+     * @param constructorParameters  The constructor parameters
+     * @param buildReturnStatement   The return statement to use for building.
+     * @return A class definition builder for the builder
+     */
+    static ClassDefBuilder createBuilder(
+        String packageName,
+        ClassTypeDef elementType,
+        AnnotationValue<Builder> builderAnnotationValue,
+        List<PropertyElement> properties,
+        List<ParameterElement> constructorParameters,
+        Function<BuilderGenerator.BuildContext, StatementDef> buildReturnStatement) {
+        String simpleName = elementType.getSimpleName() + "Builder";
+        String builderClassName = packageName + "." + simpleName;
+        ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
+
+        ClassDefBuilder builder = ClassDef.builder(builderClassName)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+        if (builderAnnotationValue != null) {
+            addAnnotations(builder, builderAnnotationValue);
+        }
+
+        for (PropertyElement beanProperty : properties) {
+            createModifyPropertyMethod(builder, beanProperty, buildReturnStatement);
+        }
+
+        builder.addMethod(MethodDef.constructor().build());
+        if (!properties.isEmpty()) {
+            builder.addMethod(createAllPropertiesConstructor(properties));
+        }
+
+        builder.addMethod(createBuilderMethod(builderType));
+
+        builder.addMethod(createBuildMethod(
+            elementType,
+            properties,
+            constructorParameters)
+        );
+        return builder;
     }
 
     static void addAnnotations(ClassDefBuilder builder, AnnotationValue<?> annotation) {
@@ -212,7 +268,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         );
     }
 
-    private MethodDef createBuilderMethod(ClassTypeDef builderType) {
+    private static MethodDef createBuilderMethod(ClassTypeDef builderType) {
         return MethodDef.builder("builder")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(builderType)
@@ -222,7 +278,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     static void createModifyPropertyMethod(ClassDef.ClassDefBuilder classDefBuilder,
                                            PropertyElement beanProperty,
-                                           Function<VariableDef.This, StatementDef> returningExpressionProvider) {
+                                           Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
         if (beanProperty.hasAnnotation(Singular.class)) {
             createSingularPropertyMethods(classDefBuilder, beanProperty, returningExpressionProvider);
         } else {
@@ -232,7 +288,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     private static void createDefaultModifyPropertyMethod(ClassDef.ClassDefBuilder classDefBuilder,
                                                           PropertyElement beanProperty,
-                                                          Function<VariableDef.This, StatementDef> returningExpressionProvider) {
+                                                          Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
         TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
         FieldDef field = createField(beanProperty, propertyTypeDef);
         classDefBuilder.addField(field);
@@ -242,7 +298,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             .addParameter(propertyName, propertyTypeDef)
             .build((self, parameterDefs) -> StatementDef.multi(
                 self.field(field).assign(parameterDefs.get(0)),
-                returningExpressionProvider.apply(self)
+                returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
             )));
     }
 
@@ -266,7 +322,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     private static void createSingularPropertyMethods(ClassDef.ClassDefBuilder classBuilder,
                                                       PropertyElement beanProperty,
-                                                      Function<VariableDef.This, StatementDef> returningExpressionProvider) {
+                                                      Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
         String propertyName = beanProperty.getSimpleName();
         String singularName = beanProperty.stringValue(Singular.class).orElse(null);
         if (singularName == null) {
@@ -293,7 +349,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         self.field(field).assign(ClassTypeDef.of(ArrayList.class).instantiate())
                     ),
                     self.field(field).invoke("addAll", TypeDef.primitive(boolean.class), parameterDefs.get(0)),
-                    returningExpressionProvider.apply(self)
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
             classBuilder.addMethod(MethodDef.builder(singularName)
                 .addModifiers(Modifier.PUBLIC)
@@ -303,7 +359,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         self.field(field).assign(ClassTypeDef.of(ArrayList.class).instantiate())
                     ),
                     self.field(field).invoke("add", TypeDef.of(boolean.class), parameterDefs.get(0)),
-                    returningExpressionProvider.apply(self)
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
             classBuilder.addMethod(MethodDef.builder("clear" + StringUtils.capitalize(propertyName))
                 .addModifiers(Modifier.PUBLIC)
@@ -311,7 +367,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     self.field(field).isNonNull().doIf(
                         self.field(field).invoke("clear", TypeDef.VOID)
                     ),
-                    returningExpressionProvider.apply(self)
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
         } else if (beanProperty.getType().isAssignable(Map.class)) {
             TypeDef keyType = beanProperty.getType().getFirstTypeArgument().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
@@ -341,7 +397,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         TypeDef.primitive(boolean.class),
                         parameterDefs.get(0).invoke("entrySet", ClassTypeDef.of(Set.class))
                     ),
-                    returningExpressionProvider.apply(self)
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
             classBuilder.addMethod(MethodDef.builder(singularName)
                 .addModifiers(Modifier.PUBLIC)
@@ -361,7 +417,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                             parameterDefs.get(1)
                         )
                     ),
-                    returningExpressionProvider.apply(self)
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
             classBuilder.addMethod(MethodDef.builder("clear" + StringUtils.capitalize(propertyName))
                 .addModifiers(Modifier.PUBLIC)
@@ -369,39 +425,31 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     self.field(field).isNonNull().doIf(
                         self.field(field).invoke("clear", TypeDef.VOID)
                     ),
-                    returningExpressionProvider.apply(self)
+                    returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
         } else {
             throw new IllegalStateException("Unsupported singular collection type [" + beanProperty.getType().getName() + "] for property: " + beanProperty.getName());
         }
     }
 
-    static MethodDef createBuildMethod(ClassElement producedType) {
+    static MethodDef createBuildMethod(ClassTypeDef buildType, List<PropertyElement> properties, List<ParameterElement> constructorParameters) {
         return MethodDef.builder("build")
             .addModifiers(Modifier.PUBLIC)
             .build((self, parameterDefs) -> {
-                MethodElement constructorElement = producedType.getPrimaryConstructor()
-                    .filter(c -> !c.isPrivate())
-                    .or(producedType::getDefaultConstructor)
-                    .orElse(null);
-
-                List<PropertyElement> beanProperties = new ArrayList<>(producedType.getBeanProperties());
+                List<PropertyElement> beanProperties = new ArrayList<>(properties);
                 List<ExpressionDef> values = new ArrayList<>();
-                if (constructorElement != null) {
-                    for (ParameterElement parameter : constructorElement.getParameters()) {
-                        PropertyElement propertyElement = beanProperties.stream().filter(p -> p.getName().equals(parameter.getName())).findFirst().orElse(null);
-                        if (propertyElement != null) {
-                            beanProperties.remove(propertyElement);
-                        }
-                        // We need to convert it for the correct type in Kotlin
-                        TypeDef fieldType = TypeDef.of(parameter.getType()).makeNullable();
-                        VariableDef.Field field = self.field(parameter.getName(), fieldType);
-                        values.add(
-                            valueExpression(propertyElement, field).cast(TypeDef.of(parameter.getType()))
-                        );
+                for (ParameterElement parameter : constructorParameters) {
+                    PropertyElement propertyElement = beanProperties.stream().filter(p -> p.getName().equals(parameter.getName())).findFirst().orElse(null);
+                    if (propertyElement != null) {
+                        beanProperties.remove(propertyElement);
                     }
+                    // We need to convert it for the correct type in Kotlin
+                    TypeDef fieldType = TypeDef.of(parameter.getType()).makeNullable();
+                    VariableDef.Field field = self.field(parameter.getName(), fieldType);
+                    values.add(
+                        valueExpression(propertyElement, field).cast(TypeDef.of(parameter.getType()))
+                    );
                 }
-                ClassTypeDef buildType = ClassTypeDef.of(producedType);
                 if (beanProperties.isEmpty()) {
                     return buildType.instantiate(values).returning();
                 }

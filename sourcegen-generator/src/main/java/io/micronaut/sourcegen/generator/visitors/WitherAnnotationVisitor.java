@@ -33,6 +33,8 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ObjectDefBuilder;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
@@ -76,41 +78,12 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             if (!recordElement.isRecord()) {
                 throw new ProcessingException(recordElement, "Only records can be annotated with @Wither");
             }
-            String simpleName = recordElement.getSimpleName() + "Wither";
-            String witherClassName = recordElement.getPackageName() + "." + simpleName;
-
+            List<PropertyElement> properties = recordElement.getBeanProperties();
+            List<ParameterElement> parameters = Arrays.asList(recordElement.getPrimaryConstructor().orElseThrow().getParameters());
+            boolean hasBuilder = recordElement.hasStereotype(Builder.class);
             ClassTypeDef recordType = ClassTypeDef.of(recordElement);
 
-            InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
-                .addModifiers(Modifier.PUBLIC);
-
-            List<PropertyElement> properties = recordElement.getBeanProperties();
-            Map<String, MethodDef> propertyAccessMethods = CollectionUtils.newHashMap(properties.size());
-            for (PropertyElement beanProperty : properties) {
-                MethodDef methodDef = MethodDef.builder(beanProperty.getSimpleName())
-                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                    .returns(TypeDef.of(beanProperty.getType()))
-                    .build();
-                wither.addMethod(
-                    methodDef
-                );
-                propertyAccessMethods.put(beanProperty.getName(), methodDef);
-            }
-            for (PropertyElement beanProperty : properties) {
-                wither.addMethod(
-                    withMethod(recordElement, beanProperty, recordType, propertyAccessMethods)
-                );
-            }
-
-            if (recordElement.hasStereotype(Builder.class)) {
-                String builderSimpleName = recordElement.getSimpleName() + "Builder";
-                String builderClassName = recordElement.getPackageName() + "." + builderSimpleName;
-                ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
-
-                MethodDef withMethod = createWithMethod(recordElement, builderType, propertyAccessMethods);
-                wither.addMethod(withMethod);
-                wither.addMethod(createWithConsumerMethod(recordType, builderType, withMethod));
-            }
+            InterfaceDef.InterfaceDefBuilder wither = createWither(recordElement.getPackageName(), recordType, properties, parameters, hasBuilder);
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
             if (sourceGenerator == null) {
@@ -118,6 +91,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             }
 
             InterfaceDef witherDef = wither.build();
+
             processed.add(recordElement.getName());
             sourceGenerator.write(witherDef, context, recordElement);
         } catch (ProcessingException e) {
@@ -135,9 +109,80 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         }
     }
 
-    private MethodDef createWithConsumerMethod(ClassTypeDef recordType, ClassTypeDef builderType, MethodDef withMethod) {
-        return MethodDef.builder("with")
-            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+    /**
+     * Builds a wither interface for the given arguments.
+     * @param packageName The package name
+     * @param recordType The record type
+     * @param properties The properties
+     * @param parameters The parameters
+     * @param hasBuilder Is there a builder
+     * @return The interface
+     */
+    static InterfaceDef.InterfaceDefBuilder createWither(
+        String packageName,
+        ClassTypeDef recordType,
+        List<PropertyElement> properties,
+        List<ParameterElement> parameters, boolean hasBuilder) {
+        String simpleName = recordType.getSimpleName() + "Wither";
+        String witherClassName = packageName + "." + simpleName;
+        InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
+            .addModifiers(Modifier.PUBLIC);
+
+        weaveWithMethodsInternal(recordType, properties, parameters, hasBuilder, wither);
+        return wither;
+    }
+
+    static void weaveWithMethodsInternal(
+        ClassTypeDef recordType,
+        List<PropertyElement> properties,
+        List<ParameterElement> parameters,
+        boolean hasBuilder,
+        ObjectDefBuilder<?> wither) {
+        Map<String, MethodDef> propertyAccessMethods = CollectionUtils.newHashMap(properties.size());
+        for (PropertyElement beanProperty : properties) {
+            MethodDef methodDef;
+            if (wither instanceof InterfaceDef.InterfaceDefBuilder) {
+                methodDef = MethodDef.builder(beanProperty.getSimpleName())
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .returns(TypeDef.of(beanProperty.getType()))
+                    .build();
+                wither.addMethod(
+                    methodDef
+                );
+            } else {
+                methodDef = MethodDef.builder(beanProperty.getSimpleName())
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(TypeDef.of(beanProperty.getType()))
+                    .build();
+            }
+            propertyAccessMethods.put(beanProperty.getName(), methodDef);
+        }
+        for (PropertyElement beanProperty : properties) {
+            wither.addMethod(
+                withMethod(wither, parameters, beanProperty, recordType, propertyAccessMethods)
+            );
+        }
+
+        if (hasBuilder) {
+            String builderSimpleName = recordType.getSimpleName() + "Builder";
+            String builderClassName = recordType.getPackageName() + "." + builderSimpleName;
+            ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
+
+            MethodDef withMethod = createWithMethod(wither, parameters, builderType, propertyAccessMethods);
+            wither.addMethod(withMethod);
+            MethodDef withConsumer = createWithConsumerMethod(wither, recordType, builderType, withMethod);
+            wither.addMethod(withConsumer);
+        }
+    }
+
+    private static MethodDef createWithConsumerMethod(ObjectDefBuilder<?> wither, ClassTypeDef recordType, ClassTypeDef builderType, MethodDef withMethod) {
+        MethodDef.MethodDefBuilder methodDefBuilder = MethodDef.builder("with");
+        if (wither instanceof InterfaceDef.InterfaceDefBuilder) {
+            methodDefBuilder.addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+        } else {
+            methodDefBuilder.addModifiers(Modifier.PUBLIC);
+        }
+        return methodDefBuilder
             .addParameter("consumer", TypeDef.parameterized(ClassTypeDef.of(Consumer.class), builderType))
             .returns(recordType).build((self, parameterDefs) ->
                 self.invoke(withMethod).newLocal("builder", builderVar ->
@@ -148,25 +193,35 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             );
     }
 
-    private MethodDef createWithMethod(ClassElement recordElement, ClassTypeDef builderType, Map<String, MethodDef> propertyAccessMethods) {
-        return MethodDef.builder("with")
-            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+    private static MethodDef createWithMethod(ObjectDefBuilder<?> wither, List<ParameterElement> parameters, ClassTypeDef builderType, Map<String, MethodDef> propertyAccessMethods) {
+        MethodDef.MethodDefBuilder methodDefBuilder = MethodDef.builder("with");
+        if (wither instanceof InterfaceDef.InterfaceDefBuilder) {
+            methodDefBuilder.addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+        } else {
+            methodDefBuilder.addModifiers(Modifier.PUBLIC);
+        }
+        return methodDefBuilder
             .returns(builderType)
             .build((self, parameterDefs) -> builderType.instantiate(
-                Arrays.stream(recordElement.getPrimaryConstructor().orElseThrow().getParameters())
+                parameters.stream()
                     .<ExpressionDef>map(parameter -> self.invoke(propertyAccessMethods.get(parameter.getName())))
                     .toList()
             ).returning());
     }
 
-    private MethodDef withMethod(ClassElement recordElement, PropertyElement beanProperty, ClassTypeDef recordType, Map<String, MethodDef> propertyAccessMethods) {
-        return MethodDef.builder("with" + NameUtils.capitalize(beanProperty.getSimpleName()))
-            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+    private static MethodDef withMethod(ObjectDefBuilder<?> wither, List<ParameterElement> parameters, PropertyElement beanProperty, ClassTypeDef recordType, Map<String, MethodDef> propertyAccessMethods) {
+        MethodDef.MethodDefBuilder methodBuilder = MethodDef.builder("with" + NameUtils.capitalize(beanProperty.getSimpleName()));
+        if (wither instanceof InterfaceDef.InterfaceDefBuilder) {
+            methodBuilder.addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+        } else {
+            methodBuilder.addModifiers(Modifier.PUBLIC);
+        }
+        return methodBuilder
             .returns(recordType)
             .addParameter(beanProperty.getSimpleName(), TypeDef.of(beanProperty.getType()))
             .build((self, parameterDefs) -> {
                 List<ExpressionDef> values = new ArrayList<>();
-                for (ParameterElement parameter : recordElement.getPrimaryConstructor().orElseThrow().getParameters()) {
+                for (ParameterElement parameter : parameters) {
                     ExpressionDef exp;
                     if (parameter.getName().equals(beanProperty.getName())) {
                         exp = parameterDefs.get(0);
