@@ -64,6 +64,17 @@ public sealed class AbstractElementBuilder<ThisType> permits AnnotationMemberDef
         return thisInstance;
     }
 
+    /**
+     * Marks the element as synthetic.
+     *
+     * @param synthetic Is synthetic
+     * @return The builder
+     */
+    public final ThisType synthetic(boolean synthetic) {
+        this.synthetic = synthetic;
+        return thisInstance;
+    }
+
     public final ThisType addModifiers(Collection<Modifier> modifiers) {
         this.modifiers.addAll(modifiers);
         return thisInstance;
@@ -114,6 +125,16 @@ public sealed class AbstractElementBuilder<ThisType> permits AnnotationMemberDef
 
     public final ThisType addJavadoc(String doc) {
         javadoc.add(doc);
+        return thisInstance;
+    }
+
+    /**
+     * Adds javadoc.
+     * @param doc The javadoc
+     * @return The builder
+     */
+    public final ThisType addJavadoc(List<String> doc) {
+        javadoc.addAll(doc);
         return thisInstance;
     }
 

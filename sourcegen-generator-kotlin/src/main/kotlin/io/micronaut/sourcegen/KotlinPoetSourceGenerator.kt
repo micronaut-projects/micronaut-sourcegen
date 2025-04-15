@@ -33,6 +33,7 @@ import io.micronaut.sourcegen.model.ExpressionDef.*
 import io.micronaut.sourcegen.model.StatementDef.Assign
 import io.micronaut.sourcegen.model.StatementDef.DefineAndAssign
 import io.micronaut.sourcegen.model.StatementDef.PutField
+import io.micronaut.sourcegen.model.StatementDef.Return
 import java.io.IOException
 import java.io.Writer
 import java.lang.reflect.Array
@@ -88,6 +89,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
     private fun getInterfaceBuilder(interfaceDef: InterfaceDef): TypeSpec.Builder {
         val interfaceBuilder = TypeSpec.interfaceBuilder(interfaceDef.simpleName)
+        if (interfaceDef.annotations.any { it.type.name.equals(FunctionalInterface::class.qualifiedName) }) {
+            interfaceBuilder.addModifiers(KModifier.FUN)
+        }
         interfaceBuilder.addModifiers(asKModifiers(interfaceDef.modifiers))
         interfaceDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, interfaceDef) }
             .forEach { typeVariable: TypeVariableName -> interfaceBuilder.addTypeVariable(typeVariable) }
@@ -1199,6 +1203,35 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     .add(" !== ")
                     .add(renderExpressionCode(objectDef, methodDef, expressionDef.other))
                     .build()
+            }
+            if (expressionDef is Lambda) {
+                val builder = CodeBlock.builder()
+                    .add("%T ", asType(expressionDef.type, objectDef))
+                    .add("{")
+                val parameter: Iterator<ParameterDef> = expressionDef.implementation.parameters.iterator()
+                if (!parameter.hasNext()) {
+                    builder.add("()")
+                }
+                while (parameter.hasNext()) {
+                    val param = parameter.next()
+                    builder.add("%L: %T", param.name, asType(param.type, objectDef))
+                    if (parameter.hasNext()) {
+                        builder.add(", ")
+                    }
+                }
+                builder.add(" -> ")
+                val statements: List<StatementDef> = expressionDef.implementation.statements
+                if (statements.size == 1 && statements[0] is Return) {
+                    val returnStatement = statements[0] as Return
+                    builder.add(renderExpressionCode(objectDef, expressionDef.implementation, returnStatement.expression))
+                } else {
+                    builder.add("{")
+                    for (statement in statements) {
+                        builder.add(renderStatementCodeBlock(objectDef, expressionDef.implementation, statement))
+                    }
+                    builder.unindent()
+                }
+                return builder.add("}").build()
             }
             throw IllegalStateException("Unrecognized expression: $expressionDef")
         }

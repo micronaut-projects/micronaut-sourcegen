@@ -22,7 +22,9 @@ import io.micronaut.sourcegen.model.ObjectDef;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,16 +33,20 @@ import java.util.Map;
  * @param objectDef The current object definition
  * @param methodDef The current method definition.
  * @param locals    The locals
+ * @param lambdaMethods  Lambda methods created by this method
+ * @param isLambda  Whether this method is a lambda
  * @since 1.5
  */
 @Internal
 public record MethodContext(@Nullable ObjectDef objectDef,
                             MethodDef methodDef,
-                            Map<String, LocalData> locals) {
+                            Map<String, LocalData> locals,
+                            List<MethodDef> lambdaMethods,
+                            boolean isLambda) {
 
     public MethodContext(@Nullable ObjectDef objectDef,
-                         MethodDef methodDef) {
-        this(objectDef, methodDef, new LinkedHashMap<>());
+                         MethodDef methodDef, boolean isLambda) {
+        this(objectDef, methodDef, new LinkedHashMap<>(), new ArrayList<>(), isLambda);
     }
 
     /**

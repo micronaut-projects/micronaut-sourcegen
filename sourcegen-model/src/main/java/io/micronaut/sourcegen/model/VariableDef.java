@@ -17,6 +17,8 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 
+import java.util.stream.Stream;
+
 /**
  * The variable definition.
  *
@@ -25,6 +27,11 @@ import io.micronaut.core.annotation.Experimental;
  */
 @Experimental
 public sealed interface VariableDef extends ExpressionDef permits VariableDef.ExceptionVar, VariableDef.Field, VariableDef.Local, VariableDef.MethodParameter, VariableDef.StaticField, VariableDef.Super, VariableDef.This {
+
+    @Override
+    default Stream<? extends ExpressionDef> nestedExpressionsStream() {
+        return Stream.empty();
+    }
 
     /**
      * Assign this variable an expression.
