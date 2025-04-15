@@ -3519,8 +3519,21 @@ class Test {
 
     @Test
     void testStringConcatenation() {
+        FieldDef field = FieldDef.builder("MY_NAME", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .initializer(ExpressionDef.constant("Andriy")
+                    .stringConcat(ExpressionDef.constant(" Dmytruk")))
+            .build();
+        FieldDef field2 = FieldDef.builder("GREETING", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .initializer(ExpressionDef.constant("Hello ")
+                    .stringConcat(ClassTypeDef.THIS.getStaticField(field)))
+            .build();
+
         ClassDef classDef = ClassDef.builder("example.MyClass")
             .addModifiers(Modifier.PUBLIC)
+            .addField(field)
+            .addField(field2)
             .addMethod(MethodDef.builder("testConcatenation")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter("arg", TypeDef.OBJECT)
@@ -3547,6 +3560,26 @@ class Test {
 public class example/MyClass {
 
 
+  // access flags 0x19
+  public final static Ljava/lang/String; MY_NAME
+
+  // access flags 0x19
+  public final static Ljava/lang/String; GREETING
+
+  // access flags 0x8
+  static <clinit>()V
+    LDC "Andriy Dmytruk"
+    PUTSTATIC example/MyClass.MY_NAME : Ljava/lang/String;
+    GETSTATIC example/MyClass.MY_NAME : Ljava/lang/String;
+    INVOKEDYNAMIC makeConcatWithConstants(Ljava/lang/String;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/StringConcatFactory.makeConcatWithConstants(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      "Hello \\u0001"
+    ]
+    PUTSTATIC example/MyClass.GREETING : Ljava/lang/String;
+    RETURN
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -3572,6 +3605,13 @@ public class example/MyClass {
 package example;
 
 public class MyClass {
+   public static final String MY_NAME = "Andriy Dmytruk";
+   public static final String GREETING;
+
+   static {
+      GREETING = "Hello " + MY_NAME;
+   }
+
    public String testConcatenation(Object arg) {
       return "Hello, " + arg + "!";
    }

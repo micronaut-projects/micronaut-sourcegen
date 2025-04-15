@@ -30,8 +30,7 @@ public abstract sealed class AbstractStatementAwareExpressionWriter implements E
         InvokeStaticMethodExpressionWriter,
         NewInstanceExpressionWriter,
         LambdaExpressionWriter,
-        StringConcatenationExpressionWriter
-{
+        StringConcatenationExpressionWriter {
 
     protected boolean statement;
 

@@ -50,13 +50,20 @@ final class StringConcatenationExpressionWriter extends AbstractStatementAwareEx
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
         // Write the parameters
         StringBuilder stringExpression = new StringBuilder();
+        int numDynamicParts = 0;
         for (ExpressionDef value : concatParts) {
             if (isCompileTimeConstant(value)) {
                 stringExpression.append(((Constant) value).value());
             } else {
+                ++numDynamicParts;
                 stringExpression.append(ARG_CODE);
                 ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, value, TypeDef.OBJECT);
             }
+        }
+
+        if (numDynamicParts == 0) {
+            generatorAdapter.push(stringExpression.toString());
+            return;
         }
 
         // Call to StringConcatFactory.makeConcatWithConstants

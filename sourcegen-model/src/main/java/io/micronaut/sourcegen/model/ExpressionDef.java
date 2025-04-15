@@ -66,8 +66,7 @@ public sealed interface ExpressionDef
         ExpressionDef.SwitchYieldCase,
         VariableDef,
         Lambda,
-        ExpressionDef.StringConcatenation
-{
+        ExpressionDef.StringConcatenation {
 
     /**
      * Stream of nested expressions included in this expression.
