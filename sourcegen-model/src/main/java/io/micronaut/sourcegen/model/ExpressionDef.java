@@ -1251,6 +1251,11 @@ public sealed interface ExpressionDef
     record StringConcatenation(ExpressionDef left, ExpressionDef right) implements ExpressionDef {
 
         @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.of(left, right);
+        }
+
+        @Override
         public TypeDef type() {
             return TypeDef.STRING;
         }
