@@ -110,10 +110,10 @@ public final class MethodDef extends AbstractElement {
     @NonNull
     public static MethodDef of(@NonNull MethodElement methodElement) {
         return MethodDef.builder(methodElement.getName())
-            .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getType()))).toList())
+            .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList())
             .addTypeVariables(methodElement.getTypeArguments().entrySet()
                 .stream()
-                .map(e -> TypeDef.variable(e.getKey(), TypeDef.erasure(e.getValue())))
+                .map(e -> TypeDef.variable(e.getKey(), TypeDef.of(e.getValue())))
                 .toList())
             .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(methodElement.getReturnType()))
             .build();
