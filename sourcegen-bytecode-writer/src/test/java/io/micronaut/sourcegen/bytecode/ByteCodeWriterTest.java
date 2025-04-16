@@ -2,7 +2,9 @@ package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.context.BeanResolutionContext;
 import io.micronaut.core.annotation.AnnotationClassValue;
+import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.reflect.ReflectionUtils;
+import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.visitor.GenerateLambdaVisitor;
 import io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInEnumVisitor;
@@ -32,6 +34,7 @@ import java.lang.reflect.Constructor;
 import java.util.AbstractList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import static io.micronaut.sourcegen.bytecode.DecompilerUtils.decompileToJava;
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
@@ -2067,32 +2070,32 @@ final enum MyEnum extends java/lang/Enum {
             .addField(beanResolutionContextField)
             .addField(targetField)
             .addMethod(
-            MethodDef.builder("interceptedTarget")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(TypeDef.OBJECT)
-                .build((aThis, methodParameters) -> {
-                    VariableDef.Field targetFieldAccess = aThis.field(targetField);
-                    return StatementDef.multi(
-                        targetFieldAccess.newLocal("target", targetVar ->
-                            targetVar.ifNull(
-                                new StatementDef.Synchronized(
-                                    aThis,
-                                    StatementDef.multi(
-                                        targetVar.assign(targetFieldAccess),
-                                        targetVar.ifNull(
-                                            StatementDef.multi(
-                                                targetFieldAccess.assign(ExpressionDef.nullValue()),
-                                                aThis.field(beanResolutionContextField).assign(ExpressionDef.nullValue())
+                MethodDef.builder("interceptedTarget")
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(TypeDef.OBJECT)
+                    .build((aThis, methodParameters) -> {
+                        VariableDef.Field targetFieldAccess = aThis.field(targetField);
+                        return StatementDef.multi(
+                            targetFieldAccess.newLocal("target", targetVar ->
+                                targetVar.ifNull(
+                                    new StatementDef.Synchronized(
+                                        aThis,
+                                        StatementDef.multi(
+                                            targetVar.assign(targetFieldAccess),
+                                            targetVar.ifNull(
+                                                StatementDef.multi(
+                                                    targetFieldAccess.assign(ExpressionDef.nullValue()),
+                                                    aThis.field(beanResolutionContextField).assign(ExpressionDef.nullValue())
+                                                )
                                             )
                                         )
                                     )
                                 )
-                            )
-                        ),
-                        targetFieldAccess.returning()
-                    );
-                })
-        ).build();
+                            ),
+                            targetFieldAccess.returning()
+                        );
+                    })
+            ).build();
 
         StringWriter bytecodeWriter = new StringWriter();
         byte[] bytes = generateFile(classDef, bytecodeWriter);
@@ -2203,24 +2206,24 @@ class MyClass {
         ClassDef classDef = ClassDef.builder("test.MyClass")
             .addField(myField)
             .addMethod(
-            MethodDef.builder("interceptedTarget")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(TypeDef.OBJECT)
-                .build((aThis, methodParameters) -> {
-                    VariableDef.Field myFieldAccess = aThis.field(myField);
-                    return StatementDef.multi(
-                        myFieldAccess.ifNull(
-                            ExpressionDef.constant(1).returning()
-                        ),
-                        myFieldAccess.ifNonNull(
-                            ExpressionDef.constant(2).returning()
-                        ),
-                        myFieldAccess.returning()
-                    ).doTry().doFinally(ClassTypeDef.of(System.class)
-                        .getStaticField("out", TypeDef.of(PrintStream.class))
-                        .invoke("println", TypeDef.VOID, ExpressionDef.constant("Hello")));
-                })
-        ).build();
+                MethodDef.builder("interceptedTarget")
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(TypeDef.OBJECT)
+                    .build((aThis, methodParameters) -> {
+                        VariableDef.Field myFieldAccess = aThis.field(myField);
+                        return StatementDef.multi(
+                            myFieldAccess.ifNull(
+                                ExpressionDef.constant(1).returning()
+                            ),
+                            myFieldAccess.ifNonNull(
+                                ExpressionDef.constant(2).returning()
+                            ),
+                            myFieldAccess.returning()
+                        ).doTry().doFinally(ClassTypeDef.of(System.class)
+                            .getStaticField("out", TypeDef.of(PrintStream.class))
+                            .invoke("println", TypeDef.VOID, ExpressionDef.constant("Hello")));
+                    })
+            ).build();
 
         StringWriter bytecodeWriter = new StringWriter();
         byte[] bytes = generateFile(classDef, bytecodeWriter);
@@ -2348,7 +2351,7 @@ class MyClass {
                             .getStaticField("out", TypeDef.of(PrintStream.class))
                             .invoke("println", TypeDef.VOID, ExpressionDef.constant("World")))
                     ))
-        ).build();
+            ).build();
 
         StringWriter bytecodeWriter = new StringWriter();
         byte[] bytes = generateFile(classDef, bytecodeWriter);
@@ -2457,7 +2460,7 @@ class MyClass {
                             TypeDef.Primitive.INT.constant(444).returning()
                         )
                     )
-        ).build();
+            ).build();
 
         StringWriter bytecodeWriter = new StringWriter();
         byte[] bytes = generateFile(classDef, bytecodeWriter);
@@ -2554,7 +2557,7 @@ class MyClass {
                             TypeDef.Primitive.INT.constant(444).returning()
                         )
                     )
-        ).build();
+            ).build();
 
         StringWriter bytecodeWriter = new StringWriter();
         byte[] bytes = generateFile(classDef, bytecodeWriter);
@@ -3128,49 +3131,49 @@ class Test {
             .addMethod(MethodDef.builder("testLong")
                 .returns(TypeDef.Primitive.LONG)
                 .build((aThis, methodParameters) ->
-                        TypeDef.Primitive.LONG.constant(123445).returning()
+                    TypeDef.Primitive.LONG.constant(123445).returning()
                 )
             )
             .addMethod(MethodDef.builder("testInt")
                 .returns(TypeDef.Primitive.INT)
                 .build((aThis, methodParameters) ->
-                        TypeDef.Primitive.INT.constant(334455).returning()
+                    TypeDef.Primitive.INT.constant(334455).returning()
                 )
             )
             .addMethod(MethodDef.builder("testFloat")
                 .returns(TypeDef.Primitive.FLOAT)
                 .build((aThis, methodParameters) ->
-                        TypeDef.Primitive.FLOAT.constant(123.456).returning()
+                    TypeDef.Primitive.FLOAT.constant(123.456).returning()
                 )
             )
             .addMethod(MethodDef.builder("testShort")
                 .returns(TypeDef.Primitive.SHORT)
                 .build((aThis, methodParameters) ->
-                        TypeDef.Primitive.SHORT.constant(345).returning()
+                    TypeDef.Primitive.SHORT.constant(345).returning()
                 )
             )
             .addMethod(MethodDef.builder("testChar")
                 .returns(TypeDef.Primitive.CHAR)
                 .build((aThis, methodParameters) ->
-                        TypeDef.Primitive.CHAR.constant('c').returning()
+                    TypeDef.Primitive.CHAR.constant('c').returning()
                 )
             )
             .addMethod(MethodDef.builder("testBoolean")
                 .returns(TypeDef.Primitive.BOOLEAN)
                 .build((aThis, methodParameters) ->
-                        TypeDef.Primitive.BOOLEAN.constant(true).returning()
+                    TypeDef.Primitive.BOOLEAN.constant(true).returning()
                 )
             )
             .addMethod(MethodDef.builder("testByte")
                 .returns(TypeDef.Primitive.BYTE)
                 .build((aThis, methodParameters) ->
-                        TypeDef.Primitive.BYTE.constant(45).returning()
+                    TypeDef.Primitive.BYTE.constant(45).returning()
                 )
             )
             .addMethod(MethodDef.builder("testDouble")
                 .returns(TypeDef.Primitive.DOUBLE)
                 .build((aThis, methodParameters) ->
-                        TypeDef.Primitive.DOUBLE.constant(444.555).returning()
+                    TypeDef.Primitive.DOUBLE.constant(444.555).returning()
                 )
             )
             .build();
@@ -3513,6 +3516,64 @@ import java.io.IOException;
 class Test {
    void test() throws IOException {
       throw new IOException();
+   }
+}
+""", decompileToJava(bytes));
+    }
+
+    @Test
+    void testErasedInterface() {
+        ClassElement element = ClassElement.of(
+            Function.class,
+            AnnotationMetadata.EMPTY_METADATA,
+            Map.of(
+                "T", ClassElement.of(String.class),
+                "R", ClassElement.of(String.class)
+            )
+        );
+
+        ClassDef classDef = ClassDef.builder("example.Test")
+            .addSuperinterface(TypeDef.erasure(element))
+            .addMethod(MethodDef.builder("apply").returns(TypeDef.OBJECT)
+                .addParameter(TypeDef.OBJECT).build((t, params) -> params.get(0).returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;Ljava/util/function/Function<Ljava/lang/String;Ljava/lang/String;>;
+// declaration: example/Test implements java.util.function.Function<java.lang.String, java.lang.String>
+class example/Test implements java/util/function/Function {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x0
+  apply(Ljava/lang/Object;)Ljava/lang/Object;
+   L0
+    ALOAD 1
+    ARETURN
+   L1
+    LOCALVARIABLE arg1 Ljava/lang/Object; L0 L1 1
+}
+""", bytecode);
+
+        assertEquals("""
+package example;
+
+import java.util.function.Function;
+
+class Test implements Function {
+   Object apply(Object arg1) {
+      return arg1;
    }
 }
 """, decompileToJava(bytes));

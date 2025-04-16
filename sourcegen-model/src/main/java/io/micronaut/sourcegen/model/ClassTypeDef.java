@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.model;
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.ElementQuery;
+import io.micronaut.inject.ast.GenericPlaceholderElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
 
@@ -70,6 +71,11 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @return The type name
      */
     String getName();
+
+    @Override
+    default ClassTypeDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
+        return this;
+    }
 
     /**
      * @return The canonical type name
@@ -136,11 +142,22 @@ public sealed interface ClassTypeDef extends TypeDef {
     /**
      * Find the method that can be represented as a lambda.
      *
+     * @param resolvedTypeVariables The resolved type variables
+     * @return The lambda method
+     * @since 1.7
+     */
+    default LambdaDef getLambda(Map<String, TypeDef> resolvedTypeVariables) {
+        throw new UnsupportedOperationException("ClassTypeDef: " + getName() + " doesn't support lambdas");
+    }
+
+    /**
+     * Find the method that can be represented as a lambda.
+     *
      * @return The lambda method
      * @since 1.7
      */
     default LambdaDef getLambda() {
-        throw new UnsupportedOperationException("ClassTypeDef: " + getName() + " doesn't support lambdas");
+        return getLambda(Map.of());
     }
 
     /**
@@ -434,6 +451,17 @@ public sealed interface ClassTypeDef extends TypeDef {
     }
 
     /**
+     * Create a new type definition that is an erasure.
+     * This means that no type arguments will be copied.
+     *
+     * @param classElement The class element
+     * @return type definition
+     */
+    static ClassTypeDef erasure(ClassElement classElement) {
+        return of(classElement, Map.of(), true);
+    }
+
+    /**
      * Create a new type definition.
      *
      * @param className The class name
@@ -452,15 +480,41 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @return type definition
      */
     static ClassTypeDef of(ClassElement classElement) {
+        return of(classElement, Map.of(), false);
+    }
+
+    /**
+     * Create a new type definition.
+     *
+     * @param classElement The class element
+     * @param resolvedTypeVariables The resolved type variables
+     * @param erasure      The erasure
+     * @return type definition
+     */
+    static ClassTypeDef of(ClassElement classElement,
+                           Map<String, TypeDef> resolvedTypeVariables,
+                           boolean erasure) {
         if (classElement.isPrimitive()) {
             throw new IllegalStateException("Primitive classes cannot be of type: " + ClassTypeDef.class.getName());
         }
         if (!classElement.getTypeArguments().isEmpty()) {
             return new Parameterized(
                 new ClassElementType(classElement, classElement.isNullable()),
-                classElement.getTypeArguments().entrySet()
+                classElement.getTypeArguments().values()
                     .stream()
-                    .map(e -> TypeDef.erasure(e.getValue()))
+                    .map(value -> {
+                        if (value instanceof GenericPlaceholderElement placeholderElement) {
+                            TypeDef resolved = resolvedTypeVariables.get(placeholderElement.getVariableName());
+                            if (resolved != null) {
+                                return resolved;
+                            }
+                            return TypeDef.variable(
+                                placeholderElement.getVariableName(),
+                                TypeDef.of(placeholderElement.resolved(), resolvedTypeVariables, erasure)
+                            );
+                        }
+                        return TypeDef.of(value, resolvedTypeVariables, erasure);
+                    })
                     .toList()
             );
         }
@@ -626,14 +680,19 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassElementType(ClassElement classElement, boolean nullable) implements ClassTypeDef {
 
         @Override
-        public LambdaDef getLambda() {
+        public LambdaDef getLambda(Map<String, TypeDef> resolvedTypeVariables) {
             List<MethodElement> abstractMethods = classElement.getEnclosedElements(
                 ElementQuery.of(MethodElement.class).onlyAbstract());
             if (abstractMethods.size() != 1) {
                 throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
                     "abstract method but has " + abstractMethods.size());
             }
-            return new LambdaDef(ClassTypeDef.of(classElement), MethodDef.of(abstractMethods.get(0)));
+            MethodElement methodElement = abstractMethods.get(0);
+            return new LambdaDef(
+                ClassTypeDef.of(classElement).resolveTypeVariables(resolvedTypeVariables),
+                MethodDef.of(methodElement),
+                MethodDef.of(methodElement, resolvedTypeVariables)
+            );
         }
 
         @Override
@@ -699,7 +758,7 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassDefType(ObjectDef objectDef, boolean nullable) implements ClassTypeDef {
 
         @Override
-        public LambdaDef getLambda() {
+        public LambdaDef getLambda(Map<String, TypeDef> resolvedTypeVariables) {
             List<MethodDef> methods = objectDef.getMethods()
                 .stream()
                 .filter(v -> v.getModifiers().contains(Modifier.ABSTRACT))
@@ -708,7 +767,12 @@ public sealed interface ClassTypeDef extends TypeDef {
                 throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
                     "abstract method but has " + methods.size());
             }
-            return new LambdaDef(ClassTypeDef.of(objectDef), methods.get(0));
+            MethodDef methodDef = methods.get(0);
+            return new LambdaDef(
+                (ClassTypeDef) ClassTypeDef.of(objectDef).resolveTypeVariables(resolvedTypeVariables),
+                methodDef,
+                methodDef.resolveTypeVariables(resolvedTypeVariables)
+            );
         }
 
         @Override
@@ -761,13 +825,19 @@ public sealed interface ClassTypeDef extends TypeDef {
                          List<TypeDef> typeArguments) implements ClassTypeDef {
 
         @Override
-        public TypeDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
+        public Parameterized resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
             return new Parameterized(rawType, typeArguments.stream().map(t -> t.resolveTypeVariables(resolvedTypeVariables)).toList());
         }
 
         @Override
-        public LambdaDef getLambda() {
-            return new LambdaDef(rawType, rawType.getLambda().getMethod());
+        public LambdaDef getLambda(Map<String, TypeDef> resolvedTypeVariables) {
+            ClassTypeDef lambdaType = resolveTypeVariables(resolvedTypeVariables);
+            LambdaDef lambda = rawType.getLambda(resolvedTypeVariables);
+            return new LambdaDef(
+                lambdaType,
+                lambda.getMethod(),
+                lambda.getImplementation()
+            );
         }
 
         @Override

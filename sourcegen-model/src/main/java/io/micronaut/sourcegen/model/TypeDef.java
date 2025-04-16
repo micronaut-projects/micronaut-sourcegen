@@ -315,6 +315,17 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
     }
 
     /**
+     * Creates a new type erasure.
+     *
+     * @param typedElement The typed element
+     * @param resolvedTypeVariables The resolved type variables
+     * @return a new type definition
+     */
+    static TypeDef erasure(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables) {
+        return of(typedElement, resolvedTypeVariables, true);
+    }
+
+    /**
      * Creates a new type.
      *
      * @param typedElement The typed element
@@ -322,6 +333,29 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @return a new type definition
      */
     private static TypeDef of(TypedElement typedElement, boolean erasure) {
+        return of(typedElement, Map.of(), erasure);
+    }
+
+    /**
+     * Creates a new type.
+     *
+     * @param typedElement The typed element
+     * @param resolvedTypeVariables The resolved type variables
+     * @return a new type definition
+     */
+    private static TypeDef of(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables) {
+        return of(typedElement, resolvedTypeVariables, false);
+    }
+
+    /**
+     * Creates a new type.
+     *
+     * @param typedElement The typed element
+     * @param resolvedTypeVariables The resolved type variables
+     * @param erasure Is erasure type required
+     * @return a new type definition
+     */
+    static TypeDef of(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables, boolean erasure) {
         int dimensions = 0;
         while (typedElement.isArray()) {
             ArrayableClassElement arrayableClassElement = (ArrayableClassElement) typedElement;
@@ -335,29 +369,32 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             return primitive(typedElement.getName());
         }
         if (typedElement instanceof GenericPlaceholderElement placeholderElement) {
-            return TypeDef.variable(
-                placeholderElement.getVariableName(),
-                placeholderElement.getBounds().stream().map(TypeDef::of).toList()
-            );
-        }
-        if (erasure && typedElement instanceof ClassElement classElement) {
-            return ClassTypeDef.of(classElement);
+            TypeDef resolved = resolvedTypeVariables.get(placeholderElement.getVariableName());
+            if (resolved != null) {
+                return resolved;
+            }
+            List<? extends ClassElement> bounds = placeholderElement.getBounds();
+            if (bounds.isEmpty()) {
+                return OBJECT;
+            }
+            ClassElement higherBound = null;
+            for (ClassElement bound : bounds) {
+                if (higherBound == null) {
+                    higherBound = bound;
+                } else if (bound.isAssignable(higherBound)) {
+                    higherBound = bound;
+                }
+            }
+            return TypeDef.of(higherBound, resolvedTypeVariables, erasure);
         }
         if (typedElement instanceof WildcardElement wildcardElement) {
             return new Wildcard(
-                wildcardElement.getUpperBounds().stream().map(TypeDef::of).toList(),
-                wildcardElement.getLowerBounds().stream().map(TypeDef::of).toList()
+                wildcardElement.getUpperBounds().stream().map(te -> of(te, resolvedTypeVariables)).toList(),
+                wildcardElement.getLowerBounds().stream().map(te -> of(te, resolvedTypeVariables)).toList()
             );
         }
         if (typedElement instanceof ClassElement classElement) {
-            Map<String, ClassElement> typeArguments = classElement.getTypeArguments();
-            if (typeArguments.isEmpty()) {
-                return ClassTypeDef.of(classElement);
-            }
-            return TypeDef.parameterized(
-                ClassTypeDef.of(classElement),
-                typeArguments.values().stream().map(TypeDef::of).toList()
-            );
+            return ClassTypeDef.of(classElement, resolvedTypeVariables, erasure);
         }
         throw new IllegalStateException("Unknown typed element: " + typedElement);
     }

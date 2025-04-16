@@ -57,14 +57,14 @@ final class SignatureWriterUtils {
         SignatureWriter writer = new SignatureWriter();
 
         for (TypeDef.TypeVariable typeVariable : classDef.getTypeVariables()) {
-            writeSignature(writer, null, typeVariable, true);
+            writeSignature(writer, classDef, typeVariable, true);
         }
 
         TypeDef superclass = Objects.requireNonNullElse(classDef.getSuperclass(), TypeDef.OBJECT);
-        writeSignature(writer.visitSuperclass(), null, superclass, false);
+        writeSignature(writer.visitSuperclass(), classDef, superclass, false);
 
         for (TypeDef superinterface : classDef.getSuperinterfaces()) {
-            writeSignature(writer.visitInterface(), null, superinterface, false);
+            writeSignature(writer.visitInterface(), classDef, superinterface, false);
         }
 
         return writer.toString();
@@ -75,13 +75,13 @@ final class SignatureWriterUtils {
         SignatureWriter writer = new SignatureWriter();
 
         for (TypeDef.TypeVariable typeVariable : recordDef.getTypeVariables()) {
-            writeSignature(writer, null, typeVariable, true);
+            writeSignature(writer, recordDef, typeVariable, true);
         }
 
-        writeSignature(writer.visitSuperclass(), null, TypeDef.of(Record.class), false);
+        writeSignature(writer.visitSuperclass(), recordDef, TypeDef.of(Record.class), false);
 
         for (TypeDef superinterface : recordDef.getSuperinterfaces()) {
-            writeSignature(writer.visitInterface(), null, superinterface, false);
+            writeSignature(writer.visitInterface(), recordDef, superinterface, false);
         }
 
         return writer.toString();
@@ -95,7 +95,7 @@ final class SignatureWriterUtils {
         SignatureWriter writer = new SignatureWriter();
 
         for (TypeDef.TypeVariable typeVariable : interfaceDef.getTypeVariables()) {
-            writeSignature(writer, null, typeVariable, true);
+            writeSignature(writer, interfaceDef, typeVariable, true);
         }
 
         SignatureVisitor superclassVisitor = writer.visitSuperclass();
@@ -103,7 +103,7 @@ final class SignatureWriterUtils {
         superclassVisitor.visitEnd();
 
         for (TypeDef superinterface : interfaceDef.getSuperinterfaces()) {
-            writeSignature(writer.visitInterface(), null, superinterface, false);
+            writeSignature(writer.visitInterface(), interfaceDef, superinterface, false);
         }
 
         return writer.toString();
@@ -117,10 +117,10 @@ final class SignatureWriterUtils {
         SignatureWriter signatureWriter = new SignatureWriter();
         // TODO: method generic bounds
         for (ParameterDef parameter : methodDef.getParameters()) {
-            writeSignature(signatureWriter.visitParameterType(), objectDef, parameter.getType(), false);
+            writeSignature(signatureWriter.visitParameterType(), objectDef, methodDef, parameter.getType(), false);
         }
 
-        writeSignature(signatureWriter.visitReturnType(), objectDef, methodDef.getReturnType(), false);
+        writeSignature(signatureWriter.visitReturnType(), objectDef, methodDef, methodDef.getReturnType(), false);
 
         return signatureWriter.toString();
     }
@@ -138,7 +138,17 @@ final class SignatureWriterUtils {
         return typeDef instanceof ClassTypeDef.Parameterized || typeDef instanceof TypeDef.TypeVariable;
     }
 
-    private static void writeSignature(SignatureVisitor signatureWriter, @Nullable ObjectDef objectDef, TypeDef typeDef, boolean isDefinition) {
+    private static void writeSignature(SignatureVisitor signatureWriter,
+                                       ObjectDef objectDef,
+                                       TypeDef typeDef, boolean isDefinition) {
+        writeSignature(signatureWriter, objectDef, null, typeDef, isDefinition);
+    }
+
+    private static void writeSignature(SignatureVisitor signatureWriter,
+                                       ObjectDef objectDef,
+                                       @Nullable MethodDef methodDef,
+                                       TypeDef typeDef, boolean isDefinition) {
+        Objects.requireNonNull(objectDef);
         typeDef = ObjectDef.getContextualType(objectDef, typeDef);
         if (typeDef instanceof TypeDef.Primitive primitive) {
             Type type = Type.getType(JavaModelUtils.NAME_TO_TYPE_MAP.get(primitive.name()));
@@ -146,8 +156,9 @@ final class SignatureWriterUtils {
             return;
         }
         if (typeDef instanceof TypeDef.TypeVariable typeVariable) {
+            String name = typeVariable.name();
             if (isDefinition) {
-                signatureWriter.visitFormalTypeParameter(typeVariable.name());
+                signatureWriter.visitFormalTypeParameter(name);
                 if (typeVariable.bounds().isEmpty()) {
                     signatureWriter.visitClassType(TypeUtils.OBJECT_TYPE.getInternalName());
                     signatureWriter.visitEnd();
@@ -157,7 +168,12 @@ final class SignatureWriterUtils {
                     writeSignature(signatureWriter, objectDef, bound, false);
                 }
             } else {
-                signatureWriter.visitTypeVariable(typeVariable.name());
+                if (isVariablePartOfTheDefinition(name, objectDef, methodDef)) {
+                    signatureWriter.visitTypeVariable(typeVariable.name());
+                } else {
+                    signatureWriter.visitClassType(TypeUtils.OBJECT_TYPE.getInternalName());
+                    signatureWriter.visitEnd();
+                }
             }
             return;
         }
@@ -195,6 +211,22 @@ final class SignatureWriterUtils {
             return;
         }
         throw new IllegalStateException("Not recognized typedef: " + typeDef);
+    }
+
+    private static boolean isVariablePartOfTheDefinition(String variableName, ObjectDef objectDef, @Nullable MethodDef methodDef) {
+        if (methodDef != null
+            && methodDef.getTypeVariables().stream().anyMatch(v -> v.name().equals(variableName))) {
+            return true;
+        }
+        if (objectDef instanceof ClassDef classDef) {
+            return classDef.getTypeVariables().stream()
+                .anyMatch(tv -> tv.name().equals(variableName));
+        }
+        if (objectDef instanceof InterfaceDef interfaceDef) {
+            return interfaceDef.getTypeVariables().stream()
+                .anyMatch(tv -> tv.name().equals(variableName));
+        }
+        return false;
     }
 
 }

@@ -23,12 +23,10 @@ import io.micronaut.core.convert.ConversionService;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
-import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.ast.FieldElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
-import io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -1632,9 +1630,7 @@ public sealed interface ExpressionDef permits ExpressionDef.ArrayElement, Expres
      * Use {@link LambdaDef#implement} to create an instance of {@link Lambda}.
      *
      * @param type           The type of the lambda, e.g. {@code Function<String, String>}
-     * @param target         The target method as defined in the interface,
-     *                       e.g. {@code Object apply(Object)}
-     *                       for {@link Function} implementation
+     * @param target         The target method as defined in the interface, e.g. {@code Object apply(Object)} for {@link Function} implementation
      * @param implementation The lambda method implementation
      * @author Andriy Dmytruk
      * @since 1.7
@@ -1662,43 +1658,6 @@ public sealed interface ExpressionDef permits ExpressionDef.ArrayElement, Expres
          */
         public InvokeInstanceMethod invoke(ExpressionDef... expressions) {
             return invoke(Arrays.asList(expressions));
-        }
-
-        /**
-         * Create a lambda that extends a particular type.
-         *
-         * @param lambdaType  The type of lambda
-         * @param target      The lambda target method
-         * @param bodyBuilder The builder for the lambda body
-         * @return The lambda
-         */
-        public static Lambda of(ClassTypeDef lambdaType, MethodDef target, MethodBodyBuilder bodyBuilder) {
-            // TODO: check for not resolved variables
-            return new Lambda(
-                lambdaType,
-                target,
-                MethodDef.builder(target.getName())
-                    .returns(target.getReturnType())
-                    .addParameters(target.getParameters())
-                    .build(bodyBuilder)
-            );
-        }
-
-        /**
-         * Create a lambda that extends a particular type.
-         *
-         * @param lambdaClassElement The parent to extend from
-         * @param bodyBuilder The builder for the lambda body
-         * @return The lambda
-         */
-        public static Lambda of(ClassElement lambdaClassElement, MethodBodyBuilder bodyBuilder) {
-            List<MethodElement> abstractMethods = lambdaClassElement.getEnclosedElements(
-                ElementQuery.of(MethodElement.class).onlyAbstract());
-            if (abstractMethods.size() != 1) {
-                throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
-                    "abstract method but has " + abstractMethods.size());
-            }
-            return of(ClassTypeDef.of(lambdaClassElement), MethodDef.of(abstractMethods.get(0)), bodyBuilder);
         }
 
         @Override

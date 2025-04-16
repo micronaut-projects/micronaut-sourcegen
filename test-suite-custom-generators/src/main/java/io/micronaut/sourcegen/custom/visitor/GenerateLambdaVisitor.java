@@ -230,8 +230,8 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         Local constant = new Local("constant", TypeDef.STRING);
         ClassTypeDef funcType = funcDef.asTypeDef();
 
-        Lambda lambda = funcType.getLambda()
-            .implement(Map.of("T", TypeDef.STRING, "R", TypeDef.STRING), (aThis, params) -> JavaIdioms.concatStrings(
+        Lambda lambda = funcType.getLambda(Map.of("T", TypeDef.STRING, "R", TypeDef.STRING))
+            .implement((aThis, params) -> JavaIdioms.concatStrings(
                     constant,
                     params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
             ).returning());
@@ -260,10 +260,9 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         Local function = new Local("function", TypeDef.of(functionType).resolveTypeVariables(resolvedVariables));
 
         Lambda lambda = ClassTypeDef.of(functionType)
-            .getLambda()
-            .implement(
-                resolvedVariables,
-                (t, params) -> JavaIdioms.concatStrings(
+            .resolveTypeVariables(resolvedVariables)
+            .getLambda(resolvedVariables)
+            .implement((t, params) -> JavaIdioms.concatStrings(
                         constant,
                         params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
                 ).returning()

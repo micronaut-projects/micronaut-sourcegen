@@ -20,7 +20,6 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.MethodElement;
-import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
@@ -38,9 +37,13 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeDef.TypeVariable;
 
 import javax.lang.model.element.Modifier;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * The visitor that is generation a delegate.
@@ -103,22 +106,30 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
             ClassDefBuilder delegate = ClassDef.builder(delegateClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
 
+            List<TypeVariable> typeVariables = new ArrayList<>();
             if (!element.getTypeArguments().isEmpty()) {
                 element.getTypeArguments().forEach(
-                    (k, v) -> delegate.addTypeVariable(TypeVariable.of(k, v))
+                    (k, v) -> typeVariables.add(TypeVariable.of(k, v))
                 );
                 typeDef = TypeDef.parameterized(
                     typeDef,
                     element.getTypeArguments().keySet().stream().<TypeDef>map(TypeVariable::new).toList()
                 );
             }
+            typeVariables.forEach(delegate::addTypeVariable);
             FieldDef delegateField = FieldDef.builder(DELEGATEE_MEMBER).ofType(typeDef).build();
 
             delegate.addSuperinterface(typeDef)
                 .addField(delegateField)
                 .addAllFieldsConstructor();
 
-            addDelegateMethods(element, delegate, delegateField);
+            addDelegateMethods(
+                element,
+                delegate,
+                delegateField,
+                typeVariables.stream()
+                .collect(Collectors.toMap(TypeVariable::name, v -> v))
+            );
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
             if (sourceGenerator == null) {
@@ -144,23 +155,16 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
         }
     }
 
-    private void addDelegateMethods(ClassElement element, ClassDefBuilder builder, FieldDef delegateField) {
+    private void addDelegateMethods(ClassElement element,
+                                    ClassDefBuilder builder,
+                                    FieldDef delegateField,
+                                    Map<String, TypeDef> resolvedTypeVariables) {
         for (MethodElement method: element.getMethods()) {
             if (method.isPrivate()) {
                 continue;
             }
 
-            MethodDefBuilder methodBuilder = MethodDef.builder(method.getName())
-                .overrides()
-                .returns(TypeDef.of(method.getGenericReturnType()));
-            if (method.isPublic()) {
-                methodBuilder.addModifiers(Modifier.PUBLIC);
-            } else if (method.isProtected()) {
-                methodBuilder.addModifiers(Modifier.PROTECTED);
-            }
-            for (ParameterElement parameter: method.getParameters()) {
-                methodBuilder.addParameter(parameter.getName(), TypeDef.of(parameter.getGenericType()));
-            }
+            MethodDefBuilder methodBuilder = MethodDef.override(method, resolvedTypeVariables);
             builder.addMethod(methodBuilder.build((aThis, methodParameters) -> {
                 ExpressionDef.InvokeInstanceMethod delegateInvocation = aThis.field(delegateField)
                     .invoke(method.getName(), TypeDef.of(method.getGenericReturnType()), methodParameters);

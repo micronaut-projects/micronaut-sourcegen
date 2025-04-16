@@ -26,6 +26,12 @@ public class SignatureWriterUtilsTest {
         List.of()
     );
 
+    InterfaceDef interfaceDef = InterfaceDef
+        .builder("MyInterface")
+        .addTypeVariable(entityType)
+        .addTypeVariable(idType)
+        .build();
+
     MethodDef findById = MethodDef.builder("findById")
         .addModifiers(Modifier.ABSTRACT, Modifier.PUBLIC)
         .addParameter("id", idType)
@@ -106,17 +112,17 @@ public class SignatureWriterUtilsTest {
     public void interfaceMethodSignature() {
         Assertions.assertEquals(
             "(TID;)Ljava/util/Optional<TE;>;",
-            SignatureWriterUtils.getMethodSignature(null, findById)
+            SignatureWriterUtils.getMethodSignature(interfaceDef, findById)
         );
 
         Assertions.assertEquals(
             "()Ljava/util/List<TE;>;",
-            SignatureWriterUtils.getMethodSignature(null, findAll)
+            SignatureWriterUtils.getMethodSignature(interfaceDef, findAll)
         );
 
         Assertions.assertEquals(
             "(TE;)V",
-            SignatureWriterUtils.getMethodSignature(null, save)
+            SignatureWriterUtils.getMethodSignature(interfaceDef, save)
         );
     }
 
@@ -137,7 +143,7 @@ public class SignatureWriterUtilsTest {
         Assertions.assertEquals(
             "(Ljava/util/function/Consumer<Lexample/MyBeanBuilder;>;)Lexample/MyBean;",
             SignatureWriterUtils.getMethodSignature(
-                null,
+                ClassDef.builder("xxx").build(),
                 build
             )
         );
