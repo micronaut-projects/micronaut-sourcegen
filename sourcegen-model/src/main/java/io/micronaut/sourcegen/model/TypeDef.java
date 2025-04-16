@@ -335,6 +335,13 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             return primitive(typedElement.getName());
         }
         if (typedElement instanceof GenericPlaceholderElement placeholderElement) {
+            if (erasure) {
+                if (placeholderElement.getBounds().size() != 1) {
+                    return TypeDef.OBJECT;
+                } else {
+                    return TypeDef.of(placeholderElement.getBounds().get(0));
+                }
+            }
             return TypeDef.variable(
                 placeholderElement.getVariableName(),
                 placeholderElement.getBounds().stream().map(TypeDef::of).toList()
