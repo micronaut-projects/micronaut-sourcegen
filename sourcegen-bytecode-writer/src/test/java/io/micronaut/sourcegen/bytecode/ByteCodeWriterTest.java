@@ -3522,7 +3522,7 @@ class Test {
     }
 
     @Test
-    void testGenericInterface() {
+    void testErasedInterface() {
         ClassElement element = ClassElement.of(
             Function.class,
             AnnotationMetadata.EMPTY_METADATA,
@@ -3534,8 +3534,8 @@ class Test {
 
         ClassDef classDef = ClassDef.builder("example.Test")
             .addSuperinterface(TypeDef.erasure(element))
-            .addMethod(MethodDef.builder("apply").returns(TypeDef.STRING)
-                .addParameter(TypeDef.STRING).build((t, params) -> params.get(0).returning()))
+            .addMethod(MethodDef.builder("apply").returns(TypeDef.OBJECT)
+                .addParameter(TypeDef.OBJECT).build((t, params) -> params.get(0).returning()))
             .build();
 
         StringWriter bytecodeWriter = new StringWriter();
@@ -3545,8 +3545,8 @@ class Test {
         assertEquals("""
 // class version 61.0 (61)
 // access flags 0x0
-// signature Ljava/lang/Object;Ljava/util/function/Function<Ljava/lang/String;Ljava/lang/String;>;
-// declaration: example/Test implements java.util.function.Function<java.lang.String, java.lang.String>
+// signature Ljava/lang/Object;Ljava/util/function/Function;
+// declaration: example/Test implements java.util.function.Function
 class example/Test implements java/util/function/Function {
 
 
@@ -3557,12 +3557,12 @@ class example/Test implements java/util/function/Function {
     RETURN
 
   // access flags 0x0
-  apply(Ljava/lang/String;)Ljava/lang/String;
+  apply(Ljava/lang/Object;)Ljava/lang/Object;
    L0
     ALOAD 1
     ARETURN
    L1
-    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 1
+    LOCALVARIABLE arg1 Ljava/lang/Object; L0 L1 1
 }
 """, bytecode);
 
@@ -3572,7 +3572,7 @@ package example;
 import java.util.function.Function;
 
 class Test implements Function {
-   String apply(String arg1) {
+   Object apply(Object arg1) {
       return arg1;
    }
 }

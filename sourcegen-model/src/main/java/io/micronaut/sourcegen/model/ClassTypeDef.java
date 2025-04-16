@@ -452,7 +452,7 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @param classElement The class element
      * @return type definition
      */
-    static ClassTypeDef erasedOf(ClassElement classElement) {
+    static ClassTypeDef erasure(ClassElement classElement) {
         if (classElement.isPrimitive()) {
             throw new IllegalStateException("Primitive classes cannot be of type: " + ClassTypeDef.class.getName());
         }

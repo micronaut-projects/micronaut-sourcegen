@@ -342,7 +342,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
         }
         if (typedElement instanceof WildcardElement wildcardElement) {
             if (erasure) {
-                return ClassTypeDef.erasedOf(wildcardElement);
+                return ClassTypeDef.erasure(wildcardElement);
             }
             return new Wildcard(
                 wildcardElement.getUpperBounds().stream().map(TypeDef::of).toList(),
@@ -350,7 +350,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             );
         }
         if (typedElement instanceof ClassElement classElement) {
-            return erasure ? ClassTypeDef.erasedOf(classElement) : ClassTypeDef.of(classElement);
+            return erasure ? ClassTypeDef.erasure(classElement) : ClassTypeDef.of(classElement);
         }
         throw new IllegalStateException("Unknown typed element: " + typedElement);
     }
