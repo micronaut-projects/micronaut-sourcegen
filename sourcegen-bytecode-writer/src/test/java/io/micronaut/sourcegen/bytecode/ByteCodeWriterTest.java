@@ -2,7 +2,9 @@ package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.context.BeanResolutionContext;
 import io.micronaut.core.annotation.AnnotationClassValue;
+import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.reflect.ReflectionUtils;
+import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.visitor.GenerateLambdaVisitor;
 import io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInEnumVisitor;
@@ -32,6 +34,7 @@ import java.lang.reflect.Constructor;
 import java.util.AbstractList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import static io.micronaut.sourcegen.bytecode.DecompilerUtils.decompileToJava;
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
@@ -3513,6 +3516,64 @@ import java.io.IOException;
 class Test {
    void test() throws IOException {
       throw new IOException();
+   }
+}
+""", decompileToJava(bytes));
+    }
+
+    @Test
+    void testGenericInterface() {
+        ClassElement element = ClassElement.of(
+            Function.class,
+            AnnotationMetadata.EMPTY_METADATA,
+            Map.of(
+                "T", ClassElement.of(String.class),
+                "R", ClassElement.of(String.class)
+            )
+        );
+
+        ClassDef classDef = ClassDef.builder("example.Test")
+            .addSuperinterface(TypeDef.erasure(element))
+            .addMethod(MethodDef.builder("apply").returns(TypeDef.STRING)
+                .addParameter(TypeDef.STRING).build((t, params) -> params.get(0).returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;Ljava/util/function/Function<Ljava/lang/String;Ljava/lang/String;>;
+// declaration: example/Test implements java.util.function.Function<java.lang.String, java.lang.String>
+class example/Test implements java/util/function/Function {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x0
+  apply(Ljava/lang/String;)Ljava/lang/String;
+   L0
+    ALOAD 1
+    ARETURN
+   L1
+    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 1
+}
+""", bytecode);
+
+        assertEquals("""
+package example;
+
+import java.util.function.Function;
+
+class Test implements Function {
+   String apply(String arg1) {
+      return arg1;
    }
 }
 """, decompileToJava(bytes));

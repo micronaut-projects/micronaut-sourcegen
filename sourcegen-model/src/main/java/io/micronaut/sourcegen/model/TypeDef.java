@@ -340,24 +340,17 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
                 placeholderElement.getBounds().stream().map(TypeDef::of).toList()
             );
         }
-        if (erasure && typedElement instanceof ClassElement classElement) {
-            return ClassTypeDef.of(classElement);
-        }
         if (typedElement instanceof WildcardElement wildcardElement) {
+            if (erasure) {
+                return ClassTypeDef.erasedOf(wildcardElement);
+            }
             return new Wildcard(
                 wildcardElement.getUpperBounds().stream().map(TypeDef::of).toList(),
                 wildcardElement.getLowerBounds().stream().map(TypeDef::of).toList()
             );
         }
         if (typedElement instanceof ClassElement classElement) {
-            Map<String, ClassElement> typeArguments = classElement.getTypeArguments();
-            if (typeArguments.isEmpty()) {
-                return ClassTypeDef.of(classElement);
-            }
-            return TypeDef.parameterized(
-                ClassTypeDef.of(classElement),
-                typeArguments.values().stream().map(TypeDef::of).toList()
-            );
+            return erasure ? ClassTypeDef.erasedOf(classElement) : ClassTypeDef.of(classElement);
         }
         throw new IllegalStateException("Unknown typed element: " + typedElement);
     }

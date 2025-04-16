@@ -446,6 +446,20 @@ public sealed interface ClassTypeDef extends TypeDef {
     }
 
     /**
+     * Create a new type definition that is an erasure.
+     * This means that no type arguments will be copied.
+     *
+     * @param classElement The class element
+     * @return type definition
+     */
+    static ClassTypeDef erasedOf(ClassElement classElement) {
+        if (classElement.isPrimitive()) {
+            throw new IllegalStateException("Primitive classes cannot be of type: " + ClassTypeDef.class.getName());
+        }
+        return new ClassElementType(classElement, classElement.isNullable());
+    }
+
+    /**
      * Create a new type definition.
      *
      * @param classElement The class element
@@ -458,9 +472,9 @@ public sealed interface ClassTypeDef extends TypeDef {
         if (!classElement.getTypeArguments().isEmpty()) {
             return new Parameterized(
                 new ClassElementType(classElement, classElement.isNullable()),
-                classElement.getTypeArguments().entrySet()
+                classElement.getTypeArguments().values()
                     .stream()
-                    .map(e -> TypeDef.erasure(e.getValue()))
+                    .map(TypeDef::of)
                     .toList()
             );
         }
