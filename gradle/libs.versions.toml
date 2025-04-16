@@ -6,7 +6,7 @@ google-compile-testing = "0.21.0"
 google-jimfs = "1.3.0"
 intellij-java-decompiler = "243.26053.27"
 
-managed-asm = "9.7.1"
+managed-asm = "9.8"
 
 micronaut = "4.8.10"
 micronaut-platform = "4.7.5"
