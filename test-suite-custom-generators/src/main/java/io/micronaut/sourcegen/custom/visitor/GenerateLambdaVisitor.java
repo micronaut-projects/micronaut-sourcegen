@@ -260,7 +260,6 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         Local function = new Local("function", TypeDef.of(functionType).resolveTypeVariables(resolvedVariables));
 
         Lambda lambda = ClassTypeDef.of(functionType)
-            .resolveTypeVariables(resolvedVariables)
             .getLambda(resolvedVariables)
             .implement((t, params) -> JavaIdioms.concatStrings(
                         constant,

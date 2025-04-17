@@ -542,7 +542,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             if (isVariablePartOfTheDefinition(typeVariable.name(), objectDef, null)) {
                 return asTypeVariable(typeVariable, objectDef);
             }
-            return asType(ClassTypeDef.OBJECT, objectDef);
+            if (typeVariable.bounds().isEmpty()) {
+                return asType(ClassTypeDef.OBJECT, objectDef);
+            }
+            return asType(typeVariable.bounds().get(0), objectDef);
         }
         if (typeDef instanceof TypeDef.AnnotatedTypeDef annotatedType) {
             var annotationsSpecs = annotatedType.annotations().stream().map(this::asAnnotationSpec).toList();

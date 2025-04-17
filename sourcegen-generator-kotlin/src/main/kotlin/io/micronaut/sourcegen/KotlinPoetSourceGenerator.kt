@@ -706,7 +706,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 if (isVariablePartOfTheDefinition(typeDef.name, objectDef, methodDef)) {
                     return asTypeVariable(typeDef, objectDef)
                 }
-                return asType(TypeDef.OBJECT, objectDef)
+                if (typeDef.bounds.isEmpty()) {
+                    return asType(TypeDef.OBJECT, objectDef)
+                }
+                return asType(typeDef.bounds.get(0), objectDef)
             } else if (typeDef is TypeDef.Annotated && typeDef is TypeDef.AnnotatedTypeDef) {
                 return asType(typeDef.typeDef, objectDef).copy(
                     typeDef.typeDef.isNullable,

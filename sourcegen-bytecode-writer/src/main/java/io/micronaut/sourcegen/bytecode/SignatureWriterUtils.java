@@ -170,8 +170,11 @@ final class SignatureWriterUtils {
             } else {
                 if (isVariablePartOfTheDefinition(name, objectDef, methodDef)) {
                     signatureWriter.visitTypeVariable(typeVariable.name());
-                } else {
+                } else if (typeVariable.bounds().isEmpty()) {
                     signatureWriter.visitClassType(TypeUtils.OBJECT_TYPE.getInternalName());
+                    signatureWriter.visitEnd();
+                } else {
+                    signatureWriter.visitClassType(TypeUtils.getType(typeVariable.bounds().get(0), objectDef).getInternalName());
                     signatureWriter.visitEnd();
                 }
             }
