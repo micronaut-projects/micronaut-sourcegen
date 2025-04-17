@@ -565,6 +565,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     }
                     .toList()
             )
+        if (method.isOverride) {
+            funBuilder.modifiers += KModifier.OVERRIDE
+        }
         for (annotation in method.annotations) {
             funBuilder.addAnnotation(
                 asAnnotationSpec(annotation)
@@ -647,6 +650,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
         @OptIn(KotlinPoetJavaPoetPreview::class)
         private fun asType(typeDef: TypeDef, objectDef: ObjectDef?): TypeName {
+            return asType(typeDef, objectDef, null)
+        }
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asType(typeDef: TypeDef, objectDef: ObjectDef?, methodDef: MethodDef?): TypeName {
             val result: TypeName = if (typeDef == TypeDef.THIS) {
                 if (objectDef == null) {
                     throw java.lang.IllegalStateException("This type is used outside of the instance scope!")
@@ -695,7 +703,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     )
                 }
             } else if (typeDef is TypeDef.TypeVariable) {
-                return asTypeVariable(typeDef, objectDef)
+                if (isVariablePartOfTheDefinition(typeDef.name, objectDef, methodDef)) {
+                    return asTypeVariable(typeDef, objectDef)
+                }
+                if (typeDef.bounds.isEmpty()) {
+                    return asType(TypeDef.OBJECT, objectDef)
+                }
+                return asType(typeDef.bounds.get(0), objectDef)
             } else if (typeDef is TypeDef.Annotated && typeDef is TypeDef.AnnotatedTypeDef) {
                 return asType(typeDef.typeDef, objectDef).copy(
                     typeDef.typeDef.isNullable,
@@ -708,6 +722,29 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return asNullable(result)
             }
             return result
+        }
+
+        private fun isVariablePartOfTheDefinition(
+            variableName: String,
+            objectDef: ObjectDef?,
+            methodDef: MethodDef?
+        ): Boolean {
+            if (methodDef != null
+                && methodDef.typeVariables.stream().anyMatch { v: TypeDef.TypeVariable -> v.name == variableName }
+            ) {
+                return true
+            }
+            if (objectDef != null) {
+                if (objectDef is ClassDef) {
+                    return objectDef.typeVariables.stream()
+                        .anyMatch { tv: TypeDef.TypeVariable -> tv.name == variableName }
+                }
+                if (objectDef is InterfaceDef) {
+                    return objectDef.typeVariables.stream()
+                        .anyMatch { tv: TypeDef.TypeVariable -> tv.name == variableName }
+                }
+            }
+            return false
         }
 
         private fun asTypeVariable(tv: TypeDef.TypeVariable, objectDef: ObjectDef?): TypeVariableName {

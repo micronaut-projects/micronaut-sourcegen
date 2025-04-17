@@ -54,4 +54,17 @@ internal class IfsPredicateTest {
         assertTrue(predicate.test(null))
         assertFalse(predicate.test(""))
     }
+
+    @Test
+    fun testGeneric() {
+        val predicate: IfPredicateGeneric = IfPredicateGeneric()
+        assertTrue(predicate.test(1))
+        assertFalse(predicate.test(2))
+        val predicate2: IfPredicateGeneric2 = IfPredicateGeneric2()
+        assertTrue(predicate2.test(1))
+        assertFalse(predicate2.test(2))
+        val predicate3: IfPredicateGeneric3 = IfPredicateGeneric3()
+        assertTrue(predicate3.test(1))
+        assertFalse(predicate3.test(2))
+    }
 }

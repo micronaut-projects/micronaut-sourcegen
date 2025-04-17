@@ -400,14 +400,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             .addParameters(
                 method.getParameters().stream()
                     .map(param -> ParameterSpec.builder(
-                        asType(param.getType(), objectDef),
+                        asType(param.getType(), objectDef, method),
                         param.getName(),
                         param.getModifiersArray()
                     ).addAnnotations(param.getAnnotations().stream().map(this::asAnnotationSpec).toList()).build())
                     .toList()
             );
         if (!methodName.equals(MethodSpec.CONSTRUCTOR)) {
-            methodBuilder.returns(asType(method.getReturnType(), objectDef));
+            methodBuilder.returns(asType(method.getReturnType(), objectDef, method));
         }
         method.getJavadoc().forEach(methodBuilder::addJavadoc);
         for (AnnotationDef annotation : method.getAnnotations()) {
@@ -416,7 +416,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             );
         }
         for (TypeDef type: method.getThrowTypes()) {
-            methodBuilder.addException(asType(type, objectDef));
+            methodBuilder.addException(asType(type, objectDef, method));
         }
         method.getStatements().stream()
             .map(st -> renderStatementCodeBlock(objectDef, method, Map.of(), st))
@@ -465,6 +465,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private TypeName asType(TypeDef typeDef, ObjectDef objectDef) {
+        return asType(typeDef, objectDef, null);
+    }
+
+    private TypeName asType(TypeDef typeDef, ObjectDef objectDef, @Nullable MethodDef methodDef) {
         if (typeDef.equals(TypeDef.THIS)) {
             if (objectDef == null) {
                 throw new IllegalStateException("This type is used outside of the instance scope!");
@@ -535,13 +539,35 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             );
         }
         if (typeDef instanceof TypeDef.TypeVariable typeVariable) {
-            return asTypeVariable(typeVariable, objectDef);
+            if (isVariablePartOfTheDefinition(typeVariable.name(), objectDef, null)) {
+                return asTypeVariable(typeVariable, objectDef);
+            }
+            if (typeVariable.bounds().isEmpty()) {
+                return asType(ClassTypeDef.OBJECT, objectDef);
+            }
+            return asType(typeVariable.bounds().get(0), objectDef);
         }
         if (typeDef instanceof TypeDef.AnnotatedTypeDef annotatedType) {
             var annotationsSpecs = annotatedType.annotations().stream().map(this::asAnnotationSpec).toList();
             return asType(annotatedType.typeDef(), objectDef).annotated(annotationsSpecs);
         }
         throw new IllegalStateException("Unrecognized type definition " + typeDef);
+    }
+
+    private static boolean isVariablePartOfTheDefinition(String variableName, ObjectDef objectDef, @Nullable MethodDef methodDef) {
+        if (methodDef != null
+            && methodDef.getTypeVariables().stream().anyMatch(v -> v.name().equals(variableName))) {
+            return true;
+        }
+        if (objectDef instanceof ClassDef classDef) {
+            return classDef.getTypeVariables().stream()
+                .anyMatch(tv -> tv.name().equals(variableName));
+        }
+        if (objectDef instanceof InterfaceDef interfaceDef) {
+            return interfaceDef.getTypeVariables().stream()
+                .anyMatch(tv -> tv.name().equals(variableName));
+        }
+        return false;
     }
 
     private static ClassName asClassType(ClassTypeDef classTypeDef) {

@@ -7,6 +7,7 @@ import io.micronaut.sourcegen.model.FieldDef;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,13 +27,13 @@ public class TypeDefTest extends AbstractWriteTest {
 
     @Test
     public void parametrizedClassElement() throws IOException {
+        Map<String, ClassElement> vars = new LinkedHashMap<>();
+        vars.put("K", ClassElement.of(String.class));
+        vars.put("V", ClassElement.of(List.class, AnnotationMetadata.EMPTY_METADATA, Map.of(
+            "E", ClassElement.of(Integer.class)
+        )));
         ClassElement element = ClassElement.of(
-            Map.class, AnnotationMetadata.EMPTY_METADATA, Map.of(
-                "K", ClassElement.of(String.class),
-                "V", ClassElement.of(List.class, AnnotationMetadata.EMPTY_METADATA, Map.of(
-                    "E", ClassElement.of(Integer.class)
-                ))
-            )
+            Map.class, AnnotationMetadata.EMPTY_METADATA, vars
         );
         String result = writeClassWithField(
             FieldDef.builder("v").ofType(ClassTypeDef.of(element)).build()
