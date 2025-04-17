@@ -502,19 +502,7 @@ public sealed interface ClassTypeDef extends TypeDef {
                 new ClassElementType(classElement, classElement.isNullable()),
                 classElement.getTypeArguments().values()
                     .stream()
-                    .map(value -> {
-                        if (value instanceof GenericPlaceholderElement placeholderElement) {
-                            TypeDef resolved = resolvedTypeVariables.get(placeholderElement.getVariableName());
-                            if (resolved != null) {
-                                return resolved;
-                            }
-                            return TypeDef.variable(
-                                placeholderElement.getVariableName(),
-                                TypeDef.of(placeholderElement.resolved(), resolvedTypeVariables, erasure)
-                            );
-                        }
-                        return TypeDef.of(value, resolvedTypeVariables, erasure);
-                    })
+                    .map(value -> TypeDef.of(value, resolvedTypeVariables, erasure))
                     .toList()
             );
         }

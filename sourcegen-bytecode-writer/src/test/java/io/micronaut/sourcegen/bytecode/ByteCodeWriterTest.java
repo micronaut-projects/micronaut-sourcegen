@@ -35,6 +35,7 @@ import java.util.AbstractList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static io.micronaut.sourcegen.bytecode.DecompilerUtils.decompileToJava;
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
@@ -58,6 +59,71 @@ import static io.micronaut.sourcegen.model.ExpressionDef.MathUnaryOperation.OpTy
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ByteCodeWriterTest {
+
+    @Test
+    void callTypeVariable() {
+        ClassDef predicateGeneric2 = ClassDef.builder("test.IfPredicateGeneric")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(TypeDef.variable("T", TypeDef.OBJECT))
+                .returns(boolean.class)
+                .build((aThis, methodParameters) ->
+                    methodParameters.get(0).equalsStructurally(ExpressionDef.constant(Integer.valueOf(1))).returning())
+            )
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(predicateGeneric2, bytecodeWriter);
+
+        String bytecode = bytecodeWriter.toString();
+        Assertions.assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;Ljava/util/function/Predicate;
+// declaration: test/IfPredicateGeneric implements java.util.function.Predicate
+class test/IfPredicateGeneric implements java/util/function/Predicate {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x0
+  // signature (Ljava/lang/Object;)Z
+  // declaration: boolean test(java.lang.Object)
+  test(Ljava/lang/Object;)Z
+   L0
+    ALOAD 1
+    ICONST_1
+    INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
+    INVOKEVIRTUAL java/lang/Object.equals (Ljava/lang/Object;)Z
+    ICONST_1
+    IF_ICMPNE L1
+    ICONST_1
+    GOTO L2
+   L1
+    ICONST_0
+   L2
+    IRETURN
+   L3
+    LOCALVARIABLE arg1 Ljava/lang/Object; L0 L3 1
+}
+""", bytecode);
+
+        Assertions.assertEquals("""
+package test;
+
+import java.util.function.Predicate;
+
+class IfPredicateGeneric implements Predicate {
+   boolean test(Object arg1) {
+      return arg1.equals(1);
+   }
+}
+""", decompileToJava(bytes));
+    }
 
     @Test
     void lambda() {

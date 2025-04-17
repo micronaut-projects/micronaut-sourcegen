@@ -373,19 +373,10 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             if (resolved != null) {
                 return resolved;
             }
-            List<? extends ClassElement> bounds = placeholderElement.getBounds();
-            if (bounds.isEmpty()) {
-                return OBJECT;
-            }
-            ClassElement higherBound = null;
-            for (ClassElement bound : bounds) {
-                if (higherBound == null) {
-                    higherBound = bound;
-                } else if (bound.isAssignable(higherBound)) {
-                    higherBound = bound;
-                }
-            }
-            return TypeDef.of(higherBound, resolvedTypeVariables, erasure);
+            return TypeDef.variable(
+                placeholderElement.getVariableName(),
+                placeholderElement.getBounds().stream().map(e -> TypeDef.of(e, resolvedTypeVariables, erasure)).toList()
+            );
         }
         if (typedElement instanceof WildcardElement wildcardElement) {
             return new Wildcard(
