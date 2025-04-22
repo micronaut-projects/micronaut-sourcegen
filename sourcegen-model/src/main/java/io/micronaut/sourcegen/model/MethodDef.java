@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * The method definition.
@@ -109,13 +110,32 @@ public final class MethodDef extends AbstractElement {
      */
     @NonNull
     public static MethodDef of(@NonNull MethodElement methodElement) {
+        return of(methodElement, Map.of());
+    }
+
+    /**
+     * Creates a method definition from {@link MethodElement}.
+     *
+     * @param methodElement         The method element
+     * @param resolvedTypeVariables The resolved type variable
+     * @return The method definition
+     * @since 1.7
+     */
+    @NonNull
+    public static MethodDef of(@NonNull MethodElement methodElement, Map<String, TypeDef> resolvedTypeVariables) {
         return MethodDef.builder(methodElement.getName())
-            .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getType()))).toList())
+            .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getType(), resolvedTypeVariables))).toList())
             .addTypeVariables(methodElement.getTypeArguments().entrySet()
                 .stream()
-                .map(e -> TypeDef.variable(e.getKey(), TypeDef.erasure(e.getValue())))
+                .flatMap(e -> {
+                    TypeDef resolved = resolvedTypeVariables.get(e.getKey());
+                    if (resolved != null) {
+                        return Stream.empty();
+                    }
+                    return Stream.of(TypeDef.variable(e.getKey(), TypeDef.erasure(e.getValue(), resolvedTypeVariables)));
+                })
                 .toList())
-            .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(methodElement.getReturnType()))
+            .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(methodElement.getReturnType(), resolvedTypeVariables))
             .build();
     }
 
@@ -143,10 +163,24 @@ public final class MethodDef extends AbstractElement {
      */
     @NonNull
     public static MethodDefBuilder override(@NonNull MethodElement methodElement) {
+        return override(methodElement, Map.of());
+    }
+
+    /**
+     * Creates a method definition builder from {@link MethodElement}.
+     *
+     * @param methodElement         The methodElement
+     * @param resolvedTypeVariables The resolved type variables
+     * @return The method definition builder
+     * @since 1.5
+     */
+    @NonNull
+    public static MethodDefBuilder override(@NonNull MethodElement methodElement, Map<String, TypeDef> resolvedTypeVariables) {
         return MethodDef.builder(methodElement.getName())
+            .overrides()
             .addModifiers(toOverrideModifiers(methodElement))
-            .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getType()))).toList())
-            .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(methodElement.getReturnType()));
+            .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getType(), resolvedTypeVariables))).toList())
+            .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(methodElement.getReturnType(), resolvedTypeVariables));
     }
 
     /**
@@ -159,6 +193,7 @@ public final class MethodDef extends AbstractElement {
     @NonNull
     public static MethodDefBuilder override(@NonNull Method method) {
         return MethodDef.builder(method.getName())
+            .overrides()
             .addModifiers(toOverrideModifiers(method.getModifiers()))
             .addParameters(Arrays.stream(method.getParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList())
             .returns(TypeDef.of(method.getReturnType()));
@@ -174,6 +209,7 @@ public final class MethodDef extends AbstractElement {
     @NonNull
     public static MethodDefBuilder override(@NonNull MethodDef method) {
         return MethodDef.builder(method.getName())
+            .overrides()
             .addModifiers(toOverrideModifiers(method))
             .addParameters(method.getParameters())
             .returns(method.getReturnType());
@@ -189,6 +225,7 @@ public final class MethodDef extends AbstractElement {
     @NonNull
     public static MethodDefBuilder override(@NonNull Constructor<?> constructor) {
         return MethodDef.constructor()
+            .overrides()
             .addModifiers(toOverrideModifiers(constructor.getModifiers()))
             .addParameters(Arrays.stream(constructor.getParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList());
     }

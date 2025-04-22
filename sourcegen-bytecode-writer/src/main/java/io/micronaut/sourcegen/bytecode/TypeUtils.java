@@ -82,9 +82,10 @@ public final class TypeUtils {
         }
         if (typeDef instanceof TypeDef.TypeVariable typeVariable) {
             if (typeVariable.bounds().isEmpty()) {
+                String name = typeVariable.name();
                 if (objectDef instanceof ClassDef classDef) {
                     TypeDef.TypeVariable tvDef = classDef.getTypeVariables().stream()
-                        .filter(tv -> tv.name().equals(typeVariable.name())).findFirst()
+                        .filter(tv -> tv.name().equals(name)).findFirst()
                         .orElse(null);
                     if (tvDef != null) {
                         return getBoundsType(tvDef.bounds(), objectDef);
@@ -92,7 +93,7 @@ public final class TypeUtils {
                 }
                 if (objectDef instanceof InterfaceDef interfaceDef) {
                     TypeDef.TypeVariable tvDef = interfaceDef.getTypeVariables().stream()
-                        .filter(tv -> tv.name().equals(typeVariable.name())).findFirst()
+                        .filter(tv -> tv.name().equals(name)).findFirst()
                         .orElse(null);
                     if (tvDef != null) {
                         return getBoundsType(tvDef.bounds(), objectDef);

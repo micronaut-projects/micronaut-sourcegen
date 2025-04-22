@@ -17,8 +17,6 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 
-import java.util.Map;
-
 /**
  * Definition holding information about a lambda interface that can be implemented.
  * Use {@link ClassTypeDef#getLambda()} to create an instance from an existing type definition.
@@ -31,10 +29,12 @@ public final class LambdaDef {
 
     private final ClassTypeDef type;
     private final MethodDef method;
+    private final MethodDef implementation;
 
-    LambdaDef(ClassTypeDef type, MethodDef method) {
+    LambdaDef(ClassTypeDef type, MethodDef target, MethodDef implementation) {
         this.type = type;
-        this.method = method;
+        this.method = target;
+        this.implementation = implementation;
     }
 
     /**
@@ -46,29 +46,10 @@ public final class LambdaDef {
      */
     public ExpressionDef.Lambda implement(MethodDef.MethodBodyBuilder lambdaBuilder) {
         // TODO: check for not resolved variables
-        return ExpressionDef.Lambda.of(
-            type,
-            method,
-            lambdaBuilder
-        );
-    }
-
-    /**
-     * Implement lambda by providing the method body and the particular
-     * type variables for implementing a generic lambda.
-     *
-     * @param resolvedTypeVariables The resolved type variables of the method.
-     * @param lambdaBuilder The lambda builder
-     * @return the lambda expression
-     * @since 1.7
-     */
-    public ExpressionDef.Lambda implement(Map<String, TypeDef> resolvedTypeVariables,
-                                          MethodDef.MethodBodyBuilder lambdaBuilder) {
-        MethodDef implementedMethod = method.resolveTypeVariables(resolvedTypeVariables);
         return new ExpressionDef.Lambda(
             type,
             method,
-            MethodDef.override(implementedMethod).build(lambdaBuilder)
+            MethodDef.override(implementation).build(lambdaBuilder)
         );
     }
 
@@ -84,5 +65,12 @@ public final class LambdaDef {
      */
     public MethodDef getMethod() {
         return method;
+    }
+
+    /**
+     * @return The lambda implementation
+     */
+    public MethodDef getImplementation() {
+        return implementation;
     }
 }

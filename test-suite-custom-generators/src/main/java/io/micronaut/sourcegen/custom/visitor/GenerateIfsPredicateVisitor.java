@@ -18,12 +18,14 @@ package io.micronaut.sourcegen.custom.visitor;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.example.GenerateIfsPredicate;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.StatementDef;
@@ -31,6 +33,7 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
+import java.util.Map;
 import java.util.function.Predicate;
 
 @Internal
@@ -210,6 +213,43 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
             .build();
 
         sourceGenerator.write(ifPredicatePrimitive2, context, element);
+
+        ClassElement predicateClass = context.getClassElement(Predicate.class).orElseThrow();
+        MethodElement predicateTestMethod = predicateClass.findMethod("test").orElseThrow();
+
+        ClassTypeDef.Parameterized predicateClassDef = (ClassTypeDef.Parameterized) ClassTypeDef.of(predicateClass);
+        ClassDef predicateGeneric = ClassDef.builder(element.getPackageName() + ".IfPredicateGeneric")
+            .addSuperinterface(TypeDef.parameterized(predicateClassDef, TypeDef.of(Integer.class)))
+            .addMethod(MethodDef.override(predicateTestMethod, Map.of("T", TypeDef.of(Integer.class)))
+                .build((aThis, methodParameters) ->
+                    methodParameters.get(0).equalsStructurally(ExpressionDef.constant(Integer.valueOf(1))).returning())
+            )
+            .build();
+
+        sourceGenerator.write(predicateGeneric, context, element);
+
+        ClassDef predicateGeneric2 = ClassDef.builder(element.getPackageName() + ".IfPredicateGeneric2")
+            .addSuperinterface(predicateClassDef)
+            .addMethod(MethodDef.override(predicateTestMethod)
+                .build((aThis, methodParameters) ->
+                    methodParameters.get(0).equalsStructurally(ExpressionDef.constant(Integer.valueOf(1))).returning())
+            )
+            .build();
+
+        sourceGenerator.write(predicateGeneric2, context, element);
+
+        ClassDef predicateGeneric3 = ClassDef.builder(element.getPackageName() + ".IfPredicateGeneric3")
+            .addSuperinterface(
+                TypeDef.parameterized(predicateClassDef.rawType(), TypeDef.variable("T", TypeDef.OBJECT))
+            )
+
+            .addMethod(MethodDef.override(predicateTestMethod)
+                .build((aThis, methodParameters) ->
+                    methodParameters.get(0).equalsStructurally(ExpressionDef.constant(Integer.valueOf(1))).returning())
+            )
+            .build();
+
+        sourceGenerator.write(predicateGeneric3, context, element);
     }
 
 }

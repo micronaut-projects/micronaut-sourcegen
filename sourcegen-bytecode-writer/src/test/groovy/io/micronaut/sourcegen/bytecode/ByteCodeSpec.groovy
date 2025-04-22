@@ -25,4 +25,29 @@ class Trigger {
             instance.callGenericLambdaAst("Hello!")
     }
 
+    def "test generic predicates"() {
+        when:
+            ClassLoader classLoader = buildClassLoader("example.Test", """
+package example;
+
+import io.micronaut.sourcegen.custom.example.GenerateIfsPredicate;
+
+@GenerateIfsPredicate
+class Trigger {
+}
+
+
+""")
+        then:
+            classLoader
+
+            def ifPredicateGeneric2 = classLoader.loadClass("example.IfPredicateGeneric2").newInstance()
+            ifPredicateGeneric2.test(1)
+            !ifPredicateGeneric2.test(2)
+        and:
+            def ifPredicateGeneric3 = classLoader.loadClass("example.IfPredicateGeneric3").newInstance()
+            ifPredicateGeneric3.test(1)
+            !ifPredicateGeneric3.test(2)
+    }
+
 }

@@ -197,7 +197,8 @@ public abstract class AbstractConditionalWriter {
                                                MethodContext context,
                                                ExpressionDef left,
                                                ExpressionDef right,
-                                               Label ifLabel, int op) {
+                                               Label ifLabel,
+                                               int op) {
         TypeDef leftType = left.type();
         TypeDef rightType = right.type();
         if (leftType.isPrimitive()) {

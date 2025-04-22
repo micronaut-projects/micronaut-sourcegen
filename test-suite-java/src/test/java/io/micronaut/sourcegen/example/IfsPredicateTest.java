@@ -106,4 +106,17 @@ class IfsPredicateTest {
         assertTrue(predicate.test(1));
         assertFalse(predicate.test(2));
     }
+
+    @Test
+    public void testGeneric() {
+        IfPredicateGeneric predicate = new IfPredicateGeneric();
+        assertTrue(predicate.test(1));
+        assertFalse(predicate.test(2));
+        IfPredicateGeneric2 predicate2 = new IfPredicateGeneric2();
+        assertTrue(predicate2.test(1));
+        assertFalse(predicate2.test(2));
+        IfPredicateGeneric3 predicate3 = new IfPredicateGeneric3();
+        assertTrue(predicate3.test(1));
+        assertFalse(predicate3.test(2));
+    }
 }
