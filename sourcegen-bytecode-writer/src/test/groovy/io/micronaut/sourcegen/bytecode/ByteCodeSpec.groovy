@@ -48,6 +48,10 @@ class Trigger {
             def ifPredicateGeneric3 = classLoader.loadClass("example.IfPredicateGeneric3").newInstance()
             ifPredicateGeneric3.test(1)
             !ifPredicateGeneric3.test(2)
+        and:
+            def ifPredicateGeneric4 = classLoader.loadClass("example.IfPredicateGeneric4").newInstance()
+            ifPredicateGeneric4.test("foobar")
+            !ifPredicateGeneric4.test("abc")
     }
 
 }
