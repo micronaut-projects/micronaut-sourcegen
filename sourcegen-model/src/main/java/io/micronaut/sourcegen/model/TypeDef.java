@@ -27,6 +27,7 @@ import io.micronaut.inject.ast.WildcardElement;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
@@ -369,6 +370,10 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             return primitive(typedElement.getName());
         }
         if (typedElement instanceof GenericPlaceholderElement placeholderElement) {
+            Optional<ClassElement> optionalResolved = placeholderElement.getResolved();
+            if (optionalResolved.isPresent()) {
+                return of(optionalResolved.get(), resolvedTypeVariables, erasure);
+            }
             TypeDef resolved = resolvedTypeVariables.get(placeholderElement.getVariableName());
             if (resolved != null) {
                 return resolved;
