@@ -184,13 +184,13 @@ public final class RecordDef extends ObjectDef {
             return cet.classElement();
         } else if (type instanceof ClassTypeDef.JavaClass javaClass) {
             return visitorContext.getClassElement(javaClass.getName())
-                .orElseThrow(() -> new IllegalStateException("Class missing from compilation path: " + javaClass.getName()));
+                .orElseGet(() -> ClassElement.of(javaClass.type()));
         } else if (type instanceof ClassTypeDef.ClassName javaClass) {
             return visitorContext.getClassElement(javaClass.getName())
-                .orElseThrow(() -> new IllegalStateException("Class missing from compilation path: " + javaClass.getName()));
+                .orElseGet(() -> ClassElement.of(javaClass.getName()));
         } else if (type instanceof ClassTypeDef.ClassDefType classDefType) {
             return visitorContext.getClassElement(classDefType.getName())
-                .orElseThrow(() -> new IllegalStateException("Class missing from compilation path: " + classDefType.getName()));
+                .orElseGet(() -> ClassElement.of(classDefType.getName()));
         } else if (type instanceof ClassTypeDef.Parameterized parameterized) {
             ClassTypeDef rawType = parameterized.rawType();
             if (rawType instanceof ClassTypeDef.ClassElementType cet) {
