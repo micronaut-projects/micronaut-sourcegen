@@ -22,7 +22,11 @@ interface Test {
     Map<String, Object> metadata();
     int[] bytes();
     String[] stuff();
+
+    Map<String, Stuff> moreStuff();
 }
+
+interface Stuff {}
 ''')
         expect:
         introspection != null
