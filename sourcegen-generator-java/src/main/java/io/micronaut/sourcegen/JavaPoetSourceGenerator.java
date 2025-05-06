@@ -993,6 +993,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, comparisonOperation.right())
             );
         }
+        if (expressionDef instanceof ExpressionDef.InstanceOf instanceOf) {
+            return CodeBlock.concat(
+                renderExpression(objectDef, methodDef, remappedLocals, instanceOf.expression()),
+                CodeBlock.of(" instanceof "),
+                CodeBlock.of(instanceOf.instanceType().getCanonicalName())
+            );
+        }
         if (expressionDef instanceof ExpressionDef.And andExpressionDef) {
             return CodeBlock.concat(
                 renderCondition(objectDef, methodDef, remappedLocals, andExpressionDef.left()),

@@ -241,6 +241,17 @@ public class Example {
     }
 
     @Test
+    public void returnInstanceOfCondition() throws IOException {
+        ExpressionDef andExpression = new ExpressionDef.InstanceOf(
+            ExpressionDef.constant("test"),
+            ClassTypeDef.ClassDefType.STRING
+        );
+        String result = writeMethodWithExpression(andExpression);
+
+        assertEquals("\"test\" instanceof java.lang.String", result);
+    }
+
+    @Test
     public void returnAndConditionFalse() throws IOException {
         ExpressionDef andExpression = new ExpressionDef.And(
             ExpressionDef.trueValue().isTrue(),
