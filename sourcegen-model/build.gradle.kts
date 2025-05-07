@@ -7,9 +7,6 @@ dependencies {
 
     testImplementation(mn.micronaut.core.processor)
     testImplementation(mnTest.junit.jupiter.api)
-    testRuntimeOnly(mnTest.junit.jupiter.engine)
-}
 
-tasks.withType<Test> {
-    useJUnitPlatform()
+    testRuntimeOnly(mnTest.junit.jupiter.engine)
 }

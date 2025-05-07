@@ -65,7 +65,7 @@ final class LineWrapper {
       int nextNewline = s.indexOf('\n');
 
       // If s doesn't cause the current line to cross the limit, buffer it and return. We'll decide
-      // whether or not we have to wrap it later.
+      // whether we have to wrap it later.
       if (nextNewline == -1 && column + s.length() <= columnLimit) {
         buffer.append(s);
         column += s.length();
@@ -94,7 +94,7 @@ final class LineWrapper {
     this.indentLevel = indentLevel;
   }
 
-  /** Emit a newline character if the line will exceed it's limit, otherwise do nothing. */
+  /** Emit a newline character if the line will exceed its limit, otherwise do nothing. */
   void zeroWidthSpace(int indentLevel) throws IOException {
     if (closed) throw new IllegalStateException("closed");
 

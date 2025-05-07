@@ -12,3 +12,7 @@ if (sonatypePluginConfigured) {
         password = ossIndexPassword
     }
 }
+
+tasks.test {
+    useJUnitPlatform()
+}

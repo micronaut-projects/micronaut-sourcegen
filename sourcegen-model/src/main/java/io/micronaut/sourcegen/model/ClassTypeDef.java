@@ -756,7 +756,7 @@ public sealed interface ClassTypeDef extends TypeDef {
             }
             MethodDef methodDef = methods.get(0);
             return new LambdaDef(
-                (ClassTypeDef) ClassTypeDef.of(objectDef).resolveTypeVariables(resolvedTypeVariables),
+                ClassTypeDef.of(objectDef).resolveTypeVariables(resolvedTypeVariables),
                 methodDef,
                 methodDef.resolveTypeVariables(resolvedTypeVariables)
             );

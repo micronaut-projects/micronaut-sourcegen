@@ -296,7 +296,7 @@ public final class TypeSpec {
       Set<Modifier> implicitModifiers) throws IOException {
     // Nested classes interrupt wrapped line indentation.
     // Stash the current wrapping state and put
-    // it back afterwards when this type is complete.
+    // it back afterward when this type is complete.
     int previousStatementLine = codeWriter.statementLine;
     codeWriter.statementLine = -1;
 

@@ -82,7 +82,7 @@ public class ObjectTest {
         var personSingleNull = new Person4(124L, Person4.Title.MR,"Cédric", null);
 
         assertNotEquals(null, person);
-        assertNotEquals(person, new Object());
+        assertNotEquals(new Object(), person);
 
         assertEquals(personDoubleNull1, personDoubleNull2);
         assertNotEquals(personSingleNull, person);

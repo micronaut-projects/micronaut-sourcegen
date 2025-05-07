@@ -13,7 +13,6 @@ dependencies {
     testRuntimeOnly(mnTest.junit.jupiter.engine)
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform()
+tasks.test {
     develocity.predictiveTestSelection.enabled = false
 }

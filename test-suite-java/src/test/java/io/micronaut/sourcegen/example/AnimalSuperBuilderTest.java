@@ -37,11 +37,11 @@ class AnimalSuperBuilderTest {
             .color("Red")
             .build();
 
-        assertEquals(cat.getName(), "MrPurr");
-        assertEquals(cat.getAge(), 2);
-        assertEquals(cat.getBread(), "British");
-        assertEquals(cat.getMeowLevel(), 100);
-        assertEquals(cat.getColor(), "Red");
+        assertEquals("MrPurr", cat.getName());
+        assertEquals(2, cat.getAge());
+        assertEquals("British", cat.getBread());
+        assertEquals(100, cat.getMeowLevel());
+        assertEquals("Red", cat.getColor());
     }
 
     @Test
@@ -55,11 +55,11 @@ class AnimalSuperBuilderTest {
             .big(true)
             .build();
 
-        assertEquals(dog.getName(), "MrDog");
-        assertEquals(dog.getAge(), 3);
-        assertEquals(dog.getBread(), "JackR");
-        assertEquals(dog.getBarkLevel(), 20);
-        assertEquals(dog.getColor(), "Blue");
+        assertEquals("MrDog", dog.getName());
+        assertEquals(3, dog.getAge());
+        assertEquals("JackR", dog.getBread());
+        assertEquals(20, dog.getBarkLevel());
+        assertEquals("Blue", dog.getColor());
         assertTrue(dog.isBig());
     }
 //end::test[]

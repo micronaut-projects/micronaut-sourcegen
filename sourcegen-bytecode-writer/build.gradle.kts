@@ -3,13 +3,12 @@ plugins {
 }
 
 repositories {
-    maven(
-        url = uri("https://www.jetbrains.com/intellij-repository/releases/")
-    )
+    maven(uri("https://www.jetbrains.com/intellij-repository/releases/"))
 }
 
 dependencies {
     api(projects.sourcegenModel)
+
     implementation(libs.managed.asm)
     implementation(libs.managed.asm.commons)
     implementation(libs.managed.asm.util)
@@ -28,8 +27,4 @@ dependencies {
     testImplementation(projects.testSuiteCustomGenerators)
 
     testRuntimeOnly(mnTest.junit.jupiter.engine)
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
 }

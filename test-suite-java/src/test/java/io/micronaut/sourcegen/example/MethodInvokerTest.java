@@ -6,6 +6,9 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 public class MethodInvokerTest {
 
     MyRepository repository = new MyRepository() {
@@ -59,7 +62,7 @@ public class MethodInvokerTest {
 
     @Test
     public void testDefaultMethod() {
-        Assertions.assertEquals(
+        assertEquals(
             "DEFAULT102",
             MethodInvoker.invokeDefaultMethod(repository, "DEFAULT", 100, 2)
         );
@@ -67,7 +70,7 @@ public class MethodInvokerTest {
 
     @Test
     public void testDefaultMethod2() {
-        Assertions.assertEquals(
+        assertEquals(
             "XDEFAULT102",
             MethodInvoker.invokeDefaultMethod(repositoryImplementedDefault, "DEFAULT", 100, 2)
         );
@@ -75,7 +78,7 @@ public class MethodInvokerTest {
 
     @Test
     public void testInterfaceMethod() {
-        Assertions.assertEquals(
+        assertEquals(
             "IFC102",
             MethodInvoker.invokeInterfaceMethod(repository, "IFC", 100, 2)
         );
@@ -83,7 +86,7 @@ public class MethodInvokerTest {
 
     @Test
     public void testStaticMethod() {
-        Assertions.assertEquals(
+        assertEquals(
             "STT102",
             MethodInvoker.invokeStaticMethod("STT", 100, 2)
         );
@@ -91,7 +94,7 @@ public class MethodInvokerTest {
 
     @Test
     public void testInterfaceSuperMethod() {
-        Assertions.assertEquals(
+        assertEquals(
             "ABCSTT102",
             new MethodRepositoryInvoker() {
 
@@ -120,7 +123,7 @@ public class MethodInvokerTest {
 
     @Test
     public void testDefaultMethodIgnoreResult() {
-        Assertions.assertEquals(
+        assertEquals(
             "Ignored",
             MethodInvoker.invokeDefaultMethodIgnoreResult(repository, "DEFAULT", 100, 2)
         );
@@ -128,7 +131,7 @@ public class MethodInvokerTest {
 
     @Test
     public void testDefaultMethod2IgnoreResult() {
-        Assertions.assertEquals(
+        assertEquals(
             "Ignored",
             MethodInvoker.invokeDefaultMethodIgnoreResult(repositoryImplementedDefault, "DEFAULT", 100, 2)
         );
@@ -136,7 +139,7 @@ public class MethodInvokerTest {
 
     @Test
     public void testInterfaceMethodIgnoreResult() {
-        Assertions.assertEquals(
+        assertEquals(
             "Ignored",
             MethodInvoker.invokeInterfaceMethodIgnoreResult(repository, "IFC", 100, 2)
         );
@@ -144,7 +147,7 @@ public class MethodInvokerTest {
 
     @Test
     public void testStaticMethodIgnoreResult() {
-        Assertions.assertEquals(
+        assertEquals(
             "Ignored",
             MethodInvoker.invokeStaticMethodIgnoreResult("STT", 100, 2)
         );
@@ -153,12 +156,12 @@ public class MethodInvokerTest {
     @Test
     public void testInvokeTryFinallyMethod() {
         AtomicInteger lock = new AtomicInteger();
-        Assertions.assertEquals(
+        assertEquals(
             0,
             lock.get()
         );
         MethodInvoker.invokeTryFinally(lock);
-        Assertions.assertEquals(
+        assertEquals(
             1,
             lock.get()
         );
@@ -167,19 +170,19 @@ public class MethodInvokerTest {
     @Test
     public void testInvokeTryFinallyLockMethod() {
         ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-        Assertions.assertEquals(
+        assertEquals(
             123,
             MethodInvoker.invokeTryFinallyReadLock(lock)
         );
-        Assertions.assertEquals(
+        assertEquals(
             123,
             MethodInvoker.invokeTryFinallyWriteLock(lock)
         );
-        Assertions.assertEquals(
+        assertEquals(
             123,
             MethodInvoker.invokeTryFinallyReadLock(lock)
         );
-        Assertions.assertEquals(
+        assertEquals(
             123,
             MethodInvoker.invokeTryFinallyWriteLock(lock)
         );
@@ -188,19 +191,16 @@ public class MethodInvokerTest {
     @Test
     public void testSwapper1() {
         Swapper swapper = new Swapper();
-        Assertions.assertEquals(
-            null,
-            swapper.getTarget()
-        );
+        assertNull(swapper.getTarget());
         Object o1 = new Object();
         swapper.swap(o1);
-        Assertions.assertEquals(
+        assertEquals(
             o1,
             swapper.getTarget()
         );
         Object o2 = new Object();
         swapper.swap(o2);
-        Assertions.assertEquals(
+        assertEquals(
             o2,
             swapper.getTarget()
         );
@@ -209,28 +209,25 @@ public class MethodInvokerTest {
     @Test
     public void testSwapper2() {
         Swapper swapper = new Swapper();
-        Assertions.assertEquals(
-            null,
-            swapper.getTarget()
-        );
+        assertNull(swapper.getTarget());
         AtomicInteger counter = new AtomicInteger();
         Object o1 = new Object();
         swapper.swap2(o1, counter);
-        Assertions.assertEquals(
+        assertEquals(
             o1,
             swapper.getTarget()
         );
-        Assertions.assertEquals(
+        assertEquals(
             0,
             counter.get()
         );
         Object o2 = new Object();
         swapper.swap2(o2, counter);
-        Assertions.assertEquals(
+        assertEquals(
             o2,
             swapper.getTarget()
         );
-        Assertions.assertEquals(
+        assertEquals(
             0,
             counter.get()
         );
@@ -239,10 +236,7 @@ public class MethodInvokerTest {
     @Test
     public void testSwapper3() {
         Swapper swapper = new Swapper();
-        Assertions.assertEquals(
-            null,
-            swapper.getTarget()
-        );
+        assertNull(swapper.getTarget());
         AtomicInteger counter = new AtomicInteger();
         try {
             swapper.swap3(new Object(), counter);
@@ -250,7 +244,7 @@ public class MethodInvokerTest {
         } catch (IllegalStateException e) {
             // Ignore
         }
-        Assertions.assertEquals(
+        assertEquals(
             0,
             counter.get()
         );
@@ -260,7 +254,7 @@ public class MethodInvokerTest {
         } catch (IllegalStateException e) {
             // Ignore
         }
-        Assertions.assertEquals(
+        assertEquals(
             0,
             counter.get()
         );
@@ -271,11 +265,11 @@ public class MethodInvokerTest {
         Swapper swapper = new Swapper();
         AtomicInteger counter = new AtomicInteger();
         Object result = swapper.swap4(new Object(), counter);
-        Assertions.assertEquals(
+        assertEquals(
             0,
             counter.get()
         );
-        Assertions.assertEquals(
+        assertEquals(
             "Bam",
             result
         );
@@ -284,19 +278,16 @@ public class MethodInvokerTest {
     @Test
     public void testSwapper5() {
         Swapper swapper = new Swapper();
-        Assertions.assertEquals(
-            null,
-            swapper.getTarget()
-        );
+        assertNull(swapper.getTarget());
         Object o1 = new Object();
         swapper.swap5(o1);
-        Assertions.assertEquals(
+        assertEquals(
             o1,
             swapper.getTarget()
         );
         Object o2 = new Object();
         swapper.swap5(o2);
-        Assertions.assertEquals(
+        assertEquals(
             o2,
             swapper.getTarget()
         );

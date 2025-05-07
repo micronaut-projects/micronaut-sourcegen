@@ -20,7 +20,7 @@ class Trigger {
         then:
             classLoader
             def clazz = classLoader.loadClass("example.MyClassWithLambda")
-            def instance = clazz.newInstance()
+            def instance = clazz.getDeclaredConstructor().newInstance()
             instance.callGenericLambda2("Hello!")
             instance.callGenericLambdaAst("Hello!")
     }

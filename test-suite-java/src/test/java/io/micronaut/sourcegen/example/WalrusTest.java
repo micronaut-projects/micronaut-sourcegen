@@ -28,9 +28,9 @@ class WalrusTest {
     public void test() throws Exception {
         Walrus walrus = new Walrus("Abc", 123, new byte[]{56});
 
-        assertEquals(walrus.name(), "Abc");
-        assertEquals(walrus.age(), 123);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+        assertEquals("Abc", walrus.name());
+        assertEquals(123, walrus.age());
+        assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
         Walrus finalWalrus = walrus;
         // The name property is annotated with @NonNull the `withName(null)` method should fail
@@ -38,21 +38,21 @@ class WalrusTest {
 
         walrus = walrus.withName("Xyz");
 
-        assertEquals(walrus.name(), "Xyz");
-        assertEquals(walrus.age(), 123);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+        assertEquals("Xyz", walrus.name());
+        assertEquals(123, walrus.age());
+        assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
         walrus = walrus.withAge(99);
 
-        assertEquals(walrus.name(), "Xyz");
-        assertEquals(walrus.age(), 99);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+        assertEquals("Xyz", walrus.name());
+        assertEquals(99, walrus.age());
+        assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
         walrus = walrus.withChipInfo(new byte[]{1, 2, 3});
 
-        assertEquals(walrus.name(), "Xyz");
-        assertEquals(walrus.age(), 99);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+        assertEquals("Xyz", walrus.name());
+        assertEquals(99, walrus.age());
+        assertArrayEquals(new byte[]{1, 2, 3}, walrus.chipInfo());
     }
 //end::test[]
 }

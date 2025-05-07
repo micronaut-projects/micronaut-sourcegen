@@ -104,7 +104,7 @@ public final class TypeVariableName extends TypeName {
    * Make a TypeVariableName for the given TypeMirror. This form is used internally to avoid
    * infinite recursion in cases like {@code Enum<E extends Enum<E>>}. When we encounter such a
    * thing, we will make a TypeVariableName without bounds and add that to the {@code typeVariables}
-   * map before looking up the bounds. Then if we encounter this TypeVariable again while
+   * map before looking up the bounds. Then, if we encounter this TypeVariable again while
    * constructing the bounds, we can just return it from the map. And, the code that put the entry
    * in {@code variables} will make sure that the bounds are filled in before returning.
    */

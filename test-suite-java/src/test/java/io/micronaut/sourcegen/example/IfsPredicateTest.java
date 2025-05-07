@@ -61,8 +61,8 @@ class IfsPredicateTest {
     @Test
     public void testIfElse2() {
         IfElsePredicate2 predicate = new IfElsePredicate2();
-        assertEquals(predicate.test(null), 1);
-        assertEquals(predicate.test(""), 2);
+        assertEquals(1, predicate.test(null));
+        assertEquals(2, predicate.test(""));
     }
 
     @Test
@@ -75,8 +75,8 @@ class IfsPredicateTest {
     @Test
     public void testIfExpressionElse2() {
         IfNonElseExpressionPredicate2 predicate = new IfNonElseExpressionPredicate2();
-        assertEquals(predicate.test(null), 1);
-        assertEquals(predicate.test(""), 2);
+        assertEquals(1, predicate.test(null));
+        assertEquals(2, predicate.test(""));
     }
 
     @Test

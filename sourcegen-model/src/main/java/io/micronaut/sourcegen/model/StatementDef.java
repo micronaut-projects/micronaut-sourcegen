@@ -351,7 +351,7 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      *
      * @param statement        The try statement
      * @param catches          The catches
-     * @param finallyStatement The finally statement
+     * @param finallyStatement The final statement
      * @since 1.5
      */
     @Experimental
