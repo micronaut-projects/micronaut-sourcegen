@@ -322,6 +322,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 innerBuilder = getEnumBuilder(innerEnumDef);
             } else if (innerType instanceof RecordDef innerRecordDef) {
                 innerBuilder = getRecordBuilder(innerRecordDef);
+            } else if (innerType instanceof AnnotationObjectDef annotationObjectDef) {
+                innerBuilder = getAnnotationObjectBuilder(annotationObjectDef);
             } else {
                 throw new IllegalStateException("Unknown object definition: " + innerType);
             }
