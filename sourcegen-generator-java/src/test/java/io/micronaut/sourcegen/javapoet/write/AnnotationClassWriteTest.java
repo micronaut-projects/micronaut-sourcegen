@@ -52,6 +52,8 @@ public class AnnotationClassWriteTest {
            * An annotation value with default
            */
           Target inner() default @Target(ElementType.TYPE);
+
+          int[] array() default {1, 2, 3};
         }
         """;
         assertEquals(expected.strip(), result.strip());

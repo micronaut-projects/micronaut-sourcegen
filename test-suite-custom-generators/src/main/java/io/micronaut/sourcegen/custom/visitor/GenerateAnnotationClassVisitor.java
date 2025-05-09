@@ -94,6 +94,9 @@ public final class GenerateAnnotationClassVisitor implements TypeElementVisitor<
                     .build())
                 .addJavadoc("An annotation value with default")
                 .build())
+            .addMember(AnnotationMemberDef.builder("array", TypeDef.Primitive.INT.array())
+                .withDefault(ExpressionDef.constant(new int[]{1, 2, 3}))
+                .build())
             .build();
     }
 
