@@ -2,16 +2,19 @@ package io.micronaut.sourcegen.generator.visitors;
 
 import io.micronaut.core.annotation.Introspected;
 import io.micronaut.core.annotation.NonNull;
+import io.micronaut.core.bind.annotation.Bindable;
 import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
+import io.micronaut.inject.ast.PrimitiveElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
+import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
@@ -43,7 +46,16 @@ public class TestRecordGenerator implements TypeElementVisitor<TestAnn, Object> 
         RecordDef.RecordDefBuilder builder = RecordDef.builder(className)
             .addAnnotation(Introspected.class);
         for (MethodElement method : methods) {
-            builder.addProperty(PropertyDef.builder(method.getName()).ofType(TypeDef.of(method.getGenericReturnType())).build());
+            PropertyDef.PropertyDefBuilder propertyDefBuilder = PropertyDef.builder(method.getName()).ofType(TypeDef.of(method.getGenericReturnType()));
+            ClassElement genericReturnType = method.getGenericReturnType();
+            if (genericReturnType.isPrimitive() &&
+                 !genericReturnType.isArray() &&
+                genericReturnType.getName().equals(PrimitiveElement.INT.getName())) {
+                propertyDefBuilder.addAnnotation(AnnotationDef.builder(Bindable.class).addMember("defaultValue", "10").build());
+                builder.addProperty(propertyDefBuilder.build());
+            } else {
+                builder.addProperty(propertyDefBuilder.build());
+            }
         }
 
         ClassTypeDef fieldType = TypeDef.parameterized(Set.class, String.class);
