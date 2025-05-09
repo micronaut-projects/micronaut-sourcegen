@@ -230,6 +230,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             if (member.getDefaultValue() != null) {
                 method.defaultValue(renderExpression(def, null, Collections.emptyMap(), member.getDefaultValue()));
             }
+            if (member.getAnnotationDefaultValue() != null) {
+                method.defaultAnnotationValue(asAnnotationSpec(member.getAnnotationDefaultValue()));
+            }
             builder.addMethod(method.build());
         }
         addInnerTypes(def.getInnerTypes(), builder, false);
