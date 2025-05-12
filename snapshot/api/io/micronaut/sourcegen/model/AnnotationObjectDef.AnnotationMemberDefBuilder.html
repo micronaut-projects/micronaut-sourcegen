@@ -113,8 +113,13 @@ loadScripts(document, 'script');</script>
 <div class="block">Create the annotation member definition instance.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="AnnotationObjectDef.AnnotationMemberDefBuilder.html" title="class in io.micronaut.sourcegen.model">AnnotationObjectDef.AnnotationMemberDefBuilder</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#withDefault(io.micronaut.sourcegen.model.ExpressionDef.Constant)" class="member-name-link">withDefault</a><wbr>(<a href="ExpressionDef.Constant.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Constant</a>&nbsp;defaultValue)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#withDefault(io.micronaut.sourcegen.model.AnnotationDef)" class="member-name-link">withDefault</a><wbr>(<a href="AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&nbsp;defaultValue)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Set the default value for a nested annotation.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="AnnotationObjectDef.AnnotationMemberDefBuilder.html" title="class in io.micronaut.sourcegen.model">AnnotationObjectDef.AnnotationMemberDefBuilder</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#withDefault(io.micronaut.sourcegen.model.ExpressionDef)" class="member-name-link">withDefault</a><wbr>(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;defaultValue)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set the default value for this annotation member.</div>
 </div>
 </div>
@@ -138,13 +143,27 @@ loadScripts(document, 'script');</script>
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="withDefault(io.micronaut.sourcegen.model.ExpressionDef.Constant)">
+<section class="detail" id="withDefault(io.micronaut.sourcegen.model.ExpressionDef)">
 <h3>withDefault</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="AnnotationObjectDef.AnnotationMemberDefBuilder.html" title="class in io.micronaut.sourcegen.model">AnnotationObjectDef.AnnotationMemberDefBuilder</a></span>&nbsp;<span class="element-name">withDefault</span><wbr><span class="parameters">(<a href="ExpressionDef.Constant.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Constant</a>&nbsp;defaultValue)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="AnnotationObjectDef.AnnotationMemberDefBuilder.html" title="class in io.micronaut.sourcegen.model">AnnotationObjectDef.AnnotationMemberDefBuilder</a></span>&nbsp;<span class="element-name">withDefault</span><wbr><span class="parameters">(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;defaultValue)</span></div>
 <div class="block">Set the default value for this annotation member.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>defaultValue</code> - The default value</dd>
+<dt>Returns:</dt>
+<dd>This builder</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="withDefault(io.micronaut.sourcegen.model.AnnotationDef)">
+<h3>withDefault</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="AnnotationObjectDef.AnnotationMemberDefBuilder.html" title="class in io.micronaut.sourcegen.model">AnnotationObjectDef.AnnotationMemberDefBuilder</a></span>&nbsp;<span class="element-name">withDefault</span><wbr><span class="parameters">(<a href="AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&nbsp;defaultValue)</span></div>
+<div class="block">Set the default value for a nested annotation.
+ The default is an annotation definition.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>defaultValue</code> - The default annotation definition</dd>
 <dt>Returns:</dt>
 <dd>This builder</dd>
 </dl>
