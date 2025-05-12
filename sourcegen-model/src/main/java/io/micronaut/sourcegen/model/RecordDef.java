@@ -78,11 +78,8 @@ public final class RecordDef extends ObjectDef {
      */
     public List<PropertyElement> getBeanProperties(VisitorContext visitorContext) {
         List<PropertyElement> propertyElements = new ArrayList<>(properties.size());
-        MutableAnnotationMetadata annotationMetadata = new MutableAnnotationMetadata();
-        for (AnnotationDef annotation : annotations) {
-            annotationMetadata.addDeclaredAnnotation(annotation.getType().getName(), new LinkedHashMap<>(annotation.getValues()));
-        }
         for (PropertyDef property : properties) {
+            MutableAnnotationMetadata annotationMetadata = toAnnotationMetadata(property);
             propertyElements.add(new PropertyElement() {
                 @Override
                 public @NonNull ClassElement getType() {
@@ -129,6 +126,14 @@ public final class RecordDef extends ObjectDef {
         return Collections.unmodifiableList(propertyElements);
     }
 
+    private static MutableAnnotationMetadata toAnnotationMetadata(PropertyDef property) {
+        MutableAnnotationMetadata annotationMetadata = new MutableAnnotationMetadata();
+        for (AnnotationDef annotation : property.annotations) {
+            annotationMetadata.addDeclaredAnnotation(annotation.getType().getName(), new LinkedHashMap<>(annotation.getValues()));
+        }
+        return annotationMetadata;
+    }
+
     /**
      * Turn the record components into constructor parameters.
      * @param visitorContext The visitor context.
@@ -136,11 +141,8 @@ public final class RecordDef extends ObjectDef {
      */
     public List<ParameterElement> getConstructorParameters(VisitorContext visitorContext) {
         List<ParameterElement> propertyElements = new ArrayList<>(properties.size());
-        MutableAnnotationMetadata annotationMetadata = new MutableAnnotationMetadata();
-        for (AnnotationDef annotation : annotations) {
-            annotationMetadata.addDeclaredAnnotation(annotation.getType().getName(), new LinkedHashMap<>(annotation.getValues()));
-        }
         for (PropertyDef property : properties) {
+            MutableAnnotationMetadata annotationMetadata = toAnnotationMetadata(property);
             propertyElements.add(new ParameterElement() {
                 @Override
                 public @NonNull ClassElement getType() {
