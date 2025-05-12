@@ -19,7 +19,6 @@ import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.sourcegen.model.ClassTypeDef.ClassName;
-import io.micronaut.sourcegen.model.ExpressionDef.Constant;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
@@ -153,14 +152,16 @@ public final class AnnotationObjectDef extends ObjectDef {
     public static final class AnnotationMemberDef extends AbstractElement {
 
         private final @NonNull TypeDef type;
-        private final @Nullable ExpressionDef.Constant defaultValue;
+        private final @Nullable ExpressionDef defaultValue;
+        private final @Nullable AnnotationDef defaultAnnotationValue;
 
         private AnnotationMemberDef(
-            @NonNull TypeDef type, @Nullable ExpressionDef.Constant defaultValue,
+            @NonNull TypeDef type, @Nullable ExpressionDef defaultValue, @Nullable AnnotationDef defaultAnnotationValue,
             String name, EnumSet<Modifier> modifiers, List<AnnotationDef> annotations, List<String> javadoc, boolean synthetic
         ) {
             super(name, modifiers, annotations, javadoc, synthetic);
             this.type = type;
+            this.defaultAnnotationValue = defaultAnnotationValue;
             this.defaultValue = defaultValue;
         }
 
@@ -186,8 +187,16 @@ public final class AnnotationObjectDef extends ObjectDef {
          * Get the default value of the member.
          * @return the default value
          */
-        public Constant getDefaultValue() {
+        public ExpressionDef getDefaultValue() {
             return defaultValue;
+        }
+
+        /**
+         * Get the default value of the member when .
+         * @return the default value
+         */
+        public AnnotationDef getAnnotationDefaultValue() {
+            return defaultAnnotationValue;
         }
     }
 
@@ -197,7 +206,8 @@ public final class AnnotationObjectDef extends ObjectDef {
     public static final class AnnotationMemberDefBuilder extends AbstractElementBuilder<AnnotationMemberDefBuilder> {
 
         private final TypeDef type;
-        private ExpressionDef.Constant defaultValue;
+        private ExpressionDef defaultValue;
+        private AnnotationDef defaultAnnotationValue;
 
         private AnnotationMemberDefBuilder(String name, TypeDef type) {
             super(name);
@@ -210,8 +220,19 @@ public final class AnnotationObjectDef extends ObjectDef {
          * @param defaultValue The default value
          * @return This builder
          */
-        public AnnotationMemberDefBuilder withDefault(ExpressionDef.Constant defaultValue) {
+        public AnnotationMemberDefBuilder withDefault(ExpressionDef defaultValue) {
             this.defaultValue = defaultValue;
+            return this;
+        }
+
+        /**
+         * Set the default value for a nested annotation.
+         * The default is an annotation definition.
+         * @param defaultValue The default annotation definition
+         * @return This builder
+         */
+        public AnnotationMemberDefBuilder withDefault(AnnotationDef defaultValue) {
+            this.defaultAnnotationValue = defaultValue;
             return this;
         }
 
@@ -220,7 +241,7 @@ public final class AnnotationObjectDef extends ObjectDef {
          * @return The instance
          */
         public AnnotationMemberDef build() {
-            return new AnnotationMemberDef(type, defaultValue, name, modifiers, annotations, javadoc, synthetic);
+            return new AnnotationMemberDef(type, defaultValue, defaultAnnotationValue, name, modifiers, annotations, javadoc, synthetic);
         }
 
     }
