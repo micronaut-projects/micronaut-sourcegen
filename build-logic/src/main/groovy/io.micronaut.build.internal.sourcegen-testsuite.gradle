@@ -3,6 +3,14 @@ plugins {
     id("io.micronaut.build.internal.common")
 }
 
+dependencies {
+    implementation(libs.managed.asm.commons)
+    implementation(libs.managed.asm.util)
+
+    testRuntimeOnly(libs.managed.asm.commons)
+    testRuntimeOnly(libs.managed.asm.util)
+}
+
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
 }

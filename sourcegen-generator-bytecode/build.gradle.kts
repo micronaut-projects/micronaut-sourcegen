@@ -1,5 +1,5 @@
 plugins {
-    id("io.micronaut.build.internal.sourcegen-module")
+    id("io.micronaut.build.internal.sourcegen-lib-module")
 }
 
 dependencies {
