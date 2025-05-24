@@ -13,11 +13,6 @@ if (sonatypePluginConfigured) {
     }
 }
 
-dependencies {
-    testImplementation(libs.managed.asm.commons)
-    testImplementation(libs.managed.asm.util)
-}
-
 tasks.test {
     useJUnitPlatform()
 }

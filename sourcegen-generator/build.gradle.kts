@@ -1,10 +1,12 @@
 plugins {
-    id("io.micronaut.build.internal.sourcegen-lib-module")
+    id("io.micronaut.build.internal.sourcegen-module")
 }
 
 dependencies {
     api(projects.sourcegenModel)
-    api(mn.micronaut.core.processor)
+    api(mn.micronaut.core.processor) {
+        exclude("org.yaml")
+    }
 
     implementation(projects.sourcegenAnnotations)
 

@@ -1,6 +1,5 @@
 [versions]
 managed-kotlinpoet = "2.0.0"
-managed-asm = "9.8"
 
 google-truth = "1.4.4"
 google-compile-testing = "0.21.0"
@@ -25,9 +24,6 @@ micronaut-validation = { module = "io.micronaut.validation:micronaut-validation-
 
 managed-kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "managed-kotlinpoet" }
 managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", version.ref = "managed-kotlinpoet" }
-managed-asm = { module = "org.ow2.asm:asm", version.ref = "managed-asm" }
-managed-asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "managed-asm" }
-managed-asm-util = { module = "org.ow2.asm:asm-util", version.ref = "managed-asm" }
 
 # Testing
 google-truth = { module = "com.google.truth:truth", version.ref = "google-truth" }

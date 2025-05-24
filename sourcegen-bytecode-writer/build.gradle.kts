@@ -1,5 +1,5 @@
 plugins {
-    id("io.micronaut.build.internal.sourcegen-lib-module")
+    id("io.micronaut.build.internal.sourcegen-module")
 }
 
 repositories {
@@ -9,9 +9,8 @@ repositories {
 dependencies {
     api(projects.sourcegenModel)
 
-    implementation(libs.managed.asm)
-    implementation(libs.managed.asm.commons)
-    implementation(libs.managed.asm.util)
+    implementation(mn.asm.commons)
+    implementation(mn.asm.util)
 
     compileOnly(mn.micronaut.core.processor)
 
