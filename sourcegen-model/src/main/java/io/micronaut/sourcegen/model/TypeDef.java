@@ -608,6 +608,11 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
         public TypeDef makeNullable() {
             return new TypeVariable(name, bounds, true);
         }
+
+        @Override
+        public boolean isNullable() {
+            return nullable;
+        }
     }
 
     /**
