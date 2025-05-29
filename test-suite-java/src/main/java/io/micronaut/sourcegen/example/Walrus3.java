@@ -25,6 +25,6 @@ public record Walrus3<I>(
     I name,
     int age,
     byte[] chipInfo
-)  {
+) implements Walrus3Wither<I> {
 }
 //end::clazz[]
