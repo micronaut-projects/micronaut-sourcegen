@@ -303,7 +303,6 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         if (builderType instanceof ClassTypeDef.Parameterized parameterized) {
             List<TypeDef> typeDefs = parameterized.typeArguments();
             List<TypeDef> resolvedTypeDefs = new ArrayList<>();
-            int index = 1;
             for (TypeDef typeDef : typeDefs) {
                 if (typeDef instanceof TypeDef.TypeVariable variable) {
                     TypeDef.TypeVariable newTypeDef = new TypeDef.TypeVariable(
