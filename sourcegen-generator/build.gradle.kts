@@ -4,7 +4,9 @@ plugins {
 
 dependencies {
     api(projects.sourcegenModel)
-    api(mn.micronaut.core.processor)
+    api(mn.micronaut.core.processor) {
+        exclude("org.yaml")
+    }
 
     implementation(projects.sourcegenAnnotations)
 

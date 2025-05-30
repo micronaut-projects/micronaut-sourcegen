@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Based on https://github.com/projectlombok/lombok/blob/eb4722c59ffc9e43e73bcf12fb52b2f8ad92ffef/src/core/lombok/core/handlers/Singulars.java.
+ * Based on <a href="https://github.com/projectlombok/lombok/blob/eb4722c59ffc9e43e73bcf12fb52b2f8ad92ffef/src/core/lombok/core/handlers/Singulars.java">link</a>.
  *
  * @since 1.2
  */

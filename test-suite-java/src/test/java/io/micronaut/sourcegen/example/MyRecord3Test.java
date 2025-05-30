@@ -43,7 +43,7 @@ class MyRecord3Test {
             bean.getClass().getDeclaredMethod("id").getModifiers()
         ));
         Deprecated deprecated = (Deprecated) bean.getClass().getDeclaredField("age").getDeclaredAnnotations()[0];
-        assertEquals(deprecated.since(), "xyz");
+        assertEquals("xyz", deprecated.since());
         assertTrue(deprecated.forRemoval());
     }
 
@@ -71,7 +71,7 @@ class MyRecord3Test {
             bean.getClass().getDeclaredMethod("id").getModifiers()
         ));
         Deprecated deprecated = (Deprecated) bean.getClass().getDeclaredField("age").getDeclaredAnnotations()[0];
-        assertEquals(deprecated.since(), "xyz");
+        assertEquals("xyz", deprecated.since());
         assertTrue(deprecated.forRemoval());
     }
 

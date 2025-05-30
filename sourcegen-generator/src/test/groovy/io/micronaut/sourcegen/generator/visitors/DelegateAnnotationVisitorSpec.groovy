@@ -1,6 +1,6 @@
-package io.micronaut.sourcegen.generator.visitors;
+package io.micronaut.sourcegen.generator.visitors
 
-import io.micronaut.annotation.processing.test.AbstractTypeElementSpec;
+import io.micronaut.annotation.processing.test.AbstractTypeElementSpec
 
 class DelegateAnnotationVisitorSpec extends AbstractTypeElementSpec {
 

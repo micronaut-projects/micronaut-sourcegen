@@ -15,8 +15,8 @@
  */
 package io.micronaut.sourcegen.example
 
-import junit.framework.TestCase.assertEquals
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.lang.Deprecated
 import java.lang.reflect.Modifier
@@ -33,22 +33,22 @@ internal class MyRecord2Test {
         assertEquals(listOf("Address 1"), bean.addresses)
         assertEquals(listOf("X", "Y"), bean.tags)
 
-        Assertions.assertTrue(
+        assertTrue(
             Modifier.isPrivate(
                 bean.javaClass.getDeclaredField("id").modifiers
             )
         )
-        Assertions.assertTrue(
+        assertTrue(
             bean.javaClass.constructors[0].parameters[0].declaredAnnotations[0] is Deprecated
         )
-        Assertions.assertTrue(
+        assertTrue(
             Modifier.isPublic(
                 bean.javaClass.getDeclaredMethod("getId").modifiers
             )
         )
         val deprecated =  bean.javaClass.constructors[0].parameters[2].declaredAnnotations[0] as Deprecated
-        Assertions.assertEquals(deprecated.since, "xyz")
-        Assertions.assertTrue(deprecated.forRemoval)
+        assertEquals(deprecated.since, "xyz")
+        assertTrue(deprecated.forRemoval)
     }
 
     @Test
@@ -68,21 +68,21 @@ internal class MyRecord2Test {
         assertEquals(listOf("Address 1"), bean.addresses)
         assertEquals(listOf("X", "Y"), bean.tags)
 
-        Assertions.assertTrue(
+        assertTrue(
             Modifier.isPrivate(
                 bean.javaClass.getDeclaredField("id").modifiers
             )
         )
-        Assertions.assertTrue(
+        assertTrue(
             bean.javaClass.constructors[0].parameters[0].declaredAnnotations[0] is Deprecated
         )
-        Assertions.assertTrue(
+        assertTrue(
             Modifier.isPublic(
                 bean.javaClass.getDeclaredMethod("getId").modifiers
             )
         )
         val deprecated =  bean.javaClass.constructors[0].parameters[2].declaredAnnotations[0] as Deprecated
-        Assertions.assertEquals(deprecated.since, "xyz")
-        Assertions.assertTrue(deprecated.forRemoval)
+        assertEquals(deprecated.since, "xyz")
+        assertTrue(deprecated.forRemoval)
     }
 }

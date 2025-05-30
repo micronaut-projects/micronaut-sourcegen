@@ -4,36 +4,32 @@ managed-kotlinpoet = "2.0.0"
 google-truth = "1.4.4"
 google-compile-testing = "0.21.0"
 google-jimfs = "1.3.0"
-intellij-java-decompiler = "251.23774.435"
+intellij-java-decompiler = "251.25410.129"
 
-managed-asm = "9.8"
+sonatype-scan = "3.0.0"
 
 micronaut = "4.8.14"
-micronaut-platform = "4.7.5"
+micronaut-platform = "4.8.2"
 micronaut-docs = "2.0.0"
 micronaut-test = "4.7.0"
 micronaut-data = "4.12.2"
 micronaut-validation = "4.9.0"
 micronaut-gradle-plugin = "4.5.3"
-sonatype-scan = "3.0.0"
 
 [libraries]
 # Micronaut
-micronaut-core = { module = 'io.micronaut:micronaut-core-bom', version.ref = 'micronaut' }
-micronaut-data = { module = 'io.micronaut.data:micronaut-data-bom', version.ref = 'micronaut-data' }
+micronaut-core = { module = "io.micronaut:micronaut-core-bom", version.ref = "micronaut" }
+micronaut-data = { module = "io.micronaut.data:micronaut-data-bom", version.ref = "micronaut-data" }
 micronaut-validation = { module = "io.micronaut.validation:micronaut-validation-bom", version.ref = "micronaut-validation" }
+
 managed-kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "managed-kotlinpoet" }
 managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", version.ref = "managed-kotlinpoet" }
-
-managed-asm = { module = "org.ow2.asm:asm", version.ref = "managed-asm" }
-managed-asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "managed-asm" }
-managed-asm-util = { module = "org.ow2.asm:asm-util", version.ref = "managed-asm" }
 
 # Testing
 google-truth = { module = "com.google.truth:truth", version.ref = "google-truth" }
 google-compile-testing = { module = "com.google.testing.compile:compile-testing", version.ref = "google-compile-testing" }
 google-jimfs = { module = "com.google.jimfs:jimfs", version.ref = "google-jimfs" }
+intellij-java-decompiler = { module = "com.jetbrains.intellij.java:java-decompiler-engine", version.ref = "intellij-java-decompiler" }
 
 sonatype-scan = { module = "org.sonatype.gradle.plugins:scan-gradle-plugin", version.ref = "sonatype-scan" }
 micronaut-gradle-plugin = { module = "io.micronaut.gradle:micronaut-gradle-plugin", version.ref="micronaut-gradle-plugin" }
-intellij-java-decompiler = { module = 'com.jetbrains.intellij.java:java-decompiler-engine', version.ref = 'intellij-java-decompiler' }

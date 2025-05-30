@@ -60,7 +60,7 @@ class MyBean1Test {
             bean.getClass().getDeclaredMethod("getId").getModifiers()
         ));
         Deprecated deprecated = (Deprecated) bean.getClass().getDeclaredField("age").getDeclaredAnnotations()[0];
-        assertEquals(deprecated.since(), "xyz");
+        assertEquals("xyz", deprecated.since());
         assertTrue(deprecated.forRemoval());
     }
 }

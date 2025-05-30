@@ -50,7 +50,7 @@ import java.util.Map;
  *
  * <p>Instances of this class are immutable value objects that implement {@code equals()} and {@code
  * hashCode()} properly.
- *
+ * <p>
  * <strong>Referencing existing types</strong>
  *
  * <p>Primitives and void are constants that you can reference directly: see {@link #INT}, {@link
@@ -58,7 +58,7 @@ import java.util.Map;
  *
  * <p>In an annotation processor you can get a type name instance for a type mirror by calling
  * {@link #get(TypeMirror)}. In reflection code, you can use {@link #get(Type)}.
- *
+ * <p>
  * <strong>Defining new types</strong>
  *
  * <p>Create new reference types like {@code com.example.HelloWorld} with {@link
@@ -134,7 +134,7 @@ public class TypeName {
 
   /**
    * Returns true if this is a primitive type like {@code int}. Returns false for all other types
-   * types including boxed primitives and {@code void}.
+   * including boxed primitives and {@code void}.
    */
   public boolean isPrimitive() {
     return keyword != null && this != VOID;
@@ -142,7 +142,7 @@ public class TypeName {
 
   /**
    * Returns true if this is a boxed primitive type like {@code Integer}. Returns false for all
-   * other types types including unboxed primitives and {@code java.lang.Void}.
+   * other types including unboxed primitives and {@code java.lang.Void}.
    */
   public boolean isBoxedPrimitive() {
     return this.equals(BOXED_BOOLEAN)

@@ -18,7 +18,7 @@ dependencies {
     annotationProcessor(mnValidation.micronaut.validation.processor)
 
     implementation(mnValidation.micronaut.validation)
-    implementation(projects.sourcegenAnnotations)    
+    implementation(projects.sourcegenAnnotations)
     implementation(projects.testSuiteCustomAnnotations)
     implementation(mnData.micronaut.data.model)
 

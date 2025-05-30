@@ -444,7 +444,9 @@ final class CodeWriter {
 
     // Match an imported type.
     ClassName importedType = importedTypes.get(simpleName);
-    if (importedType != null) return importedType;
+    if (importedType != null) {
+      return importedType;
+    }
 
     // No match.
     return null;

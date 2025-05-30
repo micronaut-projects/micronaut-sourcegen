@@ -11,7 +11,7 @@ dependencies {
     testImplementation(mnTest.mockito.core)
 }
 
-tasks.withType<Test> {
+tasks.test {
     useJUnit()
     develocity.predictiveTestSelection.enabled = false
 }

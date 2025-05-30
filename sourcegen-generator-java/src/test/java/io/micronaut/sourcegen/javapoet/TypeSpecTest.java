@@ -203,7 +203,7 @@ public final class TypeSpecTest {
 
   /**
    * We had a bug where annotations were preventing us from doing the right thing when resolving
-   * imports. https://github.com/square/javapoet/issues/422
+   * imports. <a href="https://github.com/square/javapoet/issues/422">Issue</a>
    */
   @Test public void annotationsAndJavaLangTypes() throws Exception {
     ClassName freeRange = ClassName.get("javax.annotation", "FreeRange");
@@ -504,7 +504,7 @@ public final class TypeSpecTest {
         + "}\n");
   }
 
-  /** https://github.com/square/javapoet/issues/193 */
+  /** <a href="https://github.com/square/javapoet/issues/193">Issue</a> */
   @Test public void enumsMayDefineAbstractMethods() throws Exception {
     TypeSpec roshambo = TypeSpec.enumBuilder("Tortilla")
         .addModifiers(Modifier.PUBLIC)
@@ -585,7 +585,7 @@ public final class TypeSpecTest {
         + "}\n");
   }
 
-  /** https://github.com/square/javapoet/issues/253 */
+  /** <a href="https://github.com/square/javapoet/issues/253">Issue</a> */
   @Test public void enumWithAnnotatedValues() throws Exception {
     TypeSpec roshambo = TypeSpec.enumBuilder("Roshambo")
         .addModifiers(Modifier.PUBLIC)

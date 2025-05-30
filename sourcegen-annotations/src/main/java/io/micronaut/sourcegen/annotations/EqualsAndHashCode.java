@@ -15,7 +15,9 @@
  */
 package io.micronaut.sourcegen.annotations;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 import static java.lang.annotation.ElementType.FIELD;
 import static java.lang.annotation.ElementType.PARAMETER;
@@ -25,7 +27,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * The EqualsAndHashCode annotation on a bean should generate an equals and a hashCode methods.
  * The equals method will be created in [BeanName]Utils class as a static method:
  *      public static boolean BeanNameUtils.equals(BeanName this, Object other)
- *
+ * <p>
  * The hashCode method will be created in [BeanName]Utils class as a static method:
  *      public static int BeanNameUtils.hashCode(BeanName object)
  *
@@ -44,6 +46,6 @@ public @interface EqualsAndHashCode {
      */
     @Retention(RUNTIME)
     @Target({FIELD, PARAMETER})
-    public @interface Exclude {
+    @interface Exclude {
     }
 }

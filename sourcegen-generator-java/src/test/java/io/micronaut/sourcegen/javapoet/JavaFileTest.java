@@ -558,7 +558,7 @@ public final class JavaFileTest {
         + "}\n");
   }
 
-  /** https://github.com/square/javapoet/issues/366 */
+  /** <a href="https://github.com/square/javapoet/issues/366">issue</a> */
   @Test public void annotationIsNestedClass() throws Exception {
     String source = JavaFile.builder("com.squareup.tacos",
         TypeSpec.classBuilder("TestComponent")

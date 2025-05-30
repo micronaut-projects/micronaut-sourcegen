@@ -28,64 +28,64 @@ class Walrus2Test {
     public void testWitherAndBuilder() throws Exception {
         Walrus2 walrus = new Walrus2("Abc", 123, new byte[]{56});
 
-        assertEquals(walrus.name(), "Abc");
-        assertEquals(walrus.age(), 123);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+        assertEquals("Abc", walrus.name());
+        assertEquals(123, walrus.age());
+        assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
         // The name property is NOT annotated with @NotNull so `withName(null)` method should NOT fail
         walrus = walrus.withName(null);
 
         assertNull(walrus.name());
-        assertEquals(walrus.age(), 123);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+        assertEquals(123, walrus.age());
+        assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
         walrus = walrus.withName("Xyz");
 
-        assertEquals(walrus.name(), "Xyz");
-        assertEquals(walrus.age(), 123);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+        assertEquals("Xyz", walrus.name());
+        assertEquals(123, walrus.age());
+        assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
         walrus = walrus.withAge(99);
 
-        assertEquals(walrus.name(), "Xyz");
-        assertEquals(walrus.age(), 99);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+        assertEquals("Xyz", walrus.name());
+        assertEquals(99, walrus.age());
+        assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
         walrus = walrus.withChipInfo(new byte[]{1, 2, 3});
 
-        assertEquals(walrus.name(), "Xyz");
-        assertEquals(walrus.age(), 99);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+        assertEquals("Xyz", walrus.name());
+        assertEquals(99, walrus.age());
+        assertArrayEquals(new byte[]{1, 2, 3}, walrus.chipInfo());
 
         walrus = walrus.with().build();
 
-        assertEquals(walrus.name(), "Xyz");
-        assertEquals(walrus.age(), 99);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+        assertEquals("Xyz", walrus.name());
+        assertEquals(99, walrus.age());
+        assertArrayEquals(new byte[]{1, 2, 3}, walrus.chipInfo());
 
         walrus = walrus.with().name("Foobar").build();
 
-        assertEquals(walrus.name(), "Foobar");
-        assertEquals(walrus.age(), 99);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+        assertEquals("Foobar", walrus.name());
+        assertEquals(99, walrus.age());
+        assertArrayEquals(new byte[]{1, 2, 3}, walrus.chipInfo());
 
         walrus = walrus.with().name("Abc").age(123).chipInfo(new byte[]{9, 8, 7}).build();
 
-        assertEquals(walrus.name(), "Abc");
-        assertEquals(walrus.age(), 123);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{9, 8, 7});
+        assertEquals("Abc", walrus.name());
+        assertEquals(123, walrus.age());
+        assertArrayEquals(new byte[]{9, 8, 7}, walrus.chipInfo());
 
         walrus = walrus.with(builder -> builder.name("Denis"));
 
-        assertEquals(walrus.name(), "Denis");
-        assertEquals(walrus.age(), 123);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{9, 8, 7});
+        assertEquals("Denis", walrus.name());
+        assertEquals(123, walrus.age());
+        assertArrayEquals(new byte[]{9, 8, 7}, walrus.chipInfo());
 
         walrus = walrus.with(builder -> builder.name("Kevin").age(1).chipInfo(new byte[]{123}));
 
-        assertEquals(walrus.name(), "Kevin");
-        assertEquals(walrus.age(), 1);
-        assertArrayEquals(walrus.chipInfo(), new byte[]{123});
+        assertEquals("Kevin", walrus.name());
+        assertEquals(1, walrus.age());
+        assertArrayEquals(new byte[]{123}, walrus.chipInfo());
     }
 //end::test[]
 }

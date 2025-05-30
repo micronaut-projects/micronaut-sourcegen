@@ -4,11 +4,9 @@ plugins {
 
 dependencies {
     api(projects.sourcegenGenerator)
-    api(projects.sourcegenBytecodeWriter)
+    api(projects.sourcegenBytecodeWriter) {
+        exclude("org.ow2.asm")
+    }
 
     testRuntimeOnly(mnTest.junit.jupiter.engine)
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
 }

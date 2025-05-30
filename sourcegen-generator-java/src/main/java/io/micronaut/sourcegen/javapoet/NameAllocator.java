@@ -24,7 +24,7 @@ import java.util.UUID;
 
 /**
  * Assigns Java identifier names to avoid collisions, keywords, and invalid characters. To use,
- * first create an instance and allocate all of the names that you need. Typically this is a
+ * first create an instance and allocate all the names that you need. Typically, this is a
  * mix of user-supplied names and constants: <pre>   {@code
  *
  *   NameAllocator nameAllocator = new NameAllocator();
@@ -35,7 +35,7 @@ import java.util.UUID;
  * }</pre>
  *
  * Pass a unique tag object to each allocation. The tag scopes the name, and can be used to look up
- * the allocated name later. Typically the tag is the object that is being named. In the above
+ * the allocated name later. Typically, the tag is the object that is being named. In the above
  * example we use {@code property} for the user-supplied property names, and {@code "string
  * builder"} for our constant string builder.
  *

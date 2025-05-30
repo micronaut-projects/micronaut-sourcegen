@@ -15,7 +15,9 @@
  */
 package io.micronaut.sourcegen.annotations;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 import static java.lang.annotation.ElementType.FIELD;
 import static java.lang.annotation.ElementType.PARAMETER;
@@ -41,6 +43,6 @@ public @interface ToString {
      */
     @Retention(RUNTIME)
     @Target({FIELD, PARAMETER})
-    public @interface Exclude {
+    @interface Exclude {
     }
 }
