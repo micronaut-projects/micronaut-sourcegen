@@ -91,14 +91,14 @@ loadScripts(document, 'script');</script>
 
  <p>Instances of this class are immutable value objects that implement <code>equals()</code> and <code>
  hashCode()</code> properly.
-
+ <p>
  <strong>Referencing existing types</strong>
 
  <p>Primitives and void are constants that you can reference directly: see <a href="#INT"><code>INT</code></a>, <a href="#DOUBLE"><code>DOUBLE</code></a>, and <a href="#VOID"><code>VOID</code></a>.
 
  <p>In an annotation processor you can get a type name instance for a type mirror by calling
  <a href="#get(javax.lang.model.type.TypeMirror)"><code>get(TypeMirror)</code></a>. In reflection code, you can use <a href="#get(java.lang.reflect.Type)"><code>get(Type)</code></a>.
-
+ <p>
  <strong>Defining new types</strong>
 
  <p>Create new reference types like <code>com.example.HelloWorld</code> with <a href="ClassName.html#get(java.lang.String,java.lang.String,java.lang.String...)"><code>ClassName.get(String, String, String...)</code></a>. To build composite types like <code>char[]</code> and
@@ -344,7 +344,7 @@ loadScripts(document, 'script');</script>
 <h3>isPrimitive</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isPrimitive</span>()</div>
 <div class="block">Returns true if this is a primitive type like <code>int</code>. Returns false for all other types
- types including boxed primitives and <code>void</code>.</div>
+ including boxed primitives and <code>void</code>.</div>
 </section>
 </li>
 <li>
@@ -352,7 +352,7 @@ loadScripts(document, 'script');</script>
 <h3>isBoxedPrimitive</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isBoxedPrimitive</span>()</div>
 <div class="block">Returns true if this is a boxed primitive type like <code>Integer</code>. Returns false for all
- other types types including unboxed primitives and <code>java.lang.Void</code>.</div>
+ other types including unboxed primitives and <code>java.lang.Void</code>.</div>
 </section>
 </li>
 <li>
