@@ -99,7 +99,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 if (!beanProperty.getDeclaringType().equals(element)) {
                     continue;
                 }
-                createModifyPropertyMethod(abstractBuilder, beanProperty, buildContext -> buildContext.aThis().invoke("self", buildContext.aThis().type()).cast(selfType).returning());
+                createModifyPropertyMethod(abstractBuilder, abstractBuilderType, beanProperty, buildContext -> buildContext.aThis().invoke("self", buildContext.aThis().type()).cast(selfType).returning());
             }
 
             abstractBuilder.addMethod(MethodDef.builder("self").addModifiers(Modifier.ABSTRACT).returns(selfType).build());

@@ -126,7 +126,16 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         String witherClassName = packageName + "." + simpleName;
         InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
             .addModifiers(Modifier.PUBLIC);
-
+        if (recordType instanceof ClassTypeDef.Parameterized parameterized) {
+            List<TypeDef> typeDefs = parameterized.typeArguments();
+            for (TypeDef typeDef : typeDefs) {
+                if (typeDef instanceof TypeDef.TypeVariable variable) {
+                    wither.addTypeVariable(
+                        variable
+                    );
+                }
+            }
+        }
         weaveWithMethodsInternal(recordType, properties, parameters, hasBuilder, wither);
         return wither;
     }
@@ -165,7 +174,16 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         if (hasBuilder) {
             String builderSimpleName = recordType.getSimpleName() + "Builder";
             String builderClassName = recordType.getPackageName() + "." + builderSimpleName;
-            ClassTypeDef builderType = ClassTypeDef.of(builderClassName);
+            ClassTypeDef builderType;
+
+            if (recordType instanceof ClassTypeDef.Parameterized parameterized) {
+                builderType = TypeDef.parameterized(
+                    ClassTypeDef.of(builderClassName),
+                    parameterized.typeArguments()
+                );
+            } else {
+                builderType = ClassTypeDef.of(builderClassName);
+            }
 
             MethodDef withMethod = createWithMethod(wither, parameters, builderType, propertyAccessMethods);
             wither.addMethod(withMethod);

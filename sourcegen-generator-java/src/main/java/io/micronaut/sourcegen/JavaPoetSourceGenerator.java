@@ -409,6 +409,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (!methodName.equals(MethodSpec.CONSTRUCTOR)) {
             methodBuilder.returns(asType(method.getReturnType(), objectDef, method));
         }
+        for (TypeDef.TypeVariable typeVariable : method.getTypeVariables()) {
+            methodBuilder.addTypeVariable(
+                asTypeVariable(typeVariable, null)
+            );
+        }
         method.getJavadoc().forEach(methodBuilder::addJavadoc);
         for (AnnotationDef annotation : method.getAnnotations()) {
             methodBuilder.addAnnotation(
@@ -497,7 +502,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
             return ParameterizedTypeName.get(
                 asClassType(parameterized.rawType()),
-                parameterized.typeArguments().stream().map(t -> asType(t, objectDef)).toArray(TypeName[]::new)
+                parameterized.typeArguments().stream().map(t -> asType(t, objectDef, methodDef)).toArray(TypeName[]::new)
             );
         }
         if (typeDef instanceof TypeDef.Primitive primitive) {
@@ -539,7 +544,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             );
         }
         if (typeDef instanceof TypeDef.TypeVariable typeVariable) {
-            if (isVariablePartOfTheDefinition(typeVariable.name(), objectDef, null)) {
+            if (isVariablePartOfTheDefinition(typeVariable.name(), objectDef, methodDef)) {
                 return asTypeVariable(typeVariable, objectDef);
             }
             if (typeVariable.bounds().isEmpty()) {
