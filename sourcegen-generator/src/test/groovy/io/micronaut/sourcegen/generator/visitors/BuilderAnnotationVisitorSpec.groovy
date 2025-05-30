@@ -66,7 +66,7 @@ class BuilderAnnotationVisitorSpec extends AbstractTypeElementSpec {
         var walrusBuilderClass = classLoader.loadClass("test.WalrusBuilder")
 
         expect:
-        var walrusBuilder = walrusBuilderClass.builder(String.class)
+        var walrusBuilder = walrusBuilderClass.builder()
         walrusBuilderClass.getTypeParameters().size() == 1
         walrusBuilderClass.getTypeParameters()[0].name == "I"
         var walrus = walrusBuilder

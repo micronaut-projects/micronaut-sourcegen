@@ -315,14 +315,6 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     methodBuilder.addTypeVariable(
                         newTypeDef
                     );
-
-                    methodBuilder.addParameter(
-                        "t" + index++,
-                        TypeDef.parameterized(
-                            ClassTypeDef.of(Class.class),
-                            newTypeDef
-                        )
-                    );
                 }
             }
 
