@@ -26,10 +26,30 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 /**
  * The expression writer.
  *
- * @author Denis Stepano
+ * @author Denis Stepanov
  * @since 1.5
  */
-public sealed interface ExpressionWriter permits AbstractStatementAwareExpressionWriter, ArrayElementExpressionWriter, CastExpressionWriter, ConditionExpressionWriter, ConstantExpressionWriter, GetPropertyExpressionWriter, IfElseExpressionWriter, InstanceOfExpressionWriter, InvokeGetClassExpressionWriter, InvokeHashCodeMethodExpressionWriter, InvokeInstanceMethodExpressionWriter, InvokeStaticMethodExpressionWriter, MathBinaryExpressionWriter, MathUnaryExpressionWriter, NewArrayInitializedExpressionWriter, NewArrayOfSizeExpressionWriter, NewInstanceExpressionWriter, SwitchExpressionWriter, SwitchYieldCaseExpressionWriter, VariableExpressionWriter {
+public sealed interface ExpressionWriter
+        permits AbstractStatementAwareExpressionWriter,
+        ArrayElementExpressionWriter,
+        CastExpressionWriter,
+        ConditionExpressionWriter,
+        ConstantExpressionWriter,
+        GetPropertyExpressionWriter,
+        IfElseExpressionWriter,
+        InstanceOfExpressionWriter,
+        InvokeGetClassExpressionWriter,
+        InvokeHashCodeMethodExpressionWriter,
+        InvokeInstanceMethodExpressionWriter,
+        InvokeStaticMethodExpressionWriter,
+        MathBinaryExpressionWriter,
+        MathUnaryExpressionWriter,
+        NewArrayInitializedExpressionWriter,
+        NewArrayOfSizeExpressionWriter,
+        NewInstanceExpressionWriter,
+        SwitchExpressionWriter,
+        SwitchYieldCaseExpressionWriter,
+        VariableExpressionWriter {
 
     /**
      * Create a writer from an expression.
@@ -97,6 +117,9 @@ public sealed interface ExpressionWriter permits AbstractStatementAwareExpressio
         }
         if (expressionDef instanceof Lambda lambda) {
             return new LambdaExpressionWriter(lambda);
+        }
+        if (expressionDef instanceof ExpressionDef.StringConcatenation concat) {
+            return new StringConcatenationExpressionWriter(concat);
         }
         throw new UnsupportedOperationException("Unrecognized expression: " + expressionDef);
     }

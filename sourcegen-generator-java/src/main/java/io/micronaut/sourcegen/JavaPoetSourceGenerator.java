@@ -943,6 +943,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             return builder.build();
         }
+        if (expressionDef instanceof ExpressionDef.StringConcatenation concat) {
+            ExpressionDef left = concat.left();
+            if (!left.type().equals(TypeDef.STRING) && !(concat.right().type().equals(TypeDef.STRING))) {
+                left = TypeDef.STRING.invokeStatic("valueOf", TypeDef.STRING, left);
+            }
+            return CodeBlock.concat(
+                renderExpression(objectDef, methodDef, remappedLocals, left),
+                CodeBlock.of(" + "),
+                renderExpression(objectDef, methodDef, remappedLocals, concat.right())
+            );
+        }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 

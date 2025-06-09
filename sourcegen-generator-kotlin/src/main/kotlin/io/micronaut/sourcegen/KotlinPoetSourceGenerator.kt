@@ -1270,6 +1270,17 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 return builder.add("}").build()
             }
+            if (expressionDef is StringConcatenation) {
+                var left: ExpressionDef = expressionDef.left()
+                if (left.type() != TypeDef.STRING && !(expressionDef.right().type().equals(TypeDef.STRING))) {
+                    left = TypeDef.STRING.invokeStatic("valueOf", TypeDef.STRING, left)
+                }
+                return CodeBlock.builder()
+                    .add(renderExpressionCode(objectDef, methodDef, left))
+                    .add(" + ")
+                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.right))
+                    .build()
+            }
             throw IllegalStateException("Unrecognized expression: $expressionDef")
         }
 

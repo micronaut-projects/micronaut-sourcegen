@@ -20,6 +20,14 @@ class MyBean3Test {
 
     @Test
     @Throws(Exception::class)
+    fun testConcatenate() {
+        val bean3 = MyBean3()
+
+        assertEquals("Hello, Andriy", bean3.concatenation("Andriy"))
+    }
+
+    @Test
+    @Throws(Exception::class)
     fun testThrows() {
         val bean3 = MyBean3()
         assertThrows<IOException> { bean3.getStringUnsafe() }
