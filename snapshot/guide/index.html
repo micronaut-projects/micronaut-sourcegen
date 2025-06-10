@@ -119,13 +119,13 @@
         <h1>Compilation time source code generators</h1>
         <p></p>
         <p>Micronaut SourceGen exposes a language-neutral API for source code generation.</p>
-        <p><strong>Version:</strong> 1.7.11-SNAPSHOT </p>
+        <p><strong>Version:</strong> 1.8.0-SNAPSHOT </p>
     </div>
     
 <h1 id="introduction"><a class="anchor" href="#introduction"></a>1 Introduction</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/introduction.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/introduction.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -160,7 +160,7 @@
 <h1 id="releaseHistory"><a class="anchor" href="#releaseHistory"></a>2 Release History</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/releaseHistory.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/releaseHistory.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -176,7 +176,7 @@
 <h1 id="gettingStarted"><a class="anchor" href="#gettingStarted"></a>3 Quick Start</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/gettingStarted.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/gettingStarted.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -251,14 +251,14 @@
 <h1 id="generators"><a class="anchor" href="#generators"></a>4 Writing a Source Generator</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/generators.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/generators.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
 
 
 <div class="paragraph">
-<p>To write a source generator you have a few options. If you only wish to support Java you can use the <a href="https://github.com/square/javapoet">JavaPoet API</a> that is forked into the <code>io.micronaut.sourcegen.javapoet</code> package. Since JavaPoet is no longer being developed and maintained we recommending using this fork since it is maintained as part of the project and includes support for Java 17+ constructors like Records.</p>
+<p>To write a source generator you have a few options. If you only wish to support Java you can use the <a href="https://github.com/square/javapoet">JavaPoet API</a> that is forked into the <code>io.micronaut.sourcegen.javapoet</code> package. Since JavaPoet is no longer being developed and maintained we&#8217;re recommending using this fork since it is maintained as part of the project and includes support for Java 17+ constructors like Records.</p>
 </div>
 <div class="paragraph">
 <p>Alternatively, you can also use the language neutral code generation API defined in the <code>io.micronaut.sourcegen.model</code> package that works with both Kotlin and Java adding the ability to write code generators that work cross language.</p>
@@ -308,7 +308,7 @@
 <i class="fa icon-warning" title="Warning"></i>
 </td>
 <td class="content">
-The module you build will have to be placed on the annotation processor classpath of the target project. You CANNOT mix source generation code and application code is the same source tree. Typically you will have a separate project for your source generator a separate project for your application that uses the source generator. In addition the <code>micronaut-core-processor</code> module should NEVER be in the application classpath.
+The module you build will have to be placed on the annotation processor classpath of the target project. You CANNOT mix source generation code and application code is the same source tree. Typically, you will have a separate project for your source generator a separate project for your application that uses the source generator. In addition, the <code>micronaut-core-processor</code> module should NEVER be in the application classpath.
 </td>
 </tr>
 </table>
@@ -384,7 +384,7 @@ public final class GenerateInterfaceBuilder implements TypeElementVisitor&lt;Gen
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>You should obtain an instance of <a href="../api/io/micronaut/sourcegen/generator/SourceGenerator.html">SourceGenerator</a> from the context, in general this should never be <code>null</code> but you never know if a new language is added in the the future.</td>
+<td>You should obtain an instance of <a href="../api/io/micronaut/sourcegen/generator/SourceGenerator.html">SourceGenerator</a> from the context, in general this should never be <code>null</code> but you never know if a new language is added in the future.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="4"></i><b>4</b></td>
@@ -412,7 +412,7 @@ To see more examples take a look at some of the existing implementations like <a
 <h1 id="annotations"><a class="anchor" href="#annotations"></a>5 Annotations</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/annotations.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/annotations.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -474,7 +474,7 @@ To see more examples take a look at some of the existing implementations like <a
 <h2 id="builder"><a class="anchor" href="#builder"></a>5.1 Builder</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/annotations/builder.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/annotations/builder.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -526,7 +526,7 @@ The <a href="https://github.com/micronaut-projects/micronaut-sourcegen/blob/mast
 <h2 id="wither"><a class="anchor" href="#wither"></a>5.2 Wither</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/annotations/wither.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/annotations/wither.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -556,9 +556,9 @@ public record Walrus (
 public void test() throws Exception {
     Walrus walrus = new Walrus("Abc", 123, new byte[]{56});
 
-    assertEquals(walrus.name(), "Abc");
-    assertEquals(walrus.age(), 123);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+    assertEquals("Abc", walrus.name());
+    assertEquals(123, walrus.age());
+    assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
     Walrus finalWalrus = walrus;
     // The name property is annotated with @NonNull the `withName(null)` method should fail
@@ -566,21 +566,21 @@ public void test() throws Exception {
 
     walrus = walrus.withName("Xyz");
 
-    assertEquals(walrus.name(), "Xyz");
-    assertEquals(walrus.age(), 123);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+    assertEquals("Xyz", walrus.name());
+    assertEquals(123, walrus.age());
+    assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
     walrus = walrus.withAge(99);
 
-    assertEquals(walrus.name(), "Xyz");
-    assertEquals(walrus.age(), 99);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+    assertEquals("Xyz", walrus.name());
+    assertEquals(99, walrus.age());
+    assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
     walrus = walrus.withChipInfo(new byte[]{1, 2, 3});
 
-    assertEquals(walrus.name(), "Xyz");
-    assertEquals(walrus.age(), 99);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+    assertEquals("Xyz", walrus.name());
+    assertEquals(99, walrus.age());
+    assertArrayEquals(new byte[]{1, 2, 3}, walrus.chipInfo());
 }</code></pre>
 </div>
 </div>
@@ -618,64 +618,64 @@ public record Walrus2(
 public void testWitherAndBuilder() throws Exception {
     Walrus2 walrus = new Walrus2("Abc", 123, new byte[]{56});
 
-    assertEquals(walrus.name(), "Abc");
-    assertEquals(walrus.age(), 123);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+    assertEquals("Abc", walrus.name());
+    assertEquals(123, walrus.age());
+    assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
     // The name property is NOT annotated with @NotNull so `withName(null)` method should NOT fail
     walrus = walrus.withName(null);
 
     assertNull(walrus.name());
-    assertEquals(walrus.age(), 123);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+    assertEquals(123, walrus.age());
+    assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
     walrus = walrus.withName("Xyz");
 
-    assertEquals(walrus.name(), "Xyz");
-    assertEquals(walrus.age(), 123);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+    assertEquals("Xyz", walrus.name());
+    assertEquals(123, walrus.age());
+    assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
     walrus = walrus.withAge(99);
 
-    assertEquals(walrus.name(), "Xyz");
-    assertEquals(walrus.age(), 99);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{56});
+    assertEquals("Xyz", walrus.name());
+    assertEquals(99, walrus.age());
+    assertArrayEquals(new byte[]{56}, walrus.chipInfo());
 
     walrus = walrus.withChipInfo(new byte[]{1, 2, 3});
 
-    assertEquals(walrus.name(), "Xyz");
-    assertEquals(walrus.age(), 99);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+    assertEquals("Xyz", walrus.name());
+    assertEquals(99, walrus.age());
+    assertArrayEquals(new byte[]{1, 2, 3}, walrus.chipInfo());
 
     walrus = walrus.with().build();
 
-    assertEquals(walrus.name(), "Xyz");
-    assertEquals(walrus.age(), 99);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+    assertEquals("Xyz", walrus.name());
+    assertEquals(99, walrus.age());
+    assertArrayEquals(new byte[]{1, 2, 3}, walrus.chipInfo());
 
     walrus = walrus.with().name("Foobar").build();
 
-    assertEquals(walrus.name(), "Foobar");
-    assertEquals(walrus.age(), 99);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{1, 2, 3});
+    assertEquals("Foobar", walrus.name());
+    assertEquals(99, walrus.age());
+    assertArrayEquals(new byte[]{1, 2, 3}, walrus.chipInfo());
 
     walrus = walrus.with().name("Abc").age(123).chipInfo(new byte[]{9, 8, 7}).build();
 
-    assertEquals(walrus.name(), "Abc");
-    assertEquals(walrus.age(), 123);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{9, 8, 7});
+    assertEquals("Abc", walrus.name());
+    assertEquals(123, walrus.age());
+    assertArrayEquals(new byte[]{9, 8, 7}, walrus.chipInfo());
 
     walrus = walrus.with(builder -&gt; builder.name("Denis"));
 
-    assertEquals(walrus.name(), "Denis");
-    assertEquals(walrus.age(), 123);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{9, 8, 7});
+    assertEquals("Denis", walrus.name());
+    assertEquals(123, walrus.age());
+    assertArrayEquals(new byte[]{9, 8, 7}, walrus.chipInfo());
 
     walrus = walrus.with(builder -&gt; builder.name("Kevin").age(1).chipInfo(new byte[]{123}));
 
-    assertEquals(walrus.name(), "Kevin");
-    assertEquals(walrus.age(), 1);
-    assertArrayEquals(walrus.chipInfo(), new byte[]{123});
+    assertEquals("Kevin", walrus.name());
+    assertEquals(1, walrus.age());
+    assertArrayEquals(new byte[]{123}, walrus.chipInfo());
 }</code></pre>
 </div>
 </div>
@@ -683,7 +683,7 @@ public void testWitherAndBuilder() throws Exception {
 <h2 id="superBuilder"><a class="anchor" href="#superBuilder"></a>5.3 Super Builder</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/annotations/superBuilder.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/annotations/superBuilder.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -787,11 +787,11 @@ public void testCat() {
         .color("Red")
         .build();
 
-    assertEquals(cat.getName(), "MrPurr");
-    assertEquals(cat.getAge(), 2);
-    assertEquals(cat.getBread(), "British");
-    assertEquals(cat.getMeowLevel(), 100);
-    assertEquals(cat.getColor(), "Red");
+    assertEquals("MrPurr", cat.getName());
+    assertEquals(2, cat.getAge());
+    assertEquals("British", cat.getBread());
+    assertEquals(100, cat.getMeowLevel());
+    assertEquals("Red", cat.getColor());
 }
 
 @Test
@@ -805,11 +805,11 @@ public void testDog() {
         .big(true)
         .build();
 
-    assertEquals(dog.getName(), "MrDog");
-    assertEquals(dog.getAge(), 3);
-    assertEquals(dog.getBread(), "JackR");
-    assertEquals(dog.getBarkLevel(), 20);
-    assertEquals(dog.getColor(), "Blue");
+    assertEquals("MrDog", dog.getName());
+    assertEquals(3, dog.getAge());
+    assertEquals("JackR", dog.getBread());
+    assertEquals(20, dog.getBarkLevel());
+    assertEquals("Blue", dog.getColor());
     assertTrue(dog.isBig());
 }</code></pre>
 </div>
@@ -818,7 +818,7 @@ public void testDog() {
 <h2 id="singular"><a class="anchor" href="#singular"></a>5.4 Singular</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/annotations/singular.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/annotations/singular.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -959,7 +959,7 @@ public void testClear() {
 <h2 id="toString"><a class="anchor" href="#toString"></a>5.5 ToString</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/annotations/toString.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/annotations/toString.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1075,7 +1075,7 @@ public void testToString() {
 <h2 id="equalsAndHashCode"><a class="anchor" href="#equalsAndHashCode"></a>5.6 Equals and HashCode</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/annotations/equalsAndHashCode.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/annotations/equalsAndHashCode.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1230,7 +1230,7 @@ public void testEqualsWithNulls() {
     var personSingleNull = new Person4(124L, Person4.Title.MR,"Cédric", null);
 
     assertNotEquals(null, person);
-    assertNotEquals(person, new Object());
+    assertNotEquals(new Object(), person);
 
     assertEquals(personDoubleNull1, personDoubleNull2);
     assertNotEquals(personSingleNull, person);
@@ -1272,7 +1272,7 @@ public void testHashCode() {
 <h2 id="delegate"><a class="anchor" href="#delegate"></a>5.7 Delegate</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/annotations/delegate.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/annotations/delegate.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1365,7 +1365,7 @@ assertEquals("wash flowers", worker.currentTask());</code></pre>
 <h1 id="repository"><a class="anchor" href="#repository"></a>6 Repository</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.7.x/src/main/docs/guide/repository.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/1.8.x/src/main/docs/guide/repository.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
