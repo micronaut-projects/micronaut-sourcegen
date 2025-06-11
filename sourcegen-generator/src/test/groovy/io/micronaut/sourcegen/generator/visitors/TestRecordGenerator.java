@@ -24,6 +24,7 @@ import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
+import jakarta.annotation.Nonnull;
 
 import javax.lang.model.element.Modifier;
 import java.util.List;
@@ -57,6 +58,11 @@ public class TestRecordGenerator implements TypeElementVisitor<TestAnn, Object> 
                 builder.addProperty(propertyDefBuilder.build());
             }
         }
+        builder.addProperty(PropertyDef.builder("listProperty")
+            .ofType(TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.of(String.class)
+                .annotated(AnnotationDef.builder(Nonnull.class).build())
+            ))
+            .build());
 
         ClassTypeDef fieldType = TypeDef.parameterized(Set.class, String.class);
         builder.addProperty(PropertyDef.builder("explicitlySet").ofType(fieldType).build());
