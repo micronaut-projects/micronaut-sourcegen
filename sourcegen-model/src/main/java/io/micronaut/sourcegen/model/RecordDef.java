@@ -210,6 +210,18 @@ public final class RecordDef extends ObjectDef {
             if (componentType instanceof ArrayableClassElement arrayableClassElement) {
                 return arrayableClassElement.withArrayDimensions(array.dimensions());
             }
+        } else if (type instanceof TypeDef.AnnotatedTypeDef annotated) {
+            ClassElement element = toClassElement(annotated.typeDef(), visitorContext);
+            for (AnnotationDef annotation: annotated.annotations()) {
+                element.annotate(annotation.toAnnotationValue());
+            }
+            return element;
+        } else if (type instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
+            ClassElement element = toClassElement(annotated.typeDef(), visitorContext);
+            for (AnnotationDef annotation: annotated.annotations()) {
+                element.annotate(annotation.toAnnotationValue());
+            }
+            return element;
         }
         throw new IllegalStateException("Only properties constructed from source elements are supported");
     }

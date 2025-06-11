@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.AnnotationValue;
+import io.micronaut.core.annotation.AnnotationValueBuilder;
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.FieldElement;
@@ -26,8 +27,11 @@ import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -100,6 +104,44 @@ public final class AnnotationDef {
                     .ifPresent(copiedValue -> builder.addMember(key, copiedValue))
         );
         return builder.build();
+    }
+
+    /**
+     * Convert to an annotation value.
+     * @return The annotation value
+     */
+    AnnotationValue<?> toAnnotationValue() {
+        AnnotationValueBuilder<?> builder = AnnotationValue.builder(getType().getName());
+        Map<CharSequence, Object> members = new HashMap<>();
+        for (Entry<String, Object> entry: getValues().entrySet()) {
+            members.put(entry.getKey(), toAnnotationValueMember(entry.getValue()));
+        }
+        return builder.members(members).build();
+    }
+
+    /**
+     * Convert a member that is defined in {@link #values} to a member
+     * that could be added to an {@link AnnotationValue}.
+     */
+    private static Object toAnnotationValueMember(Object member) {
+        if (member instanceof Collection<?> collection) {
+            Iterator<?> iterator = collection.iterator();
+            Object[] objects = new Object[collection.size()];
+            for (int i = 0; i < objects.length; i++) {
+                objects[i] = toAnnotationValueMember(iterator.next());
+            }
+            return objects;
+        } else if (member instanceof AnnotationDef annotationDef) {
+            return annotationDef.toAnnotationValue();
+        } else if (member instanceof ExpressionDef expressionDef) {
+            if (expressionDef instanceof ExpressionDef.Constant constant) {
+                return constant.value();
+            }
+            throw new IllegalArgumentException("Could not convert annotation that uses non-constant expressions to AnnotationValue");
+        } else if (member instanceof ClassTypeDef classTypeDef) {
+            return classTypeDef.toString();
+        }
+        return member;
     }
 
     /**
