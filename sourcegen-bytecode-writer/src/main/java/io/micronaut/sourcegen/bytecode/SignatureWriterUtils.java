@@ -115,7 +115,9 @@ final class SignatureWriterUtils {
             return null;
         }
         SignatureWriter signatureWriter = new SignatureWriter();
-        // TODO: method generic bounds
+        for (TypeDef.TypeVariable typeVariable : methodDef.getTypeVariables()) {
+            writeSignature(signatureWriter, objectDef, methodDef, typeVariable, true);
+        }
         for (ParameterDef parameter : methodDef.getParameters()) {
             writeSignature(signatureWriter.visitParameterType(), objectDef, methodDef, parameter.getType(), false);
         }

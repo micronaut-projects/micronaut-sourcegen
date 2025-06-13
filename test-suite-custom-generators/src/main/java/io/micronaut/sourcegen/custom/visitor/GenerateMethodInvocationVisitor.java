@@ -33,9 +33,11 @@ import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.TypeDef.TypeVariable;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -65,10 +67,26 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
             return;
         }
 
-        ClassElement myRepository = context.getRequiredClassElement("io.micronaut.sourcegen.example.MyRepository", context.getElementAnnotationMetadataFactory());
+        try {
+            ClassElement myRepository = context.getRequiredClassElement("io.micronaut.sourcegen.example.MyRepository", context.getElementAnnotationMetadataFactory());
+            ClassTypeDef repositoryType = ClassTypeDef.of(myRepository);
 
-        ClassTypeDef repositoryType = ClassTypeDef.of(myRepository);
-        ClassDef classDef = ClassDef.builder("io.micronaut.sourcegen.example.MethodInvoker")
+            ClassDef methodInvoker = createMethodInvokerClass(repositoryType);
+            sourceGenerator.write(methodInvoker, context, element);
+
+            ClassDef interfaceSuperInvokerDef = createInterfaceSuperInvoker(myRepository);
+            sourceGenerator.write(interfaceSuperInvokerDef, context, element);
+
+            ClassDef swapper = createSwapper();
+            sourceGenerator.write(swapper, context, element);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    private ClassDef createMethodInvokerClass(ClassTypeDef repositoryType) {
+        return ClassDef.builder("io.micronaut.sourcegen.example.MethodInvoker")
 
             .addMethod(MethodDef.builder("invokeDefaultMethod")
                 .addParameter(repositoryType)
@@ -170,13 +188,31 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
                     .doFinally(methodParameters.get(0).invoke("getAndIncrement", TypeDef.Primitive.INT)))
             )
 
+            .addMethod(MethodDef.builder("invokeTypeVariable")
+                .addTypeVariable(new TypeVariable("T"))
+                .returns(TypeDef.STRING)
+                .addParameter("value", TypeDef.variable("T"))
+                .build((t, p) ->
+                    p.get(0).invoke("toString", TypeDef.STRING).returning()
+                )
+            )
+
+            .addMethod(MethodDef.builder("invokeTypeVariableWithBounds")
+                .addTypeVariable(new TypeVariable("T", List.of(TypeDef.of(CharSequence.class))))
+                .returns(TypeDef.Primitive.INT)
+                .addParameter("value", TypeDef.variable("T", List.of(TypeDef.of(CharSequence.class))))
+                .build((t, p) ->
+                    p.get(0).invoke("length", TypeDef.Primitive.INT).returning()
+                )
+            )
+
             .build();
+    }
 
-        sourceGenerator.write(classDef, context, element);
-
+    private ClassDef createInterfaceSuperInvoker(ClassElement myRepository) {
         ClassTypeDef myRepoType = ClassTypeDef.of(myRepository);
         MethodElement defaultMethod = myRepository.findMethod("defaultMethod").get();
-        ClassDef interfaceSuperInvokerDef = ClassDef.builder("io.micronaut.sourcegen.example.MethodRepositoryInvoker")
+        return ClassDef.builder("io.micronaut.sourcegen.example.MethodRepositoryInvoker")
             .addModifiers(Modifier.ABSTRACT)
             .addSuperinterface(myRepoType)
             .addMethod(MethodDef.override(defaultMethod)
@@ -187,9 +223,9 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
                             .invoke(defaultMethod, methodParameters)
                     ).returning())
             ).build();
+    }
 
-        sourceGenerator.write(interfaceSuperInvokerDef, context, element);
-
+    private ClassDef createSwapper() {
         FieldDef targetField = FieldDef.builder("target", TypeDef.OBJECT).addModifiers(Modifier.PRIVATE).build();
         FieldDef lockField = FieldDef.builder("lock", ClassTypeDef.of(ReentrantReadWriteLock.class))
             .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
@@ -200,7 +236,7 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
             .initializer(new VariableDef.This().field(lockField).invoke("writeLock", TypeDef.of(Lock.class)))
             .build();
 
-        ClassDef swapper = ClassDef.builder("io.micronaut.sourcegen.example.Swapper")
+        return ClassDef.builder("io.micronaut.sourcegen.example.Swapper")
             .addField(targetField)
             .addField(lockField)
             .addField(writeLockField)
@@ -291,8 +327,6 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
                     )
                 )))
             .build();
-
-        sourceGenerator.write(swapper, context, element);
     }
 
 }
