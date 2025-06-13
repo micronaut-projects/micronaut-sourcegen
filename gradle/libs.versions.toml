@@ -8,7 +8,7 @@ intellij-java-decompiler = "251.25410.129"
 
 sonatype-scan = "3.0.0"
 
-micronaut = "4.8.14"
+micronaut = "4.9.0"
 micronaut-platform = "4.8.2"
 micronaut-docs = "2.0.0"
 micronaut-test = "4.7.0"
