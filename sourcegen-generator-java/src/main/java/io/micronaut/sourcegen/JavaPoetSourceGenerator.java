@@ -251,7 +251,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return CodeBlock.concat(CodeBlock.of("{"), values, CodeBlock.of("}"));
             }
         }
-        return renderExpression(def, null, Collections.emptyMap(),defaultValue);
+        return renderExpression(def, null, Collections.emptyMap(), defaultValue);
     }
 
     private void writeClass(Writer writer, ClassDef classDef) throws IOException {
