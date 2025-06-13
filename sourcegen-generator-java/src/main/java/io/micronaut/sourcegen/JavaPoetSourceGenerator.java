@@ -228,12 +228,30 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             member.getJavadoc().forEach(method::addJavadoc);
             if (member.getDefaultValue() != null) {
-                method.defaultValue(renderExpression(def, null, Collections.emptyMap(), member.getDefaultValue()));
+                method.defaultValue(renderAnnotationMemberDefault(def, member.getDefaultValue()));
+            }
+            if (member.getAnnotationDefaultValue() != null) {
+                method.defaultAnnotationValue(asAnnotationSpec(member.getAnnotationDefaultValue()));
             }
             builder.addMethod(method.build());
         }
         addInnerTypes(def.getInnerTypes(), builder, false);
         return builder;
+    }
+
+    private CodeBlock renderAnnotationMemberDefault(ObjectDef def, ExpressionDef defaultValue) {
+        if (defaultValue instanceof ExpressionDef.Constant constant) {
+            if (constant.type() instanceof TypeDef.Array arrayDef
+                && constant.value().getClass().isArray()
+            ) {
+                final var values = IntStream.range(0, Array.getLength(constant.value()))
+                    .mapToObj(i -> renderConstantExpression(Collections.emptyMap(),
+                        new ExpressionDef.Constant(arrayDef.componentType(), Array.get(constant.value(), i))))
+                    .collect(CodeBlock.joining(", "));
+                return CodeBlock.concat(CodeBlock.of("{"), values, CodeBlock.of("}"));
+            }
+        }
+        return renderExpression(def, null, Collections.emptyMap(),defaultValue);
     }
 
     private void writeClass(Writer writer, ClassDef classDef) throws IOException {
@@ -322,6 +340,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 innerBuilder = getEnumBuilder(innerEnumDef);
             } else if (innerType instanceof RecordDef innerRecordDef) {
                 innerBuilder = getRecordBuilder(innerRecordDef);
+            } else if (innerType instanceof AnnotationObjectDef annotationObjectDef) {
+                innerBuilder = getAnnotationObjectBuilder(annotationObjectDef);
             } else {
                 throw new IllegalStateException("Unknown object definition: " + innerType);
             }
@@ -928,6 +948,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             return builder.build();
         }
+        if (expressionDef instanceof ExpressionDef.StringConcatenation concat) {
+            ExpressionDef left = concat.left();
+            if (!left.type().equals(TypeDef.STRING) && !(concat.right().type().equals(TypeDef.STRING))) {
+                left = TypeDef.STRING.invokeStatic("valueOf", TypeDef.STRING, left);
+            }
+            return CodeBlock.concat(
+                renderExpression(objectDef, methodDef, remappedLocals, left),
+                CodeBlock.of(" + "),
+                renderExpression(objectDef, methodDef, remappedLocals, concat.right())
+            );
+        }
         throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
@@ -996,6 +1027,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, comparisonOperation.left()),
                 CodeBlock.of(getOpType(comparisonOperation)),
                 renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, comparisonOperation.right())
+            );
+        }
+        if (expressionDef instanceof ExpressionDef.InstanceOf instanceOf) {
+            return CodeBlock.concat(
+                renderExpression(objectDef, methodDef, remappedLocals, instanceOf.expression()),
+                CodeBlock.of(" instanceof "),
+                CodeBlock.of(instanceOf.instanceType().getCanonicalName())
             );
         }
         if (expressionDef instanceof ExpressionDef.And andExpressionDef) {

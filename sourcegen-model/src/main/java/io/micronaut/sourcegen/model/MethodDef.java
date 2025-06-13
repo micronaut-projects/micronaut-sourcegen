@@ -184,6 +184,22 @@ public final class MethodDef extends AbstractElement {
     }
 
     /**
+     * Creates a method definition builder from {@link MethodElement} it used `getGeneric` versions of parameters and the return type.
+     *
+     * @param methodElement         The methodElement
+     * @return The method definition builder
+     * @since 1.7
+     */
+    @NonNull
+    public static MethodDefBuilder overrideGeneric(@NonNull MethodElement methodElement) {
+        return MethodDef.builder(methodElement.getName())
+            .overrides()
+            .addModifiers(toOverrideModifiers(methodElement))
+            .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getGenericType(), Map.of()))).toList())
+            .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(methodElement.getGenericReturnType(), Map.of()));
+    }
+
+    /**
      * Creates a method definition builder from {@link Method}.
      *
      * @param method The method

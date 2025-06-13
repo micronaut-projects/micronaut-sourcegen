@@ -241,6 +241,17 @@ public class Example {
     }
 
     @Test
+    public void returnInstanceOfCondition() throws IOException {
+        ExpressionDef andExpression = new ExpressionDef.InstanceOf(
+            ExpressionDef.constant("test"),
+            ClassTypeDef.ClassDefType.STRING
+        );
+        String result = writeMethodWithExpression(andExpression);
+
+        assertEquals("\"test\" instanceof java.lang.String", result);
+    }
+
+    @Test
     public void returnAndConditionFalse() throws IOException {
         ExpressionDef andExpression = new ExpressionDef.And(
             ExpressionDef.trueValue().isTrue(),
@@ -299,4 +310,19 @@ public class Example {
 
         assertEquals("0", result);
     }
+
+    @Test
+    public void stringConcatenation() throws IOException {
+        ExpressionDef concat = ExpressionDef.constant("Hello ")
+            .stringConcat(ExpressionDef.constant(1));
+        String result = writeMethodWithExpression(concat);
+
+        assertEquals("\"Hello \" + 1", result);
+
+        concat = concat.stringConcat(ExpressionDef.constant("Welcome!"));
+        result = writeMethodWithExpression(concat);
+
+        assertEquals("\"Hello \" + 1 + \"Welcome!\"", result);
+    }
+
 }

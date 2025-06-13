@@ -39,6 +39,13 @@ class MyBean3Test {
     }
 
     @Test
+    public void testConcatenate() throws Exception {
+        MyBean3 bean3 = new MyBean3();
+
+        assertEquals("Hello, Andriy", bean3.concatenation("Andriy"));
+    }
+
+    @Test
     public void testThrows() throws Exception {
         MyBean3 bean3 = new MyBean3();
 

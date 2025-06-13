@@ -49,7 +49,16 @@ public final class GenerateAnnotationClassVisitor implements TypeElementVisitor<
     public void visitClass(ClassElement element, VisitorContext context) {
         String className = element.getPackageName() + ".MyAnnotation";
 
-        AnnotationObjectDef annotationDef = AnnotationObjectDef.builder(className)
+        AnnotationObjectDef annotationDef = createAnnotation(className);
+        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
+        if (sourceGenerator == null) {
+            return;
+        }
+        sourceGenerator.write(annotationDef, context, element);
+    }
+
+    public static AnnotationObjectDef createAnnotation(String className) {
+        return AnnotationObjectDef.builder(className)
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(AnnotationDef.builder(Retention.class)
                 .addMember("value", RetentionPolicy.RUNTIME)
@@ -74,14 +83,21 @@ public final class GenerateAnnotationClassVisitor implements TypeElementVisitor<
                 .addJavadoc("This is a primitive array value")
                 .build()
             )
-            .addMember(AnnotationMemberDef.builder("inner", ClassTypeDef.of(Target.class)).build())
+            .addMember(AnnotationMemberDef.builder("enumValue", ClassTypeDef.of(ElementType.class))
+                .withDefault(ClassTypeDef.of(ElementType.class)
+                    .getStaticField("TYPE", ClassTypeDef.of(ElementType.class)))
+                .addJavadoc("An enum value with default")
+                .build())
+            .addMember(AnnotationMemberDef.builder("inner", ClassTypeDef.of(Target.class))
+                .withDefault(AnnotationDef.builder(Target.class)
+                    .addMember("value", ElementType.TYPE)
+                    .build())
+                .addJavadoc("An annotation value with default")
+                .build())
+            .addMember(AnnotationMemberDef.builder("array", TypeDef.Primitive.INT.array())
+                .withDefault(ExpressionDef.constant(new int[]{1, 2, 3}))
+                .build())
             .build();
-
-        SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
-        if (sourceGenerator == null) {
-            return;
-        }
-        sourceGenerator.write(annotationDef, context, element);
     }
 
 }
