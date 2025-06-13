@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.custom.visitor;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.annotation.NonNull;
+import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
@@ -33,6 +34,7 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -250,6 +252,26 @@ public final class GenerateIfsPredicateVisitor implements TypeElementVisitor<Gen
             .build();
 
         sourceGenerator.write(predicateGeneric3, context, element);
+
+        ClassElement resolvedPredicateType = predicateClass.withTypeArguments(
+            List.of(context.getClassElement(String.class).get())
+        );
+        ClassDef predicateGeneric4 = ClassDef.builder(element.getPackageName() + ".IfPredicateGeneric4")
+            .addSuperinterface(
+                TypeDef.of(resolvedPredicateType)
+            )
+            .addMethod(MethodDef.overrideGeneric(resolvedPredicateType.findMethod("test").get())
+                .build((aThis, methodParameters) ->
+                    methodParameters.get(0)
+                        .invoke(
+                            ReflectionUtils.getRequiredMethod(String.class, "contains", CharSequence.class),
+                            ExpressionDef.constant("oob")
+                        )
+                        .returning())
+            )
+            .build();
+
+        sourceGenerator.write(predicateGeneric4, context, element);
     }
 
 }

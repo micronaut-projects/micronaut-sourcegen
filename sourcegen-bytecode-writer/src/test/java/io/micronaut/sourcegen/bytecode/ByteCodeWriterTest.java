@@ -3517,6 +3517,108 @@ class Test {
 """, decompileToJava(bytes));
     }
 
+    @Test
+    void testStringConcatenation() {
+        FieldDef field = FieldDef.builder("MY_NAME", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .initializer(ExpressionDef.constant("Andriy")
+                    .stringConcat(ExpressionDef.constant(" Dmytruk")))
+            .build();
+        FieldDef field2 = FieldDef.builder("GREETING", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .initializer(ExpressionDef.constant("Hello ")
+                    .stringConcat(ClassTypeDef.THIS.getStaticField(field)))
+            .build();
+
+        ClassDef classDef = ClassDef.builder("example.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addField(field)
+            .addField(field2)
+            .addMethod(MethodDef.builder("testConcatenation")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("arg", TypeDef.OBJECT)
+                .returns(TypeDef.STRING)
+                .build((t, params) ->
+                    ExpressionDef.constant("Hello")
+                        .stringConcat(ExpressionDef.constant(", "))
+                        .stringConcat(params.get(0))
+                        .stringConcat(ExpressionDef.constant("!"))
+                        .returning()
+                )
+            )
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x1
+// signature Ljava/lang/Object;
+// declaration: example/MyClass
+public class example/MyClass {
+
+
+  // access flags 0x19
+  public final static Ljava/lang/String; MY_NAME
+
+  // access flags 0x19
+  public final static Ljava/lang/String; GREETING
+
+  // access flags 0x8
+  static <clinit>()V
+    LDC "Andriy Dmytruk"
+    PUTSTATIC example/MyClass.MY_NAME : Ljava/lang/String;
+    GETSTATIC example/MyClass.MY_NAME : Ljava/lang/String;
+    INVOKEDYNAMIC makeConcatWithConstants(Ljava/lang/String;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/StringConcatFactory.makeConcatWithConstants(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      "Hello \\u0001"
+    ]
+    PUTSTATIC example/MyClass.GREETING : Ljava/lang/String;
+    RETURN
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public testConcatenation(Ljava/lang/Object;)Ljava/lang/String;
+   L0
+    ALOAD 1
+    INVOKEDYNAMIC makeConcatWithConstants(Ljava/lang/Object;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/StringConcatFactory.makeConcatWithConstants(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      "Hello, \\u0001!"
+    ]
+    ARETURN
+   L1
+    LOCALVARIABLE arg Ljava/lang/Object; L0 L1 1
+}
+""", bytecode);
+        assertEquals("""
+package example;
+
+public class MyClass {
+   public static final String MY_NAME = "Andriy Dmytruk";
+   public static final String GREETING;
+
+   static {
+      GREETING = "Hello " + MY_NAME;
+   }
+
+   public String testConcatenation(Object arg) {
+      return "Hello, " + arg + "!";
+   }
+}
+""", decompileToJava(bytes));
+    }
+
     private String toBytecode(ObjectDef objectDef) {
         StringWriter stringWriter = new StringWriter();
         generateFile(objectDef, stringWriter);

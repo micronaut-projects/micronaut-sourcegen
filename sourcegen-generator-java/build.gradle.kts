@@ -5,6 +5,7 @@ plugins {
 dependencies {
     implementation(projects.sourcegenGenerator)
 
+    testImplementation(projects.testSuiteCustomGenerators)
     testImplementation(libs.google.truth)
     testImplementation(libs.google.compile.testing)
     testImplementation(libs.google.jimfs)

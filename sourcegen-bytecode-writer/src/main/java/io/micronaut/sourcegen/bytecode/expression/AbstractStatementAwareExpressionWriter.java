@@ -25,7 +25,12 @@ import org.objectweb.asm.commons.GeneratorAdapter;
  * @author Denis Stepanov
  * @since 1.5
  */
-public abstract sealed class AbstractStatementAwareExpressionWriter implements ExpressionWriter permits InvokeInstanceMethodExpressionWriter, InvokeStaticMethodExpressionWriter, NewInstanceExpressionWriter, LambdaExpressionWriter {
+public abstract sealed class AbstractStatementAwareExpressionWriter implements ExpressionWriter
+        permits InvokeInstanceMethodExpressionWriter,
+        InvokeStaticMethodExpressionWriter,
+        NewInstanceExpressionWriter,
+        LambdaExpressionWriter,
+        StringConcatenationExpressionWriter {
 
     protected boolean statement;
 

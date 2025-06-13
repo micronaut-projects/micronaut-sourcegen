@@ -54,6 +54,7 @@ public final class MethodSpec {
   public final List<TypeName> exceptions;
   public final CodeBlock code;
   public final CodeBlock defaultValue;
+  public final AnnotationSpec defaultAnnotationValue;
 
   private MethodSpec(Builder builder) {
     CodeBlock code = builder.code.build();
@@ -72,6 +73,7 @@ public final class MethodSpec {
     this.varargs = builder.varargs;
     this.exceptions = Util.immutableList(builder.exceptions);
     this.defaultValue = builder.defaultValue;
+    this.defaultAnnotationValue = builder.defaultAnnotationValue;
     this.code = code;
   }
 
@@ -107,6 +109,9 @@ public final class MethodSpec {
     if (defaultValue != null && !defaultValue.isEmpty()) {
       codeWriter.emit(" default ");
       codeWriter.emit(defaultValue);
+    } else if (defaultAnnotationValue != null) {
+        codeWriter.emit(" default ");
+        defaultAnnotationValue.emit(codeWriter, false);
     }
 
     if (!exceptions.isEmpty()) {
@@ -322,6 +327,7 @@ public final class MethodSpec {
     builder.code.add(code);
     builder.varargs = varargs;
     builder.defaultValue = defaultValue;
+    builder.defaultAnnotationValue = defaultAnnotationValue;
     return builder;
   }
 
@@ -334,6 +340,7 @@ public final class MethodSpec {
     private final CodeBlock.Builder code = CodeBlock.builder();
     private boolean varargs;
     private CodeBlock defaultValue;
+    private AnnotationSpec defaultAnnotationValue;
 
     public final List<TypeVariableName> typeVariables = new ArrayList<>();
     public final List<AnnotationSpec> annotations = new ArrayList<>();
@@ -497,6 +504,17 @@ public final class MethodSpec {
       checkState(this.defaultValue == null, "defaultValue was already set");
       this.defaultValue = checkNotNull(codeBlock, "codeBlock == null");
       return this;
+    }
+
+    /**
+     * Set the default method value that is an annotation. Used for defining defaults of
+     * annotation object members.
+     * @param annotationSpec The default annotation
+     * @return This builder
+     */
+    public Builder defaultAnnotationValue(AnnotationSpec annotationSpec) {
+        this.defaultAnnotationValue = annotationSpec;
+        return this;
     }
 
     /**

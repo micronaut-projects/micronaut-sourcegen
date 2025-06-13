@@ -97,5 +97,8 @@ class IfsPredicateTest {
         IfPredicateGeneric3 predicate3 = new IfPredicateGeneric3();
         assertTrue(predicate3.test(1));
         assertFalse(predicate3.test(2));
+        IfPredicateGeneric4 predicate4 = new IfPredicateGeneric4();
+        assertTrue(predicate4.test("foobar"));
+        assertFalse(predicate4.test("abc"));
     }
 }
