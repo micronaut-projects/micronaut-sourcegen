@@ -67,22 +67,17 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
             return;
         }
 
-        try {
-            ClassElement myRepository = context.getRequiredClassElement("io.micronaut.sourcegen.example.MyRepository", context.getElementAnnotationMetadataFactory());
-            ClassTypeDef repositoryType = ClassTypeDef.of(myRepository);
+        ClassElement myRepository = context.getRequiredClassElement("io.micronaut.sourcegen.example.MyRepository", context.getElementAnnotationMetadataFactory());
+        ClassTypeDef repositoryType = ClassTypeDef.of(myRepository);
 
-            ClassDef methodInvoker = createMethodInvokerClass(repositoryType);
-            sourceGenerator.write(methodInvoker, context, element);
+        ClassDef methodInvoker = createMethodInvokerClass(repositoryType);
+        sourceGenerator.write(methodInvoker, context, element);
 
-            ClassDef interfaceSuperInvokerDef = createInterfaceSuperInvoker(myRepository);
-            sourceGenerator.write(interfaceSuperInvokerDef, context, element);
+        ClassDef interfaceSuperInvokerDef = createInterfaceSuperInvoker(myRepository);
+        sourceGenerator.write(interfaceSuperInvokerDef, context, element);
 
-            ClassDef swapper = createSwapper();
-            sourceGenerator.write(swapper, context, element);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
-        }
+        ClassDef swapper = createSwapper();
+        sourceGenerator.write(swapper, context, element);
     }
 
     private ClassDef createMethodInvokerClass(ClassTypeDef repositoryType) {
