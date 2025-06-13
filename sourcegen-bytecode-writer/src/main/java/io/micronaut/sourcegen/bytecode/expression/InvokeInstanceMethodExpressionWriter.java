@@ -77,7 +77,7 @@ final class InvokeInstanceMethodExpressionWriter extends AbstractStatementAwareE
         } else if (instanceType instanceof TypeDef.Array) {
             generatorAdapter.invokeVirtual(methodOwnerType, method);
         } else {
-            throw new IllegalStateException("Unsupported instance type: " + instanceType);
+            throw new IllegalStateException("Unsupported instance type: " + instanceType + " in invoke expression " + invokeInstanceMethod);
         }
         popValueIfNeeded(generatorAdapter, invokeInstanceMethod.method().getReturnType());
     }
