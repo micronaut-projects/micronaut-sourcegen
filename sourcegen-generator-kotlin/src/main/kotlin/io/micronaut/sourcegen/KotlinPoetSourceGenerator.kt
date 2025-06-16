@@ -30,15 +30,17 @@ import io.micronaut.sourcegen.generator.SourceGenerator
 import io.micronaut.sourcegen.model.*
 import io.micronaut.sourcegen.model.EnumDef.EnumConstantDef
 import io.micronaut.sourcegen.model.ExpressionDef.*
-import io.micronaut.sourcegen.model.StatementDef.Assign
-import io.micronaut.sourcegen.model.StatementDef.DefineAndAssign
-import io.micronaut.sourcegen.model.StatementDef.PutField
-import io.micronaut.sourcegen.model.StatementDef.Return
+import io.micronaut.sourcegen.model.ExpressionDef.IfElse
+import io.micronaut.sourcegen.model.ExpressionDef.Switch
+import io.micronaut.sourcegen.model.StatementDef.*
 import java.io.IOException
 import java.io.Writer
 import java.lang.reflect.Array
 import java.util.function.Consumer
 import javax.lang.model.element.Modifier
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.iterator
 import kotlin.reflect.KClass
 
 /**
@@ -972,11 +974,16 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is InvokeInstanceMethod) {
                 val instanceExp = renderExpressionCode(objectDef, methodDef, expressionDef.instance)
                 val codeBuilder = CodeBlock.builder()
-                codeBuilder.add(instanceExp)
-                if (expressionDef.instance is InvokeInstanceMethod) {
-                    codeBuilder.add("\n")
+                if (expressionDef.method.name == "<init>") {
+                    codeBuilder.add(instanceExp)
+                    codeBuilder.add("(")
+                } else {
+                    codeBuilder.add(instanceExp)
+                    if (expressionDef.instance is InvokeInstanceMethod) {
+                        codeBuilder.add("\n")
+                    }
+                    codeBuilder.add(".%N(", expressionDef.method.name)
                 }
-                codeBuilder.add(".%N(", expressionDef.method.name)
                 for ((index, parameter) in expressionDef.values.withIndex()) {
                     codeBuilder.add(renderExpressionCode(objectDef, methodDef, parameter))
                     if (index != expressionDef.values.size - 1) {
@@ -1336,6 +1343,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         ): CodeBlock {
             val type = constant.type
             val value = constant.value ?: return CodeBlock.of("null")
+            if (value is TypeDef) {
+                return CodeBlock.of("%T::class", asType(value, null))
+            }
             if (type is ClassTypeDef && type.isEnum) {
                 return renderExpressionCode(
                     null, methodDef, VariableDef.StaticField(
@@ -1441,6 +1451,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
             if (variableDef is VariableDef.Local) {
                 return CodeBlock.of("%L", variableDef.name)
+            }
+            if (variableDef is VariableDef.Super) {
+                checkNotNull(objectDef) { "Accessing 'super' is not available" }
+                if (variableDef.type() !== TypeDef.SUPER) {
+                    return CodeBlock.of("super<%T>", asType(variableDef.type, objectDef))
+                }
+                return CodeBlock.of("super");
             }
             throw IllegalStateException("Unrecognized variable: $variableDef")
         }
