@@ -129,11 +129,11 @@ public class Example {
 
         String equalsStructurally = writeMethodWithExpression(exp1.equalsStructurally(exp2));
 
-        assertEquals("\"hello\".equals(\"world\")", equalsStructurally);
+        assertEquals("Objects.equals(\"hello\", \"world\")", equalsStructurally);
 
         String notEqualsStructurally = writeMethodWithExpression(exp1.notEqualsStructurally(exp2));
 
-        assertEquals("(!\"hello\".equals(\"world\"))", notEqualsStructurally);
+        assertEquals("(!Objects.equals(\"hello\", \"world\"))", notEqualsStructurally);
     }
 
     @Test
