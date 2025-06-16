@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 public class MethodInvokerTest {
 
     MyRepository repository = new MyRepository() {
@@ -316,6 +318,13 @@ public class MethodInvokerTest {
         } catch (IllegalStateException e) {
             // Ignore
         }
+    }
+
+    @Test
+    public void testInvokeTypeVariable() {
+        MethodInvoker invoker = new MethodInvoker();
+        assertEquals("12", invoker.invokeTypeVariable(12));
+        assertEquals(5, invoker.invokeTypeVariableWithBounds("hello"));
     }
 
 }

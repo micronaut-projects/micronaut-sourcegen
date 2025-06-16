@@ -309,4 +309,11 @@ public class MethodInvokerTest {
         }
     }
 
+    @Test
+    public void testInvokeTypeVariable() {
+        MethodInvoker invoker = new MethodInvoker();
+        assertEquals("12", invoker.invokeTypeVariable(12));
+        assertEquals(5, invoker.invokeTypeVariableWithBounds("hello"));
+    }
+
 }
