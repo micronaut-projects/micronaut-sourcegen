@@ -6,6 +6,7 @@ google-compile-testing = "0.21.0"
 google-jimfs = "1.3.0"
 intellij-java-decompiler = "251.25410.129"
 
+managed-asm = "9.8"
 sonatype-scan = "3.1.1"
 
 micronaut = "4.9.1"
@@ -24,6 +25,10 @@ micronaut-validation = { module = "io.micronaut.validation:micronaut-validation-
 
 managed-kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "managed-kotlinpoet" }
 managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", version.ref = "managed-kotlinpoet" }
+
+managed-asm = { module = "org.ow2.asm:asm", version.ref = "managed-asm" }
+managed-asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "managed-asm" }
+managed-asm-util = { module = "org.ow2.asm:asm-util", version.ref = "managed-asm" }
 
 # Testing
 google-truth = { module = "com.google.truth:truth", version.ref = "google-truth" }
