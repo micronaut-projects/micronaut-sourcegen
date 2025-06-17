@@ -189,10 +189,13 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
     }
 
     static Array array(TypeDef componentType) {
-        return new Array(componentType, 1, false);
+        return array(componentType, 1);
     }
 
     static Array array(TypeDef componentType, int dimensions) {
+        if (componentType instanceof Array array) {
+            return new Array(array.componentType, array.dimensions + dimensions, false);
+        }
         return new Array(componentType, dimensions, false);
     }
 
@@ -359,7 +362,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
     static TypeDef of(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables, boolean erasure) {
         int dimensions = 0;
         while (typedElement.isArray()) {
-            ArrayableClassElement arrayableClassElement = (ArrayableClassElement) typedElement;
+            ClassElement arrayableClassElement = (ClassElement) typedElement;
             typedElement = arrayableClassElement.fromArray();
             dimensions++;
         }
