@@ -18,7 +18,6 @@ package io.micronaut.sourcegen.model;
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.core.reflect.ReflectionUtils;
-import io.micronaut.inject.ast.ArrayableClassElement;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.GenericPlaceholderElement;
 import io.micronaut.inject.ast.TypedElement;
