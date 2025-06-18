@@ -105,7 +105,7 @@ class SuperCallTest {
     }
 
     @Test
-    fun testSuperConstructorWithMultipleClassLiterals() {
+    fun testSuperConstructorWithParam() {
         val expectedString = """
             package test
 
