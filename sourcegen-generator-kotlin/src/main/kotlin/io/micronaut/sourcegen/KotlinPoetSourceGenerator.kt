@@ -177,6 +177,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 )
             }
         classDef.javadoc.forEach(Consumer { format: String -> classBuilder.addKdoc(format) })
+        if (classDef.superclass != null) {
+            classBuilder.superclass(asType(classDef.superclass, classDef))
+        }
         classDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
             .forEach { annotationSpec: AnnotationSpec -> classBuilder.addAnnotation(annotationSpec) }
 
@@ -194,6 +197,36 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 companionBuilder.addFunction(
                     buildFunction(null, method, modifiers)
                 )
+            } else if (method.name == "<init>") {
+                val superCallStatement = method.statements.firstOrNull {
+                    it is InvokeInstanceMethod && it.instance is VariableDef.Super && it.method.name == "<init>"
+                } as? InvokeInstanceMethod
+                if (superCallStatement != null) {
+                    val superArgsCodeBlock = CodeBlock.builder()
+                    for ((index, arg) in superCallStatement.values.withIndex()) {
+                        superArgsCodeBlock.add(renderExpressionCode(classDef, method, arg))
+                        if (index < superCallStatement.values.size - 1) {
+                            superArgsCodeBlock.add(", ")
+                        }
+                    }
+                    val constructorFunSpecBuilder = FunSpec.constructorBuilder()
+                        .addModifiers(asKModifiers(method, modifiers))
+                        .addParameters(
+                            method.parameters.stream()
+                                .map { param: ParameterDef ->
+                                    ParameterSpec.builder(
+                                        param.name,
+                                        asType(param.type, classDef)
+                                    ).build()
+                                }.toList()
+                        )
+                    classBuilder.superclassConstructorParameters.add(superArgsCodeBlock.build())
+                    classBuilder.primaryConstructor(constructorFunSpecBuilder.build())
+                } else {
+                    classBuilder.addFunction(
+                        buildFunction(classDef, method, modifiers)
+                    )
+                }
             } else {
                 classBuilder.addFunction(
                     buildFunction(classDef, method, modifiers)
