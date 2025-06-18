@@ -1376,9 +1376,6 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         ): CodeBlock {
             val type = constant.type
             val value = constant.value ?: return CodeBlock.of("null")
-            if (value is TypeDef) {
-                return CodeBlock.of("%T::class", asType(value, null))
-            }
             if (type is ClassTypeDef && type.isEnum) {
                 return renderExpressionCode(
                     null, methodDef, VariableDef.StaticField(
