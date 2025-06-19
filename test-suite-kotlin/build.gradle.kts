@@ -7,6 +7,7 @@ plugins {
 
 dependencies {
     ksp(mn.micronaut.inject.kotlin)
+    ksp(projects.testSuiteCustomGeneratorsKotlin)
     ksp(projects.sourcegenGeneratorKotlin)
     ksp(projects.testSuiteCustomGenerators)
     ksp(mnValidation.micronaut.validation.processor)

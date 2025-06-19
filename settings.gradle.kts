@@ -28,7 +28,7 @@ include("test-suite-bytecode")
 include("test-suite-kotlin")
 include("test-suite-custom-annotations")
 include("test-suite-custom-generators")
-
+include("test-suite-custom-generators-kotlin")
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 configure<io.micronaut.build.MicronautBuildSettingsExtension> {

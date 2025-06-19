@@ -1,0 +1,4 @@
+io.micronaut.sourcegen.custom.kotlin.visitor.GenerateSuperTypeReferenceVisitor
+io.micronaut.sourcegen.custom.kotlin.visitor.GenerateSpecificSuperTypeReferenceVisitor
+io.micronaut.sourcegen.custom.kotlin.visitor.GenerateSuperConstructorWithNoParamVisitor
+io.micronaut.sourcegen.custom.kotlin.visitor.GenerateSuperConstructorWithParamVisitor

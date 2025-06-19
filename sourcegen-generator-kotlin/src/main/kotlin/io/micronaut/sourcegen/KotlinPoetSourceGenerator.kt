@@ -187,14 +187,23 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         buildProperties(classDef, classBuilder)
         companionBuilder = buildFields(classDef, companionBuilder, classBuilder)
 
+        classDef.staticInitializer?.let { staticInitializerDef ->
+            val currentCompanion = companionBuilder ?: TypeSpec.companionObjectBuilder().also {
+                companionBuilder = it
+            }
+            currentCompanion.addInitializerBlock(
+                renderStatementCodeBlock(classDef, MethodDef.builder("<clinit>").build(), staticInitializerDef)
+            )
+        }
+
         for (method in classDef.methods) {
             var modifiers = method.modifiers
             if (modifiers.contains(Modifier.STATIC)) {
-                if (companionBuilder == null) {
-                    companionBuilder = TypeSpec.companionObjectBuilder()
+                val currentCompanion = companionBuilder ?: TypeSpec.companionObjectBuilder().also {
+                    companionBuilder = it
                 }
                 modifiers = stripStatic(modifiers)
-                companionBuilder.addFunction(
+                currentCompanion.addFunction(
                     buildFunction(null, method, modifiers)
                 )
             } else if (method.name == "<init>") {
@@ -233,8 +242,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 )
             }
         }
-        if (companionBuilder != null) {
-            classBuilder.addType(companionBuilder.build())
+        companionBuilder?.let {
+            classBuilder.addType(it.build())
         }
         addInnerTypes(classDef.innerTypes, classBuilder)
         return classBuilder
