@@ -285,6 +285,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 asMethodSpec(classDef, method)
             );
         }
+
+        StatementDef staticInitializer = classDef.getStaticInitializer();
+        if (staticInitializer != null) {
+            CodeBlock staticBlock = renderStatementCodeBlock(classDef, null, Map.of(), staticInitializer);
+            classBuilder.addStaticBlock(staticBlock);
+        }
         return classBuilder;
     }
 
