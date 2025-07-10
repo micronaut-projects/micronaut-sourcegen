@@ -30,15 +30,17 @@ import io.micronaut.sourcegen.generator.SourceGenerator
 import io.micronaut.sourcegen.model.*
 import io.micronaut.sourcegen.model.EnumDef.EnumConstantDef
 import io.micronaut.sourcegen.model.ExpressionDef.*
-import io.micronaut.sourcegen.model.StatementDef.Assign
-import io.micronaut.sourcegen.model.StatementDef.DefineAndAssign
-import io.micronaut.sourcegen.model.StatementDef.PutField
-import io.micronaut.sourcegen.model.StatementDef.Return
+import io.micronaut.sourcegen.model.ExpressionDef.IfElse
+import io.micronaut.sourcegen.model.ExpressionDef.Switch
+import io.micronaut.sourcegen.model.StatementDef.*
 import java.io.IOException
 import java.io.Writer
 import java.lang.reflect.Array
 import java.util.function.Consumer
 import javax.lang.model.element.Modifier
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.iterator
 import kotlin.reflect.KClass
 
 /**
@@ -175,6 +177,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 )
             }
         classDef.javadoc.forEach(Consumer { format: String -> classBuilder.addKdoc(format) })
+        if (classDef.superclass != null) {
+            classBuilder.superclass(asType(classDef.superclass, classDef))
+        }
         classDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
             .forEach { annotationSpec: AnnotationSpec -> classBuilder.addAnnotation(annotationSpec) }
 
@@ -182,24 +187,63 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         buildProperties(classDef, classBuilder)
         companionBuilder = buildFields(classDef, companionBuilder, classBuilder)
 
+        classDef.staticInitializer?.let { staticInitializerDef ->
+            val currentCompanion = companionBuilder ?: TypeSpec.companionObjectBuilder().also {
+                companionBuilder = it
+            }
+            currentCompanion.addInitializerBlock(
+                renderStatementCodeBlock(classDef, MethodDef.builder("<clinit>").build(), staticInitializerDef)
+            )
+        }
+
         for (method in classDef.methods) {
             var modifiers = method.modifiers
             if (modifiers.contains(Modifier.STATIC)) {
-                if (companionBuilder == null) {
-                    companionBuilder = TypeSpec.companionObjectBuilder()
+                val currentCompanion = companionBuilder ?: TypeSpec.companionObjectBuilder().also {
+                    companionBuilder = it
                 }
                 modifiers = stripStatic(modifiers)
-                companionBuilder.addFunction(
+                currentCompanion.addFunction(
                     buildFunction(null, method, modifiers)
                 )
+            } else if (method.name == "<init>") {
+                val superCallStatement = method.statements.firstOrNull {
+                    it is InvokeInstanceMethod && it.instance is VariableDef.Super && it.method.name == "<init>"
+                } as? InvokeInstanceMethod
+                if (superCallStatement != null) {
+                    val superArgsCodeBlock = CodeBlock.builder()
+                    for ((index, arg) in superCallStatement.values.withIndex()) {
+                        superArgsCodeBlock.add(renderExpressionCode(classDef, method, arg))
+                        if (index < superCallStatement.values.size - 1) {
+                            superArgsCodeBlock.add(", ")
+                        }
+                    }
+                    val constructorFunSpecBuilder = FunSpec.constructorBuilder()
+                        .addModifiers(asKModifiers(method, modifiers))
+                        .addParameters(
+                            method.parameters.stream()
+                                .map { param: ParameterDef ->
+                                    ParameterSpec.builder(
+                                        param.name,
+                                        asType(param.type, classDef)
+                                    ).build()
+                                }.toList()
+                        )
+                    classBuilder.superclassConstructorParameters.add(superArgsCodeBlock.build())
+                    classBuilder.primaryConstructor(constructorFunSpecBuilder.build())
+                } else {
+                    classBuilder.addFunction(
+                        buildFunction(classDef, method, modifiers)
+                    )
+                }
             } else {
                 classBuilder.addFunction(
                     buildFunction(classDef, method, modifiers)
                 )
             }
         }
-        if (companionBuilder != null) {
-            classBuilder.addType(companionBuilder.build())
+        companionBuilder?.let {
+            classBuilder.addType(it.build())
         }
         addInnerTypes(classDef.innerTypes, classBuilder)
         return classBuilder
@@ -972,11 +1016,16 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is InvokeInstanceMethod) {
                 val instanceExp = renderExpressionCode(objectDef, methodDef, expressionDef.instance)
                 val codeBuilder = CodeBlock.builder()
-                codeBuilder.add(instanceExp)
-                if (expressionDef.instance is InvokeInstanceMethod) {
-                    codeBuilder.add("\n")
+                if (expressionDef.method.name == "<init>") {
+                    codeBuilder.add(instanceExp)
+                    codeBuilder.add("(")
+                } else {
+                    codeBuilder.add(instanceExp)
+                    if (expressionDef.instance is InvokeInstanceMethod) {
+                        codeBuilder.add("\n")
+                    }
+                    codeBuilder.add(".%N(", expressionDef.method.name)
                 }
-                codeBuilder.add(".%N(", expressionDef.method.name)
                 for ((index, parameter) in expressionDef.values.withIndex()) {
                     codeBuilder.add(renderExpressionCode(objectDef, methodDef, parameter))
                     if (index != expressionDef.values.size - 1) {
@@ -1441,6 +1490,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
             if (variableDef is VariableDef.Local) {
                 return CodeBlock.of("%L", variableDef.name)
+            }
+            if (variableDef is VariableDef.Super) {
+                checkNotNull(objectDef) { "Accessing 'super' is not available" }
+                if (variableDef.type() !== TypeDef.SUPER) {
+                    return CodeBlock.of("super<%T>", asType(variableDef.type, objectDef))
+                }
+                return CodeBlock.of("super");
             }
             throw IllegalStateException("Unrecognized variable: $variableDef")
         }

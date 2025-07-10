@@ -15,21 +15,7 @@
  */
 package io.micronaut.sourcegen.example
 
-import io.micronaut.sourcegen.custom.example.*
+import io.micronaut.sourcegen.custom.example.GenerateSuperConstructorWithNoParam
 
-@GenerateMyBean1
-@GenerateMyBean2
-@GenerateMyBean3
-@GenerateInterface
-@GenerateMyRepository1
-@GenerateMyRecord1
-@GenerateMyEnum1
-@GenerateIfsPredicate
-@GenerateSwitch
-@GenerateArray
-@GenerateAnnotatedType
-@GenerateInnerTypes
-@GenerateMyEnum2
-@GenerateLambda
-@GenerateSuperTypeReference
-class Trigger
+@GenerateSuperConstructorWithNoParam
+open class NoParamParent
