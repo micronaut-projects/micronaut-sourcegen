@@ -24,6 +24,7 @@ import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
+import jakarta.annotation.Nonnull;
 
 import javax.lang.model.element.Modifier;
 import java.util.List;
