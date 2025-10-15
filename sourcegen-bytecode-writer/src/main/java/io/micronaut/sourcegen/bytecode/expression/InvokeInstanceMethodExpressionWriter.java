@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode.expression;
 
+import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.model.ClassDef;
@@ -53,8 +54,12 @@ final class InvokeInstanceMethodExpressionWriter extends AbstractStatementAwareE
         Type methodOwnerType = TypeUtils.getType(instanceType, context.objectDef());
         MethodDef methodDef = invokeInstanceMethod.method();
         Method method = new Method(methodDef.getName(), TypeUtils.getMethodDescriptor(context.objectDef(), methodDef));
-        if (instanceType instanceof TypeDef.TypeVariable typeVariable) {
-            instanceType = typeVariable.bounds().get(0);
+        while (instanceType instanceof TypeDef.TypeVariable typeVariable) {
+            if (CollectionUtils.isEmpty(typeVariable.bounds())) {
+                instanceType = TypeDef.OBJECT;
+            } else {
+                instanceType = typeVariable.bounds().get(0);
+            }
         }
         if (instanceType instanceof ClassTypeDef classTypeDef) {
             if (instance instanceof VariableDef.Super aSuper) {

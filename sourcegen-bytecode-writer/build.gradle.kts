@@ -3,27 +3,37 @@ plugins {
 }
 
 repositories {
-    maven(uri("https://www.jetbrains.com/intellij-repository/releases/"))
+    maven(
+        url = uri("https://www.jetbrains.com/intellij-repository/releases/")
+    )
 }
 
 dependencies {
     api(projects.sourcegenModel)
+    implementation(libs.managed.asm)
+    implementation(libs.managed.asm.commons)
+    implementation(libs.managed.asm.util)
 
-    implementation(mn.asm.commons)
-    implementation(mn.asm.util)
-
-    compileOnly(mn.micronaut.core.processor)
+    compileOnly(mn.micronaut.core.processor) {
+        exclude("io.micronaut.sourcegen")
+    }
 
     testImplementation(projects.sourcegenAnnotations)
     testImplementation(projects.sourcegenGenerator)
     testImplementation(mn.micronaut.core.reactive)
     testImplementation(mn.micronaut.inject.java.test)
     testImplementation(mn.micronaut.inject.groovy.test)
-    testImplementation(mn.micronaut.core.processor)
+    testImplementation(mn.micronaut.core.processor) {
+        exclude("io.micronaut.sourcegen")
+    }
     testImplementation(mn.reactor.test)
     testImplementation(mnTest.junit.jupiter.api)
     testImplementation(libs.intellij.java.decompiler)
     testImplementation(projects.testSuiteCustomGenerators)
 
     testRuntimeOnly(mnTest.junit.jupiter.engine)
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

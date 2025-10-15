@@ -25,6 +25,7 @@ import io.micronaut.inject.ast.PropertyElement;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -46,15 +47,16 @@ public final class JavaIdioms {
         .addParameter(TypeDef.OBJECT.array())
         .build();
 
-    private static final MethodDef OBJECT_EQUALS = MethodDef.builder("equals")
+    private static final MethodDef OBJECTS_EQUALS = MethodDef.builder("equals")
         .returns(boolean.class)
-        .addParameter(Object.class)
+        .addParameters(Object.class, Object.class)
         .build();
 
     private static final MethodDef OBJECT_HASHCODE = MethodDef.builder("hashCode")
         .returns(int.class)
         .build();
 
+    private static final ClassTypeDef OBJECTS_TYPE = ClassTypeDef.of(Objects.class);
     private static final ClassTypeDef ARRAYS_TYPE = ClassTypeDef.of(Arrays.class);
 
     private static final Method STRING_BUILDER_APPEND_STRING = ReflectionUtils.getRequiredMethod(StringBuilder.class, "append", String.class);
@@ -157,7 +159,7 @@ public final class JavaIdioms {
                     );
             }
         }
-        return left.invoke(OBJECT_EQUALS, right);
+        return OBJECTS_TYPE.invokeStatic(OBJECTS_EQUALS, left, right);
     }
 
     /**

@@ -4,9 +4,7 @@ plugins {
 
 dependencies {
     api(projects.sourcegenGenerator)
-    api(projects.sourcegenBytecodeWriter) {
-        exclude("org.ow2.asm")
-    }
+    api(projects.sourcegenBytecodeWriter)
 
     testRuntimeOnly(mnTest.junit.jupiter.engine)
 }
