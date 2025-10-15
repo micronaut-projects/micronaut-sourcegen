@@ -7,6 +7,9 @@ dependencies {
         exclude("io.micronaut.sourcegen")
     }
 
+    testImplementation(mn.micronaut.inject.java) {
+        exclude("io.micronaut.sourcegen")
+    }
     testImplementation(mn.micronaut.core.processor) {
         exclude("io.micronaut.sourcegen")
     }
