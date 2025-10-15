@@ -98,7 +98,7 @@ class test/IfPredicateGeneric implements java/util/function/Predicate {
     ALOAD 1
     ICONST_1
     INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
-    INVOKEVIRTUAL java/lang/Object.equals (Ljava/lang/Object;)Z
+    INVOKESTATIC java/util/Objects.equals (Ljava/lang/Object;Ljava/lang/Object;)Z
     ICONST_1
     IF_ICMPNE L1
     ICONST_1
@@ -115,11 +115,12 @@ class test/IfPredicateGeneric implements java/util/function/Predicate {
         Assertions.assertEquals("""
 package test;
 
+import java.util.Objects;
 import java.util.function.Predicate;
 
 class IfPredicateGeneric implements Predicate {
    boolean test(Object arg1) {
-      return arg1.equals(1);
+      return Objects.equals(arg1, 1);
    }
 }
 """, decompileToJava(bytes));
@@ -1280,7 +1281,7 @@ public class example/Example {
     ICONST_0
     ALOAD 1
     ALOAD 2
-    INVOKEVIRTUAL java/lang/Object.equals (Ljava/lang/Object;)Z
+    INVOKESTATIC java/util/Objects.equals (Ljava/lang/Object;Ljava/lang/Object;)Z
     ICONST_1
     IF_ICMPNE L1
     ICONST_1
@@ -1294,7 +1295,7 @@ public class example/Example {
     ICONST_1
     ALOAD 1
     ALOAD 2
-    INVOKEVIRTUAL java/lang/Object.equals (Ljava/lang/Object;)Z
+    INVOKESTATIC java/util/Objects.equals (Ljava/lang/Object;Ljava/lang/Object;)Z
     ICONST_1
     IF_ICMPEQ L3
     ICONST_1
@@ -1338,9 +1339,11 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import java.util.Objects;
+
 public class Example {
    Object[] myMethod(Object arg1, Object arg2) {
-      return new Object[]{arg1.equals(arg2), !arg1.equals(arg2), arg1 == arg2, arg1 != arg2};
+      return new Object[]{Objects.equals(arg1, arg2), !Objects.equals(arg1, arg2), arg1 == arg2, arg1 != arg2};
    }
 }
 """, decompileToJava(bytes));
