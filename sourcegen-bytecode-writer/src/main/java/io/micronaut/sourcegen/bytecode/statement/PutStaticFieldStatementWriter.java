@@ -35,10 +35,10 @@ final class PutStaticFieldStatementWriter implements StatementWriter {
         VariableDef.Field field = putField.field();
         ExpressionWriter.writeExpression(generatorAdapter, context, field.instance());
         TypeDef fieldType = field.type();
-        TypeDef owner = field.instance().type();
+        TypeDef declaringType = field.declaringType();
         ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, putField.expression(), fieldType);
         generatorAdapter.putField(
-            TypeUtils.getType(owner, context.objectDef()),
+            TypeUtils.getType(declaringType, context.objectDef()),
             field.name(),
             TypeUtils.getType(fieldType, context.objectDef())
         );

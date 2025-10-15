@@ -102,6 +102,7 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Ex
      * The variable of a field.
      *
      * @param instance The instance variable
+     * @param declaringType The declared type of the field
      * @param name     The name
      * @param type     The type
      * @author Denis Stepanov
@@ -109,6 +110,7 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Ex
      */
     @Experimental
     record Field(ExpressionDef instance,
+                 TypeDef declaringType,
                  String name,
                  TypeDef type) implements VariableDef {
 
