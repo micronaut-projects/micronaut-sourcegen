@@ -632,17 +632,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             );
         }
         if (statementDef instanceof StatementDef.PutField putField) {
-            VariableDef.Field field = putField.field();
             return CodeBlock.concat(
-                renderExpression(objectDef, methodDef, remappedLocals, field.instance()),
-                CodeBlock.of(".$L = ", field.name()),
+                renderExpression(objectDef, methodDef, remappedLocals, putField.field()),
+                CodeBlock.of(" = "),
                 renderExpression(objectDef, methodDef, remappedLocals, putField.expression())
             );
         }
         if (statementDef instanceof StatementDef.PutStaticField putStaticField) {
-            VariableDef.StaticField field = putStaticField.field();
             return CodeBlock.concat(
-                CodeBlock.of("$T.$L", asType(field.type(), objectDef), field.name()),
+                renderExpression(objectDef, methodDef, remappedLocals, putStaticField.field()),
                 CodeBlock.of(" = "),
                 renderExpression(objectDef, methodDef, remappedLocals, putStaticField.expression())
             );
@@ -1220,7 +1218,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             } else {
                 throw new IllegalStateException("Field access not supported on the object definition: " + objectDef);
             }
-            return CodeBlock.of(renderExpression(objectDef, methodDef, remappedLocals, field.instance()) + "." + field.name());
+            ExpressionDef instance = field.instance();
+            if (!instance.type().equals(field.declaringType())) {
+                return CodeBlock.of(
+                    "(" + renderExpression(objectDef, methodDef, remappedLocals, instance.cast(field.declaringType())) + ")." + field.name());
+            }
+            return CodeBlock.of(renderExpression(objectDef, methodDef, remappedLocals, instance) + "." + field.name());
         }
         if (variableDef instanceof VariableDef.This) {
             if (objectDef == null) {

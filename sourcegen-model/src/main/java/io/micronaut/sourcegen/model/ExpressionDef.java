@@ -499,12 +499,12 @@ public sealed interface ExpressionDef
      * Reference the field of this variable.
      *
      * @param fieldName The field type
-     * @param typeDef   Teh field type
+     * @param fieldType   The field type
      * @return The field variable
      * @since 1.2
      */
-    default VariableDef.Field field(String fieldName, TypeDef typeDef) {
-        return new VariableDef.Field(this, fieldName, typeDef);
+    default VariableDef.Field field(String fieldName, TypeDef fieldType) {
+        return new VariableDef.Field(this, this.type(), fieldName, fieldType);
     }
 
     /**
@@ -515,7 +515,7 @@ public sealed interface ExpressionDef
      * @since 1.2
      */
     default VariableDef.Field field(FieldDef fieldDef) {
-        return new VariableDef.Field(this, fieldDef.getName(), fieldDef.getType());
+        return new VariableDef.Field(this, this.type(), fieldDef.getName(), fieldDef.getType());
     }
 
     /**
@@ -526,7 +526,7 @@ public sealed interface ExpressionDef
      * @since 1.5
      */
     default VariableDef.Field field(FieldElement fieldElement) {
-        return new VariableDef.Field(this, fieldElement.getName(), TypeDef.of(fieldElement.getType()));
+        return new VariableDef.Field(this, TypeDef.erasure(fieldElement.getDeclaringType()), fieldElement.getName(), TypeDef.of(fieldElement.getType()));
     }
 
     /**

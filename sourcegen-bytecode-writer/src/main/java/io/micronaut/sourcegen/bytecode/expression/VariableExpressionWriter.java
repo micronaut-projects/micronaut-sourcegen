@@ -78,8 +78,8 @@ final class VariableExpressionWriter implements ExpressionWriter {
     private void writeField(GeneratorAdapter generatorAdapter, MethodContext context, VariableDef.Field field) {
         ExpressionWriter.writeExpression(generatorAdapter, context, field.instance());
         TypeDef fieldType = field.type();
-        TypeDef owner = field.instance().type();
-        generatorAdapter.getField(TypeUtils.getType(owner, context.objectDef()), field.name(), TypeUtils.getType(fieldType, context.objectDef()));
+        TypeDef declaringType = field.declaringType();
+        generatorAdapter.getField(TypeUtils.getType(declaringType, context.objectDef()), field.name(), TypeUtils.getType(fieldType, context.objectDef()));
     }
 
     private void writeParameterVariable(GeneratorAdapter generatorAdapter, MethodContext context, String name) {
