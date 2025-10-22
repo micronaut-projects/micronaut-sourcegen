@@ -1,8 +1,14 @@
 plugins {
     id("io.micronaut.build.internal.sourcegen-base")
     id("io.micronaut.build.internal.common")
+    id "java-library"
 }
-
+repositories {
+    mavenCentral()
+}
+dependencies {
+    testRuntimeOnly(mnTest.junit.platform.suite)
+}
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
 }
