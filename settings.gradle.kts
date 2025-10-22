@@ -8,7 +8,7 @@ pluginManagement {
 includeBuild("build-logic")
 
 plugins {
-    id("io.micronaut.build.shared.settings") version "7.4.0"
+    id("io.micronaut.build.shared.settings") version "8.0.0-M5"
 }
 
 rootProject.name = "sourcegen-parent"
