@@ -1,8 +1,8 @@
 package io.micronaut.sourcegen
 
 import io.micronaut.sourcegen.model.*
-import org.junit.Assert
-import org.junit.Test
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
 import java.io.IOException
 import java.io.StringWriter
 import java.util.regex.Pattern
@@ -29,15 +29,15 @@ class EnumWriteTest {
         }
 
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
     fun testExceptions() {
-        Assert.assertThrows(
+        Assertions.assertThrows(
             IllegalArgumentException::class.java
         ) { EnumDef.builder("test.Status").addEnumConstant("active").build() }
-        Assert.assertThrows(
+        Assertions.assertThrows(
             IllegalArgumentException::class.java
         ) { EnumDef.builder("test.Status").addEnumConstant("9in progress", ExpressionDef.constant(1)).build() }
     }
@@ -72,7 +72,7 @@ class EnumWriteTest {
           }
         }
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
@@ -110,7 +110,7 @@ class EnumWriteTest {
           }
         }
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
@@ -143,7 +143,7 @@ class EnumWriteTest {
           ;
         }
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
@@ -182,7 +182,7 @@ class EnumWriteTest {
           }
         }
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
 
@@ -202,7 +202,7 @@ class EnumWriteTest {
         )
         val matcher = ENUM_REGEX.matcher(result)
         if (!matcher.matches()) {
-            Assert.fail("Expected enum to match regex: \n$ENUM_REGEX\nbut is: \n$result")
+            throw AssertionError("Expected enum to match regex: \n$ENUM_REGEX\nbut is: \n$result")
         }
         return matcher.group(0)
     }

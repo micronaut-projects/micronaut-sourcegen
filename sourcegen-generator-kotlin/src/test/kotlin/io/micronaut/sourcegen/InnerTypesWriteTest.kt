@@ -5,8 +5,8 @@ import io.micronaut.sourcegen.model.ClassDef.ClassDefBuilder
 import io.micronaut.sourcegen.model.EnumDef.EnumDefBuilder
 import io.micronaut.sourcegen.model.InterfaceDef.InterfaceDefBuilder
 import io.micronaut.sourcegen.model.RecordDef.RecordDefBuilder
-import org.junit.Assert
-import org.junit.Test
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
 import java.io.IOException
 import java.io.StringWriter
 import java.util.regex.Pattern
@@ -38,7 +38,7 @@ class InnerTypesWriteTest {
         )
         val matcher = CLASS_REGEX.matcher(result)
         if (!matcher.matches()) {
-            Assert.fail("Expected class to match regex: \n$CLASS_REGEX\nbut is: \n$result")
+            throw AssertionError("Expected class to match regex: \n$CLASS_REGEX\nbut is: \n$result")
         }
         return matcher.group(0).trim { it <= ' ' }
     }
@@ -99,7 +99,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: EnumDefBuilder = getEnumDefBuilderWith(enumDef)
         val actual = writeClass(classBuilder.build(), "enum")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -126,7 +126,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: EnumDefBuilder = getEnumDefBuilderWith(recordBuilder.build())
         val actual = writeClass(classBuilder.build(), "enum")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -147,7 +147,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: EnumDefBuilder = getEnumDefBuilderWith(innerClassBuilder.build())
         val actual = writeClass(classBuilder.build(), "enum")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -168,7 +168,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: EnumDefBuilder = getEnumDefBuilderWith(interfaceBuilder.build())
         val actual = writeClass(classBuilder.build(), "enum")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     /** -----------------------------------------------------------
@@ -193,7 +193,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: ClassDefBuilder = getClassDefBuilderWith(enumDef)
         val actual = writeClass(classBuilder.build(), "class")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -216,7 +216,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: ClassDefBuilder = getClassDefBuilderWith(recordBuilder.build())
         val actual = writeClass(classBuilder.build(), "class")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -233,7 +233,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: ClassDefBuilder = getClassDefBuilderWith(innerClassBuilder.build())
         val actual = writeClass(classBuilder.build(), "class")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -264,7 +264,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: ClassDefBuilder = getClassDefBuilderWith(innerClassBuilder.build())
         val actual = writeClass(classBuilder.build(), "class")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -281,7 +281,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: ClassDefBuilder = getClassDefBuilderWith(interfaceBuilder.build())
         val actual = writeClass(classBuilder.build(), "class")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     /** -----------------------------------------------------------
@@ -307,7 +307,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: RecordDefBuilder = getRecordDefBuilderWith(enumDef)
         val actual = writeClass(classBuilder.build(), "record")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -330,7 +330,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: RecordDefBuilder = getRecordDefBuilderWith(recordBuilder.build())
         val actual = writeClass(classBuilder.build(), "record")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -347,7 +347,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: RecordDefBuilder = getRecordDefBuilderWith(innerClassBuilder.build())
         val actual = writeClass(classBuilder.build(), "record")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -364,7 +364,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: RecordDefBuilder = getRecordDefBuilderWith(interfaceBuilder.build())
         val actual = writeClass(classBuilder.build(), "record")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     /** -----------------------------------------------------------
@@ -390,7 +390,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: InterfaceDefBuilder = getInterfaceDefBuilderWith(enumDef)
         val actual = writeClass(classBuilder.build(), "interface")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -413,7 +413,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: InterfaceDefBuilder = getInterfaceDefBuilderWith(recordBuilder.build())
         val actual = writeClass(classBuilder.build(), "interface")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -430,7 +430,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: InterfaceDefBuilder = getInterfaceDefBuilderWith(innerClassBuilder.build())
         val actual = writeClass(classBuilder.build(), "interface")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -447,7 +447,7 @@ class InnerTypesWriteTest {
 
         val classBuilder: InterfaceDefBuilder = getInterfaceDefBuilderWith(interfaceBuilder.build())
         val actual = writeClass(classBuilder.build(), "interface")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
 }
