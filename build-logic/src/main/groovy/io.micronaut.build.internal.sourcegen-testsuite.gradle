@@ -1,7 +1,6 @@
 plugins {
     id("io.micronaut.build.internal.sourcegen-base")
     id("io.micronaut.build.internal.common")
-    id "java-library"
 }
 repositories {
     mavenCentral()
