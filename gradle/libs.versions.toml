@@ -9,7 +9,7 @@ intellij-java-decompiler = "251.25410.129"
 managed-asm = "9.8"
 sonatype-scan = "3.1.4"
 
-micronaut = "5.0.0-M2"
+micronaut = "5.0.0-M6"
 micronaut-platform = "4.10.5"
 micronaut-docs = "3.0.0"
 micronaut-test = "5.0.0-M2"
