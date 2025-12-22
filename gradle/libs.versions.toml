@@ -12,9 +12,9 @@ sonatype-scan = "3.1.4"
 micronaut = "5.0.0-M2"
 micronaut-platform = "4.8.3"
 micronaut-docs = "3.0.0"
-micronaut-data = "4.14.2"
 micronaut-validation = "4.12.0"
 micronaut-test = "5.0.0-M2"
+micronaut-data = "4.14.1"
 micronaut-gradle-plugin = "4.6.1"
 
 [libraries]
