@@ -1,7 +1,6 @@
 plugins {
     id("io.micronaut.build.internal.sourcegen-base")
-    id("io.micronaut.build.internal.docs")
-    id("io.micronaut.build.internal.quality-reporting")
+    id "io.micronaut.build.internal.parent"
 }
 
 if (System.getenv("SONAR_TOKEN") != null) {
