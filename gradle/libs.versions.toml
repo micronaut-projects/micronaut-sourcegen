@@ -9,13 +9,13 @@ intellij-java-decompiler = "251.25410.129"
 managed-asm = "9.8"
 sonatype-scan = "3.1.4"
 
-micronaut = "4.9.7"
+micronaut = "4.10.12"
 micronaut-platform = "4.8.3"
-micronaut-docs = "2.0.0"
+micronaut-docs = "3.0.0"
 micronaut-test = "4.7.0"
 micronaut-data = "4.12.2"
 micronaut-validation = "4.9.0"
-micronaut-gradle-plugin = "4.5.3"
+micronaut-gradle-plugin = "4.6.1"
 
 [libraries]
 # Micronaut
