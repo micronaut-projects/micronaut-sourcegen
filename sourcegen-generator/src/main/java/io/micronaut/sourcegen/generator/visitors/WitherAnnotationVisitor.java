@@ -122,8 +122,11 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         ClassTypeDef recordType,
         List<PropertyElement> properties,
         List<ParameterElement> parameters, boolean hasBuilder) {
-        String simpleName = recordType.getSimpleName() + "Wither";
-        String witherClassName = packageName + "." + simpleName;
+        String localBinaryName = recordType.getName().startsWith(packageName + ".")
+            ? recordType.getName().substring(packageName.isEmpty() ? 0 : packageName.length() + 1)
+            : recordType.getName();
+        String witherSimpleName = (recordType.isInner() ? localBinaryName : recordType.getSimpleName()) + "Wither";
+        String witherClassName = packageName + "." + witherSimpleName;
         InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
             .addModifiers(Modifier.PUBLIC);
         if (recordType instanceof ClassTypeDef.Parameterized parameterized) {
@@ -172,8 +175,13 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         }
 
         if (hasBuilder) {
-            String builderSimpleName = recordType.getSimpleName() + "Builder";
-            String builderClassName = recordType.getPackageName() + "." + builderSimpleName;
+            String fullName = recordType.getName();
+            String pkg = fullName.contains(".") ? fullName.substring(0, fullName.lastIndexOf('.')) : "";
+            String localBinaryName2 = fullName.startsWith(pkg + ".")
+                ? fullName.substring(pkg.isEmpty() ? 0 : pkg.length() + 1)
+                : fullName;
+            String builderSimpleName = (recordType.isInner() ? localBinaryName2 : recordType.getSimpleName()) + "Builder";
+            String builderClassName = pkg.isEmpty() ? builderSimpleName : pkg + "." + builderSimpleName;
             ClassTypeDef builderType;
 
             if (recordType instanceof ClassTypeDef.Parameterized parameterized) {
