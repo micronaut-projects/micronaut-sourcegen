@@ -15,9 +15,10 @@
  */
 package io.micronaut.sourcegen.javapoet;
 
-import com.google.testing.compile.CompilationRule;
+import io.micronaut.sourcegen.javapoet.CompilationRule;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -32,10 +33,10 @@ import java.util.regex.Pattern;
 
 import static com.google.common.truth.Truth.assertThat;
 
+@ExtendWith(CompilationRule.class)
 public final class JavaFileTest {
 
-  private TypeElement getElement(Class<?> clazz) {
-    CompilationRule compilation = new CompilationRule();
+  private TypeElement getElement(Class<?> clazz, CompilationRule compilation) {
     return compilation.getElements().getTypeElement(clazz.getCanonicalName());
   }
 
@@ -751,7 +752,7 @@ public final class JavaFileTest {
         + "}\n");
   }
 
-  @Test public void avoidClashesWithNestedClasses_viaTypeElement() {
+  @Test public void avoidClashesWithNestedClasses_viaTypeElement(CompilationRule compilation) {
     String source = JavaFile.builder("com.squareup.tacos",
         TypeSpec.classBuilder("Taco")
             // These two should get qualified
@@ -761,7 +762,7 @@ public final class JavaFileTest {
             .addField(ClassName.get("other", "NestedTypeC"), "nestedC")
             // This one shouldn't since we only look at nested types
             .addField(ClassName.get("other", "Foo"), "foo")
-            .avoidClashesWithNestedClasses(getElement(Foo.class))
+            .avoidClashesWithNestedClasses(getElement(Foo.class, compilation))
             .build())
         .build()
         .toString();
@@ -872,9 +873,9 @@ public final class JavaFileTest {
   }
 
   @Test
-  public void avoidClashes_parentChild_superclass_typeMirror() {
+  public void avoidClashes_parentChild_superclass_typeMirror(CompilationRule compilation) {
     String source = JavaFile.builder("io.micronaut.sourcegen.javapoet",
-        childTypeBuilder().superclass(getElement(Parent.class).asType()).build())
+        childTypeBuilder().superclass(getElement(Parent.class, compilation).asType()).build())
         .build()
         .toString();
     assertThat(source).isEqualTo("package io.micronaut.sourcegen.javapoet;\n"
@@ -915,9 +916,9 @@ public final class JavaFileTest {
   }
 
   @Test
-  public void avoidClashes_parentChild_superinterface_typeMirror() {
+  public void avoidClashes_parentChild_superinterface_typeMirror(CompilationRule compilation) {
     String source = JavaFile.builder("io.micronaut.sourcegen.javapoet",
-        childTypeBuilder().addSuperinterface(getElement(ParentInterface.class).asType()).build())
+        childTypeBuilder().addSuperinterface(getElement(ParentInterface.class, compilation).asType()).build())
         .build()
         .toString();
     assertThat(source).isEqualTo("package io.micronaut.sourcegen.javapoet;\n"

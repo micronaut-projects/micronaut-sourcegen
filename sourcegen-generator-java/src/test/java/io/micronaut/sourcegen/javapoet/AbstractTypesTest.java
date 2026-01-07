@@ -46,29 +46,30 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 
 public abstract class AbstractTypesTest {
-  protected abstract Elements getElements();
-  protected abstract Types getTypes();
+  protected abstract Elements getElements(CompilationRule compilation);
+  protected abstract Types getTypes(CompilationRule compilation);
 
-  private TypeElement getElement(Class<?> clazz) {
-    return getElements().getTypeElement(clazz.getCanonicalName());
+  private TypeElement getElement(Class<?> clazz, CompilationRule compilation) {
+    return getElements(compilation).getTypeElement(clazz.getCanonicalName());
   }
 
-  private TypeMirror getMirror(Class<?> clazz) {
-    return getElement(clazz).asType();
+  private TypeMirror getMirror(Class<?> clazz, CompilationRule compilation) {
+    return getElement(clazz, compilation).asType();
   }
 
-  @Test public void getBasicTypeMirror() {
-    assertThat(TypeName.get(getMirror(Object.class)))
+  @Test
+  public void getBasicTypeMirror(CompilationRule compilation) {
+    assertThat(TypeName.get(getMirror(Object.class, compilation)))
         .isEqualTo(ClassName.get(Object.class));
-    assertThat(TypeName.get(getMirror(Charset.class)))
+    assertThat(TypeName.get(getMirror(Charset.class, compilation)))
         .isEqualTo(ClassName.get(Charset.class));
-    assertThat(TypeName.get(getMirror(AbstractTypesTest.class)))
+    assertThat(TypeName.get(getMirror(AbstractTypesTest.class, compilation)))
         .isEqualTo(ClassName.get(AbstractTypesTest.class));
   }
 
-  @Test public void getParameterizedTypeMirror() {
+  @Test public void getParameterizedTypeMirror(CompilationRule compilation) {
     DeclaredType setType =
-        getTypes().getDeclaredType(getElement(Set.class), getMirror(Object.class));
+        getTypes(compilation).getDeclaredType(getElement(Set.class, compilation), getMirror(Object.class, compilation));
     assertThat(TypeName.get(setType))
         .isEqualTo(ParameterizedTypeName.get(ClassName.get(Set.class), ClassName.OBJECT));
   }
@@ -115,9 +116,9 @@ public abstract class AbstractTypesTest {
       Intersection extends Number & Runnable,
       IntersectionOfInterfaces extends Runnable & Serializable> {}
 
-  @Test public void getTypeVariableTypeMirror() {
+  @Test public void getTypeVariableTypeMirror(CompilationRule compilation) {
     List<? extends TypeParameterElement> typeVariables =
-        getElement(Parameterized.class).getTypeParameters();
+        getElement(Parameterized.class, compilation).getTypeParameters();
 
     // Members of converted types use ClassName and not Class<?>.
     ClassName number = ClassName.get(Number.class);
@@ -143,8 +144,8 @@ public abstract class AbstractTypesTest {
   static class Recursive<T extends Map<List<T>, Set<T[]>>> {}
 
   @Test
-  public void getTypeVariableTypeMirrorRecursive() {
-    TypeMirror typeMirror = getElement(Recursive.class).asType();
+  public void getTypeVariableTypeMirrorRecursive(CompilationRule compilation) {
+    TypeMirror typeMirror = getElement(Recursive.class, compilation).asType();
     ParameterizedTypeName typeName = (ParameterizedTypeName) TypeName.get(typeMirror);
     String className = Recursive.class.getCanonicalName();
     assertThat(typeName.toString()).isEqualTo(className + "<T>");
@@ -162,38 +163,38 @@ public abstract class AbstractTypesTest {
         .isEqualTo("[java.util.Map<java.util.List<T>, java.util.Set<T[]>>]");
   }
 
-  @Test public void getPrimitiveTypeMirror() {
-    assertThat(TypeName.get(getTypes().getPrimitiveType(TypeKind.BOOLEAN)))
+  @Test public void getPrimitiveTypeMirror(CompilationRule compilation) {
+    assertThat(TypeName.get(getTypes(compilation).getPrimitiveType(TypeKind.BOOLEAN)))
         .isEqualTo(TypeName.BOOLEAN);
-    assertThat(TypeName.get(getTypes().getPrimitiveType(TypeKind.BYTE)))
+    assertThat(TypeName.get(getTypes(compilation).getPrimitiveType(TypeKind.BYTE)))
         .isEqualTo(TypeName.BYTE);
-    assertThat(TypeName.get(getTypes().getPrimitiveType(TypeKind.SHORT)))
+    assertThat(TypeName.get(getTypes(compilation).getPrimitiveType(TypeKind.SHORT)))
         .isEqualTo(TypeName.SHORT);
-    assertThat(TypeName.get(getTypes().getPrimitiveType(TypeKind.INT)))
+    assertThat(TypeName.get(getTypes(compilation).getPrimitiveType(TypeKind.INT)))
         .isEqualTo(TypeName.INT);
-    assertThat(TypeName.get(getTypes().getPrimitiveType(TypeKind.LONG)))
+    assertThat(TypeName.get(getTypes(compilation).getPrimitiveType(TypeKind.LONG)))
         .isEqualTo(TypeName.LONG);
-    assertThat(TypeName.get(getTypes().getPrimitiveType(TypeKind.CHAR)))
+    assertThat(TypeName.get(getTypes(compilation).getPrimitiveType(TypeKind.CHAR)))
         .isEqualTo(TypeName.CHAR);
-    assertThat(TypeName.get(getTypes().getPrimitiveType(TypeKind.FLOAT)))
+    assertThat(TypeName.get(getTypes(compilation).getPrimitiveType(TypeKind.FLOAT)))
         .isEqualTo(TypeName.FLOAT);
-    assertThat(TypeName.get(getTypes().getPrimitiveType(TypeKind.DOUBLE)))
+    assertThat(TypeName.get(getTypes(compilation).getPrimitiveType(TypeKind.DOUBLE)))
         .isEqualTo(TypeName.DOUBLE);
   }
 
-  @Test public void getArrayTypeMirror() {
-    assertThat(TypeName.get(getTypes().getArrayType(getMirror(Object.class))))
+  @Test public void getArrayTypeMirror(CompilationRule compilation) {
+    assertThat(TypeName.get(getTypes(compilation).getArrayType(getMirror(Object.class, compilation))))
         .isEqualTo(ArrayTypeName.of(ClassName.OBJECT));
   }
 
-  @Test public void getVoidTypeMirror() {
-    assertThat(TypeName.get(getTypes().getNoType(TypeKind.VOID)))
+  @Test public void getVoidTypeMirror(CompilationRule compilation) {
+    assertThat(TypeName.get(getTypes(compilation).getNoType(TypeKind.VOID)))
         .isEqualTo(TypeName.VOID);
   }
 
-  @Test public void getNullTypeMirror() {
+  @Test public void getNullTypeMirror(CompilationRule compilation) {
     try {
-      TypeName.get(getTypes().getNullType());
+      TypeName.get(getTypes(compilation).getNullType());
       fail();
     } catch (IllegalArgumentException expected) {
     }
@@ -224,24 +225,24 @@ public abstract class AbstractTypesTest {
     assertThat(type.toString()).isEqualTo("? super java.lang.String");
   }
 
-  @Test public void wildcardMirrorNoBounds() throws Exception {
-    WildcardType wildcard = getTypes().getWildcardType(null, null);
+  @Test public void wildcardMirrorNoBounds(CompilationRule compilation) throws Exception {
+    WildcardType wildcard = getTypes(compilation).getWildcardType(null, null);
     TypeName type = TypeName.get(wildcard);
     assertThat(type.toString()).isEqualTo("?");
   }
 
-  @Test public void wildcardMirrorExtendsType() throws Exception {
-    Types types = getTypes();
-    Elements elements = getElements();
+  @Test public void wildcardMirrorExtendsType(CompilationRule compilation) throws Exception {
+    Types types = getTypes(compilation);
+    Elements elements = getElements(compilation);
     TypeMirror charSequence = elements.getTypeElement(CharSequence.class.getName()).asType();
     WildcardType wildcard = types.getWildcardType(charSequence, null);
     TypeName type = TypeName.get(wildcard);
     assertThat(type.toString()).isEqualTo("? extends java.lang.CharSequence");
   }
 
-  @Test public void wildcardMirrorSuperType() throws Exception {
-    Types types = getTypes();
-    Elements elements = getElements();
+  @Test public void wildcardMirrorSuperType(CompilationRule compilation) throws Exception {
+    Types types = getTypes(compilation);
+    Elements elements = getElements(compilation);
     TypeMirror string = elements.getTypeElement(String.class.getName()).asType();
     WildcardType wildcard = types.getWildcardType(null, string);
     TypeName type = TypeName.get(wildcard);

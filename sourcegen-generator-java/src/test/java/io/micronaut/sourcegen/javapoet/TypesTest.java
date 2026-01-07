@@ -15,31 +15,21 @@
  */
 package io.micronaut.sourcegen.javapoet;
 
-import com.google.testing.compile.CompilationRule;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
+@ExtendWith(CompilationRule.class)
 public final class TypesTest extends AbstractTypesTest {
 
-  private final CompilationRule compilation = new CompilationRule();
-
   @Override
-  protected Elements getElements() {
+  protected Elements getElements(CompilationRule compilation) {
     return compilation.getElements();
   }
 
   @Override
-  protected Types getTypes() {
+  protected Types getTypes(CompilationRule compilation) {
     return compilation.getTypes();
-  }
-
-  // Ensure at least one concrete @Test method so JUnit 5 discovers this class
-  @Test
-  void typesTestInitialization() {
-    // Trigger access to ensure compilation rule is usable
-    getElements();
-    getTypes();
   }
 }
