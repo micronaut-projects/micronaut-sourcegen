@@ -11,9 +11,10 @@ dependencies {
     testImplementation(libs.google.jimfs)
     testImplementation(mnTest.mockito.core)
 }
-
+tasks.withType<Test> {
+    useJUnitPlatform()
+}
 tasks.test {
-    useJUnit()
     develocity.predictiveTestSelection.enabled = false
 }
 
