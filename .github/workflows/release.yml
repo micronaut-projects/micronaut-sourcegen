@@ -29,7 +29,7 @@ jobs:
           distribution: 'temurin'
           java-version: |
             21
-            25
+            17
       - name: Set the current release version
         id: release_version
         run: echo "release_version=${GITHUB_REF:11}" >> $GITHUB_OUTPUT
