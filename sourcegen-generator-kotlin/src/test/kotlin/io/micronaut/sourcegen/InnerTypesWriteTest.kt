@@ -38,7 +38,7 @@ class InnerTypesWriteTest {
         )
         val matcher = CLASS_REGEX.matcher(result)
         if (!matcher.matches()) {
-            Assert.fail("Expected class to match regex: \n$CLASS_REGEX\nbut is: \n$result")
+            throw RuntimeException("Expected class to match regex: \n$CLASS_REGEX\nbut is: \n$result")
         }
         return matcher.group(0).trim { it <= ' ' }
     }

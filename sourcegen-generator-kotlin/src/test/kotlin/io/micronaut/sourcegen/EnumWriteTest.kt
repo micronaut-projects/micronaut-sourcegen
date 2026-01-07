@@ -202,7 +202,7 @@ class EnumWriteTest {
         )
         val matcher = ENUM_REGEX.matcher(result)
         if (!matcher.matches()) {
-            Assert.fail("Expected enum to match regex: \n$ENUM_REGEX\nbut is: \n$result")
+            throw RuntimeException("Expected enum to match regex: \n$ENUM_REGEX\nbut is: \n$result")
         }
         return matcher.group(0)
     }
