@@ -16,11 +16,8 @@
 package io.micronaut.sourcegen.javapoet;
 
 import com.google.testing.compile.CompilationRule;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import javax.lang.model.element.TypeElement;
@@ -28,14 +25,11 @@ import javax.lang.model.util.Elements;
 import java.util.Map;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.when;
 
-@RunWith(JUnit4.class)
 public final class ClassNameTest {
-  @Rule public CompilationRule compilationRule = new CompilationRule();
-
   @Test public void bestGuessForString_simpleClass() {
     assertThat(ClassName.bestGuess(String.class.getName()))
         .isEqualTo(ClassName.get("java.lang", "String"));
@@ -105,6 +99,7 @@ public final class ClassNameTest {
   }
 
   @Test public void classNameFromTypeElement() {
+    CompilationRule compilationRule = new CompilationRule();
     Elements elements = compilationRule.getElements();
     TypeElement object = elements.getTypeElement(Object.class.getCanonicalName());
     assertThat(ClassName.get(object).toString()).isEqualTo("java.lang.Object");
@@ -118,8 +113,9 @@ public final class ClassNameTest {
    * Buck builds with "source-based ABI generation" and those builds don't support
    * {@link TypeElement#getKind()}. Test to confirm that we don't use that API.
    */
-  @Ignore("getKind NPE")
+  @Disabled("getKind NPE")
   @Test public void classNameFromTypeElementDoesntUseGetKind() {
+    CompilationRule compilationRule = new CompilationRule();
     Elements elements = compilationRule.getElements();
     TypeElement object = elements.getTypeElement(Object.class.getCanonicalName());
     assertThat(ClassName.get(preventGetKind(object)).toString())

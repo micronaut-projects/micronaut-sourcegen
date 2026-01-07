@@ -4,13 +4,13 @@ import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.TypeDef;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ConstructorWriteTest extends AbstractWriteTest {
 

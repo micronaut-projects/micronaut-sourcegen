@@ -2,13 +2,13 @@ package io.micronaut.sourcegen.javapoet;
 
 import io.micronaut.sourcegen.javapoet.write.AbstractWriteTest;
 import io.micronaut.sourcegen.model.*;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class StaticInitializationBlockTest extends AbstractWriteTest {
 

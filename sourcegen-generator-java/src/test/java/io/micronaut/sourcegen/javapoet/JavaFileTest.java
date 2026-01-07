@@ -16,11 +16,8 @@
 package io.micronaut.sourcegen.javapoet;
 
 import com.google.testing.compile.CompilationRule;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -35,12 +32,10 @@ import java.util.regex.Pattern;
 
 import static com.google.common.truth.Truth.assertThat;
 
-@RunWith(JUnit4.class)
 public final class JavaFileTest {
 
-  @Rule public final CompilationRule compilation = new CompilationRule();
-
   private TypeElement getElement(Class<?> clazz) {
+    CompilationRule compilation = new CompilationRule();
     return compilation.getElements().getTypeElement(clazz.getCanonicalName());
   }
 
@@ -149,7 +144,7 @@ public final class JavaFileTest {
         + "}\n");
   }
 
-  @Ignore("addStaticImport doesn't support members with $L")
+  @Disabled("addStaticImport doesn't support members with $L")
   @Test public void importStaticDynamic() {
     JavaFile source = JavaFile.builder("com.squareup.tacos",
         TypeSpec.classBuilder("Taco")

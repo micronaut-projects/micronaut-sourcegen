@@ -18,7 +18,7 @@ package io.micronaut.sourcegen.javapoet;
 import com.google.testing.compile.CompilationRule;
 import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
@@ -33,7 +33,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static io.micronaut.sourcegen.javapoet.TestUtil.findFirst;
 import static javax.lang.model.util.ElementFilter.fieldsIn;
 import static javax.lang.model.util.ElementFilter.methodsIn;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class ParameterSpecTest {
   @Rule public final CompilationRule compilation = new CompilationRule();

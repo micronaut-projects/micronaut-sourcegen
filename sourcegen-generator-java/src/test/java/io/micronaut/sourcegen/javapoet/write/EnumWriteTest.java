@@ -9,7 +9,7 @@ import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
@@ -17,9 +17,9 @@ import java.io.StringWriter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class EnumWriteTest {
     @Test

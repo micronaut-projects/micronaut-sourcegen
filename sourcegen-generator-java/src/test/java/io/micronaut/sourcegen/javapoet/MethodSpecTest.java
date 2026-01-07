@@ -19,7 +19,7 @@ import com.google.testing.compile.Compilation;
 import com.google.testing.compile.CompilationRule;
 import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -46,7 +46,7 @@ import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.Compiler.javac;
 import static io.micronaut.sourcegen.javapoet.TestUtil.findFirst;
 import static javax.lang.model.util.ElementFilter.methodsIn;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public final class MethodSpecTest {
   @Rule public final CompilationRule compilation = new CompilationRule();

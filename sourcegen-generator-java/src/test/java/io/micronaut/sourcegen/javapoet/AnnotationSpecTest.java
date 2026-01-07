@@ -18,7 +18,7 @@ package io.micronaut.sourcegen.javapoet;
 import com.google.testing.compile.CompilationRule;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec.CodeAnnotationValue;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.TypeElement;
 import java.lang.annotation.Annotation;
@@ -28,7 +28,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public final class AnnotationSpecTest {
 

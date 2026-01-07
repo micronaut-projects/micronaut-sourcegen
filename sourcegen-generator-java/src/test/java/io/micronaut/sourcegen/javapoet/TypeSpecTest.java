@@ -18,7 +18,7 @@ package io.micronaut.sourcegen.javapoet;
 import com.google.common.collect.ImmutableMap;
 import com.google.testing.compile.CompilationRule;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
@@ -44,8 +44,8 @@ import java.util.Random;
 import java.util.concurrent.Callable;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @RunWith(JUnit4.class)
 public final class TypeSpecTest {

@@ -15,7 +15,7 @@
  */
 package io.micronaut.sourcegen.javapoet;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
@@ -23,10 +23,11 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class AnnotatedTypeNameTest {
 
@@ -43,12 +44,18 @@ public class AnnotatedTypeNameTest {
     public @interface TypeUseAnnotation {}
 
 
-    @Test(expected=NullPointerException.class) public void nullAnnotationArray() {
-        TypeName.BOOLEAN.annotated((AnnotationSpec[]) null);
+    @Test
+    void nullAnnotationArray() {
+        assertThrows(NullPointerException.class, () ->
+            TypeName.BOOLEAN.annotated((AnnotationSpec[]) null)
+        );
     }
 
-    @Test(expected=NullPointerException.class) public void nullAnnotationList() {
-        TypeName.DOUBLE.annotated((List<AnnotationSpec>) null);
+    @Test
+    void nullAnnotationList() {
+        assertThrows(NullPointerException.class, () ->
+            TypeName.DOUBLE.annotated((List<AnnotationSpec>) null)
+        );
     }
 
     @Test public void annotated() {

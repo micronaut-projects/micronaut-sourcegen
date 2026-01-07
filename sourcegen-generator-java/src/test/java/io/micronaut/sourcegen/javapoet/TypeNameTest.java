@@ -15,7 +15,7 @@
  */
 package io.micronaut.sourcegen.javapoet;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
@@ -25,7 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 public class TypeNameTest {

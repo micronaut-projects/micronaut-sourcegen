@@ -11,6 +11,9 @@ dependencies {
     testImplementation(libs.google.jimfs)
     testImplementation(mnTest.mockito.core)
 }
+micronautBuild {
+    testFramework = io.micronaut.build.TestFramework.JUNIT5
+}
 
 tasks.test {
     useJUnit()

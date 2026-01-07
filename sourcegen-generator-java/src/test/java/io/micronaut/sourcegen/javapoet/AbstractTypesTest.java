@@ -17,7 +17,7 @@ package io.micronaut.sourcegen.javapoet;
 
 import com.google.testing.compile.Compilation;
 import com.google.testing.compile.JavaFileObjects;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
@@ -41,7 +41,7 @@ import java.util.Set;
 
 import static com.google.testing.compile.Compiler.javac;
 import static javax.lang.model.util.ElementFilter.fieldsIn;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 
