@@ -22,7 +22,7 @@ class AnnotationTest {
         @Introspected
         public class SimpleClass
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
@@ -44,7 +44,7 @@ class AnnotationTest {
           public var str: String
         }
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
@@ -62,7 +62,7 @@ class AnnotationTest {
         3])
         public class SimpleClass
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
@@ -80,7 +80,7 @@ class AnnotationTest {
         com.fasterxml.jackson.`annotation`.JsonSubTypes.Type(value = String::class, name = "Fish")])
         public class SimpleClass
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     private fun getSimpleAnn(): AnnotationDef {

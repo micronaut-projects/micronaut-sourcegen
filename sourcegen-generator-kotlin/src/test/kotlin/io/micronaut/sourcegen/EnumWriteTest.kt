@@ -29,15 +29,15 @@ class EnumWriteTest {
         }
 
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
     fun testExceptions() {
-        Assert.assertThrows(
+        Assertions.assertThrows(
             IllegalArgumentException::class.java
         ) { EnumDef.builder("test.Status").addEnumConstant("active").build() }
-        Assert.assertThrows(
+        Assertions.assertThrows(
             IllegalArgumentException::class.java
         ) { EnumDef.builder("test.Status").addEnumConstant("9in progress", ExpressionDef.constant(1)).build() }
     }
@@ -72,7 +72,7 @@ class EnumWriteTest {
           }
         }
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
@@ -110,7 +110,7 @@ class EnumWriteTest {
           }
         }
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
@@ -143,7 +143,7 @@ class EnumWriteTest {
           ;
         }
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
     @Test
@@ -182,7 +182,7 @@ class EnumWriteTest {
           }
         }
         """.trimIndent()
-        Assert.assertEquals(expected.trim(), result.trim())
+        Assertions.assertEquals(expected.trim(), result.trim())
     }
 
 
