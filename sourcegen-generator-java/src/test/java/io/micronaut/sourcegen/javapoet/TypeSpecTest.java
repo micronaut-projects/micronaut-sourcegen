@@ -17,10 +17,7 @@ package io.micronaut.sourcegen.javapoet;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.testing.compile.CompilationRule;
-import org.junit.Rule;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import javax.lang.model.element.Element;
@@ -47,12 +44,11 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@RunWith(JUnit4.class)
 public final class TypeSpecTest {
   private final String tacosPackage = "com.squareup.tacos";
   private static final String donutsPackage = "com.squareup.donuts";
 
-  @Rule public final CompilationRule compilation = new CompilationRule();
+  private final CompilationRule compilation = new CompilationRule();
 
   private TypeElement getElement(Class<?> clazz) {
     return compilation.getElements().getTypeElement(clazz.getCanonicalName());
@@ -2412,6 +2408,7 @@ public final class TypeSpecTest {
             .addStatement("foo = $S", "FOO")
             .build())
         .build();
+
     assertThat(toString(taco)).isEqualTo("package com.squareup.tacos;\n"
         + "\n"
         + "import java.lang.Override;\n"
