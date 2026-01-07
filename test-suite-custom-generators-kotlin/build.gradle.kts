@@ -11,3 +11,8 @@ dependencies {
     implementation(projects.sourcegenAnnotations)
     implementation(mn.kotlin.stdlib)
 }
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
