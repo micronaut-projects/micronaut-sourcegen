@@ -23,6 +23,7 @@ dependencies {
     testRuntimeOnly(mnTest.junit.jupiter.engine)
 }
 kotlin {
+//    kotlinDaemonJvmArgs = listOf("-Xdebug","-Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=y")
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
