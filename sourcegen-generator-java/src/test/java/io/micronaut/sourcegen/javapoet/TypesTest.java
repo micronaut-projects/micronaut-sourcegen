@@ -15,25 +15,21 @@
  */
 package io.micronaut.sourcegen.javapoet;
 
-import com.google.testing.compile.CompilationRule;
-import org.junit.Rule;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
-@RunWith(JUnit4.class)
+@ExtendWith(CompilationRule.class)
 public final class TypesTest extends AbstractTypesTest {
-  @Rule public final CompilationRule compilation = new CompilationRule();
 
   @Override
-  protected Elements getElements() {
+  protected Elements getElements(CompilationRule compilation) {
     return compilation.getElements();
   }
 
   @Override
-  protected Types getTypes() {
+  protected Types getTypes(CompilationRule compilation) {
     return compilation.getTypes();
   }
 }

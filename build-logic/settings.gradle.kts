@@ -5,3 +5,4 @@ dependencyResolutionManagement {
         }
     }
 }
+rootProject.name = "sourcegen-build-logic"

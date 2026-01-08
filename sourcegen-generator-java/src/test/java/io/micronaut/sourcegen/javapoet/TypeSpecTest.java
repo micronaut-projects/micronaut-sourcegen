@@ -16,17 +16,15 @@
 package io.micronaut.sourcegen.javapoet;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.testing.compile.CompilationRule;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -44,17 +42,15 @@ import java.util.Random;
 import java.util.concurrent.Callable;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
-@RunWith(JUnit4.class)
+@ExtendWith(CompilationRule.class)
 public final class TypeSpecTest {
   private final String tacosPackage = "com.squareup.tacos";
   private static final String donutsPackage = "com.squareup.donuts";
 
-  @Rule public final CompilationRule compilation = new CompilationRule();
-
-  private TypeElement getElement(Class<?> clazz) {
+  private TypeElement getElement(Class<?> clazz, CompilationRule compilation) {
     return compilation.getElements().getTypeElement(clazz.getCanonicalName());
   }
 
@@ -2263,13 +2259,13 @@ public final class TypeSpecTest {
     assertThat(CodeBlock.of("$T", typeName).toString()).isEqualTo("java.lang.String");
   }
 
-  @Test public void typeFromTypeMirror() {
-    TypeMirror mirror = getElement(String.class).asType();
+  @Test public void typeFromTypeMirror(CompilationRule compilation) {
+    TypeMirror mirror = getElement(String.class, compilation).asType();
     assertThat(CodeBlock.of("$T", mirror).toString()).isEqualTo("java.lang.String");
   }
 
-  @Test public void typeFromTypeElement() {
-    TypeElement element = getElement(String.class);
+  @Test public void typeFromTypeElement(CompilationRule compilation) {
+    TypeElement element = getElement(String.class, compilation);
     assertThat(CodeBlock.of("$T", element).toString()).isEqualTo("java.lang.String");
   }
 
@@ -2277,7 +2273,7 @@ public final class TypeSpecTest {
     assertThat(CodeBlock.of("$T", String.class).toString()).isEqualTo("java.lang.String");
   }
 
-  @Test public void typeFromUnsupportedType() {
+  @Test public void typeFromUnsupportedType(CompilationRule compilation) {
     try {
       CodeBlock.builder().add("$T", "java.lang.String");
       fail();
@@ -2412,6 +2408,7 @@ public final class TypeSpecTest {
             .addStatement("foo = $S", "FOO")
             .build())
         .build();
+
     assertThat(toString(taco)).isEqualTo("package com.squareup.tacos;\n"
         + "\n"
         + "import java.lang.Override;\n"
@@ -2440,9 +2437,9 @@ public final class TypeSpecTest {
         + "}\n");
   }
 
-  @Test public void initializersToBuilder() {
+  @Test public void initializersToBuilder(CompilationRule compilation) {
     // Tests if toBuilder() contains correct static and instance initializers
-    Element originatingElement = getElement(TypeSpecTest.class);
+    Element originatingElement = getElement(TypeSpecTest.class, compilation);
     TypeSpec taco = TypeSpec.classBuilder("Taco")
         .addField(String.class, "foo", Modifier.PRIVATE)
         .addField(String.class, "FOO", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)

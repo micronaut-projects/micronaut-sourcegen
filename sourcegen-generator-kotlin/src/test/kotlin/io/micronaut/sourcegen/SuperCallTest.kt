@@ -1,8 +1,8 @@
 package io.micronaut.sourcegen
 
 import io.micronaut.sourcegen.model.*
-import org.junit.Assert
-import org.junit.Test
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
 import java.io.IOException
 import java.io.StringWriter
 import java.util.regex.Pattern
@@ -52,7 +52,7 @@ class SuperCallTest {
             .addModifiers(Modifier.PUBLIC)
             .addMethod(method)
         val actual = writeClass(classBuilder.build(), "class")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -80,7 +80,7 @@ class SuperCallTest {
             .superclass(specificParentType)
             .addMethod(superMethod)
         val actual = writeClass(classBuilder.build(), "class")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -101,7 +101,7 @@ class SuperCallTest {
             .superclass(parentType)
             .addMethod(constructor)
         val actual = writeClass(classBuilder.build(), "class")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 
     @Test
@@ -135,6 +135,6 @@ class SuperCallTest {
             .superclass(parentType)
             .addMethod(childConstructor)
         val actual = writeClass(classBuilder.build(), "class")
-        Assert.assertEquals(expectedString.trim(), actual)
+        Assertions.assertEquals(expectedString.trim(), actual)
     }
 }

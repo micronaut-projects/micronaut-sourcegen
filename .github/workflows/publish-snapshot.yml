@@ -28,7 +28,7 @@ jobs:
           distribution: 'temurin'
           java-version: |
             21
-            25
+            17
       - name: Publish to Sonatype Snapshots
         if: success()
         env:

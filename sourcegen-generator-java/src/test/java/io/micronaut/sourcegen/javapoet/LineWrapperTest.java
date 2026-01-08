@@ -15,13 +15,10 @@
  */
 package io.micronaut.sourcegen.javapoet;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.jupiter.api.Test;
 
 import static com.google.common.truth.Truth.assertThat;
 
-@RunWith(JUnit4.class)
 public final class LineWrapperTest {
   @Test public void wrap() throws Exception {
     StringBuffer out = new StringBuffer();

@@ -16,11 +16,7 @@
 package io.micronaut.sourcegen.javapoet;
 
 import com.google.common.io.ByteStreams;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import javax.tools.Diagnostic;
@@ -34,6 +30,8 @@ import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -42,11 +40,7 @@ import java.util.concurrent.Callable;
 import static com.google.common.truth.Truth.assertThat;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-@RunWith(JUnit4.class)
 public class FileReadingTest {
-
-  // Used for storing compilation output.
-  @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test public void javaFileObjectUri() {
     TypeSpec type = TypeSpec.classBuilder("Test").build();
@@ -103,8 +97,10 @@ public class FileReadingTest {
     DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<>();
     StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnosticCollector,
         Locale.getDefault(), UTF_8);
+
+    Path tempDir = Files.createTempDirectory("javafile-compile");
     fileManager.setLocation(StandardLocation.CLASS_OUTPUT,
-        Collections.singleton(temporaryFolder.newFolder()));
+        Collections.singleton(tempDir.toFile()));
     CompilationTask task = compiler.getTask(null,
         fileManager,
         diagnosticCollector,

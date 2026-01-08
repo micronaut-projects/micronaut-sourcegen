@@ -15,10 +15,9 @@
  */
 package io.micronaut.sourcegen.javapoet;
 
-import com.google.testing.compile.CompilationRule;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec.CodeAnnotationValue;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import javax.lang.model.element.TypeElement;
 import java.lang.annotation.Annotation;
@@ -28,8 +27,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
+@ExtendWith(CompilationRule.class)
 public final class AnnotationSpecTest {
 
   @Retention(RetentionPolicy.RUNTIME)
@@ -105,7 +105,6 @@ public final class AnnotationSpecTest {
     // empty
   }
 
-  @Rule public final CompilationRule compilation = new CompilationRule();
 
   @Test
   void equalsAndHashCode() {
@@ -120,7 +119,7 @@ public final class AnnotationSpecTest {
   }
 
   @Test
-  void defaultAnnotation() {
+  void defaultAnnotation(CompilationRule compilation) {
     String name = IsAnnotated.class.getCanonicalName();
     TypeElement element = compilation.getElements().getTypeElement(name);
     AnnotationSpec annotation = AnnotationSpec.get(element.getAnnotationMirrors().get(0));
@@ -157,7 +156,7 @@ public final class AnnotationSpecTest {
   }
 
   @Test
-  void defaultAnnotationWithImport() {
+  void defaultAnnotationWithImport(CompilationRule compilation) {
     String name = IsAnnotated.class.getCanonicalName();
     TypeElement element = compilation.getElements().getTypeElement(name);
     AnnotationSpec annotation = AnnotationSpec.get(element.getAnnotationMirrors().get(0));
@@ -248,7 +247,7 @@ public final class AnnotationSpecTest {
   }
 
   @Test
-  void defaultAnnotationToBuilder() {
+  void defaultAnnotationToBuilder(CompilationRule compilation) {
     String name = IsAnnotated.class.getCanonicalName();
     TypeElement element = compilation.getElements().getTypeElement(name);
     AnnotationSpec.Builder builder = AnnotationSpec.get(element.getAnnotationMirrors().get(0))
