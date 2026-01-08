@@ -19,6 +19,8 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Parameter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -27,26 +29,28 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MyBean3Test {
     @Test
-    public void test() throws Exception {
+    void test() throws Exception {
         MyBean3 bean1 = new MyBean3();
         assertNull(bean1.otherName);
 
         MyBean3 bean2 = new MyBean3("xyz");
         assertEquals("xyz", bean2.otherName);
-        assertNotNull(
-            MyBean3.class.getDeclaredConstructor(Integer.class).getParameters()[0].getAnnotatedType().getDeclaredAnnotation(Nullable.class)
-        );
+        Constructor<MyBean3> constructor = MyBean3.class.getDeclaredConstructor(Integer.class);
+        assertNotNull(constructor);
+        Parameter parameter = constructor.getParameters()[0];
+        assertNotNull(parameter);
+        assertNotNull(parameter.getDeclaredAnnotation(Nullable.class));
     }
 
     @Test
-    public void testConcatenate() throws Exception {
+    void testConcatenate() throws Exception {
         MyBean3 bean3 = new MyBean3();
 
         assertEquals("Hello, Andriy", bean3.concatenation("Andriy"));
     }
 
     @Test
-    public void testThrows() throws Exception {
+    void testThrows() throws Exception {
         MyBean3 bean3 = new MyBean3();
 
         assertThrows(IOException.class, bean3::getStringUnsafe);
