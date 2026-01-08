@@ -6,6 +6,5 @@ io.micronaut.sourcegen.bytecode.statement
 io.micronaut.sourcegen.generator
 io.micronaut.sourcegen.generator.bytecode
 io.micronaut.sourcegen.generator.visitors
-io.micronaut.sourcegen.info
 io.micronaut.sourcegen.javapoet
 io.micronaut.sourcegen.model
