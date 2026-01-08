@@ -15,7 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode.expression;
 
-import io.micronaut.core.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.model.ExpressionDef;

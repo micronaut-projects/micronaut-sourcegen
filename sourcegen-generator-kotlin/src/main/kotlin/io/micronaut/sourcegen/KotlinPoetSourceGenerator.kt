@@ -23,7 +23,7 @@ import com.squareup.kotlinpoet.javapoet.KotlinPoetJavaPoetPreview
 import com.squareup.kotlinpoet.javapoet.toKClassName
 import com.squareup.kotlinpoet.javapoet.toKTypeName
 import io.micronaut.core.annotation.Internal
-import io.micronaut.core.annotation.Nullable
+import org.jspecify.annotations.Nullable
 import io.micronaut.core.reflect.ClassUtils
 import io.micronaut.inject.visitor.VisitorContext
 import io.micronaut.sourcegen.generator.SourceGenerator
@@ -693,12 +693,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         }
 
         @OptIn(KotlinPoetJavaPoetPreview::class)
-        private fun asType(typeDef: TypeDef, objectDef: ObjectDef?): TypeName {
+        private fun asType(typeDef: TypeDef?, objectDef: ObjectDef?): TypeName {
             return asType(typeDef, objectDef, null)
         }
 
         @OptIn(KotlinPoetJavaPoetPreview::class)
-        private fun asType(typeDef: TypeDef, objectDef: ObjectDef?, methodDef: MethodDef?): TypeName {
+        private fun asType(typeDef: TypeDef?, objectDef: ObjectDef?, methodDef: MethodDef?): TypeName {
             val result: TypeName = if (typeDef == TypeDef.THIS) {
                 if (objectDef == null) {
                     throw java.lang.IllegalStateException("This type is used outside of the instance scope!")
@@ -811,7 +811,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private fun renderStatementCodeBlock(
             objectDef: @Nullable ObjectDef?,
             methodDef: MethodDef,
-            statementDef: StatementDef
+            statementDef: StatementDef?
         ): CodeBlock {
             if (statementDef is StatementDef.Multi) {
                 val builder: CodeBlock.Builder =
@@ -894,7 +894,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private fun renderStatement(
             objectDef: ObjectDef?,
             methodDef: MethodDef,
-            statementDef: StatementDef
+            statementDef: StatementDef?
         ): CodeBlock {
             if (statementDef is StatementDef.Throw) {
                 return CodeBlock.builder()
@@ -985,12 +985,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private fun renderExpressionCode(
             objectDef: ObjectDef?,
             methodDef: MethodDef,
-            expressionDef: ExpressionDef,
+            expressionDef: ExpressionDef?,
             expectedType: TypeDef
         ): CodeBlock {
             val codeBlock = renderExpressionCode(objectDef, methodDef, expressionDef)
             val builder = codeBlock.toBuilder()
-            if (!expectedType.isNullable && expressionDef.type().isNullable) {
+            if (!expectedType.isNullable && expressionDef?.type()?.isNullable == true) {
                 builder.add("!!")
             }
             return builder.build()
@@ -999,7 +999,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private fun renderExpressionCode(
             objectDef: ObjectDef?,
             methodDef: MethodDef,
-            expressionDef: ExpressionDef
+            expressionDef: ExpressionDef?
         ): CodeBlock {
             if (expressionDef is NewInstance) {
                 val codeBuilder = CodeBlock.builder()
@@ -1504,12 +1504,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private fun renderExpressionWithNotNullAssertion(
             objectDef: ObjectDef?,
             methodDef: MethodDef,
-            expressionDef: ExpressionDef,
+            expressionDef: ExpressionDef?,
             result: TypeDef
         ): CodeBlock {
             val codeBlock = renderExpressionCode(objectDef, methodDef, expressionDef)
             val builder = codeBlock.toBuilder()
-            if (!result.isNullable && expressionDef.type().isNullable) {
+            if (!result.isNullable && expressionDef?.type()?.isNullable == true) {
                 builder.add("!!")
             }
             return builder.build()

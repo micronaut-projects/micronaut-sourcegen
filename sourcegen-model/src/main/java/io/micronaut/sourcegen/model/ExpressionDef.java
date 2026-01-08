@@ -17,8 +17,8 @@ package io.micronaut.sourcegen.model;
 
 import com.github.javaparser.quality.NotNull;
 import io.micronaut.core.annotation.Experimental;
-import io.micronaut.core.annotation.NonNull;
-import io.micronaut.core.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import io.micronaut.core.convert.ConversionService;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.core.reflect.ReflectionUtils;
@@ -343,8 +343,7 @@ public sealed interface ExpressionDef
      * @return The null value expression
      * @since 1.2
      */
-    @NonNull
-    static ExpressionDef.Constant nullValue() {
+    static ExpressionDef.@NonNull Constant nullValue() {
         return new Constant(TypeDef.OBJECT, null);
     }
 
@@ -352,8 +351,7 @@ public sealed interface ExpressionDef
      * @return The true value expression
      * @since 1.2
      */
-    @NonNull
-    static ExpressionDef.Constant trueValue() {
+    static ExpressionDef.@NonNull Constant trueValue() {
         return TypeDef.Primitive.TRUE;
     }
 
@@ -361,8 +359,7 @@ public sealed interface ExpressionDef
      * @return The true value expression
      * @since 1.2
      */
-    @NonNull
-    static ExpressionDef.Constant falseValue() {
+    static ExpressionDef.@NonNull Constant falseValue() {
         return TypeDef.Primitive.FALSE;
     }
 
@@ -381,8 +378,7 @@ public sealed interface ExpressionDef
      * @param type The type to cast to
      * @return The cast expression
      */
-    @NonNull
-    default ExpressionDef.Cast cast(TypeDef type) {
+    default ExpressionDef.@NonNull Cast cast(TypeDef type) {
         return new Cast(type, this);
     }
 
@@ -393,8 +389,7 @@ public sealed interface ExpressionDef
      * @return The cast expression
      * @since 1.5
      */
-    @NonNull
-    default ExpressionDef.Cast cast(Class<?> type) {
+    default ExpressionDef.@NonNull Cast cast(Class<?> type) {
         return new Cast(TypeDef.of(type), this);
     }
 
@@ -883,8 +878,7 @@ public sealed interface ExpressionDef
      * @since 1.2
      */
     @Experimental
-    @Nullable
-    static ExpressionDef.Constant constant(@Nullable Object value) {
+    static ExpressionDef.@Nullable Constant constant(@Nullable Object value) {
         if (value == null) {
             return ExpressionDef.nullValue();
         }
@@ -978,8 +972,7 @@ public sealed interface ExpressionDef
      * @since 1.2
      */
     @Experimental
-    @Nullable
-    static ExpressionDef.Constant primitiveConstant(@NotNull Object value) {
+    static ExpressionDef.@Nullable Constant primitiveConstant(@NotNull Object value) {
         Class<?> primitiveType = ReflectionUtils.getPrimitiveType(value.getClass());
         return new ExpressionDef.Constant(TypeDef.primitive(primitiveType), value);
     }

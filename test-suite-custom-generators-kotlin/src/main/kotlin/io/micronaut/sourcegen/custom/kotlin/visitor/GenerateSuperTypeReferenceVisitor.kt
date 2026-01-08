@@ -15,7 +15,7 @@
  */
 package io.micronaut.sourcegen.custom.kotlin.visitor
 
-import io.micronaut.core.annotation.NonNull
+import org.jspecify.annotations.NonNull
 import io.micronaut.inject.ast.ClassElement
 import io.micronaut.inject.visitor.TypeElementVisitor
 import io.micronaut.inject.visitor.TypeElementVisitor.VisitorKind
@@ -43,7 +43,7 @@ open class GenerateSuperTypeReferenceVisitor : TypeElementVisitor<GenerateSuperT
             .build(MethodDef.MethodBodyBuilder { aThis: VariableDef.This?, methodParameters: MutableList<VariableDef.MethodParameter?>? ->
                 aThis!!.superRef()
                     .invoke("toString", stringType)
-                    .invoke("toUpperCase", stringType)
+                    .invoke("uppercase", stringType)
                     .returning()
             })
         val classBuilder = ClassDef.builder("SuperTypeReferenceClass")

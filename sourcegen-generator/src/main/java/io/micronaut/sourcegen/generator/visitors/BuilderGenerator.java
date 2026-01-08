@@ -17,8 +17,8 @@ package io.micronaut.sourcegen.generator.visitors;
 
 import io.micronaut.core.annotation.AnnotationValue;
 import io.micronaut.core.annotation.Experimental;
-import io.micronaut.core.annotation.NonNull;
-import io.micronaut.core.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.sourcegen.annotations.Builder;
@@ -45,7 +45,7 @@ public class BuilderGenerator {
      * @param constructorParameters  The constructor parameters
      * @return A class definition builder for the builder
      */
-    public static @NonNull ClassDef.ClassDefBuilder createBuilder(
+    public static ClassDef.@NonNull ClassDefBuilder createBuilder(
         String packageName,
         @NonNull ClassTypeDef elementType,
         @Nullable AnnotationValue<Builder> builderAnnotationValue,

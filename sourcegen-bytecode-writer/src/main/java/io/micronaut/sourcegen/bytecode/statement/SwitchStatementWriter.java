@@ -15,7 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode.statement;
 
-import io.micronaut.core.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.sourcegen.bytecode.AbstractSwitchWriter;
 import io.micronaut.sourcegen.bytecode.MethodContext;
