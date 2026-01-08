@@ -3,6 +3,10 @@ plugins {
     id("io.micronaut.build.internal.common")
 }
 
+dependencies {
+    testRuntimeOnly(mnTest.junit.platform.launcher)
+}
+
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
 }
