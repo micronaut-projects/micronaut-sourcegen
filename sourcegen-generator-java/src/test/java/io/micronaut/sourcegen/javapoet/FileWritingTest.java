@@ -17,11 +17,7 @@ package io.micronaut.sourcegen.javapoet;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import javax.lang.model.element.Element;
@@ -31,16 +27,23 @@ import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Date;
 
 import static com.google.common.truth.Truth.assertThat;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
-@RunWith(JUnit4.class)
 public final class FileWritingTest {
   // Used for testing java.io File behavior.
-  @Rule public final TemporaryFolder tmp = new TemporaryFolder();
+  private Path tmp;
+
+  Path getTmp() throws IOException {
+      if (this.tmp == null) {
+          this.tmp = Files.createTempDirectory("filewritingtest-");
+      }
+      return this.tmp;
+  }
 
   // Used for testing java.nio.file Path behavior.
   private final FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
@@ -66,7 +69,7 @@ public final class FileWritingTest {
   @Test public void fileNotDirectory() throws IOException {
     TypeSpec type = TypeSpec.classBuilder("Test").build();
     JavaFile javaFile = JavaFile.builder("example", type).build();
-    File file = new File(tmp.newFolder("foo"), "bar");
+    File file = new File(Files.createTempDirectory(getTmp(), "foo").toFile(), "bar");
     file.createNewFile();
     try {
       javaFile.writeTo(file);
@@ -87,9 +90,9 @@ public final class FileWritingTest {
 
   @Test public void fileDefaultPackage() throws IOException {
     TypeSpec type = TypeSpec.classBuilder("Test").build();
-    JavaFile.builder("", type).build().writeTo(tmp.getRoot());
+    JavaFile.builder("", type).build().writeTo(getTmp().toFile());
 
-    File testFile = new File(tmp.getRoot(), "Test.java");
+    File testFile = getTmp().resolve("Test.java").toFile();
     assertThat(testFile.exists()).isTrue();
   }
 
@@ -117,11 +120,11 @@ public final class FileWritingTest {
 
   @Test public void fileNestedClasses() throws IOException {
     TypeSpec type = TypeSpec.classBuilder("Test").build();
-    JavaFile.builder("foo", type).build().writeTo(tmp.getRoot());
-    JavaFile.builder("foo.bar", type).build().writeTo(tmp.getRoot());
-    JavaFile.builder("foo.bar.baz", type).build().writeTo(tmp.getRoot());
+    JavaFile.builder("foo", type).build().writeTo(getTmp().toFile());
+    JavaFile.builder("foo.bar", type).build().writeTo(getTmp().toFile());
+    JavaFile.builder("foo.bar.baz", type).build().writeTo(getTmp().toFile());
 
-    File fooDir = new File(tmp.getRoot(), "foo");
+    File fooDir = getTmp().resolve("foo").toFile();
     File fooFile = new File(fooDir, "Test.java");
     File barDir = new File(fooDir, "bar");
     File barFile = new File(barDir, "Test.java");

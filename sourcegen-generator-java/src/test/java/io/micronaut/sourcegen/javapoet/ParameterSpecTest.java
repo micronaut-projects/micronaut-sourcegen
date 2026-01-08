@@ -15,10 +15,8 @@
  */
 package io.micronaut.sourcegen.javapoet;
 
-import com.google.testing.compile.CompilationRule;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import javax.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
@@ -33,19 +31,16 @@ import static com.google.common.truth.Truth.assertThat;
 import static io.micronaut.sourcegen.javapoet.TestUtil.findFirst;
 import static javax.lang.model.util.ElementFilter.fieldsIn;
 import static javax.lang.model.util.ElementFilter.methodsIn;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
+@ExtendWith(CompilationRule.class)
 public class ParameterSpecTest {
-  @Rule public final CompilationRule compilation = new CompilationRule();
+    private Elements getElements(CompilationRule compilation) {
+        return compilation.getElements();
+    }
 
-  private Elements elements;
-
-  @Before public void setUp() {
-    elements = compilation.getElements();
-  }
-
-  private TypeElement getElement(Class<?> clazz) {
-    return elements.getTypeElement(clazz.getCanonicalName());
+  private TypeElement getElement(Class<?> clazz, CompilationRule compilation) {
+    return getElements(compilation).getTypeElement(clazz.getCanonicalName());
   }
 
   @Test public void equalsAndHashCode() {
@@ -94,9 +89,9 @@ public class ParameterSpecTest {
     String name;
   }
 
-  @Test public void fieldVariableElement() {
-    TypeElement classElement = getElement(VariableElementFieldClass.class);
-    List<VariableElement> methods = fieldsIn(elements.getAllMembers(classElement));
+  @Test public void fieldVariableElement(CompilationRule compilation) {
+    TypeElement classElement = getElement(VariableElementFieldClass.class, compilation);
+    List<VariableElement> methods = fieldsIn(getElements(compilation).getAllMembers(classElement));
     VariableElement element = findFirst(methods, "name");
 
     try {
@@ -112,9 +107,9 @@ public class ParameterSpecTest {
     }
   }
 
-  @Test public void parameterVariableElement() {
-    TypeElement classElement = getElement(VariableElementParameterClass.class);
-    List<ExecutableElement> methods = methodsIn(elements.getAllMembers(classElement));
+  @Test public void parameterVariableElement(CompilationRule compilation) {
+    TypeElement classElement = getElement(VariableElementParameterClass.class, compilation);
+    List<ExecutableElement> methods = methodsIn(getElements(compilation).getAllMembers(classElement));
     ExecutableElement element = findFirst(methods, "foo");
     VariableElement parameterElement = element.getParameters().get(0);
 

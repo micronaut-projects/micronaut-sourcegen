@@ -4,15 +4,15 @@ import io.micronaut.sourcegen.JavaPoetSourceGenerator;
 import io.micronaut.sourcegen.custom.visitor.GenerateAnnotationClassVisitor;
 import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ObjectDef;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class AnnotationClassWriteTest {
 

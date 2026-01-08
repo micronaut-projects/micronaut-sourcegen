@@ -1179,11 +1179,26 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     case "java.lang.String" -> CodeBlock.of("$S", value);
                     default -> CodeBlock.of("$L", value);
                 };
-            } else {
-                return CodeBlock.of("$L", value);
             }
+            if (value instanceof TypeDef typeDef) {
+                return CodeBlock.of("$L.class", getClassName(typeDef));
+            }
+            return CodeBlock.of("$L", value);
         }
         throw new IllegalStateException("Unrecognized expression: " + constant);
+    }
+
+    private String getClassName(TypeDef typeDef) {
+        if (typeDef instanceof ClassTypeDef classType) {
+            return ClassName.bestGuess(classType.getCanonicalName()).canonicalName();
+        }
+        if (typeDef instanceof TypeDef.Primitive primitive) {
+            return primitive.name();
+        }
+        if (typeDef instanceof TypeDef.Array array) {
+            return getClassName(array.componentType()) + "[]";
+        }
+        throw new IllegalStateException("Unrecognized type def: " + typeDef);
     }
 
     private CodeBlock renderVariable(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, Map<String, String> remappedLocals, VariableDef variableDef) {

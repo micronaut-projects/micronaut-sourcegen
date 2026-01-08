@@ -16,10 +16,11 @@
 package io.micronaut.sourcegen.javapoet;
 
 import com.google.testing.compile.Compilation;
-import com.google.testing.compile.CompilationRule;
+import io.micronaut.sourcegen.javapoet.CompilationRule;
 import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -46,21 +47,21 @@ import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.Compiler.javac;
 import static io.micronaut.sourcegen.javapoet.TestUtil.findFirst;
 import static javax.lang.model.util.ElementFilter.methodsIn;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
+@ExtendWith(CompilationRule.class)
 public final class MethodSpecTest {
-  @Rule public final CompilationRule compilation = new CompilationRule();
 
-  private Elements elements;
-  private Types types;
+    private Elements getElements(CompilationRule compilation) {
+        return compilation.getElements();
+    }
 
-  @Before public void setUp() {
-    elements = compilation.getElements();
-    types = compilation.getTypes();
-  }
+    private Types getTypes(CompilationRule compilation) {
+        return compilation.getTypes();
+    }
 
-  private TypeElement getElement(Class<?> clazz) {
-    return elements.getTypeElement(clazz.getCanonicalName());
+  private TypeElement getElement(Class<?> clazz, CompilationRule compilation) {
+    return getElements(compilation).getTypeElement(clazz.getCanonicalName());
   }
 
   @Test public void nullAnnotationsAddition() {
@@ -145,8 +146,8 @@ public final class MethodSpecTest {
     }
   }
 
-  @Test public void overrideEverything() {
-    TypeElement classElement = getElement(Everything.class);
+  @Test public void overrideEverything(CompilationRule compilation) {
+    TypeElement classElement = getElement(Everything.class, compilation);
     ExecutableElement methodElement = getOnlyElement(methodsIn(classElement.getEnclosedElements()));
     MethodSpec method = MethodSpec.overriding(methodElement).build();
     assertThat(method.toString()).isEqualTo("@java.lang.Override\n"
@@ -156,8 +157,8 @@ public final class MethodSpecTest {
         + "}\n");
   }
 
-  @Test public void overrideGenerics() {
-    TypeElement classElement = getElement(Generics.class);
+  @Test public void overrideGenerics(CompilationRule compilation) {
+    TypeElement classElement = getElement(Generics.class, compilation);
     ExecutableElement methodElement = getOnlyElement(methodsIn(classElement.getEnclosedElements()));
     MethodSpec method = MethodSpec.overriding(methodElement)
         .addStatement("return null")
@@ -168,8 +169,8 @@ public final class MethodSpecTest {
         + "}\n");
   }
 
-  @Test public void overrideDoesNotCopyOverrideAnnotation() {
-    TypeElement classElement = getElement(HasAnnotation.class);
+  @Test public void overrideDoesNotCopyOverrideAnnotation(CompilationRule compilation) {
+    TypeElement classElement = getElement(HasAnnotation.class, compilation);
     ExecutableElement exec = getOnlyElement(methodsIn(classElement.getEnclosedElements()));
     MethodSpec method = MethodSpec.overriding(exec).build();
     assertThat(method.toString()).isEqualTo("@java.lang.Override\n"
@@ -177,41 +178,41 @@ public final class MethodSpecTest {
         + "}\n");
   }
 
-  @Test public void overrideDoesNotCopyDefaultModifier() {
-    TypeElement classElement = getElement(ExtendsIterableWithDefaultMethods.class);
+  @Test public void overrideDoesNotCopyDefaultModifier(CompilationRule compilation) {
+    TypeElement classElement = getElement(ExtendsIterableWithDefaultMethods.class, compilation);
     DeclaredType classType = (DeclaredType) classElement.asType();
-    List<ExecutableElement> methods = methodsIn(elements.getAllMembers(classElement));
+    List<ExecutableElement> methods = methodsIn(getElements(compilation).getAllMembers(classElement));
     ExecutableElement exec = findFirst(methods, "spliterator");
-    MethodSpec method = MethodSpec.overriding(exec, classType, types).build();
+    MethodSpec method = MethodSpec.overriding(exec, classType, getTypes(compilation)).build();
     assertThat(method.toString()).isEqualTo("@java.lang.Override\n"
         + "public java.util.Spliterator<java.lang.Object> spliterator() {\n"
         + "}\n");
   }
 
-  @Test public void overrideExtendsOthersWorksWithActualTypeParameters() {
-    TypeElement classElement = getElement(ExtendsOthers.class);
+  @Test public void overrideExtendsOthersWorksWithActualTypeParameters(CompilationRule compilation) {
+    TypeElement classElement = getElement(ExtendsOthers.class, compilation);
     DeclaredType classType = (DeclaredType) classElement.asType();
-    List<ExecutableElement> methods = methodsIn(elements.getAllMembers(classElement));
+    List<ExecutableElement> methods = methodsIn(getElements(compilation).getAllMembers(classElement));
     ExecutableElement exec = findFirst(methods, "call");
-    MethodSpec method = MethodSpec.overriding(exec, classType, types).build();
+    MethodSpec method = MethodSpec.overriding(exec, classType, getTypes(compilation)).build();
     assertThat(method.toString()).isEqualTo("@java.lang.Override\n"
         + "public java.lang.Integer call() throws java.lang.Exception {\n"
         + "}\n");
     exec = findFirst(methods, "compareTo");
-    method = MethodSpec.overriding(exec, classType, types).build();
+    method = MethodSpec.overriding(exec, classType, getTypes(compilation)).build();
     assertThat(method.toString()).isEqualTo("@java.lang.Override\n"
         + "public int compareTo(" + ExtendsOthers.class.getCanonicalName() + " arg0) {\n"
         + "}\n");
     exec = findFirst(methods, "fail");
-    method = MethodSpec.overriding(exec, classType, types).build();
+    method = MethodSpec.overriding(exec, classType, getTypes(compilation)).build();
     assertThat(method.toString()).isEqualTo("@java.lang.Override\n"
         + "public void fail() throws java.lang.IllegalStateException {\n"
         + "}\n");
   }
 
-  @Test public void overrideFinalClassMethod() {
-    TypeElement classElement = getElement(FinalClass.class);
-    List<ExecutableElement> methods = methodsIn(elements.getAllMembers(classElement));
+  @Test public void overrideFinalClassMethod(CompilationRule compilation) {
+    TypeElement classElement = getElement(FinalClass.class, compilation);
+    List<ExecutableElement> methods = methodsIn(getElements(compilation).getAllMembers(classElement));
     try {
       MethodSpec.overriding(findFirst(methods, "method"));
       fail();
@@ -221,9 +222,9 @@ public final class MethodSpecTest {
     }
   }
 
-  @Test public void overrideInvalidModifiers() {
-    TypeElement classElement = getElement(InvalidOverrideMethods.class);
-    List<ExecutableElement> methods = methodsIn(elements.getAllMembers(classElement));
+  @Test public void overrideInvalidModifiers(CompilationRule compilation) {
+    TypeElement classElement = getElement(InvalidOverrideMethods.class, compilation);
+    List<ExecutableElement> methods = methodsIn(getElements(compilation).getAllMembers(classElement));
     try {
       MethodSpec.overriding(findFirst(methods, "finalMethod"));
       fail();
@@ -251,8 +252,8 @@ public final class MethodSpecTest {
     abstract void foo(@PrivateAnnotation final String bar);
   }
 
-  @Test public void overrideDoesNotCopyParameterAnnotations() {
-    TypeElement abstractTypeElement = getElement(AbstractClassWithPrivateAnnotation.class);
+  @Test public void overrideDoesNotCopyParameterAnnotations(CompilationRule compilation) {
+    TypeElement abstractTypeElement = getElement(AbstractClassWithPrivateAnnotation.class, compilation);
     ExecutableElement fooElement = ElementFilter.methodsIn(abstractTypeElement.getEnclosedElements()).get(0);
     ClassName implClassName = ClassName.get("io.micronaut.sourcegen.javapoet", "Impl");
     TypeSpec type = TypeSpec.classBuilder(implClassName)
@@ -260,11 +261,11 @@ public final class MethodSpecTest {
             .addMethod(MethodSpec.overriding(fooElement).build())
             .build();
     JavaFileObject jfo = JavaFile.builder(implClassName.packageName, type).build().toJavaFileObject();
-    Compilation compilation = javac().compile(jfo);
-    assertThat(compilation).succeeded();
+    Compilation comp = javac().compile(jfo);
+    assertThat(comp).succeeded();
   }
 
-  @Test public void equalsAndHashCode() {
+  @Test public void equalsAndHashCode(CompilationRule compilation) {
     MethodSpec a = MethodSpec.constructorBuilder().build();
     MethodSpec b = MethodSpec.constructorBuilder().build();
     assertThat(a.equals(b)).isTrue();
@@ -273,7 +274,7 @@ public final class MethodSpecTest {
     b = MethodSpec.methodBuilder("taco").build();
     assertThat(a.equals(b)).isTrue();
     assertThat(a.hashCode()).isEqualTo(b.hashCode());
-    TypeElement classElement = getElement(Everything.class);
+    TypeElement classElement = getElement(Everything.class, compilation);
     ExecutableElement methodElement = getOnlyElement(methodsIn(classElement.getEnclosedElements()));
     a = MethodSpec.overriding(methodElement).build();
     b = MethodSpec.overriding(methodElement).build();

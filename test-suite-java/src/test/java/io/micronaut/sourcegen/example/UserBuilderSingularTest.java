@@ -119,7 +119,7 @@ class UserBuilderSingularTest {
     }
 
     @Test
-    public void testCombinationsSimple() {
+    void testCombinationsSimple() {
         UserBuilderSingular user = buildUserSingle();
         assertEquals(123L, user.id());
         assertEquals("Denis", user.name());
@@ -133,7 +133,7 @@ class UserBuilderSingularTest {
     }
 
     @Test
-    public void testCombinationsComplex() {
+    void testCombinationsComplex() {
         UserBuilderSingular user = buildUserComplex();
         assertEquals(123L, user.id());
         assertEquals("Denis", user.name());
@@ -147,7 +147,7 @@ class UserBuilderSingularTest {
     }
 
     @Test
-    public void testImmutable() {
+    void testImmutable() {
         UserBuilderSingular user = buildUserSingle();
         assertThrowsExactly(UnsupportedOperationException.class, () -> {
             user.lists().add("x");
@@ -173,7 +173,7 @@ class UserBuilderSingularTest {
     }
 
     @Test
-    public void testNotNull() {
+    void testNotNull() {
         UserBuilderSingular user = new UserBuilderSingularBuilder().build();
         assertNotNull(user.iterables());
         assertNotNull(user.collections());
@@ -190,7 +190,7 @@ class UserBuilderSingularTest {
     }
 
     @Test
-    public void mapOrder() {
+    void mapOrder() {
         UserBuilderSingular user = buildUserComplex();
         Map<String, Integer> maps = user.maps();
         ArrayList<Map.Entry<String, Integer>> entries = new ArrayList<>(maps.entrySet());
@@ -201,7 +201,7 @@ class UserBuilderSingularTest {
     }
 
     @Test
-    public void sortedMapOrder() {
+    void sortedMapOrder() {
         UserBuilderSingular user = buildUserComplex();
         ArrayList<Map.Entry<String, Integer>> entries = new ArrayList<>(user.sortedMaps().entrySet());
         assertEquals("AS", entries.get(0).getKey());
@@ -211,7 +211,7 @@ class UserBuilderSingularTest {
     }
 
     @Test
-    public void testCleanup() {
+    void testCleanup() {
         UserBuilderSingular user = buildUserCleanup();
         assertNotNull(user.iterables());
         assertNotNull(user.collections());

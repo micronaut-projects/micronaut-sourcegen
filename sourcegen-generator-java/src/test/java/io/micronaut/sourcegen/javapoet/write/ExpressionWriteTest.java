@@ -8,10 +8,11 @@ import io.micronaut.sourcegen.model.ExpressionDef.Cast;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
+import java.util.List;
 
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.GREATER_THAN;
@@ -31,11 +32,94 @@ import static io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpT
 import static io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpType.MULTIPLICATION;
 import static io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpType.SUBTRACTION;
 import static io.micronaut.sourcegen.model.ExpressionDef.MathUnaryOperation.OpType.NEGATE;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ExpressionWriteTest extends AbstractWriteTest {
 
     private static final ClassTypeDef STRING = ClassTypeDef.STRING;
+
+    @Test
+    public void writeClass() throws IOException {
+        String data = writeClass(
+            ClassDef.builder("example.Example")
+                .addModifiers(Modifier.PUBLIC)
+                .addMethod(MethodDef.builder("myMethod1")
+                    .addParameters(Class.class)
+                    .build())
+                .addMethod(MethodDef.builder("myMethod2")
+                    .build((aThis, methodParameters) ->
+                        aThis.invoke(
+                            "myMethod1",
+                            List.of(TypeDef.CLASS),
+                            TypeDef.VOID,
+                            List.of(ExpressionDef.constant(TypeDef.of("example.Example")))
+                        ).returning()))
+                .addMethod(MethodDef.builder("myMethod3")
+                    .build((aThis, methodParameters) ->
+                        aThis.invoke(
+                            "myMethod1",
+                            List.of(TypeDef.CLASS),
+                            TypeDef.VOID,
+                            List.of(ExpressionDef.constant(TypeDef.of(String.class)))
+                        ).returning()))
+                .addMethod(MethodDef.builder("myMethod4")
+                    .build((aThis, methodParameters) ->
+                        aThis.invoke(
+                            "myMethod1",
+                            List.of(TypeDef.CLASS),
+                            TypeDef.VOID,
+                            List.of(ExpressionDef.constant(TypeDef.of(int.class)))
+                        ).returning()))
+                .addMethod(MethodDef.builder("myMethod4")
+                    .build((aThis, methodParameters) ->
+                        aThis.invoke(
+                            "myMethod1",
+                            List.of(TypeDef.CLASS),
+                            TypeDef.VOID,
+                            List.of(ExpressionDef.constant(TypeDef.of(int[].class)))
+                        ).returning()))
+                .addMethod(MethodDef.builder("myMethod4")
+                    .build((aThis, methodParameters) ->
+                        aThis.invoke(
+                            "myMethod1",
+                            List.of(TypeDef.CLASS),
+                            TypeDef.VOID,
+                            List.of(ExpressionDef.constant(TypeDef.of(String[].class)))
+                        ).returning()))
+                .build()
+        );
+
+        assertEquals("""
+package example;
+
+import java.lang.Class;
+
+public class Example {
+  void myMethod1(Class arg1) {
+  }
+
+  void myMethod2() {
+    return this.myMethod1(example.Example.class);
+  }
+
+  void myMethod3() {
+    return this.myMethod1(java.lang.String.class);
+  }
+
+  void myMethod4() {
+    return this.myMethod1(int.class);
+  }
+
+  void myMethod4() {
+    return this.myMethod1(int[].class);
+  }
+
+  void myMethod4() {
+    return this.myMethod1(java.lang.String[].class);
+  }
+}
+""", data);
+    }
 
     @Test
     public void compareOperations() throws IOException {
