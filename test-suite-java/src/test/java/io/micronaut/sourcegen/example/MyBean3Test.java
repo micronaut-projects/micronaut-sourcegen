@@ -29,7 +29,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MyBean3Test {
-    @Disabled
     @Test
     void test() throws Exception {
         MyBean3 bean1 = new MyBean3();
@@ -41,7 +40,7 @@ class MyBean3Test {
         assertNotNull(constructor);
         Parameter parameter = constructor.getParameters()[0];
         assertNotNull(parameter);
-        assertNotNull(parameter.getDeclaredAnnotation(Nullable.class));
+        assertNotNull(parameter.getAnnotatedType().getDeclaredAnnotation(Nullable.class));
     }
 
     @Test

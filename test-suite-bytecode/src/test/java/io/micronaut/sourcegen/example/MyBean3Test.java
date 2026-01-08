@@ -34,7 +34,7 @@ class MyBean3Test {
         MyBean3 bean2 = new MyBean3("xyz");
         assertEquals("xyz", bean2.otherName);
         assertNotNull(
-            MyBean3.class.getDeclaredConstructor(Integer.class).getParameters()[0].getDeclaredAnnotation(Nullable.class)
+            MyBean3.class.getDeclaredConstructor(Integer.class).getParameters()[0].getAnnotatedType().getDeclaredAnnotation(Nullable.class)
         );
     }
 
