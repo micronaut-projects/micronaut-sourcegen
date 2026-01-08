@@ -3,6 +3,12 @@ plugins {
     alias(mn.plugins.kotlin.jvm)
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
     implementation(projects.sourcegenGenerator)
     implementation(libs.managed.kotlinpoet)

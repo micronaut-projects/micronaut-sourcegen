@@ -35,7 +35,7 @@ public class InnerTypesTest {
 
         innerInterfaceTest();
 
-        MyEnumWithInnerTypes.InnerRecord innerRecord = MyEnumWithInnerTypes$InnerRecordBuilder.builder().id(3).build();
+        MyEnumWithInnerTypes.InnerRecord innerRecord = MyEnumWithInnerTypesInnerRecordBuilder.builder().id(3).build();
         assertEquals(3, innerRecord.id());
 
         MyEnumWithInnerTypes.InnerClass innerClass = new MyEnumWithInnerTypes.InnerClass("name");
@@ -55,7 +55,7 @@ public class InnerTypesTest {
 
         innerInterfaceTest();
 
-        RecordWithInnerTypes.InnerRecord innerRecord = RecordWithInnerTypes$InnerRecordBuilder.builder().id(3).build();
+        RecordWithInnerTypes.InnerRecord innerRecord = RecordWithInnerTypesInnerRecordBuilder.builder().id(3).build();
         assertEquals(3, innerRecord.id());
 
         RecordWithInnerTypes.InnerClass innerClass = new RecordWithInnerTypes.InnerClass("name");
@@ -77,7 +77,7 @@ public class InnerTypesTest {
 
         innerInterfaceTest();
 
-        ClassWithInnerTypes.InnerRecord innerRecord = ClassWithInnerTypes$InnerRecordBuilder.builder().id(3).build();
+        ClassWithInnerTypes.InnerRecord innerRecord = ClassWithInnerTypesInnerRecordBuilder.builder().id(3).build();
         assertEquals(3, innerRecord.id());
 
         ClassWithInnerTypes.InnerClass innerClass = new ClassWithInnerTypes.InnerClass("name");
@@ -95,7 +95,7 @@ public class InnerTypesTest {
 
         innerInterfaceTest();
 
-        InterfaceWithInnerTypes.InnerRecord innerRecord = InterfaceWithInnerTypes$InnerRecordBuilder.builder().id(3).build();
+        InterfaceWithInnerTypes.InnerRecord innerRecord = InterfaceWithInnerTypesInnerRecordBuilder.builder().id(3).build();
         assertEquals(3, innerRecord.id());
 
         InterfaceWithInnerTypes.InnerClass innerClass = new InterfaceWithInnerTypes.InnerClass("name");

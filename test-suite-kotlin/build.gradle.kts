@@ -5,6 +5,12 @@ plugins {
     alias(mn.plugins.ksp)
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
     ksp(mn.micronaut.inject.kotlin)
     ksp(projects.sourcegenGeneratorKotlin)
