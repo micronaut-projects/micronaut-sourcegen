@@ -5,3 +5,8 @@ plugins {
 tasks.test {
     useJUnitPlatform()
 }
+micronautBuild {
+    descriptor {
+        parentModuleId = "io.micronaut.sourcegen:micronaut-sourcegen-annotations"
+    }
+}
