@@ -12,7 +12,7 @@ dependencies {
     testImplementation(mnTest.mockito.core)
 }
 micronautBuild {
-    testFramework = io.micronaut.build.TestFramework.JUNIT5
+    testFramework = io.micronaut.build.TestFramework.JUNIT6
 }
 tasks.withType<Test> {
     useJUnitPlatform()
