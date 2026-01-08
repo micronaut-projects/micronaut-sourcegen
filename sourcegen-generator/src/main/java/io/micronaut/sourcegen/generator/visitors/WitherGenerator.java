@@ -47,7 +47,8 @@ public class WitherGenerator {
         String localBinaryName = recordType.getName().startsWith(packageName + ".")
             ? recordType.getName().substring(packageName.isEmpty() ? 0 : packageName.length() + 1)
             : recordType.getName();
-        String witherSimpleName = (recordType.isInner() ? localBinaryName : recordType.getSimpleName()) + "Wither";
+        String baseName = recordType.isInner() ? localBinaryName.replace("$", "") : recordType.getSimpleName();
+        String witherSimpleName = baseName + "Wither";
         String witherClassName = packageName + "." + witherSimpleName;
         InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
             .addModifiers(Modifier.PUBLIC);

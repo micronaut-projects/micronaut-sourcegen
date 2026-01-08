@@ -125,7 +125,8 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         String localBinaryName = recordType.getName().startsWith(packageName + ".")
             ? recordType.getName().substring(packageName.isEmpty() ? 0 : packageName.length() + 1)
             : recordType.getName();
-        String witherSimpleName = (recordType.isInner() ? localBinaryName : recordType.getSimpleName()) + "Wither";
+        String baseName = recordType.isInner() ? localBinaryName.replace("$", "") : recordType.getSimpleName();
+        String witherSimpleName = baseName + "Wither";
         String witherClassName = packageName + "." + witherSimpleName;
         InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
             .addModifiers(Modifier.PUBLIC);
@@ -180,7 +181,8 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             String localBinaryName2 = fullName.startsWith(pkg + ".")
                 ? fullName.substring(pkg.isEmpty() ? 0 : pkg.length() + 1)
                 : fullName;
-            String builderSimpleName = (recordType.isInner() ? localBinaryName2 : recordType.getSimpleName()) + "Builder";
+            String baseName2 = recordType.isInner() ? localBinaryName2.replace("$", "") : recordType.getSimpleName();
+            String builderSimpleName = baseName2 + "Builder";
             String builderClassName = pkg.isEmpty() ? builderSimpleName : pkg + "." + builderSimpleName;
             ClassTypeDef builderType;
 

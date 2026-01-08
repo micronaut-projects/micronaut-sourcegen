@@ -10,22 +10,20 @@ class WitherAnnotationVisitorSpec extends AbstractTypeElementSpec {
         // The wither must reference the correct builder type for the inner record without duplicating the package.
         var classLoader = buildClassLoader("demo.test.Foo", """
         package demo.test;
-
         import io.micronaut.sourcegen.annotations.Wither;
         import io.micronaut.sourcegen.annotations.Builder;
-
         public class Foo {
             @Wither
             @Builder
-            protected record Bar(String a, String b, String c) {
+            protected record Bar(String a, String b, String c) implements FooBarWither {
             }
         }
         """)
 
         when:
         // Load generated types
-        def witherInterface = classLoader.loadClass('demo.test.Foo$BarWither')
-        def builderClass = classLoader.loadClass('demo.test.Foo$BarBuilder')
+        def witherInterface = classLoader.loadClass('demo.test.FooBarWither')
+        def builderClass = classLoader.loadClass('demo.test.FooBarBuilder')
         def recordClass = classLoader.loadClass('demo.test.Foo$Bar')
 
         then:
@@ -33,9 +31,11 @@ class WitherAnnotationVisitorSpec extends AbstractTypeElementSpec {
         builderClass != null
         recordClass != null
 
+        and: "the record implements the expected wither interface"
+        (recordClass.interfaces as List<Class>)*.name.contains('demo.test.FooBarWither')
 
         and: "the 'with()' method on the wither returns the correct builder type name (no duplicated package)"
-        witherInterface.getMethod("with").returnType.name == 'demo.test.Foo$BarBuilder'
+        witherInterface.getMethod("with").returnType.name == 'demo.test.FooBarBuilder'
 
         when: "instantiate via builder and build an instance"
         def builder = builderClass.newInstance(new Object[]{})
@@ -45,11 +45,19 @@ class WitherAnnotationVisitorSpec extends AbstractTypeElementSpec {
         instance != null
         instance.class.name == 'demo.test.Foo$Bar'
 
-        and: "the wither declares 'withA(String)' returning the record type"
+        when: "use wither default method to mutate one property"
         def withA = witherInterface.getMethod("withA", String.class)
-        withA.returnType.name == 'demo.test.Foo$Bar'
+        def mutated = withA.invoke(instance, "X")
 
-        and: 'the consumer-based with method is present and uses Consumer<Foo$BarBuilder>'
+        then:
+        mutated != null
+        mutated.class.name == 'demo.test.Foo$Bar'
+        // Accessors of record are named after components: a(), b(), c()
+        mutated.getClass().getMethod("a").invoke(mutated) == "X"
+        mutated.getClass().getMethod("b").invoke(mutated) == "B"
+        mutated.getClass().getMethod("c").invoke(mutated) == "C"
+
+        and: 'the consumer-based with method is present and uses Consumer<FooBarBuilder>'
         def withConsumer = witherInterface.getMethod("with", java.util.function.Consumer)
         withConsumer != null
         withConsumer.parameterTypes[0].typeName.contains("java.util.function.Consumer")
