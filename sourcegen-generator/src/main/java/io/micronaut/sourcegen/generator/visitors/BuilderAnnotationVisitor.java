@@ -178,8 +178,12 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         List<PropertyElement> properties,
         List<ParameterElement> constructorParameters,
         Function<BuilderGenerator.BuildContext, StatementDef> buildReturnStatement) {
-        String simpleName = elementType.getSimpleName() + "Builder";
-        String builderClassName = packageName + "." + simpleName;
+        String localBinaryName = elementType.getName().startsWith(packageName + ".")
+            ? elementType.getName().substring(packageName.isEmpty() ? 0 : packageName.length() + 1)
+            : elementType.getName();
+        String baseName = elementType.isInner() ? localBinaryName.replace("$", "") : elementType.getSimpleName();
+        String builderSimpleName = baseName + "Builder";
+        String builderClassName = packageName + "." + builderSimpleName;
         List<TypeDef.TypeVariable> typeArguments = List.of();
         if (elementType instanceof ClassTypeDef.Parameterized parameterizedType) {
             typeArguments = parameterizedType.typeArguments()
