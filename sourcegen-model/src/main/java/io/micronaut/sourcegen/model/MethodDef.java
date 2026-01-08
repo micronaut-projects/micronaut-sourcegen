@@ -16,8 +16,8 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import io.micronaut.core.annotation.NonNull;
-import io.micronaut.core.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.inject.ast.MethodElement;
 
@@ -598,7 +598,7 @@ public final class MethodDef extends AbstractElement {
          * @return The builder
          */
         @NonNull
-        public MethodDefBuilder addStatement(@NonNull MethodDef.MethodBodyBuilder bodyBuilder) {
+        public MethodDefBuilder addStatement(MethodDef.@NonNull MethodBodyBuilder bodyBuilder) {
             bodyBuilders.add(bodyBuilder);
             return this;
         }
@@ -681,7 +681,7 @@ public final class MethodDef extends AbstractElement {
          * @return The builder
          */
         @NonNull
-        public MethodDef build(@NonNull MethodDef.MethodBodyBuilder bodyBuilder) {
+        public MethodDef build(MethodDef.@NonNull MethodBodyBuilder bodyBuilder) {
             bodyBuilders.add(bodyBuilder);
             return build();
         }

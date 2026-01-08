@@ -15,7 +15,7 @@
  */
 package io.micronaut.sourcegen.example;
 
-import io.micronaut.core.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
