@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
@@ -37,7 +36,9 @@ public final class ClassDef extends ObjectDef {
 
     private final List<FieldDef> fields;
     private final List<TypeDef.TypeVariable> typeVariables;
+    @Nullable
     private final ClassTypeDef superclass;
+    @Nullable
     private final StatementDef staticInitializer;
 
     @SuppressWarnings("ParameterNumber")
@@ -50,8 +51,10 @@ public final class ClassDef extends ObjectDef {
                      List<String> javadoc,
                      List<TypeDef.TypeVariable> typeVariables,
                      List<TypeDef> superinterfaces,
+                     @Nullable
                      ClassTypeDef superclass,
                      List<ObjectDef> innerTypes,
+                     @Nullable
                      StatementDef staticInitializer,
                      boolean synthetic) {
         super(className, modifiers, annotations, javadoc, methods, properties, superinterfaces, innerTypes, synthetic);
@@ -107,13 +110,12 @@ public final class ClassDef extends ObjectDef {
         return null;
     }
 
-    @NonNull
     public FieldDef getField(String name) {
         FieldDef field = findField(name);
         if (field == null) {
             throw new IllegalStateException("Class: " + this.className + " doesn't have a field: " + name);
         }
-        return null;
+        return field;
     }
 
     public boolean hasField(String name) {
@@ -166,7 +168,9 @@ public final class ClassDef extends ObjectDef {
 
         private final List<FieldDef> fields = new ArrayList<>();
         private final List<TypeDef.TypeVariable> typeVariables = new ArrayList<>();
+        @Nullable
         private ClassTypeDef superclass;
+        @Nullable
         private StatementDef staticInitializer;
 
         private ClassDefBuilder(String name) {

@@ -40,12 +40,12 @@ open class GenerateSuperTypeReferenceVisitor : TypeElementVisitor<GenerateSuperT
         val method: MethodDef = MethodDef.builder("simpleSuperCall")
             .returns(stringType)
             .addModifiers(Modifier.PUBLIC)
-            .build(MethodDef.MethodBodyBuilder { aThis: VariableDef.This?, methodParameters: MutableList<VariableDef.MethodParameter?>? ->
-                aThis!!.superRef()
+            .build { aThis: VariableDef.This, methodParameters: MutableList<VariableDef.MethodParameter> ->
+                aThis.superRef()
                     .invoke("toString", stringType)
                     .invoke("uppercase", stringType)
                     .returning()
-            })
+            }
         val classBuilder = ClassDef.builder("SuperTypeReferenceClass")
             .addModifiers(Modifier.PUBLIC)
             .addMethod(method)

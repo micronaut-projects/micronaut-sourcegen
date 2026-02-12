@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
@@ -91,7 +90,6 @@ public final class EnumDef extends ObjectDef {
         return null;
     }
 
-    @NonNull
     public FieldDef getField(String name) {
         for (EnumConstantDef constant: enumConstants) {
             if (constant.name().equals(name)) {
@@ -102,7 +100,7 @@ public final class EnumDef extends ObjectDef {
         if (field == null) {
             throw new IllegalStateException("Enum: " + this.className + " doesn't have a field: " + name);
         }
-        return null;
+        return field;
     }
 
     public boolean hasField(String name) {
@@ -135,8 +133,8 @@ public final class EnumDef extends ObjectDef {
     @Experimental
     public static final class EnumConstantDefBuilder {
         private final String name;
-        private List<ExpressionDef> constructorArgs;
-        private List<String> javadoc = new ArrayList<>();
+        private List<ExpressionDef> constructorArgs = List.of();
+        private final List<String> javadoc = new ArrayList<>();
 
         public EnumConstantDefBuilder(String name) {
             this.name = name;

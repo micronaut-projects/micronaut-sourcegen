@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.sourcegen.model.ClassTypeDef.ClassName;
 
@@ -103,8 +102,7 @@ public final class AnnotationObjectDef extends ObjectDef {
          * @param innerDef The inner definition.
          * @return The builder
          */
-        @NonNull
-        public AnnotationObjectDefBuilder addInnerType(@NonNull ObjectDef innerDef) {
+        public AnnotationObjectDefBuilder addInnerType(ObjectDef innerDef) {
             ClassTypeDef innerType = innerDef.asTypeDef();
             String newName = ClassTypeDef.of(name).getCanonicalName() + "$" + innerType.getSimpleName();
             innerTypes.add(innerDef.withClassName(new ClassTypeDef.ClassName(newName, true)));
@@ -116,7 +114,7 @@ public final class AnnotationObjectDef extends ObjectDef {
          * @param member The member
          * @return The builder
          */
-        public AnnotationObjectDefBuilder addMember(@NonNull AnnotationMemberDef member) {
+        public AnnotationObjectDefBuilder addMember(AnnotationMemberDef member) {
             members.add(member);
             return this;
         }
@@ -126,7 +124,7 @@ public final class AnnotationObjectDef extends ObjectDef {
          * @param field The field.
          * @return The builder
          */
-        public AnnotationObjectDefBuilder addField(@NonNull FieldDef field) {
+        public AnnotationObjectDefBuilder addField(FieldDef field) {
             fields.add(field);
             return this;
         }
@@ -151,12 +149,11 @@ public final class AnnotationObjectDef extends ObjectDef {
      */
     public static final class AnnotationMemberDef extends AbstractElement {
 
-        private final @NonNull TypeDef type;
+        private final TypeDef type;
         private final @Nullable ExpressionDef defaultValue;
         private final @Nullable AnnotationDef defaultAnnotationValue;
 
-        private AnnotationMemberDef(
-            @NonNull TypeDef type, @Nullable ExpressionDef defaultValue, @Nullable AnnotationDef defaultAnnotationValue,
+        private AnnotationMemberDef(TypeDef type, @Nullable ExpressionDef defaultValue, @Nullable AnnotationDef defaultAnnotationValue,
             String name, EnumSet<Modifier> modifiers, List<AnnotationDef> annotations, List<String> javadoc, boolean synthetic
         ) {
             super(name, modifiers, annotations, javadoc, synthetic);
@@ -206,7 +203,9 @@ public final class AnnotationObjectDef extends ObjectDef {
     public static final class AnnotationMemberDefBuilder extends AbstractElementBuilder<AnnotationMemberDefBuilder> {
 
         private final TypeDef type;
+        @Nullable
         private ExpressionDef defaultValue;
+        @Nullable
         private AnnotationDef defaultAnnotationValue;
 
         private AnnotationMemberDefBuilder(String name, TypeDef type) {

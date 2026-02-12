@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -50,8 +49,7 @@ public sealed class ObjectDefBuilder<ThisType>
      * @param method The method.
      * @return The builder
      */
-    @NonNull
-    public final ThisType addMethod(@NonNull MethodDef method) {
+    public final ThisType addMethod(MethodDef method) {
         methods.add(method);
         return thisInstance;
     }
@@ -62,8 +60,7 @@ public sealed class ObjectDefBuilder<ThisType>
      * @param methods The method.s
      * @return The builder
      */
-    @NonNull
-    public final ThisType addMethods(@NonNull Collection<MethodDef> methods) {
+    public final ThisType addMethods(Collection<MethodDef> methods) {
         this.methods.addAll(methods);
         return thisInstance;
     }
@@ -74,8 +71,7 @@ public sealed class ObjectDefBuilder<ThisType>
      * @param property The property.
      * @return The builder
      */
-    @NonNull
-    public final ThisType addProperty(@NonNull PropertyDef property) {
+    public final ThisType addProperty(PropertyDef property) {
         properties.add(property);
         return thisInstance;
     }
@@ -86,8 +82,7 @@ public sealed class ObjectDefBuilder<ThisType>
      * @param superinterface The interface.
      * @return The builder
      */
-    @NonNull
-    public final ThisType addSuperinterface(@NonNull TypeDef superinterface) {
+    public final ThisType addSuperinterface(TypeDef superinterface) {
         superinterfaces.add(superinterface);
         return thisInstance;
     }
@@ -98,8 +93,7 @@ public sealed class ObjectDefBuilder<ThisType>
      * @param superinterfaces The interfaces.
      * @return The builder
      */
-    @NonNull
-    public final ThisType addSuperinterfaces(@NonNull Collection<TypeDef> superinterfaces) {
+    public final ThisType addSuperinterfaces(Collection<TypeDef> superinterfaces) {
         this.superinterfaces.addAll(superinterfaces);
         return thisInstance;
     }
@@ -110,8 +104,7 @@ public sealed class ObjectDefBuilder<ThisType>
      * @param innerDef The inner definition.
      * @return The builder
      */
-    @NonNull
-    public final ThisType addInnerType(@NonNull ObjectDef innerDef) {
+    public final ThisType addInnerType(ObjectDef innerDef) {
         ClassTypeDef innerType = innerDef.asTypeDef();
         String newName = ClassTypeDef.of(name).getCanonicalName() + "$" + innerType.getSimpleName();
         innerTypes.add(innerDef.withClassName(new ClassTypeDef.ClassName(newName, true)));
@@ -124,8 +117,7 @@ public sealed class ObjectDefBuilder<ThisType>
      * @param innerDefs The inner definitions.
      * @return The builder
      */
-    @NonNull
-    public final ThisType addInnerType(@NonNull Collection<ObjectDef> innerDefs) {
+    public final ThisType addInnerType(Collection<ObjectDef> innerDefs) {
         innerDefs.forEach(this::addInnerType);
         return thisInstance;
     }

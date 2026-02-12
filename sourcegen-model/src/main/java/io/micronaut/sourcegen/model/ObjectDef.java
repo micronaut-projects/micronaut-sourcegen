@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
@@ -106,8 +105,7 @@ public abstract sealed class ObjectDef extends AbstractElement permits ClassDef,
      * @return The contextual type or original type
      * @since 1.5
      */
-    @NonNull
-    public TypeDef getContextualType(@NonNull TypeDef typeDef) {
+    public TypeDef getContextualType(TypeDef typeDef) {
         if (typeDef == TypeDef.THIS) {
             return asTypeDef();
         } else if (typeDef == TypeDef.SUPER) {
@@ -133,8 +131,7 @@ public abstract sealed class ObjectDef extends AbstractElement permits ClassDef,
      * @return the contextual type or type def provider
      * @since 1.4
      */
-    @NonNull
-    public static TypeDef getContextualType(@Nullable ObjectDef objectDef, @NonNull TypeDef typeDef) {
+    public static TypeDef getContextualType(@Nullable ObjectDef objectDef, TypeDef typeDef) {
         if (objectDef == null) {
             if ((typeDef == TypeDef.THIS || typeDef == TypeDef.SUPER)) {
                 throw new IllegalStateException("Cannot determine type: " + typeDef + " because object def is null");
