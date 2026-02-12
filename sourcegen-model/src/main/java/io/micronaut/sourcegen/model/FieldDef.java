@@ -16,7 +16,7 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
 import java.util.EnumSet;
@@ -34,11 +34,13 @@ import java.util.Optional;
 public final class FieldDef extends AbstractElement {
 
     private final TypeDef type;
+    @Nullable
     private final ExpressionDef initializer;
 
     private FieldDef(String name,
                      EnumSet<Modifier> modifiers,
                      TypeDef type,
+                     @Nullable
                      ExpressionDef initializer,
                      List<AnnotationDef> annotations,
                      List<String> javadoc,
@@ -54,8 +56,7 @@ public final class FieldDef extends AbstractElement {
      * @return The field builder
      * @since 1.5
      */
-    @NonNull
-    public static FieldDefBuilder builder(@NonNull String name) {
+    public static FieldDefBuilder builder(String name) {
         return new FieldDefBuilder(name);
     }
 
@@ -67,8 +68,7 @@ public final class FieldDef extends AbstractElement {
      * @return The field builder
      * @since 1.5
      */
-    @NonNull
-    public static FieldDefBuilder builder(@NonNull String name, @NonNull TypeDef type) {
+    public static FieldDefBuilder builder(String name, TypeDef type) {
         return new FieldDefBuilder(name, type);
     }
 
@@ -79,8 +79,7 @@ public final class FieldDef extends AbstractElement {
      * @return The field builder
      * @since 1.5
      */
-    @NonNull
-    public static FieldDefBuilder builder(@NonNull String name, @NonNull Class<?> type) {
+    public static FieldDefBuilder builder(String name, Class<?> type) {
         return new FieldDefBuilder(name, TypeDef.of(type));
     }
 
@@ -101,7 +100,9 @@ public final class FieldDef extends AbstractElement {
     @Experimental
     public static final class FieldDefBuilder extends AbstractElementBuilder<FieldDefBuilder> {
 
+        @Nullable
         private TypeDef type;
+        @Nullable
         private ExpressionDef initializer;
 
         private FieldDefBuilder(String name) {

@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.io.IOException
 import java.io.StringWriter
-import java.util.regex.Pattern
 import javax.lang.model.element.Modifier
 
 
@@ -42,12 +41,12 @@ class SuperCallTest {
         val method: MethodDef = MethodDef.builder("simpleSuperCall")
             .returns(stringType)
             .addModifiers(Modifier.PUBLIC)
-            .build(MethodDef.MethodBodyBuilder { aThis: VariableDef.This?, methodParameters: MutableList<VariableDef.MethodParameter?>? ->
-                aThis!!.superRef()
+            .build { aThis: VariableDef.This, _: MutableList<VariableDef.MethodParameter> ->
+                aThis.superRef()
                     .invoke("toString", stringType)
                     .invoke("toUpperCase", stringType)
                     .returning()
-            })
+            }
         val classBuilder = ClassDef.builder("test." + "SuperTypeReferenceClass")
             .addModifiers(Modifier.PUBLIC)
             .addMethod(method)

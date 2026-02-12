@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.inject.ast.MethodElement;
@@ -108,8 +107,7 @@ public final class MethodDef extends AbstractElement {
      * @return The method definition
      * @since 1.5
      */
-    @NonNull
-    public static MethodDef of(@NonNull MethodElement methodElement) {
+    public static MethodDef of(MethodElement methodElement) {
         return of(methodElement, Map.of());
     }
 
@@ -121,8 +119,7 @@ public final class MethodDef extends AbstractElement {
      * @return The method definition
      * @since 1.7
      */
-    @NonNull
-    public static MethodDef of(@NonNull MethodElement methodElement, Map<String, TypeDef> resolvedTypeVariables) {
+    public static MethodDef of(MethodElement methodElement, Map<String, TypeDef> resolvedTypeVariables) {
         return MethodDef.builder(methodElement.getName())
             .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getType(), resolvedTypeVariables))).toList())
             .addTypeVariables(methodElement.getTypeArguments().entrySet()
@@ -146,8 +143,7 @@ public final class MethodDef extends AbstractElement {
      * @return The method definition
      * @since 1.5
      */
-    @NonNull
-    public static MethodDef of(@NonNull Method method) {
+    public static MethodDef of(Method method) {
         return MethodDef.builder(method.getName())
             .addParameters(Arrays.stream(method.getParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList())
             .returns(TypeDef.of(method.getReturnType()))
@@ -161,8 +157,7 @@ public final class MethodDef extends AbstractElement {
      * @return The method definition builder
      * @since 1.5
      */
-    @NonNull
-    public static MethodDefBuilder override(@NonNull MethodElement methodElement) {
+    public static MethodDefBuilder override(MethodElement methodElement) {
         return override(methodElement, Map.of());
     }
 
@@ -174,8 +169,7 @@ public final class MethodDef extends AbstractElement {
      * @return The method definition builder
      * @since 1.5
      */
-    @NonNull
-    public static MethodDefBuilder override(@NonNull MethodElement methodElement, Map<String, TypeDef> resolvedTypeVariables) {
+    public static MethodDefBuilder override(MethodElement methodElement, Map<String, TypeDef> resolvedTypeVariables) {
         return MethodDef.builder(methodElement.getName())
             .overrides()
             .addModifiers(toOverrideModifiers(methodElement))
@@ -190,8 +184,7 @@ public final class MethodDef extends AbstractElement {
      * @return The method definition builder
      * @since 1.7
      */
-    @NonNull
-    public static MethodDefBuilder overrideGeneric(@NonNull MethodElement methodElement) {
+    public static MethodDefBuilder overrideGeneric(MethodElement methodElement) {
         return MethodDef.builder(methodElement.getName())
             .overrides()
             .addModifiers(toOverrideModifiers(methodElement))
@@ -206,8 +199,7 @@ public final class MethodDef extends AbstractElement {
      * @return The method definition builder
      * @since 1.5
      */
-    @NonNull
-    public static MethodDefBuilder override(@NonNull Method method) {
+    public static MethodDefBuilder override(Method method) {
         return MethodDef.builder(method.getName())
             .overrides()
             .addModifiers(toOverrideModifiers(method.getModifiers()))
@@ -222,8 +214,7 @@ public final class MethodDef extends AbstractElement {
      * @return The method definition builder
      * @since 1.7
      */
-    @NonNull
-    public static MethodDefBuilder override(@NonNull MethodDef method) {
+    public static MethodDefBuilder override(MethodDef method) {
         return MethodDef.builder(method.getName())
             .overrides()
             .addModifiers(toOverrideModifiers(method))
@@ -238,8 +229,7 @@ public final class MethodDef extends AbstractElement {
      * @return The method definition builder
      * @since 1.5
      */
-    @NonNull
-    public static MethodDefBuilder override(@NonNull Constructor<?> constructor) {
+    public static MethodDefBuilder override(Constructor<?> constructor) {
         return MethodDef.constructor()
             .overrides()
             .addModifiers(toOverrideModifiers(constructor.getModifiers()))
@@ -313,7 +303,6 @@ public final class MethodDef extends AbstractElement {
         return null;
     }
 
-    @NonNull
     public ParameterDef getParameter(String name) {
         ParameterDef parameter = findParameter(name);
         if (parameter == null) {
@@ -376,6 +365,7 @@ public final class MethodDef extends AbstractElement {
     public static final class MethodDefBuilder extends AbstractElementBuilder<MethodDefBuilder> {
 
         private final List<ParameterDef> parameters = new ArrayList<>();
+        @Nullable
         private TypeDef returnType;
         private final List<MethodBodyBuilder> bodyBuilders = new ArrayList<>();
         private final List<StatementDef> statements = new ArrayList<>();
@@ -451,8 +441,7 @@ public final class MethodDef extends AbstractElement {
          * @return a builder
          * @since 1.5
          */
-        @NonNull
-        public MethodDefBuilder addParameter(@NonNull String name, @NonNull TypeDef type) {
+        public MethodDefBuilder addParameter(String name, TypeDef type) {
             ParameterDef parameterDef = ParameterDef.builder(name, type).build();
             return addParameter(parameterDef);
         }
@@ -464,8 +453,7 @@ public final class MethodDef extends AbstractElement {
          * @return a builder
          * @since 1.5
          */
-        @NonNull
-        public MethodDefBuilder addParameter(@NonNull TypeDef type) {
+        public MethodDefBuilder addParameter(TypeDef type) {
             return addParameter("arg" + (parameters.size() + 1), type);
         }
 
@@ -476,8 +464,7 @@ public final class MethodDef extends AbstractElement {
          * @return a builder
          * @since 1.5
          */
-        @NonNull
-        public MethodDefBuilder addParameter(@NonNull ParameterDef parameterDef) {
+        public MethodDefBuilder addParameter(ParameterDef parameterDef) {
             Objects.requireNonNull(parameterDef, "Parameter cannot be null");
             parameters.add(parameterDef);
             return this;
@@ -490,8 +477,7 @@ public final class MethodDef extends AbstractElement {
          * @return a builder
          * @since 1.5
          */
-        @NonNull
-        public MethodDefBuilder addParameters(@NonNull Collection<ParameterDef> parameters) {
+        public MethodDefBuilder addParameters(Collection<ParameterDef> parameters) {
             parameters.forEach(this::addParameter);
             return this;
         }
@@ -503,11 +489,9 @@ public final class MethodDef extends AbstractElement {
          * @param type The type
          * @return a builder
          */
-        @NonNull
-        public MethodDefBuilder addParameter(@NonNull String name, @NonNull Class<?> type) {
+        public MethodDefBuilder addParameter(String name, Class<?> type) {
             return addParameter(name, TypeDef.of(type));
         }
-
 
         /**
          * Add a parameter.
@@ -516,8 +500,7 @@ public final class MethodDef extends AbstractElement {
          * @return a builder
          * @since 1.5
          */
-        @NonNull
-        public MethodDefBuilder addParameter(@NonNull Class<?> type) {
+        public MethodDefBuilder addParameter(Class<?> type) {
             return addParameter(TypeDef.of(type));
         }
 
@@ -528,8 +511,7 @@ public final class MethodDef extends AbstractElement {
          * @return a builder
          * @since 1.5
          */
-        @NonNull
-        public MethodDefBuilder addParameters(@NonNull Class<?>... types) {
+        public MethodDefBuilder addParameters(Class<?>... types) {
             for (Class<?> type : types) {
                 addParameter(type);
             }
@@ -543,8 +525,7 @@ public final class MethodDef extends AbstractElement {
          * @return a builder
          * @since 1.5
          */
-        @NonNull
-        public MethodDefBuilder addParameters(@NonNull TypeDef... types) {
+        public MethodDefBuilder addParameters(TypeDef... types) {
             return addParameters(List.of(types));
         }
 
@@ -555,8 +536,7 @@ public final class MethodDef extends AbstractElement {
          * @return a builder
          * @since 1.5
          */
-        @NonNull
-        public MethodDefBuilder addParameters(@NonNull List<TypeDef> types) {
+        public MethodDefBuilder addParameters(List<TypeDef> types) {
             for (TypeDef type : types) {
                 addParameter(type);
             }
@@ -570,8 +550,7 @@ public final class MethodDef extends AbstractElement {
          * @return The builder
          * @since 1.5
          */
-        @NonNull
-        public MethodDefBuilder addStaticStatement(@NonNull Function<List<VariableDef.MethodParameter>, StatementDef> bodyBuilder) {
+        public MethodDefBuilder addStaticStatement(Function<List<VariableDef.MethodParameter>, StatementDef> bodyBuilder) {
             return addStatement((aThis, methodParameters) -> bodyBuilder.apply(methodParameters));
         }
 
@@ -581,8 +560,7 @@ public final class MethodDef extends AbstractElement {
          * @param statement The statement
          * @return The builder
          */
-        @NonNull
-        public MethodDefBuilder addStatement(@NonNull StatementDef statement) {
+        public MethodDefBuilder addStatement(StatementDef statement) {
             if (statement instanceof StatementDef.Multi multi) {
                 multi.statements().forEach(this::addStatement);
             } else {
@@ -597,8 +575,7 @@ public final class MethodDef extends AbstractElement {
          * @param bodyBuilder The body builder
          * @return The builder
          */
-        @NonNull
-        public MethodDefBuilder addStatement(MethodDef.@NonNull MethodBodyBuilder bodyBuilder) {
+        public MethodDefBuilder addStatement(MethodDef.MethodBodyBuilder bodyBuilder) {
             bodyBuilders.add(bodyBuilder);
             return this;
         }
@@ -609,8 +586,7 @@ public final class MethodDef extends AbstractElement {
          * @param newStatements The new statements
          * @return The builder
          */
-        @NonNull
-        public MethodDefBuilder addStatements(@NonNull Collection<StatementDef> newStatements) {
+        public MethodDefBuilder addStatements(Collection<StatementDef> newStatements) {
             statements.addAll(newStatements);
             return this;
         }
@@ -621,8 +597,7 @@ public final class MethodDef extends AbstractElement {
          * @param types The types that this method throws
          * @return The builder
          */
-        @NonNull
-        public MethodDefBuilder addThrows(@NonNull TypeDef... types) {
+        public MethodDefBuilder addThrows(TypeDef... types) {
             throwTypes.addAll(Arrays.asList(types));
             return this;
         }
@@ -633,8 +608,7 @@ public final class MethodDef extends AbstractElement {
          * @param types The types that this method throws
          * @return The builder
          */
-        @NonNull
-        public MethodDefBuilder addThrows(@NonNull List<TypeDef> types) {
+        public MethodDefBuilder addThrows(List<TypeDef> types) {
             throwTypes.addAll(types);
             return this;
         }
@@ -658,6 +632,7 @@ public final class MethodDef extends AbstractElement {
             return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc, typeVariables, overrides, synthetic, throwTypes);
         }
 
+        @Nullable
         private static TypeDef findReturnType(StatementDef statement) {
             if (statement instanceof StatementDef.Multi multi) {
                 return findReturnType(CollectionUtils.last(multi.statements()));
@@ -680,8 +655,7 @@ public final class MethodDef extends AbstractElement {
          * @param bodyBuilder The body builder
          * @return The builder
          */
-        @NonNull
-        public MethodDef build(MethodDef.@NonNull MethodBodyBuilder bodyBuilder) {
+        public MethodDef build(MethodDef.MethodBodyBuilder bodyBuilder) {
             bodyBuilders.add(bodyBuilder);
             return build();
         }
@@ -692,8 +666,7 @@ public final class MethodDef extends AbstractElement {
          * @param bodyBuilder The body builder
          * @return The builder
          */
-        @NonNull
-        public MethodDef buildStatic(@NonNull Function<List<VariableDef.MethodParameter>, StatementDef> bodyBuilder) {
+        public MethodDef buildStatic(Function<List<VariableDef.MethodParameter>, StatementDef> bodyBuilder) {
             modifiers.add(Modifier.STATIC);
             bodyBuilders.add((aThis, methodParameters) -> bodyBuilder.apply(methodParameters));
             return build();

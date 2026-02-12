@@ -17,7 +17,6 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.annotation.Experimental;
-import org.jspecify.annotations.NonNull;
 import io.micronaut.inject.annotation.MutableAnnotationMetadata;
 import io.micronaut.inject.ast.ArrayableClassElement;
 import io.micronaut.inject.ast.ClassElement;
@@ -82,7 +81,7 @@ public final class RecordDef extends ObjectDef {
             MutableAnnotationMetadata annotationMetadata = toAnnotationMetadata(property);
             propertyElements.add(new PropertyElement() {
                 @Override
-                public @NonNull ClassElement getType() {
+                public ClassElement getType() {
                     TypeDef type = property.getType();
                     return toClassElement(type, visitorContext);
                 }
@@ -93,7 +92,7 @@ public final class RecordDef extends ObjectDef {
                 }
 
                 @Override
-                public @NonNull String getName() {
+                public String getName() {
                     return property.getName();
                 }
 
@@ -108,12 +107,12 @@ public final class RecordDef extends ObjectDef {
                 }
 
                 @Override
-                public @NonNull Object getNativeType() {
+                public Object getNativeType() {
                     return property;
                 }
 
                 @Override
-                public @NonNull AnnotationMetadata getAnnotationMetadata() {
+                public AnnotationMetadata getAnnotationMetadata() {
                     return annotationMetadata;
                 }
 
@@ -145,13 +144,13 @@ public final class RecordDef extends ObjectDef {
             MutableAnnotationMetadata annotationMetadata = toAnnotationMetadata(property);
             propertyElements.add(new ParameterElement() {
                 @Override
-                public @NonNull ClassElement getType() {
+                public ClassElement getType() {
                     TypeDef type = property.getType();
                     return toClassElement(type, visitorContext);
                 }
 
                 @Override
-                public @NonNull String getName() {
+                public String getName() {
                     return property.getName();
                 }
 
@@ -166,12 +165,12 @@ public final class RecordDef extends ObjectDef {
                 }
 
                 @Override
-                public @NonNull Object getNativeType() {
+                public Object getNativeType() {
                     return property;
                 }
 
                 @Override
-                public @NonNull AnnotationMetadata getAnnotationMetadata() {
+                public AnnotationMetadata getAnnotationMetadata() {
                     return annotationMetadata;
                 }
             });

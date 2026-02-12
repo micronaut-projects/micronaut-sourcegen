@@ -17,7 +17,6 @@ package io.micronaut.sourcegen.model;
 
 import com.github.javaparser.quality.NotNull;
 import io.micronaut.core.annotation.Experimental;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.core.convert.ConversionService;
 import io.micronaut.core.reflect.ClassUtils;
@@ -343,7 +342,7 @@ public sealed interface ExpressionDef
      * @return The null value expression
      * @since 1.2
      */
-    static ExpressionDef.@NonNull Constant nullValue() {
+    static ExpressionDef.Constant nullValue() {
         return new Constant(TypeDef.OBJECT, null);
     }
 
@@ -351,7 +350,7 @@ public sealed interface ExpressionDef
      * @return The true value expression
      * @since 1.2
      */
-    static ExpressionDef.@NonNull Constant trueValue() {
+    static ExpressionDef.Constant trueValue() {
         return TypeDef.Primitive.TRUE;
     }
 
@@ -359,7 +358,7 @@ public sealed interface ExpressionDef
      * @return The true value expression
      * @since 1.2
      */
-    static ExpressionDef.@NonNull Constant falseValue() {
+    static ExpressionDef.Constant falseValue() {
         return TypeDef.Primitive.FALSE;
     }
 
@@ -378,7 +377,7 @@ public sealed interface ExpressionDef
      * @param type The type to cast to
      * @return The cast expression
      */
-    default ExpressionDef.@NonNull Cast cast(TypeDef type) {
+    default ExpressionDef.Cast cast(TypeDef type) {
         return new Cast(type, this);
     }
 
@@ -389,7 +388,7 @@ public sealed interface ExpressionDef
      * @return The cast expression
      * @since 1.5
      */
-    default ExpressionDef.@NonNull Cast cast(Class<?> type) {
+    default ExpressionDef.Cast cast(Class<?> type) {
         return new Cast(TypeDef.of(type), this);
     }
 
@@ -846,7 +845,6 @@ public sealed interface ExpressionDef
      * @throws IllegalArgumentException if the constant is not supported.
      */
     @Experimental
-    @Nullable
     static ExpressionDef constant(ClassElement type, TypeDef typeDef, @Nullable Object value) {
         Objects.requireNonNull(type, "Type cannot be null");
         if (type.isPrimitive()) {
@@ -878,7 +876,7 @@ public sealed interface ExpressionDef
      * @since 1.2
      */
     @Experimental
-    static ExpressionDef.@Nullable Constant constant(@Nullable Object value) {
+    static ExpressionDef.Constant constant(@Nullable Object value) {
         if (value == null) {
             return ExpressionDef.nullValue();
         }
@@ -972,7 +970,7 @@ public sealed interface ExpressionDef
      * @since 1.2
      */
     @Experimental
-    static ExpressionDef.@Nullable Constant primitiveConstant(@NotNull Object value) {
+    static ExpressionDef.Constant primitiveConstant(@NotNull Object value) {
         Class<?> primitiveType = ReflectionUtils.getPrimitiveType(value.getClass());
         return new ExpressionDef.Constant(TypeDef.primitive(primitiveType), value);
     }

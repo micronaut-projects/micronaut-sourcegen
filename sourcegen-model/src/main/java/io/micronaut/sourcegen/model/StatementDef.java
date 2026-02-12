@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.core.util.CollectionUtils;
 
@@ -92,7 +91,7 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      * @return statement
      * @since 1.2
      */
-    static StatementDef multi(@NonNull List<StatementDef> statements) {
+    static StatementDef multi(List<StatementDef> statements) {
         return new Multi(statements);
     }
 
@@ -103,7 +102,7 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      * @return statement
      * @since 1.2
      */
-    static StatementDef multi(@NonNull StatementDef... statements) {
+    static StatementDef multi(StatementDef... statements) {
         return multi(List.of(statements));
     }
 
@@ -115,7 +114,7 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
      * @since 1.2
      */
     @Experimental
-    record Multi(@NonNull List<StatementDef> statements) implements StatementDef {
+    record Multi(List<StatementDef> statements) implements StatementDef {
 
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
