@@ -1,6 +1,6 @@
 plugins {
     id("io.micronaut.build.internal.sourcegen-testsuite")
-    id ("io.micronaut.build.internal.kotlin-base")
+    id ("io.micronaut.build.internal.kotlin-ksp")
 }
 
 dependencies {
