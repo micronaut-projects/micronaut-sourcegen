@@ -1,13 +1,7 @@
 plugins {
     id("io.micronaut.build.internal.sourcegen-module")
-    alias(mn.plugins.kotlin.jvm)
-}
+    id("io.micronaut.build.internal.kotlin")}
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-    }
-}
 
 dependencies {
     implementation(projects.sourcegenGenerator)
@@ -21,9 +15,4 @@ dependencies {
 
 tasks.test {
     develocity.predictiveTestSelection.enabled = false
-}
-kotlin {
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21
-    }
 }

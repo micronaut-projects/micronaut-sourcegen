@@ -14,3 +14,10 @@ tasks.withType(Test).configureEach {
 tasks.withType(Checkstyle).configureEach {
     enabled = false
 }
+
+repositories {
+    mavenCentral()
+}
+dependencies {
+    testRuntimeOnly(mnTest.junit.platform.suite)
+}
