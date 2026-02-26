@@ -507,10 +507,12 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         beanProperties.remove(propertyElement);
                     }
                     // We need to convert it for the correct type in Kotlin
-                    TypeDef fieldType = TypeDef.of(parameter.getType()).makeNullable();
-                    VariableDef.Field field = self.field(parameter.getName(), fieldType);
-                    values.add(
-                        valueExpression(propertyElement, field).cast(TypeDef.of(parameter.getType()))
+                    TypeDef fieldType = TypeDef.of(parameter.getType());
+                    TypeDef nullableFieldType = fieldType.makeNullable();
+                    VariableDef.Field field = self.field(parameter.getName(), nullableFieldType);
+                    values.add(!fieldType.isPrimitive() ?
+                        valueExpression(propertyElement, field).cast(TypeDef.of(parameter.getType())) :
+                        field.ifNull(TypeDef.Primitive.defaultValue(parameter.getType().getName()), valueExpression(propertyElement, field))
                     );
                 }
                 if (beanProperties.isEmpty()) {
@@ -551,6 +553,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 });
             });
     }
+
 
     private static ExpressionDef valueExpression(@Nullable PropertyElement propertyElement,
                                                  VariableDef.Field field) {

@@ -48,6 +48,7 @@ public class TestRecordGenerator implements TypeElementVisitor<TestAnn, Object> 
         for (MethodElement method : methods) {
             PropertyDef.PropertyDefBuilder propertyDefBuilder = PropertyDef.builder(method.getName()).ofType(TypeDef.of(method.getGenericReturnType()));
             ClassElement genericReturnType = method.getGenericReturnType();
+            //Turns every int field to 10 in the test
             if (genericReturnType.isPrimitive() &&
                  !genericReturnType.isArray() &&
                 genericReturnType.getName().equals(PrimitiveElement.INT.getName())) {
