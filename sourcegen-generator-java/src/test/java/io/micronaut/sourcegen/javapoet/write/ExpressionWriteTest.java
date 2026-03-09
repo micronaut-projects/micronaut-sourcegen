@@ -83,6 +83,129 @@ class MyClass implements Predicate {
     }
 
     @Test
+    void testNullCheckEliminatesCast() throws IOException {
+        MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
+            .returns(Object.class)
+            .build((aThis, methodParameters) ->
+                ExpressionDef.constant(123).returning());
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(Object.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef newInt = aThis.invoke(getIntegerValue);
+                    ExpressionDef newExpression = newInt.cast(TypeDef.Primitive.INT);
+                    return StatementDef.multi(
+                        newExpression.isNull().doIf(ExpressionDef.constant(0).returning()),
+                        newExpression.returning()
+                    );
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.util.function.Predicate;
+
+class MyClass implements Predicate {
+  int test(Object arg1) {
+    if (this.getIntegerValue() == null) {
+      return 0;
+    }
+    return (int) (this.getIntegerValue());
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testNotNullCheckEliminatesCast() throws IOException {
+        MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
+            .returns(Object.class)
+            .build((aThis, methodParameters) ->
+                ExpressionDef.constant(123).returning());
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(Object.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef newInt = aThis.invoke(getIntegerValue);
+                    ExpressionDef newExpression = newInt.cast(TypeDef.Primitive.INT);
+                    return StatementDef.multi(
+                        newExpression.isNonNull().doIf(ExpressionDef.constant(0).returning()),
+                        newExpression.returning()
+                    );
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.util.function.Predicate;
+
+class MyClass implements Predicate {
+  int test(Object arg1) {
+    if (this.getIntegerValue() != null) {
+      return 0;
+    }
+    return (int) (this.getIntegerValue());
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testInstanceOfEliminatesCast() throws IOException {
+        MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
+            .returns(Object.class)
+            .build((aThis, methodParameters) ->
+                ExpressionDef.constant(123).returning());
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(Object.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef newInt = aThis.invoke(getIntegerValue);
+                    ExpressionDef newExpression = newInt.cast(TypeDef.Primitive.INT);
+                    return StatementDef.multi(
+                        newExpression.instanceOf(TypeDef.STRING).doIf(ExpressionDef.constant(0).returning()),
+                        newExpression.returning()
+                    );
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.util.function.Predicate;
+
+class MyClass implements Predicate {
+  int test(Object arg1) {
+    if (this.getIntegerValue() instanceof java.lang.String) {
+      return 0;
+    }
+    return (int) (this.getIntegerValue());
+  }
+}
+            """, data);
+    }
+
+    @Test
     void testEliminateRefCompareCast() throws IOException {
         MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
             .returns(Object.class)

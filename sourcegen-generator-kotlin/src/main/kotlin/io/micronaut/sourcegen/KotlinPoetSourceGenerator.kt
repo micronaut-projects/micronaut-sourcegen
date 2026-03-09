@@ -1163,13 +1163,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
             if (expressionDef is IsNull) {
                 return CodeBlock.builder()
-                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.expression))
+                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.expression, true))
                     .add(" == null")
                     .build()
             }
             if (expressionDef is IsNotNull) {
                 return CodeBlock.builder()
-                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.expression))
+                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.expression, true))
                     .add(" != null")
                     .build()
             }

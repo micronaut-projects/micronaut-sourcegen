@@ -1287,6 +1287,11 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record IsNull(ExpressionDef expression) implements ConditionExpressionDef {
+
+        public IsNull(ExpressionDef expression) {
+            this.expression = expression.cast(TypeDef.OBJECT);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(expression);
@@ -1301,6 +1306,11 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record IsNotNull(ExpressionDef expression) implements ConditionExpressionDef {
+
+        public IsNotNull(ExpressionDef expression) {
+            this.expression = expression.cast(TypeDef.OBJECT);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(expression);
