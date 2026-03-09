@@ -61,6 +61,153 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ByteCodeWriterTest {
 
     @Test
+    void testEliminatePrimitiveCast() {
+        MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
+            .returns(Object.class)
+            .build((aThis, methodParameters) ->
+                ExpressionDef.constant(123).returning());
+
+        ClassDef predicateGeneric2 = ClassDef.builder("test.IfPredicateGeneric")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(Object.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef newInt = aThis.invoke(getIntegerValue);
+                    ExpressionDef newExpression = newInt.cast(TypeDef.Primitive.INT);
+                    return StatementDef.multi(
+                        newExpression.cast(TypeDef.OBJECT).isNull().doIf(ExpressionDef.constant(0).returning()),
+                        newExpression.returning()
+                    );
+                })
+            )
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(predicateGeneric2, bytecodeWriter);
+
+        String bytecode = bytecodeWriter.toString();
+        Assertions.assertEquals("""
+            // class version 61.0 (61)
+            // access flags 0x0
+            // signature Ljava/lang/Object;Ljava/util/function/Predicate;
+            // declaration: test/IfPredicateGeneric implements java.util.function.Predicate
+            class test/IfPredicateGeneric implements java/util/function/Predicate {
+
+
+              // access flags 0x0
+              <init>()V
+                ALOAD 0
+                INVOKESPECIAL java/lang/Object.<init> ()V
+                RETURN
+
+              // access flags 0x0
+              test(Ljava/lang/Object;)I
+               L0
+                ALOAD 0
+                INVOKEVIRTUAL test/IfPredicateGeneric.getIntegerValue ()Ljava/lang/Object;
+                IFNONNULL L1
+                ICONST_0
+                IRETURN
+               L1
+                ALOAD 0
+                INVOKEVIRTUAL test/IfPredicateGeneric.getIntegerValue ()Ljava/lang/Object;
+                CHECKCAST java/lang/Number
+                INVOKEVIRTUAL java/lang/Number.intValue ()I
+                IRETURN
+               L2
+                LOCALVARIABLE arg1 Ljava/lang/Object; L0 L2 1
+            }
+            """, bytecode);
+
+        Assertions.assertEquals("""
+package test;
+
+import java.util.function.Predicate;
+
+class IfPredicateGeneric implements Predicate {
+   int test(Object arg1) {
+      return this.getIntegerValue() == null ? 0 : ((Number)this.getIntegerValue()).intValue();
+   }
+}
+            """, decompileToJava(bytes));
+    }
+
+    @Test
+    void testEliminateRefCompareCast() {
+        MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
+            .returns(Object.class)
+            .build((aThis, methodParameters) ->
+                ExpressionDef.constant(123).returning());
+
+        ClassDef predicateGeneric2 = ClassDef.builder("test.IfPredicateGeneric")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(Object.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef newInt = aThis.invoke(getIntegerValue);
+                    ExpressionDef newExpression = newInt.cast(TypeDef.Primitive.INT);
+                    return StatementDef.multi(
+                        newExpression.equalsReferentially(ExpressionDef.constant("Hello")).doIf(ExpressionDef.constant(0).returning()),
+                        newExpression.returning()
+                    );
+                })
+            )
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(predicateGeneric2, bytecodeWriter);
+
+        String bytecode = bytecodeWriter.toString();
+        Assertions.assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;Ljava/util/function/Predicate;
+// declaration: test/IfPredicateGeneric implements java.util.function.Predicate
+class test/IfPredicateGeneric implements java/util/function/Predicate {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x0
+  test(Ljava/lang/Object;)I
+   L0
+    ALOAD 0
+    INVOKEVIRTUAL test/IfPredicateGeneric.getIntegerValue ()Ljava/lang/Object;
+    LDC "Hello"
+    IF_ACMPNE L1
+    ICONST_0
+    IRETURN
+   L1
+    ALOAD 0
+    INVOKEVIRTUAL test/IfPredicateGeneric.getIntegerValue ()Ljava/lang/Object;
+    CHECKCAST java/lang/Number
+    INVOKEVIRTUAL java/lang/Number.intValue ()I
+    IRETURN
+   L2
+    LOCALVARIABLE arg1 Ljava/lang/Object; L0 L2 1
+}
+            """, bytecode);
+
+        Assertions.assertEquals("""
+package test;
+
+import java.util.function.Predicate;
+
+class IfPredicateGeneric implements Predicate {
+   int test(Object arg1) {
+      return this.getIntegerValue() == "Hello" ? 0 : ((Number)this.getIntegerValue()).intValue();
+   }
+}
+            """, decompileToJava(bytes));
+    }
+
+    @Test
     void callTypeVariable() {
         ClassDef predicateGeneric2 = ClassDef.builder("test.IfPredicateGeneric")
             .addSuperinterface(TypeDef.of(Predicate.class))
