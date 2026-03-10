@@ -159,7 +159,8 @@ public final class MethodDef extends AbstractElement {
      * @since 1.5
      */
     public static MethodDefBuilder override(MethodElement methodElement) {
-        return override(methodElement, Map.of());
+        return MethodDef.builder(methodElement)
+            .overrides();
     }
 
     /**
@@ -423,8 +424,7 @@ public final class MethodDef extends AbstractElement {
     public static MethodDefBuilder builder(MethodElement methodElement,
                                            Function<String, @Nullable TypeDef> resolvedVariableFn,
                                            boolean generic) {
-        MethodDefBuilder builder = MethodDef.builder(methodElement.getName());
-        return builder
+        return MethodDef.builder(methodElement.getName())
             .addModifiers(toModifiers(methodElement))
             .addParameters(
                 Arrays.stream(methodElement.getSuspendParameters())

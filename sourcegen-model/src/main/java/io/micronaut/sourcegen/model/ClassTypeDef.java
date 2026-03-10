@@ -471,7 +471,7 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @return type definition
      */
     static ClassTypeDef erasure(ClassElement classElement) {
-        return of(classElement, Map.of(), true);
+        return of(classElement, ignore -> null, true);
     }
 
     /**
@@ -493,7 +493,7 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @return type definition
      */
     static ClassTypeDef of(ClassElement classElement) {
-        return of(classElement, Map.of(), false);
+        return of(classElement, ignore -> null, false);
     }
 
     /**
