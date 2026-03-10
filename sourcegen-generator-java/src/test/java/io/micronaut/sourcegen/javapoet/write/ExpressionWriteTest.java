@@ -6,13 +6,16 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Cast;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Predicate;
 
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.GREATER_THAN;
@@ -37,6 +40,212 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class ExpressionWriteTest extends AbstractWriteTest {
 
     private static final ClassTypeDef STRING = ClassTypeDef.STRING;
+
+    @Test
+    void testEliminatePrimitiveCast() throws IOException {
+        MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
+            .returns(Object.class)
+            .build((aThis, methodParameters) ->
+                ExpressionDef.constant(123).returning());
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(Object.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef newInt = aThis.invoke(getIntegerValue);
+                    ExpressionDef newExpression = newInt.cast(TypeDef.Primitive.INT);
+                    return StatementDef.multi(
+                        newExpression.cast(TypeDef.OBJECT).isNull().doIf(ExpressionDef.constant(0).returning()),
+                        newExpression.returning()
+                    );
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.util.function.Predicate;
+
+class MyClass implements Predicate {
+  int test(Object arg1) {
+    if (this.getIntegerValue() == null) {
+      return 0;
+    }
+    return (int) (this.getIntegerValue());
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testNullCheckEliminatesCast() throws IOException {
+        MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
+            .returns(Object.class)
+            .build((aThis, methodParameters) ->
+                ExpressionDef.constant(123).returning());
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(Object.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef newInt = aThis.invoke(getIntegerValue);
+                    ExpressionDef newExpression = newInt.cast(TypeDef.Primitive.INT);
+                    return StatementDef.multi(
+                        newExpression.isNull().doIf(ExpressionDef.constant(0).returning()),
+                        newExpression.returning()
+                    );
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.util.function.Predicate;
+
+class MyClass implements Predicate {
+  int test(Object arg1) {
+    if (this.getIntegerValue() == null) {
+      return 0;
+    }
+    return (int) (this.getIntegerValue());
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testNotNullCheckEliminatesCast() throws IOException {
+        MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
+            .returns(Object.class)
+            .build((aThis, methodParameters) ->
+                ExpressionDef.constant(123).returning());
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(Object.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef newInt = aThis.invoke(getIntegerValue);
+                    ExpressionDef newExpression = newInt.cast(TypeDef.Primitive.INT);
+                    return StatementDef.multi(
+                        newExpression.isNonNull().doIf(ExpressionDef.constant(0).returning()),
+                        newExpression.returning()
+                    );
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.util.function.Predicate;
+
+class MyClass implements Predicate {
+  int test(Object arg1) {
+    if (this.getIntegerValue() != null) {
+      return 0;
+    }
+    return (int) (this.getIntegerValue());
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testInstanceOfEliminatesCast() throws IOException {
+        MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
+            .returns(Object.class)
+            .build((aThis, methodParameters) ->
+                ExpressionDef.constant(123).returning());
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(Object.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef newInt = aThis.invoke(getIntegerValue);
+                    ExpressionDef newExpression = newInt.cast(TypeDef.Primitive.INT);
+                    return StatementDef.multi(
+                        newExpression.instanceOf(TypeDef.STRING).doIf(ExpressionDef.constant(0).returning()),
+                        newExpression.returning()
+                    );
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.util.function.Predicate;
+
+class MyClass implements Predicate {
+  int test(Object arg1) {
+    if (this.getIntegerValue() instanceof java.lang.String) {
+      return 0;
+    }
+    return (int) (this.getIntegerValue());
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testEliminateRefCompareCast() throws IOException {
+        MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
+            .returns(Object.class)
+            .build((aThis, methodParameters) ->
+                ExpressionDef.constant(123).returning());
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addSuperinterface(TypeDef.of(Predicate.class))
+            .addMethod(MethodDef.builder("test")
+                .addParameters(Object.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef newInt = aThis.invoke(getIntegerValue);
+                    ExpressionDef newExpression = newInt.cast(TypeDef.Primitive.INT);
+                    return StatementDef.multi(
+                        newExpression.equalsReferentially(ExpressionDef.constant("Hello")).doIf(ExpressionDef.constant(0).returning()),
+                        newExpression.returning()
+                    );
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        Assertions.assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.util.function.Predicate;
+
+class MyClass implements Predicate {
+  int test(Object arg1) {
+    if (this.getIntegerValue() == "Hello") {
+      return 0;
+    }
+    return (int) (this.getIntegerValue());
+  }
+}
+            """, data);
+    }
 
     @Test
     public void writeClass() throws IOException {

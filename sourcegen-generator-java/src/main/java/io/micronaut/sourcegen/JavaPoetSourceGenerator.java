@@ -691,7 +691,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (statementDef instanceof StatementDef.Synchronized s) {
             CodeBlock.Builder builder = CodeBlock.builder();
             builder.add("synchronized (");
-            builder.add(renderExpression(objectDef, methodDef, remappedLocals, s.monitor()));
+            builder.add(renderExpression(objectDef, methodDef, remappedLocals, s.monitor(), true));
             builder.add(") {\n");
             builder.add(renderStatementCodeBlock(objectDef, methodDef, remappedLocals, s.statement()));
             builder.add("\n}");
@@ -771,8 +771,16 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                        MethodDef methodDef,
                                        Map<String, String> remappedLocals,
                                        ExpressionDef expressionDef) {
+        return renderExpression(objectDef, methodDef, remappedLocals, expressionDef, false);
+    }
+
+    private CodeBlock renderExpression(@Nullable ObjectDef objectDef,
+                                       MethodDef methodDef,
+                                       Map<String, String> remappedLocals,
+                                       ExpressionDef expressionDef,
+                                       boolean isRef) {
         if (expressionDef instanceof ExpressionDef.ConditionExpressionDef conditionExpressionDef) {
-            return renderCondition(objectDef, methodDef, remappedLocals, conditionExpressionDef);
+            return renderCondition(objectDef, methodDef, remappedLocals, conditionExpressionDef, false);
         }
         if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
             return CodeBlock.concat(
@@ -801,10 +809,21 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return builder.build();
         }
         if (expressionDef instanceof ExpressionDef.Cast castExpressionDef) {
-            if (castExpressionDef.type().equals(castExpressionDef.expressionDef().type())) {
-                return renderExpression(objectDef, methodDef, remappedLocals, castExpressionDef.expressionDef());
+            ExpressionDef exp = castExpressionDef.expressionDef();
+            while (exp instanceof ExpressionDef.Cast cast) {
+                if (cast.type().isPrimitive()) {
+                    TypeDef previousCastType = cast.expressionDef().type();
+                    if (!previousCastType.equals(TypeDef.OBJECT)) {
+                        break;
+                    }
+                }
+                // Only keep the last cast
+                exp = cast.expressionDef();
             }
-            if (castExpressionDef.expressionDef() instanceof VariableDef variableDef) {
+            if (castExpressionDef.type().equals(exp.type()) || isRef) {
+                return renderExpression(objectDef, methodDef, remappedLocals, exp);
+            }
+            if (exp instanceof VariableDef variableDef) {
                 return CodeBlock.concat(
                     CodeBlock.of("($T) ", asType(castExpressionDef.type(), objectDef)),
                     renderExpression(objectDef, methodDef, remappedLocals, variableDef)
@@ -812,7 +831,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             return CodeBlock.concat(
                 CodeBlock.of("($T) (", asType(castExpressionDef.type(), objectDef)),
-                renderExpression(objectDef, methodDef, remappedLocals, castExpressionDef.expressionDef()),
+                renderExpression(objectDef, methodDef, remappedLocals, exp),
                 CodeBlock.of(")")
             );
         }
@@ -989,7 +1008,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private CodeBlock renderExpressionWithParentheses(@Nullable ObjectDef objectDef, MethodDef methodDef, Map<String, String> remappedLocals, ExpressionDef expressionDef) {
-        var rendered = renderExpression(objectDef, methodDef, remappedLocals, expressionDef);
+        return renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, expressionDef, false);
+    }
+
+    private CodeBlock renderExpressionWithParentheses(@Nullable ObjectDef objectDef, MethodDef methodDef, Map<String, String> remappedLocals, ExpressionDef expressionDef, boolean isRef) {
+        var rendered = renderExpression(objectDef, methodDef, remappedLocals, expressionDef, isRef);
         while (expressionDef instanceof ExpressionDef.Cast cast) {
             expressionDef = cast.expressionDef();
         }
@@ -1010,12 +1033,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private CodeBlock renderCondition(@Nullable ObjectDef objectDef,
                                       MethodDef methodDef,
                                       Map<String, String> remappedLocals,
-                                      ExpressionDef.ConditionExpressionDef expressionDef) {
+                                      ExpressionDef.ConditionExpressionDef expressionDef,
+                                      boolean isRef) {
         if (expressionDef instanceof ExpressionDef.IsNull isNull) {
-            return renderCondition(objectDef, methodDef, remappedLocals, new ExpressionDef.ComparisonOperation(ExpressionDef.ComparisonOperation.OpType.EQUAL_TO, isNull.expression(), ExpressionDef.nullValue()));
+            return renderCondition(objectDef, methodDef, remappedLocals, new ExpressionDef.ComparisonOperation(ExpressionDef.ComparisonOperation.OpType.EQUAL_TO, isNull.expression(), ExpressionDef.nullValue()), true);
         }
         if (expressionDef instanceof ExpressionDef.IsNotNull isNotNull) {
-            return renderCondition(objectDef, methodDef, remappedLocals, new ExpressionDef.ComparisonOperation(ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO, isNotNull.expression(), ExpressionDef.nullValue()));
+            return renderCondition(objectDef, methodDef, remappedLocals, new ExpressionDef.ComparisonOperation(ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO, isNotNull.expression(), ExpressionDef.nullValue()), true);
         }
         if (expressionDef instanceof ExpressionDef.IsTrue isTrue) {
             return renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, isTrue.expression());
@@ -1028,31 +1052,31 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         if (expressionDef instanceof ExpressionDef.ComparisonOperation comparisonOperation) {
             return CodeBlock.concat(
-                renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, comparisonOperation.left()),
+                renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, comparisonOperation.left(), isRef),
                 CodeBlock.of(getOpType(comparisonOperation)),
-                renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, comparisonOperation.right())
+                renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, comparisonOperation.right(), isRef)
             );
         }
         if (expressionDef instanceof ExpressionDef.InstanceOf instanceOf) {
             return CodeBlock.concat(
-                renderExpression(objectDef, methodDef, remappedLocals, instanceOf.expression()),
+                renderExpression(objectDef, methodDef, remappedLocals, instanceOf.expression(), true),
                 CodeBlock.of(" instanceof "),
                 CodeBlock.of(instanceOf.instanceType().getCanonicalName())
             );
         }
         if (expressionDef instanceof ExpressionDef.And andExpressionDef) {
             return CodeBlock.concat(
-                renderCondition(objectDef, methodDef, remappedLocals, andExpressionDef.left()),
+                renderCondition(objectDef, methodDef, remappedLocals, andExpressionDef.left(), false),
                 CodeBlock.of(" && "),
-                renderCondition(objectDef, methodDef, remappedLocals, andExpressionDef.right())
+                renderCondition(objectDef, methodDef, remappedLocals, andExpressionDef.right(), false)
             );
         }
         if (expressionDef instanceof ExpressionDef.Or orExpressionDef) {
             return addParentheses(
                 CodeBlock.concat(
-                    renderCondition(objectDef, methodDef, remappedLocals, orExpressionDef.left()),
+                    renderCondition(objectDef, methodDef, remappedLocals, orExpressionDef.left(), false),
                     CodeBlock.of(" || "),
-                    renderCondition(objectDef, methodDef, remappedLocals, orExpressionDef.right())
+                    renderCondition(objectDef, methodDef, remappedLocals, orExpressionDef.right(), false)
                 )
             );
         }
@@ -1102,17 +1126,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private CodeBlock renderEqualsReferentially(ObjectDef objectDef, MethodDef methodDef, Map<String, String> remappedLocals, ExpressionDef left, ExpressionDef right) {
         return CodeBlock.builder()
-            .add(renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, left))
+            .add(renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, left, true))
             .add(" == ")
-            .add(renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, right))
+            .add(renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, right, true))
             .build();
     }
 
     private CodeBlock renderNotEqualsReferentially(ObjectDef objectDef, MethodDef methodDef, Map<String, String> remappedLocals, ExpressionDef left, ExpressionDef right) {
         return CodeBlock.builder()
-            .add(renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, left))
+            .add(renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, left, true))
             .add(" != ")
-            .add(renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, right))
+            .add(renderExpressionWithParentheses(objectDef, methodDef, remappedLocals, right, true))
             .build();
     }
 

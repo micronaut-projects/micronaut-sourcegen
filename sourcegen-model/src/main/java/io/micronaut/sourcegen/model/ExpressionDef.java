@@ -1287,6 +1287,11 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record IsNull(ExpressionDef expression) implements ConditionExpressionDef {
+
+        public IsNull(ExpressionDef expression) {
+            this.expression = expression.cast(TypeDef.OBJECT);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(expression);
@@ -1301,6 +1306,11 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record IsNotNull(ExpressionDef expression) implements ConditionExpressionDef {
+
+        public IsNotNull(ExpressionDef expression) {
+            this.expression = expression.cast(TypeDef.OBJECT);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(expression);
@@ -1410,13 +1420,14 @@ public sealed interface ExpressionDef
     record Switch(ExpressionDef expression,
                   TypeDef type,
                   Map<Constant, ? extends ExpressionDef> cases,
+                  @Nullable
                   ExpressionDef defaultCase) implements ExpressionDef {
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.concat(
                 Stream.concat(
                     Stream.of(expression),
-                    Stream.of(defaultCase)
+                    defaultCase == null ? Stream.empty() : Stream.of(defaultCase)
                 ),
                 cases.values().stream()
             );
@@ -1581,6 +1592,12 @@ public sealed interface ExpressionDef
     @Experimental
     record EqualsReferentially(ExpressionDef instance,
                                ExpressionDef other) implements ConditionExpressionDef {
+
+        public EqualsReferentially(ExpressionDef instance, ExpressionDef other) {
+            this.instance = instance.cast(TypeDef.OBJECT);
+            this.other = other.cast(TypeDef.OBJECT);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(instance, other);

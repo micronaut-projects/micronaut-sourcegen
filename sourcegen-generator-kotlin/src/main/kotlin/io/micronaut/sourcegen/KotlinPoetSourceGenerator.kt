@@ -23,7 +23,6 @@ import com.squareup.kotlinpoet.javapoet.KotlinPoetJavaPoetPreview
 import com.squareup.kotlinpoet.javapoet.toKClassName
 import com.squareup.kotlinpoet.javapoet.toKTypeName
 import io.micronaut.core.annotation.Internal
-import org.jspecify.annotations.Nullable
 import io.micronaut.core.reflect.ClassUtils
 import io.micronaut.inject.visitor.VisitorContext
 import io.micronaut.sourcegen.generator.SourceGenerator
@@ -33,6 +32,7 @@ import io.micronaut.sourcegen.model.ExpressionDef.*
 import io.micronaut.sourcegen.model.ExpressionDef.IfElse
 import io.micronaut.sourcegen.model.ExpressionDef.Switch
 import io.micronaut.sourcegen.model.StatementDef.*
+import org.jspecify.annotations.Nullable
 import java.io.IOException
 import java.io.Writer
 import java.lang.reflect.Array
@@ -999,7 +999,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private fun renderExpressionCode(
             objectDef: ObjectDef?,
             methodDef: MethodDef,
-            expressionDef: ExpressionDef?
+            expressionDef: ExpressionDef?,
+            isRef: Boolean = false
         ): CodeBlock {
             if (expressionDef is NewInstance) {
                 val codeBuilder = CodeBlock.builder()
@@ -1054,15 +1055,26 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return codeBuilder.build()
             }
             if (expressionDef is Cast) {
-                if (expressionDef.type == expressionDef.expressionDef.type()) {
-                    return renderExpressionCode(objectDef, methodDef, expressionDef.expressionDef)
+                var exp: ExpressionDef = expressionDef.expressionDef
+                while (exp is Cast) {
+                    if (exp.type().isPrimitive) {
+                        val previousCastType = exp.expressionDef().type()
+                        if (previousCastType != TypeDef.OBJECT) {
+                            break
+                        }
+                    }
+                    // Only keep the last cast
+                    exp = exp.expressionDef()
+                }
+                if (expressionDef.type == exp.type() || isRef) {
+                    return renderExpressionCode(objectDef, methodDef, exp)
                 }
                 val codeBuilder = CodeBlock.builder()
                 codeBuilder.add(
                     renderExpressionCode(
                         objectDef,
                         methodDef,
-                        expressionDef.expressionDef,
+                        exp,
                         expressionDef.type
                     )
                 )
@@ -1151,13 +1163,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
             if (expressionDef is IsNull) {
                 return CodeBlock.builder()
-                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.expression))
+                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.expression, true))
                     .add(" == null")
                     .build()
             }
             if (expressionDef is IsNotNull) {
                 return CodeBlock.builder()
-                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.expression))
+                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.expression, true))
                     .add(" != null")
                     .build()
             }
@@ -1278,16 +1290,16 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
             if (expressionDef is EqualsReferentially) {
                 return CodeBlock.builder()
-                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.instance))
+                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.instance, true))
                     .add(" === ")
-                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.other))
+                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.other, true))
                     .build()
             }
             if (expressionDef is NotEqualsReferentially) {
                 return CodeBlock.builder()
-                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.instance))
+                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.instance, true))
                     .add(" !== ")
-                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.other))
+                    .add(renderExpressionCode(objectDef, methodDef, expressionDef.other, true))
                     .build()
             }
             if (expressionDef is Lambda) {

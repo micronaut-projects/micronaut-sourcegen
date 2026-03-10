@@ -62,7 +62,9 @@ final class SwitchExpressionWriter extends AbstractSwitchWriter implements Expre
 
             @Override
             public void generateDefault() {
-                ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aSwitch.defaultCase(), aSwitch.type());
+                if (aSwitch.defaultCase() != null) {
+                    ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aSwitch.defaultCase(), aSwitch.type());
+                }
             }
         });
     }
@@ -86,6 +88,7 @@ final class SwitchExpressionWriter extends AbstractSwitchWriter implements Expre
         int[] keys = map.keySet().stream().mapToInt(x -> x).sorted().toArray();
         Label defaultEnd = new Label();
         Label finalEnd = new Label();
+        boolean hasDefault = aSwitch.defaultCase() != null;
         generatorAdapter.tableSwitch(keys, new TableSwitchGenerator() {
             @Override
             public void generateCase(int key, Label end) {
@@ -104,12 +107,15 @@ final class SwitchExpressionWriter extends AbstractSwitchWriter implements Expre
 
             @Override
             public void generateDefault() {
-                generatorAdapter.goTo(defaultEnd);
+                if (hasDefault) {
+                    generatorAdapter.goTo(defaultEnd);
+                }
             }
         });
-
-        generatorAdapter.visitLabel(defaultEnd);
-        ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aSwitch.defaultCase(), aSwitch.type());
+        if (hasDefault) {
+            generatorAdapter.visitLabel(defaultEnd);
+            ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aSwitch.defaultCase(), aSwitch.type());
+        }
         generatorAdapter.visitLabel(finalEnd);
     }
 }
