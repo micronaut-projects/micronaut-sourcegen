@@ -32,7 +32,7 @@ import java.util.stream.Stream;
  * @since 1.0
  */
 @Experimental
-public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod, ExpressionDef.InvokeStaticMethod, StatementDef.Assign, StatementDef.DefineAndAssign, StatementDef.If, StatementDef.IfElse, StatementDef.Multi, StatementDef.PutField, StatementDef.PutStaticField, StatementDef.Return, StatementDef.Switch, StatementDef.Synchronized, StatementDef.Throw, StatementDef.Try, StatementDef.While {
+public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor, ExpressionDef.InvokeInstanceMethod, ExpressionDef.InvokeStaticMethod, StatementDef.Assign, StatementDef.DefineAndAssign, StatementDef.If, StatementDef.IfElse, StatementDef.Multi, StatementDef.PutField, StatementDef.PutStaticField, StatementDef.Return, StatementDef.Switch, StatementDef.Synchronized, StatementDef.Throw, StatementDef.Try, StatementDef.While {
 
     /**
      * The helper method to turn this statement into a multi statement.
@@ -426,4 +426,33 @@ public sealed interface StatementDef permits ExpressionDef.InvokeInstanceMethod,
 
     }
 
+    /**
+     * Invoke the constructor statement.
+     *
+     * @param superInstance The super instance
+     * @param method        The method
+     * @param values        The parameters
+     * @author Denis Stepanov
+     * @since 2.0
+     */
+    @Experimental
+    record InvokeSuperConstructor(VariableDef.Super superInstance,
+                                  MethodDef method,
+                                  List<? extends ExpressionDef> values) implements StatementDef {
+
+        public InvokeSuperConstructor {
+            if (!method.isConstructor()) {
+                throw new IllegalStateException("Expected a constructor");
+            }
+            if (method.getParameters().size() != values.size()) {
+                throw new IllegalStateException("Method " + method.getName() + " parameters: " + method.getParameters().size() + " doesn't match values provided: " + values.size());
+            }
+        }
+
+        @Override
+        public Stream<? extends ExpressionDef> nestedExpressionsStream() {
+            return Stream.concat(Stream.of(superInstance), values.stream());
+        }
+
+    }
 }

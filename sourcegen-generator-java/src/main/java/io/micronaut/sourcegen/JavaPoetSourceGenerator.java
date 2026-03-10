@@ -609,6 +609,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                       MethodDef methodDef,
                                       Map<String, String> remappedLocals,
                                       StatementDef statementDef) {
+        if (statementDef instanceof StatementDef.InvokeSuperConstructor invokeConstructor) {
+            return CodeBlock.concat(
+                renderExpression(objectDef, methodDef, remappedLocals, invokeConstructor.superInstance()),
+                CodeBlock.of("("),
+                invokeConstructor.values()
+                    .stream()
+                    .map(exp -> renderExpression(objectDef, methodDef, remappedLocals, exp))
+                    .collect(CodeBlock.joining(", ")),
+                CodeBlock.of(")")
+            );
+        }
         if (statementDef instanceof StatementDef.Throw aThrow) {
             return CodeBlock.concat(
                 CodeBlock.of("throw "),

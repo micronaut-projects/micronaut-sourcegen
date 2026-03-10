@@ -182,6 +182,11 @@ public final class ClassDef extends ObjectDef {
             return this;
         }
 
+        public ClassDefBuilder superclass(Class<?> superclass) {
+            this.superclass = ClassTypeDef.of(superclass);
+            return this;
+        }
+
         public ClassDefBuilder addField(FieldDef field) {
             fields.add(field);
             return this;

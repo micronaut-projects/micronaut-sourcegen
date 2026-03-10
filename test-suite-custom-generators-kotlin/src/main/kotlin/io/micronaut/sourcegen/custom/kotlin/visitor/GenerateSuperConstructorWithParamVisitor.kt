@@ -41,7 +41,7 @@ class GenerateSuperConstructorWithParamVisitor : TypeElementVisitor<GenerateSupe
             .addParameter(childParam1)
             .addParameter(childParam2)
             .build { aThis, methodParameters ->
-                aThis.superRef().invokeConstructor(
+                aThis.superRef().invokeSuperConstructor(
                     methodParameters[0],
                     methodParameters[1]
                 )

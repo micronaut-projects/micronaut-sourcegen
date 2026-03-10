@@ -37,8 +37,8 @@ class GenerateSuperConstructorWithNoParamVisitor : TypeElementVisitor<GenerateSu
         val parentType = ClassTypeDef.of(element)
         val constructor = MethodDef.constructor()
             .addModifiers(Modifier.PUBLIC)
-            .build { aThis, methodParameters ->
-                aThis.superRef().invokeConstructor()
+            .build { aThis, _ ->
+                aThis.superRef().invokeSuperConstructor()
             }
         val classBuilder = ClassDef.builder("NoParamChildClass")
             .addModifiers(Modifier.PUBLIC)

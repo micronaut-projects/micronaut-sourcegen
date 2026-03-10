@@ -529,7 +529,9 @@ public sealed interface ExpressionDef
      * @param values The values
      * @return The call to the instance method
      * @since 1.5
+     * @deprecated replaced with {@link VariableDef.Super#invokeSuperConstructor(ExpressionDef...)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     default InvokeInstanceMethod invokeConstructor(ExpressionDef... values) {
         return invokeConstructor(Arrays.asList(values));
     }
@@ -540,7 +542,9 @@ public sealed interface ExpressionDef
      * @param values The values
      * @return The call to the instance method
      * @since 1.5
+     * @deprecated replaced with {@link VariableDef.Super#invokeSuperConstructor(List)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     default InvokeInstanceMethod invokeConstructor(List<? extends ExpressionDef> values) {
         return invokeConstructor(values.stream().map(ExpressionDef::type).toList(), values);
     }
@@ -551,8 +555,9 @@ public sealed interface ExpressionDef
      * @param parameterTypes The parameterTypes
      * @param values         The values
      * @return The call to the instance method
-     * @since 1.5
+     * @deprecated replaced with {@link VariableDef.Super#invokeSuperConstructor(List, ExpressionDef...)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     default InvokeInstanceMethod invokeConstructor(List<TypeDef> parameterTypes, ExpressionDef... values) {
         return invokeConstructor(parameterTypes, Arrays.asList(values));
     }
@@ -564,7 +569,9 @@ public sealed interface ExpressionDef
      * @param values         The values
      * @return The call to the instance method
      * @since 1.5
+     * @deprecated replaced with {@link VariableDef.Super#invokeSuperConstructor(List, ExpressionDef...)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     default InvokeInstanceMethod invokeConstructor(List<TypeDef> parameterTypes, List<? extends ExpressionDef> values) {
         return new InvokeInstanceMethod(this, MethodDef.constructor().addParameters(parameterTypes).build(), values);
     }
@@ -575,8 +582,9 @@ public sealed interface ExpressionDef
      * @param constructor The constructor
      * @param values      The constructor values
      * @return The new instance
+     * @deprecated replaced with {@link VariableDef.Super#invokeSuperConstructor(Constructor, ExpressionDef...)}
      */
-    @Experimental
+    @Deprecated(since = "2.0", forRemoval = true)
     default InvokeInstanceMethod invokeConstructor(Constructor<?> constructor, ExpressionDef... values) {
         return invokeConstructor(constructor, List.of(values));
     }
@@ -587,8 +595,9 @@ public sealed interface ExpressionDef
      * @param constructor The constructor
      * @param values      The constructor values
      * @return The new instance
+     * @deprecated replaced with {@link VariableDef.Super#invokeSuperConstructor(Constructor, List)}
      */
-    @Experimental
+    @Deprecated(since = "2.0", forRemoval = true)
     default InvokeInstanceMethod invokeConstructor(Constructor<?> constructor, List<? extends ExpressionDef> values) {
         return invokeConstructor(Arrays.stream(constructor.getParameterTypes()).map(TypeDef::of).toList(), values);
     }
@@ -599,8 +608,9 @@ public sealed interface ExpressionDef
      * @param constructor The constructor
      * @param values      The constructor values
      * @return The new instance
+     * @deprecated replaced with {@link VariableDef.Super#invokeSuperConstructor(MethodDef, ExpressionDef...)}
      */
-    @Experimental
+    @Deprecated(since = "2.0", forRemoval = true)
     default InvokeInstanceMethod invokeConstructor(MethodDef constructor, ExpressionDef... values) {
         return invokeConstructor(constructor, List.of(values));
     }
@@ -611,8 +621,9 @@ public sealed interface ExpressionDef
      * @param constructor The constructor
      * @param values      The constructor values
      * @return The new instance
+     * @deprecated replaced with {@link VariableDef.Super#invokeSuperConstructor(MethodDef, List)}
      */
-    @Experimental
+    @Deprecated(since = "2.0", forRemoval = true)
     default InvokeInstanceMethod invokeConstructor(MethodDef constructor, List<? extends ExpressionDef> values) {
         return invokeConstructor(constructor.getParameters().stream().map(ParameterDef::getType).toList(), values);
     }
