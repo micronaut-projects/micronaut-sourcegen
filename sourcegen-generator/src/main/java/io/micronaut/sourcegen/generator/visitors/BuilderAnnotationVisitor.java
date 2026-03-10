@@ -518,36 +518,36 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 }
                 // Instantiate and set properties not assigned in the constructor
                 return buildType.instantiate(values).newLocal("instance", instanceVar -> {
-                    List<StatementDef> statements = new ArrayList<>();
-                    for (PropertyElement beanProperty : beanProperties) {
-                        Optional<MethodElement> writeMethod = beanProperty.getWriteMethod();
-                        if (writeMethod.isPresent()) {
-                            String propertyName = beanProperty.getSimpleName();
-                            TypeDef propertyType = TypeDef.of(beanProperty.getType());
-                            TypeDef fieldType = propertyType.makeNullable();
-                            if (fieldType.isNullable()) {
-                                statements.add(
-                                    self.field(propertyName, fieldType).isNonNull().doIf(
+                    return StatementDef.multi(statements -> {
+                        for (PropertyElement beanProperty : beanProperties) {
+                            Optional<MethodElement> writeMethod = beanProperty.getWriteMethod();
+                            if (writeMethod.isPresent()) {
+                                String propertyName = beanProperty.getSimpleName();
+                                TypeDef propertyType = TypeDef.of(beanProperty.getType());
+                                TypeDef fieldType = propertyType.makeNullable();
+                                if (fieldType.isNullable()) {
+                                    statements.add(
+                                        self.field(propertyName, fieldType).isNonNull().doIf(
+                                            instanceVar.invoke(
+                                                writeMethod.get(),
+                                                valueExpression(beanProperty, self.field(propertyName, fieldType))
+                                                    .cast(propertyType)
+                                            )
+                                        )
+                                    );
+                                } else {
+                                    statements.add(
                                         instanceVar.invoke(
                                             writeMethod.get(),
                                             valueExpression(beanProperty, self.field(propertyName, fieldType))
                                                 .cast(propertyType)
                                         )
-                                    )
-                                );
-                            } else {
-                                statements.add(
-                                    instanceVar.invoke(
-                                        writeMethod.get(),
-                                        valueExpression(beanProperty, self.field(propertyName, fieldType))
-                                            .cast(propertyType)
-                                    )
-                                );
+                                    );
+                                }
                             }
                         }
-                    }
-                    statements.add(instanceVar.returning());
-                    return StatementDef.multi(statements);
+                        return instanceVar.returning();
+                    });
                 });
             });
     }

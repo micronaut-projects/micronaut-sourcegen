@@ -164,7 +164,7 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
                 continue;
             }
 
-            MethodDefBuilder methodBuilder = MethodDef.override(method, resolvedTypeVariables);
+            MethodDefBuilder methodBuilder = MethodDef.override(method, resolvedTypeVariables::get);
             builder.addMethod(methodBuilder.build((aThis, methodParameters) -> {
                 ExpressionDef.InvokeInstanceMethod delegateInvocation = aThis.field(delegateField)
                     .invoke(method.getName(), TypeDef.of(method.getGenericReturnType()), methodParameters);

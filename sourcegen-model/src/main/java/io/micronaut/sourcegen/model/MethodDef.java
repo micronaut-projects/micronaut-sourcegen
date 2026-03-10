@@ -44,6 +44,8 @@ import java.util.stream.Stream;
 @Experimental
 public final class MethodDef extends AbstractElement {
 
+    private static final Function<String, @Nullable TypeDef> EMPTY = ignore -> null;
+
     public static final String CONSTRUCTOR = "<init>";
     private final TypeDef returnType;
     private final List<ParameterDef> parameters;
@@ -54,6 +56,7 @@ public final class MethodDef extends AbstractElement {
 
     MethodDef(String name,
               EnumSet<Modifier> modifiers,
+              @Nullable
               TypeDef returnType,
               List<ParameterDef> parameters,
               List<StatementDef> statements,
@@ -108,7 +111,7 @@ public final class MethodDef extends AbstractElement {
      * @since 1.5
      */
     public static MethodDef of(MethodElement methodElement) {
-        return of(methodElement, Map.of());
+        return MethodDef.builder(methodElement).build();
     }
 
     /**
@@ -118,22 +121,23 @@ public final class MethodDef extends AbstractElement {
      * @param resolvedTypeVariables The resolved type variable
      * @return The method definition
      * @since 1.7
+     * @deprecated replaced with {@link #of(MethodElement, Function)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     public static MethodDef of(MethodElement methodElement, Map<String, TypeDef> resolvedTypeVariables) {
-        return MethodDef.builder(methodElement.getName())
-            .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getType(), resolvedTypeVariables))).toList())
-            .addTypeVariables(methodElement.getTypeArguments().entrySet()
-                .stream()
-                .flatMap(e -> {
-                    TypeDef resolved = resolvedTypeVariables.get(e.getKey());
-                    if (resolved != null) {
-                        return Stream.empty();
-                    }
-                    return Stream.of(TypeDef.variable(e.getKey(), TypeDef.erasure(e.getValue(), resolvedTypeVariables)));
-                })
-                .toList())
-            .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(methodElement.getReturnType(), resolvedTypeVariables))
-            .build();
+        return of(methodElement, resolvedTypeVariables::get);
+    }
+
+    /**
+     * Creates a method definition from {@link MethodElement}.
+     *
+     * @param methodElement     The method element
+     * @param resolveVariableFn The resolved variable function
+     * @return The method definition
+     * @since 2.0
+     */
+    public static MethodDef of(MethodElement methodElement, Function<String, TypeDef> resolveVariableFn) {
+        return MethodDef.builder(methodElement, resolveVariableFn).build();
     }
 
     /**
@@ -144,10 +148,7 @@ public final class MethodDef extends AbstractElement {
      * @since 1.5
      */
     public static MethodDef of(Method method) {
-        return MethodDef.builder(method.getName())
-            .addParameters(Arrays.stream(method.getParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList())
-            .returns(TypeDef.of(method.getReturnType()))
-            .build();
+        return MethodDef.builder(method).build();
     }
 
     /**
@@ -168,13 +169,24 @@ public final class MethodDef extends AbstractElement {
      * @param resolvedTypeVariables The resolved type variables
      * @return The method definition builder
      * @since 1.5
+     * @deprecated replaced with {@link #override(MethodElement, Function)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     public static MethodDefBuilder override(MethodElement methodElement, Map<String, TypeDef> resolvedTypeVariables) {
-        return MethodDef.builder(methodElement.getName())
-            .overrides()
-            .addModifiers(toOverrideModifiers(methodElement))
-            .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getType(), resolvedTypeVariables))).toList())
-            .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(methodElement.getReturnType(), resolvedTypeVariables));
+        return override(methodElement, resolvedTypeVariables::get);
+    }
+
+    /**
+     * Creates a method definition builder from {@link MethodElement}.
+     *
+     * @param methodElement     The methodElement
+     * @param resolveVariableFn The resolved variable function
+     * @return The method definition builder
+     * @since 2.0
+     */
+    public static MethodDefBuilder override(MethodElement methodElement, Function<String, TypeDef> resolveVariableFn) {
+        return MethodDef.builder(methodElement, resolveVariableFn)
+            .overrides();
     }
 
     /**
@@ -185,11 +197,8 @@ public final class MethodDef extends AbstractElement {
      * @since 1.7
      */
     public static MethodDefBuilder overrideGeneric(MethodElement methodElement) {
-        return MethodDef.builder(methodElement.getName())
-            .overrides()
-            .addModifiers(toOverrideModifiers(methodElement))
-            .addParameters(Arrays.stream(methodElement.getSuspendParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(p.getGenericType(), Map.of()))).toList())
-            .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(methodElement.getGenericReturnType(), Map.of()));
+        return MethodDef.builderGeneric(methodElement)
+            .overrides();
     }
 
     /**
@@ -200,11 +209,8 @@ public final class MethodDef extends AbstractElement {
      * @since 1.5
      */
     public static MethodDefBuilder override(Method method) {
-        return MethodDef.builder(method.getName())
-            .overrides()
-            .addModifiers(toOverrideModifiers(method.getModifiers()))
-            .addParameters(Arrays.stream(method.getParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList())
-            .returns(TypeDef.of(method.getReturnType()));
+        return MethodDef.builder(method)
+            .overrides();
     }
 
     /**
@@ -215,11 +221,8 @@ public final class MethodDef extends AbstractElement {
      * @since 1.7
      */
     public static MethodDefBuilder override(MethodDef method) {
-        return MethodDef.builder(method.getName())
-            .overrides()
-            .addModifiers(toOverrideModifiers(method))
-            .addParameters(method.getParameters())
-            .returns(method.getReturnType());
+        return MethodDef.builder(method)
+            .overrides();
     }
 
     /**
@@ -230,36 +233,58 @@ public final class MethodDef extends AbstractElement {
      * @since 1.5
      */
     public static MethodDefBuilder override(Constructor<?> constructor) {
-        return MethodDef.constructor()
-            .overrides()
-            .addModifiers(toOverrideModifiers(constructor.getModifiers()))
-            .addParameters(Arrays.stream(constructor.getParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList());
+        return MethodDef.builder(constructor);
     }
 
+    /**
+     * Resolves type variables.
+     *
+     * @param resolvedTypeVariables The type variables map
+     * @return the resolved method
+     * @deprecated replaced with {@link #resolveTypeVariables(Function)}
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     public MethodDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
+        return resolveTypeVariables(resolvedTypeVariables::get);
+    }
+
+    /**
+     * Resolves type variables.
+     *
+     * @param resolveVariableFn The resolve variable function
+     * @return the resolved method
+     * @since 2.0
+     */
+    public MethodDef resolveTypeVariables(Function<String, @Nullable TypeDef> resolveVariableFn) {
         if (!statements.isEmpty()) {
             throw new IllegalStateException("Method " + this + " resolving variables with statements not supported");
         }
         return MethodDef.builder(name)
             .addModifiers(modifiers)
-            .addParameters(parameters.stream().map(p -> p.resolveTypeVariables(resolvedTypeVariables)).toList())
-            .returns(returnType.resolveTypeVariables(resolvedTypeVariables))
+            .addParameters(parameters.stream().map(p -> p.resolveTypeVariables(resolveVariableFn)).toList())
+            .returns(returnType.resolveTypeVariables(resolveVariableFn))
             .addJavadoc(javadoc)
             .build();
     }
 
-    private static Modifier[] toOverrideModifiers(MethodDef methodDef) {
+    private static Modifier[] toModifiers(MethodElement methodElement) {
         List<Modifier> modifiersList = new ArrayList<>();
-        if (methodDef.modifiers.contains(Modifier.PUBLIC)) {
+        if (methodElement.isPublic()) {
             modifiersList.add(Modifier.PUBLIC);
         }
-        if (methodDef.modifiers.contains(Modifier.PROTECTED)) {
+        if (methodElement.isProtected()) {
             modifiersList.add(Modifier.PROTECTED);
+        }
+        if (methodElement.isPrivate()) {
+            modifiersList.add(Modifier.PRIVATE);
+        }
+        if (methodElement.isFinal()) {
+            modifiersList.add(Modifier.FINAL);
         }
         return modifiersList.toArray(new Modifier[0]);
     }
 
-    private static Modifier[] toOverrideModifiers(int modifiers) {
+    private static Modifier[] toModifiers(int modifiers) {
         List<Modifier> modifiersList = new ArrayList<>();
         if (java.lang.reflect.Modifier.isPublic(modifiers)) {
             modifiersList.add(Modifier.PUBLIC);
@@ -267,16 +292,11 @@ public final class MethodDef extends AbstractElement {
         if (java.lang.reflect.Modifier.isProtected(modifiers)) {
             modifiersList.add(Modifier.PROTECTED);
         }
-        return modifiersList.toArray(new Modifier[0]);
-    }
-
-    private static Modifier[] toOverrideModifiers(MethodElement methodElement) {
-        List<Modifier> modifiersList = new ArrayList<>();
-        if (methodElement.isPublic()) {
-            modifiersList.add(Modifier.PUBLIC);
+        if (java.lang.reflect.Modifier.isPrivate(modifiers)) {
+            modifiersList.add(Modifier.PRIVATE);
         }
-        if (methodElement.isProtected()) {
-            modifiersList.add(Modifier.PROTECTED);
+        if (java.lang.reflect.Modifier.isFinal(modifiers)) {
+            modifiersList.add(Modifier.FINAL);
         }
         return modifiersList.toArray(new Modifier[0]);
     }
@@ -343,6 +363,119 @@ public final class MethodDef extends AbstractElement {
         return new MethodDefBuilder(name);
     }
 
+    /**
+     * Creates a builder from {@link MethodElement}.
+     *
+     * @param methodElement The method element
+     * @return The method definition builder
+     * @since 2.0
+     */
+    public static MethodDefBuilder builder(MethodElement methodElement) {
+        return builder(methodElement, EMPTY, false);
+    }
+
+    /**
+     * Creates a builder from {@link MethodElement}.
+     *
+     * @param methodElement      The method element
+     * @param resolvedVariableFn The type variable resolution function
+     * @return The method definition builder
+     * @since 2.0
+     */
+    public static MethodDefBuilder builder(MethodElement methodElement,
+                                           Function<String, @Nullable TypeDef> resolvedVariableFn) {
+        return builder(methodElement, resolvedVariableFn, false);
+    }
+
+    /**
+     * Creates a builder from {@link MethodElement} preserving generics.
+     *
+     * @param methodElement The method element
+     * @return The method definition builder
+     * @since 2.0
+     */
+    public static MethodDefBuilder builderGeneric(MethodElement methodElement) {
+        return builder(methodElement, EMPTY, true);
+    }
+
+    /**
+     * Creates a builder from {@link MethodElement} preserving generics.
+     *
+     * @param methodElement      The method element
+     * @param resolvedVariableFn The type variable resolution function
+     * @return The method definition builder
+     * @since 2.0
+     */
+    public static MethodDefBuilder builderGeneric(MethodElement methodElement,
+                                                  Function<String, @Nullable TypeDef> resolvedVariableFn) {
+        return builder(methodElement, resolvedVariableFn, true);
+    }
+
+    /**
+     * Creates a builder from {@link MethodElement}.
+     *
+     * @param methodElement      The method element
+     * @param resolvedVariableFn The type variable resolution function
+     * @param generic            Whether generic types should be preserved
+     * @return The method definition builder
+     * @since 2.0
+     */
+    public static MethodDefBuilder builder(MethodElement methodElement,
+                                           Function<String, @Nullable TypeDef> resolvedVariableFn,
+                                           boolean generic) {
+        MethodDefBuilder builder = MethodDef.builder(methodElement.getName());
+        return builder
+            .addModifiers(toModifiers(methodElement))
+            .addParameters(
+                Arrays.stream(methodElement.getSuspendParameters())
+                    .map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(generic ? p.getGenericType() : p.getType(), resolvedVariableFn)))
+                    .toList()
+            )
+            .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(generic ? methodElement.getGenericReturnType() : methodElement.getReturnType(), resolvedVariableFn));
+    }
+
+    /**
+     * Creates a builder from an existing {@link MethodDef}.
+     *
+     * @param methodDef The method definition
+     * @return The method definition builder
+     * @since 2.0
+     */
+    public static MethodDefBuilder builder(MethodDef methodDef) {
+        return MethodDef.builder(methodDef.getName())
+            .addModifiers(methodDef.getModifiers())
+            .addParameters(methodDef.getParameters())
+            .returns(methodDef.getReturnType());
+    }
+
+    /**
+     * Creates a builder from a {@link Method}.
+     *
+     * @param method The reflective method
+     * @return The method definition builder
+     * @since 2.0
+     */
+    public static MethodDefBuilder builder(Method method) {
+        return MethodDef.builder(method.getName())
+            .addModifiers(toModifiers(method.getModifiers()))
+            .addParameters(Arrays.stream(method.getParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList())
+            .returns(TypeDef.of(method.getReturnType()));
+    }
+
+    /**
+     * Creates a builder from a {@link Constructor}.
+     *
+     * @param constructor The reflective constructor
+     * @return The method definition builder
+     * @since 2.0
+     */
+    public static MethodDefBuilder builder(Constructor<?> constructor) {
+        return MethodDef.constructor()
+            .overrides()
+            .addModifiers(toModifiers(constructor.getModifiers()))
+            .addParameters(Arrays.stream(constructor.getParameters()).map(p -> ParameterDef.of(p.getName(), TypeDef.of(p.getType()))).toList());
+    }
+
     @Override
     public String toString() {
         return "MethodDef{" +
@@ -395,6 +528,38 @@ public final class MethodDef extends AbstractElement {
         public MethodDef.MethodDefBuilder addTypeVariables(List<TypeDef.TypeVariable> typeVariables) {
             this.typeVariables.addAll(typeVariables);
             return this;
+        }
+
+        /**
+         * Add a type variable.
+         *
+         * @param methodElement The method to copy type variables
+         * @return The type variable
+         * @since 2.0
+         */
+        public MethodDef.MethodDefBuilder addTypeVariables(MethodElement methodElement) {
+            return addTypeVariables(methodElement, EMPTY);
+        }
+
+        /**
+         * Add a type variables from {@link MethodElement}.
+         *
+         * @param methodElement     The type variables
+         * @param resolveVariableFn The type variable function
+         * @return The type variable
+         * @since 2.0
+         */
+        public MethodDef.MethodDefBuilder addTypeVariables(MethodElement methodElement, Function<String, @Nullable TypeDef> resolveVariableFn) {
+            return addTypeVariables(methodElement.getTypeArguments().entrySet()
+                .stream()
+                .flatMap(e -> {
+                    TypeDef resolved = resolveVariableFn.apply(e.getKey());
+                    if (resolved != null) {
+                        return Stream.empty();
+                    }
+                    return Stream.of(TypeDef.variable(e.getKey(), TypeDef.erasure(e.getValue(), resolveVariableFn)));
+                })
+                .toList());
         }
 
         /**

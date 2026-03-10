@@ -20,6 +20,8 @@ import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
+import io.micronaut.inject.ast.TypedElement;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
 import java.lang.reflect.Constructor;
@@ -28,6 +30,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * The class type definition.
@@ -72,7 +75,7 @@ public sealed interface ClassTypeDef extends TypeDef {
     String getName();
 
     @Override
-    default ClassTypeDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
+    default ClassTypeDef resolveTypeVariables(Function<String, @Nullable TypeDef> resolveVariableFn) {
         return this;
     }
 
@@ -146,6 +149,17 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @since 1.7
      */
     default LambdaDef getLambda(Map<String, TypeDef> resolvedTypeVariables) {
+        return getLambda(resolvedTypeVariables::get);
+    }
+
+    /**
+     * Find the method that can be represented as a lambda.
+     *
+     * @param resolveVariableFn The resolved variable function
+     * @return The lambda method
+     * @since 2.0
+     */
+    default LambdaDef getLambda(Function<String, @Nullable TypeDef> resolveVariableFn) {
         throw new UnsupportedOperationException("ClassTypeDef: " + getName() + " doesn't support lambdas");
     }
 
@@ -489,9 +503,26 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @param resolvedTypeVariables The resolved type variables
      * @param erasure      The erasure
      * @return type definition
+     * @deprecated Replaced with {@link #of(TypedElement, Function, boolean)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     static ClassTypeDef of(ClassElement classElement,
                            Map<String, TypeDef> resolvedTypeVariables,
+                           boolean erasure) {
+        return of(classElement, resolvedTypeVariables::get, erasure);
+    }
+
+    /**
+     * Create a new type definition.
+     *
+     * @param classElement       The class element
+     * @param resolvedVariableFn The resolved variable function
+     * @param erasure            The erasure
+     * @return type definition
+     * @since 2.0
+     */
+    static ClassTypeDef of(ClassElement classElement,
+                           Function<String, TypeDef> resolvedVariableFn,
                            boolean erasure) {
         if (classElement.isPrimitive()) {
             throw new IllegalStateException("Primitive classes cannot be of type: " + ClassTypeDef.class.getName());
@@ -501,7 +532,7 @@ public sealed interface ClassTypeDef extends TypeDef {
                 new ClassElementType(classElement, classElement.isNullable()),
                 classElement.getTypeArguments().values()
                     .stream()
-                    .map(value -> TypeDef.of(value, resolvedTypeVariables, erasure))
+                    .map(value -> TypeDef.of(value, resolvedVariableFn, erasure))
                     .toList()
             );
         }
@@ -667,7 +698,7 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassElementType(ClassElement classElement, boolean nullable) implements ClassTypeDef {
 
         @Override
-        public LambdaDef getLambda(Map<String, TypeDef> resolvedTypeVariables) {
+        public LambdaDef getLambda(Function<String, TypeDef> resolveVariableFn) {
             List<MethodElement> abstractMethods = classElement.getEnclosedElements(
                 ElementQuery.of(MethodElement.class).onlyAbstract());
             if (abstractMethods.size() != 1) {
@@ -675,10 +706,11 @@ public sealed interface ClassTypeDef extends TypeDef {
                     "abstract method but has " + abstractMethods.size());
             }
             MethodElement methodElement = abstractMethods.get(0);
+            MethodDef build = MethodDef.builder(methodElement, resolveVariableFn).addTypeVariables(methodElement, resolveVariableFn).build();
             return new LambdaDef(
-                ClassTypeDef.of(classElement).resolveTypeVariables(resolvedTypeVariables),
+                ClassTypeDef.of(classElement).resolveTypeVariables(resolveVariableFn),
                 MethodDef.of(methodElement),
-                MethodDef.of(methodElement, resolvedTypeVariables)
+                build
             );
         }
 
@@ -745,7 +777,7 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassDefType(ObjectDef objectDef, boolean nullable) implements ClassTypeDef {
 
         @Override
-        public LambdaDef getLambda(Map<String, TypeDef> resolvedTypeVariables) {
+        public LambdaDef getLambda(Function<String, TypeDef> resolveVariableFn) {
             List<MethodDef> methods = objectDef.getMethods()
                 .stream()
                 .filter(v -> v.getModifiers().contains(Modifier.ABSTRACT))
@@ -756,9 +788,9 @@ public sealed interface ClassTypeDef extends TypeDef {
             }
             MethodDef methodDef = methods.get(0);
             return new LambdaDef(
-                ClassTypeDef.of(objectDef).resolveTypeVariables(resolvedTypeVariables),
+                ClassTypeDef.of(objectDef).resolveTypeVariables(resolveVariableFn),
                 methodDef,
-                methodDef.resolveTypeVariables(resolvedTypeVariables)
+                methodDef.resolveTypeVariables(resolveVariableFn)
             );
         }
 
@@ -812,14 +844,14 @@ public sealed interface ClassTypeDef extends TypeDef {
                          List<TypeDef> typeArguments) implements ClassTypeDef {
 
         @Override
-        public Parameterized resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
-            return new Parameterized(rawType, typeArguments.stream().map(t -> t.resolveTypeVariables(resolvedTypeVariables)).toList());
+        public Parameterized resolveTypeVariables(Function<String, @Nullable TypeDef> resolveVariableFn) {
+            return new Parameterized(rawType, typeArguments.stream().map(t -> t.resolveTypeVariables(resolveVariableFn)).toList());
         }
 
         @Override
-        public LambdaDef getLambda(Map<String, TypeDef> resolvedTypeVariables) {
-            ClassTypeDef lambdaType = resolveTypeVariables(resolvedTypeVariables);
-            LambdaDef lambda = rawType.getLambda(resolvedTypeVariables);
+        public LambdaDef getLambda(Function<String, @Nullable TypeDef> resolveVariableFn) {
+            ClassTypeDef lambdaType = resolveTypeVariables(resolveVariableFn);
+            LambdaDef lambda = rawType.getLambda(resolveVariableFn);
             return new LambdaDef(
                 lambdaType,
                 lambda.getMethod(),
