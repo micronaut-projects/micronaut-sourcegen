@@ -143,6 +143,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     /**
      * Create a builder for the given arguments.
+     *
      * @param packageName            The package name
      * @param elementType            The element type
      * @param builderAnnotationValue The builder annotation value.
@@ -512,8 +513,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     VariableDef.Field field = self.field(parameter.getName(), nullableFieldType);
                     values.add(!fieldType.isPrimitive() ?
                         valueExpression(propertyElement, field).cast(TypeDef.of(parameter.getType())) :
-                        field.ifNull(TypeDef.Primitive.defaultValue(parameter.getType().getName()), valueExpression(propertyElement, field))
-                    );
+                        field.ifNull(TypeDef.Primitive.defaultValue(parameter.getType().getName()), valueExpression(propertyElement, field)).cast(TypeDef.of(parameter.getType())));
                 }
                 if (beanProperties.isEmpty()) {
                     return buildType.instantiate(values).returning();
@@ -553,7 +553,6 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 });
             });
     }
-
 
     private static ExpressionDef valueExpression(@Nullable PropertyElement propertyElement,
                                                  VariableDef.Field field) {

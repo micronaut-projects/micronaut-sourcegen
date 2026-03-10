@@ -486,9 +486,9 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
         }
 
         /**
-         * Default value for a primitive
-         * @param name of the primitive type
-         * @return ExpressionDef.constant with the default value for primitives
+         * Default value for a primitive.
+         * @param name of the primitive type.
+         * @return ExpressionDef.constant with the default value for primitives.
          */
         public static ExpressionDef.Constant defaultValue(String name) {
             return switch (name) {
