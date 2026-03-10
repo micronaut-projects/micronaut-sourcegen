@@ -32,7 +32,7 @@ import java.util.Map;
  * @author Denis Stepanov
  * @since 1.5
  */
-public sealed interface StatementWriter permits DefineAndAssignStatementWriter, AssignVariableStatementWriter, ExpressionAsStatementWriter, IfElseStatementWriter, IfStatementWriter, MultiStatementWriter, PutStaticFieldStatementWriter, PutStaticStatementWriter, ReturnStatementWriter, SwitchStatementWriter, SynchronizedStatementWriter, ThrowStatementWriter, TryCatchStatementWriter, WhileLoopStatementWriter {
+public sealed interface StatementWriter permits AssignVariableStatementWriter, DefineAndAssignStatementWriter, ExpressionAsStatementWriter, IfElseStatementWriter, IfStatementWriter, InvokeSuperConstructorStatementWriter, MultiStatementWriter, PutStaticFieldStatementWriter, PutStaticStatementWriter, ReturnStatementWriter, SwitchStatementWriter, SynchronizedStatementWriter, ThrowStatementWriter, TryCatchStatementWriter, WhileLoopStatementWriter {
 
     /**
      * Create a writer from the statement.
@@ -41,6 +41,9 @@ public sealed interface StatementWriter permits DefineAndAssignStatementWriter, 
      * @return a writer
      */
     static StatementWriter of(StatementDef statementDef) {
+        if (statementDef instanceof StatementDef.InvokeSuperConstructor invokeSuperConstructor) {
+            return new InvokeSuperConstructorStatementWriter(invokeSuperConstructor);
+        }
         if (statementDef instanceof StatementDef.Multi statements) {
             return new MultiStatementWriter(statements);
         }

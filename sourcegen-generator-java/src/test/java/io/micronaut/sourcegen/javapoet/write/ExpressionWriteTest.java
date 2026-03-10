@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.util.AbstractList;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -40,6 +42,54 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class ExpressionWriteTest extends AbstractWriteTest {
 
     private static final ClassTypeDef STRING = ClassTypeDef.STRING;
+
+    @Test
+    void testSuperConstructorCall() throws IOException {
+        ClassDef classDef = ClassDef.builder("test.MyList")
+            .superclass(TypeDef.parameterized(AbstractList.class, String.class))
+            .addMethod(MethodDef.constructor().build((aThis, methodParameters) ->
+                aThis.superRef().invokeSuperConstructor()))
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.String;
+import java.util.AbstractList;
+
+class MyList extends AbstractList<String> {
+  MyList() {
+    super();
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testSuperConstructorCall2() throws Exception {
+        Constructor<AbstractList> constructor = AbstractList.class.getDeclaredConstructor();
+        ClassDef classDef = ClassDef.builder("test.MyList")
+            .superclass(TypeDef.parameterized(AbstractList.class, String.class))
+            .addMethod(MethodDef.constructor().build((aThis, methodParameters) ->
+                aThis.superRef().invokeSuperConstructor(constructor))
+            )
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.String;
+import java.util.AbstractList;
+
+class MyList extends AbstractList<String> {
+  MyList() {
+    super();
+  }
+}
+            """, data);
+    }
 
     @Test
     void testEliminatePrimitiveCast() throws IOException {

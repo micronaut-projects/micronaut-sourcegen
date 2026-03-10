@@ -99,7 +99,7 @@ public class EnumGenUtils {
             classDefBuilder.addMethod(MethodDef.override(ENUM_CONSTRUCTOR)
                 .overrideModifiers(Modifier.PRIVATE)
                 .build((aThis, methodParameters) ->
-                    aThis.superRef().invokeConstructor(ENUM_CONSTRUCTOR, methodParameters.get(0), methodParameters.get(1))));
+                    aThis.superRef().invokeSuperConstructor(ENUM_CONSTRUCTOR, methodParameters.get(0), methodParameters.get(1))));
         }
 
         MethodDef internalValuesMethod = MethodDef.builder("$values")
@@ -161,7 +161,7 @@ public class EnumGenUtils {
             .addParameters(ENUM_CONSTRUCTOR.getParameterTypes())
             .addParameters(method.getParameters())
             .build((aThis, methodParameters) -> StatementDef.multi(
-                aThis.superRef().invokeConstructor(ENUM_CONSTRUCTOR, methodParameters.get(0), methodParameters.get(1)),
+                aThis.superRef().invokeSuperConstructor(ENUM_CONSTRUCTOR, methodParameters.get(0), methodParameters.get(1)),
                 aThis.invoke(constructorMethod, methodParameters.subList(2, methodParameters.size()))
             )));
     }

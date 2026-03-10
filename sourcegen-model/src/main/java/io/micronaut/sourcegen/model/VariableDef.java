@@ -16,7 +16,11 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
+import io.micronaut.inject.ast.MethodElement;
 
+import java.lang.reflect.Constructor;
+import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -187,6 +191,125 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Ex
      */
     @Experimental
     record Super(ClassTypeDef type) implements VariableDef {
+
+        /**
+         * Invoke super constructor statement.
+         *
+         * @param values The values
+         * @return The call to the instance method
+         * @since 1.5
+         */
+        public StatementDef.InvokeSuperConstructor invokeSuperConstructor(ExpressionDef... values) {
+            return invokeSuperConstructor(Arrays.asList(values));
+        }
+
+        /**
+         * Invoke super constructor statement.
+         *
+         * @param values The values
+         * @return The call to the instance method
+         * @since 1.5
+         */
+        public StatementDef.InvokeSuperConstructor invokeSuperConstructor(List<? extends ExpressionDef> values) {
+            return invokeSuperConstructor(values.stream().map(ExpressionDef::type).toList(), values);
+        }
+
+        /**
+         * Invoke super constructor statement.
+         *
+         * @param parameterTypes The parameterTypes
+         * @param values         The values
+         * @return The call to the instance method
+         * @since 1.5
+         */
+        public StatementDef.InvokeSuperConstructor invokeSuperConstructor(List<TypeDef> parameterTypes, ExpressionDef... values) {
+            return invokeSuperConstructor(parameterTypes, Arrays.asList(values));
+        }
+
+        /**
+         * Invoke super constructor statement.
+         *
+         * @param parameterTypes The parameterTypes
+         * @param values         The values
+         * @return The call to the instance method
+         * @since 1.5
+         */
+        public StatementDef.InvokeSuperConstructor invokeSuperConstructor(List<TypeDef> parameterTypes, List<? extends ExpressionDef> values) {
+            return new StatementDef.InvokeSuperConstructor(this, MethodDef.constructor().addParameters(parameterTypes).build(), values);
+        }
+
+        /**
+         * Invoke super constructor statement.
+         *
+         * @param constructor The constructor
+         * @param values      The constructor values
+         * @return The new instance
+         */
+        @Experimental
+        public StatementDef.InvokeSuperConstructor invokeSuperConstructor(Constructor<?> constructor, ExpressionDef... values) {
+            return invokeSuperConstructor(constructor, List.of(values));
+        }
+
+        /**
+         * Invoke super constructor statement.
+         *
+         * @param constructor The constructor
+         * @param values      The constructor values
+         * @return The new instance
+         */
+        @Experimental
+        public StatementDef.InvokeSuperConstructor invokeSuperConstructor(Constructor<?> constructor, List<? extends ExpressionDef> values) {
+            return invokeSuperConstructor(Arrays.stream(constructor.getParameterTypes()).map(TypeDef::of).toList(), values);
+        }
+
+        /**
+         * Invoke super constructor statement.
+         *
+         * @param constructor The constructor
+         * @param values      The constructor values
+         * @return The new instance
+         */
+        @Experimental
+        public StatementDef.InvokeSuperConstructor invokeSuperConstructor(MethodDef constructor, ExpressionDef... values) {
+            return invokeSuperConstructor(constructor, List.of(values));
+        }
+
+        /**
+         * Invoke super constructor statement.
+         *
+         * @param constructor The constructor
+         * @param values      The constructor values
+         * @return The new instance
+         */
+        @Experimental
+        public StatementDef.InvokeSuperConstructor invokeSuperConstructor(MethodDef constructor, List<? extends ExpressionDef> values) {
+            return invokeSuperConstructor(constructor.getParameters().stream().map(ParameterDef::getType).toList(), values);
+        }
+
+        /**
+         * Invoke super constructor statement.
+         *
+         * @param constructor The constructor
+         * @param values      The constructor values
+         * @return The new instance
+         */
+        @Experimental
+        public StatementDef.InvokeSuperConstructor invokeSuperConstructor(MethodElement constructor, ExpressionDef... values) {
+            return invokeSuperConstructor(MethodDef.of(constructor), values);
+        }
+
+        /**
+         * Invoke super constructor statement.
+         *
+         * @param constructor The constructor
+         * @param values      The constructor values
+         * @return The new instance
+         */
+        @Experimental
+        public StatementDef.InvokeSuperConstructor invokeSuperConstructor(MethodElement constructor, List<? extends ExpressionDef> values) {
+            return invokeSuperConstructor(MethodDef.of(constructor), values);
+        }
+
     }
 
     /**

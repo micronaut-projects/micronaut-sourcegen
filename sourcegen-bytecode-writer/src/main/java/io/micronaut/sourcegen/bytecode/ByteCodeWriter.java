@@ -298,7 +298,7 @@ public final class ByteCodeWriter {
                 defaultConstructor.addModifiers(Modifier.PUBLIC);
             }
             writeMethod(classVisitor, classDef, defaultConstructor
-                .build((aThis, methodParameters) -> aThis.superRef().invokeConstructor(methodParameters)));
+                .build((aThis, methodParameters) -> aThis.superRef().invokeSuperConstructor(methodParameters)));
         }
 
         for (PropertyDef property : classDef.getProperties()) {
@@ -508,7 +508,7 @@ public final class ByteCodeWriter {
             for (StatementDef statement : statements) {
                 StatementWriter.of(statement).write(generatorAdapter, context, null);
             }
-            StatementDef statementDef = statements.get(statements.size() - 1);
+            StatementDef statementDef = statements.getLast();
             if (!hasReturnStatement(statementDef)) {
                 if (methodDef.getReturnType().equals(TypeDef.VOID)) {
                     generatorAdapter.returnValue();
@@ -595,11 +595,12 @@ public final class ByteCodeWriter {
     }
 
     private StatementDef superConstructorInvocation() {
-        return new VariableDef.This().superRef().invokeConstructor();
+        return new VariableDef.This().superRef().invokeSuperConstructor();
     }
 
     private boolean isConstructorInvocation(StatementDef statement) {
-        return statement instanceof ExpressionDef.InvokeInstanceMethod call && call.method().isConstructor();
+        boolean deprecatedCall = statement instanceof ExpressionDef.InvokeInstanceMethod call && call.method().isConstructor();
+        return deprecatedCall || statement instanceof StatementDef.InvokeSuperConstructor;
     }
 
     private int getModifiersFlag(Set<Modifier> modifiers) {

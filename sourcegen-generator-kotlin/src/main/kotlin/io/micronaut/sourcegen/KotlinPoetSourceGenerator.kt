@@ -210,7 +210,31 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 val superCallStatement = method.statements.firstOrNull {
                     it is InvokeInstanceMethod && it.instance is VariableDef.Super && it.method.name == "<init>"
                 } as? InvokeInstanceMethod
-                if (superCallStatement != null) {
+                val superCallStatement2 = method.statements.firstOrNull {
+                    it is InvokeSuperConstructor
+                } as? InvokeSuperConstructor
+                if (superCallStatement2 != null) {
+                    val superArgsCodeBlock = CodeBlock.builder()
+                    for ((index, arg) in superCallStatement2.values.withIndex()) {
+                        superArgsCodeBlock.add(renderExpressionCode(classDef, method, arg))
+                        if (index < superCallStatement2.values.size - 1) {
+                            superArgsCodeBlock.add(", ")
+                        }
+                    }
+                    val constructorFunSpecBuilder = FunSpec.constructorBuilder()
+                        .addModifiers(asKModifiers(method, modifiers))
+                        .addParameters(
+                            method.parameters.stream()
+                                .map { param: ParameterDef ->
+                                    ParameterSpec.builder(
+                                        param.name,
+                                        asType(param.type, classDef)
+                                    ).build()
+                                }.toList()
+                        )
+                    classBuilder.superclassConstructorParameters.add(superArgsCodeBlock.build())
+                    classBuilder.primaryConstructor(constructorFunSpecBuilder.build())
+                } else if (superCallStatement != null) {
                     val superArgsCodeBlock = CodeBlock.builder()
                     for ((index, arg) in superCallStatement.values.withIndex()) {
                         superArgsCodeBlock.add(renderExpressionCode(classDef, method, arg))
@@ -813,7 +837,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             methodDef: MethodDef,
             statementDef: StatementDef?
         ): CodeBlock {
-            if (statementDef is StatementDef.Multi) {
+            if (statementDef is Multi) {
                 val builder: CodeBlock.Builder =
                     CodeBlock.builder()
                 for (statement in statementDef.statements) {
@@ -874,7 +898,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 builder.add("}\n")
                 return builder.build()
             }
-            if (statementDef is StatementDef.While) {
+            if (statementDef is While) {
                 val builder: CodeBlock.Builder =
                     CodeBlock.builder()
                 builder.add("while (")
@@ -896,13 +920,27 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             methodDef: MethodDef,
             statementDef: StatementDef?
         ): CodeBlock {
-            if (statementDef is StatementDef.Throw) {
+            if (statementDef is InvokeSuperConstructor) {
+                val instanceExp = renderExpressionCode(objectDef, methodDef, statementDef.superInstance())
+                val codeBuilder = CodeBlock.builder()
+                codeBuilder.add(instanceExp)
+                codeBuilder.add("(")
+                for ((index, parameter) in statementDef.values.withIndex()) {
+                    codeBuilder.add(renderExpressionCode(objectDef, methodDef, parameter))
+                    if (index != statementDef.values.size - 1) {
+                        codeBuilder.add(", ")
+                    }
+                }
+                codeBuilder.add(")")
+                return codeBuilder.build()
+            }
+            if (statementDef is Throw) {
                 return CodeBlock.builder()
                     .add("throw ")
                     .add(renderExpressionCode(objectDef, methodDef, statementDef.expression))
                     .build()
             }
-            if (statementDef is StatementDef.Return) {
+            if (statementDef is Return) {
                 val codeBlock = renderExpressionWithNotNullAssertion(
                     objectDef,
                     methodDef,

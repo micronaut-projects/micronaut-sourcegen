@@ -62,6 +62,132 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ByteCodeWriterTest {
 
     @Test
+    void testSuperCall() throws Exception {
+        Constructor<AbstractList> constructor = AbstractList.class.getDeclaredConstructor();
+
+        ClassDef classDef = ClassDef.builder("test.MyList")
+            .superclass(TypeDef.parameterized(AbstractList.class, String.class))
+            .addMethod(MethodDef.constructor().build((aThis, methodParameters) ->
+                aThis.superRef().invokeSuperConstructor()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+
+        String bytecode = bytecodeWriter.toString();
+        Assertions.assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/util/AbstractList<Ljava/lang/String;>;
+// declaration: test/MyList extends java.util.AbstractList<java.lang.String>
+class test/MyList extends java/util/AbstractList {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/util/AbstractList.<init> ()V
+    RETURN
+}
+            """, bytecode);
+
+        Assertions.assertEquals("""
+package test;
+
+import java.util.AbstractList;
+
+class MyList extends AbstractList {
+}
+            """, decompileToJava(bytes));
+    }
+
+    @Test
+    void testSuperCall2() throws Exception {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .superclass(MyAbstractClass.class)
+            .addMethod(MethodDef.constructor().build((aThis, methodParameters) ->
+                aThis.superRef().invokeSuperConstructor(ExpressionDef.constant("HelloWorld"))))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+
+        String bytecode = bytecodeWriter.toString();
+        Assertions.assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Lio/micronaut/sourcegen/bytecode/ByteCodeWriterTest$MyAbstractClass;
+// declaration: test/MyClass extends io.micronaut.sourcegen.bytecode.ByteCodeWriterTest$MyAbstractClass
+class test/MyClass extends io/micronaut/sourcegen/bytecode/ByteCodeWriterTest$MyAbstractClass {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    LDC "HelloWorld"
+    INVOKESPECIAL io/micronaut/sourcegen/bytecode/ByteCodeWriterTest$MyAbstractClass.<init> (Ljava/lang/String;)V
+    RETURN
+}
+            """, bytecode);
+
+        Assertions.assertEquals("""
+package test;
+
+import io.micronaut.sourcegen.bytecode.ByteCodeWriterTest;
+
+class MyClass extends ByteCodeWriterTest.MyAbstractClass {
+   MyClass() {
+      super("HelloWorld");
+   }
+}
+            """, decompileToJava(bytes));
+    }
+
+    @Test
+    void testSuperCall3() throws Exception {
+        Constructor<MyAbstractClass> constructor = MyAbstractClass.class.getDeclaredConstructor(String.class);
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .superclass(MyAbstractClass.class)
+            .addMethod(MethodDef.constructor().build((aThis, methodParameters) ->
+                aThis.superRef().invokeSuperConstructor(constructor, ExpressionDef.constant("HelloWorld"))))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+
+        String bytecode = bytecodeWriter.toString();
+        Assertions.assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Lio/micronaut/sourcegen/bytecode/ByteCodeWriterTest$MyAbstractClass;
+// declaration: test/MyClass extends io.micronaut.sourcegen.bytecode.ByteCodeWriterTest$MyAbstractClass
+class test/MyClass extends io/micronaut/sourcegen/bytecode/ByteCodeWriterTest$MyAbstractClass {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    LDC "HelloWorld"
+    INVOKESPECIAL io/micronaut/sourcegen/bytecode/ByteCodeWriterTest$MyAbstractClass.<init> (Ljava/lang/String;)V
+    RETURN
+}
+            """, bytecode);
+
+        Assertions.assertEquals("""
+package test;
+
+import io.micronaut.sourcegen.bytecode.ByteCodeWriterTest;
+
+class MyClass extends ByteCodeWriterTest.MyAbstractClass {
+   MyClass() {
+      super("HelloWorld");
+   }
+}
+            """, decompileToJava(bytes));
+    }
+
+    @Test
     void testEliminatePrimitiveCast() {
         MethodDef getIntegerValue = MethodDef.builder("getIntegerValue")
             .returns(Object.class)
@@ -4117,6 +4243,14 @@ class Test implements Function {
    }
 }
 """, decompileToJava(bytes));
+    }
+
+    static class MyAbstractClass {
+        private final String value;
+
+        MyAbstractClass(String value) {
+            this.value = value;
+        }
     }
 
 }

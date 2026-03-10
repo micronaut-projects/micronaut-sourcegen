@@ -93,7 +93,7 @@ class SuperCallTest {
         val constructor = MethodDef.constructor()
             .addModifiers(Modifier.PUBLIC)
             .build { aThis, methodParameters ->
-                aThis.superRef().invokeConstructor()
+                aThis.superRef().invokeSuperConstructor()
             }
         val classBuilder = ClassDef.builder("test." + "NoParamChildClass")
             .addModifiers(Modifier.PUBLIC)
@@ -124,7 +124,7 @@ class SuperCallTest {
             .addParameter(childParam1)
             .addParameter(childParam2)
             .build { aThis, methodParameters ->
-                aThis.superRef().invokeConstructor(
+                aThis.superRef().invokeSuperConstructor(
                     methodParameters[0],
                     methodParameters[1]
                 )
