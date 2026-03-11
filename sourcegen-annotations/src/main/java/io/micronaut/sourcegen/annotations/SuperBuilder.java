@@ -46,4 +46,13 @@ public @interface SuperBuilder {
      */
     Class<? extends Annotation>[] annotatedWith() default Introspected.class;
 
+    /**
+     * Enables strict mode, enforcing a write-once policy ensuring that attributes are immutable once set,
+     * and that collection-based properties only support additive operations.
+     * Builder Throws {@link java.lang.IllegalStateException} if an attribute is reinitialized.
+     * @return {@code true} the generated builder will enforce strict initialization;
+     *         {@code false} by default.
+     */
+    boolean strict() default false;
+
 }

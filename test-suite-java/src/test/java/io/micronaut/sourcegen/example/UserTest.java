@@ -17,10 +17,12 @@ package io.micronaut.sourcegen.example;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class UserTest {
 
@@ -75,7 +77,32 @@ class UserTest {
         assertEquals(List.of("ROLES_ADMIN", "ROLES_USER"), user.roles());
         assertEquals(Map.of("key1", "value1", "key2", "value2"), user.properties());
     }
+    @Test
+    public void testUserStrictBuilder() {
+        UserStrict user = new UserStrictBuilder()
+            .id(123L)
+            .name("test")
+            .numbers(Collections.EMPTY_LIST)
+            .role("test")
+            .role("READ")
+            .property("key", "value")
+            .property("key1", "value1")
+            .build();
+        assertEquals(123, user.id());
+        assertEquals("test", user.name());
+        assertEquals(List.of("test", "READ"), user.roles());
+        assertEquals(Map.of("key", "value","key1", "value1"), user.properties());
+
+        assertEquals("numbers cannot be reinitialized.", assertThrows(IllegalStateException.class, () -> new UserStrictBuilder()
+            .id(123L)
+            .name("test")
+            .numbers(Collections.EMPTY_LIST)
+            .numbers(Collections.EMPTY_LIST)
+            .role("test")
+            .role("READ")
+            .property("key", "value")
+            .property("key1", "value1")
+            .build()).getMessage());
+    }
     //end::test[]
-
-
 }

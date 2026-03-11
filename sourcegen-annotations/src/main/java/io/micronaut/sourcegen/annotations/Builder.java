@@ -17,11 +17,7 @@ package io.micronaut.sourcegen.annotations;
 
 import io.micronaut.core.annotation.Introspected;
 
-import java.lang.annotation.Annotation;
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
@@ -38,11 +34,19 @@ public @interface Builder {
 
     /**
      * Define what annotations should be added to the generated builder. By default,
-     * the builder will have {@link io.micronaut.core.annotation.Introspected} annotation
+     * the builder will have {@link Introspected} annotation
      * so that introspection can be created for it.
      *
      * @return Array of annotations to apply on the builder
      */
     Class<? extends Annotation>[] annotatedWith() default Introspected.class;
 
+    /**
+     * Enables strict mode, enforcing a write-once policy ensuring that attributes are immutable once set,
+     * and that collection-based properties only support additive operations.
+     * Builder Throws {@link java.lang.IllegalStateException} if an attribute is reinitialized.
+     * @return {@code true} the generated builder will enforce strict initialization;
+     * {@code false } by default.
+     */
+    boolean strict() default false;
 }

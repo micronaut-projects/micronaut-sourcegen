@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.generator.visitors;
 
+import io.micronaut.core.annotation.AnnotationValue;
 import io.micronaut.core.annotation.Internal;
 import org.jspecify.annotations.NonNull;
 import io.micronaut.inject.ast.ClassElement;
@@ -51,6 +52,7 @@ import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor
 public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<SuperBuilder, Object> {
 
     private final Set<String> processed = new HashSet<>();
+    private static final String BUILDER_STRICT_MEMBER = "strict";
 
     @Override
     public void start(VisitorContext visitorContext) {
@@ -93,13 +95,15 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                     )
                 ));
             }
+            AnnotationValue<SuperBuilder> builderAnnotationValue = element.getAnnotation(SuperBuilder.class);
+            boolean strictBuilder = builderAnnotationValue != null && builderAnnotationValue.booleanValue(BUILDER_STRICT_MEMBER).orElse(false);
 
             List<PropertyElement> properties = element.getBeanProperties();
             for (PropertyElement beanProperty : properties) {
                 if (!beanProperty.getDeclaringType().equals(element)) {
                     continue;
                 }
-                createModifyPropertyMethod(abstractBuilder, abstractBuilderType, beanProperty, buildContext -> buildContext.aThis().invoke("self", buildContext.aThis().type()).cast(selfType).returning());
+                createModifyPropertyMethod(abstractBuilder, abstractBuilderType, beanProperty, buildContext -> buildContext.aThis().invoke("self", buildContext.aThis().type()).cast(selfType).returning(), strictBuilder);
             }
 
             abstractBuilder.addMethod(MethodDef.builder("self").addModifiers(Modifier.ABSTRACT).returns(selfType).build());
