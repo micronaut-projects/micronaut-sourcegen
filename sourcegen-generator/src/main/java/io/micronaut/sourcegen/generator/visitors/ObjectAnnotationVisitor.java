@@ -236,15 +236,15 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                 return StatementDef.multi(
                         instance.ifNull(ExpressionDef.primitiveConstant(0).returning()),
                         instance.getPropertyValue(propertyElement1).invokeHashCode().newLocal("hashValue", hashValue -> {
-                            List<StatementDef> hashUpdates = new ArrayList<>();
-                            while (iterator.hasNext()) {
-                                PropertyElement propertyElement = iterator.next();
-                                ExpressionDef condition = hashValue.math(MULTIPLICATION, HASH_MULTIPLIER)
-                                    .math(ADDITION, instance.getPropertyValue(propertyElement).invokeHashCode());
-                                hashUpdates.add(hashValue.assign(condition));
-                            }
-                            hashUpdates.add(hashValue.returning());
-                            return StatementDef.multi(hashUpdates);
+                            return StatementDef.multi(statements -> {
+                                while (iterator.hasNext()) {
+                                    PropertyElement propertyElement = iterator.next();
+                                    ExpressionDef condition = hashValue.math(MULTIPLICATION, HASH_MULTIPLIER)
+                                        .math(ADDITION, instance.getPropertyValue(propertyElement).invokeHashCode());
+                                    statements.add(hashValue.assign(condition));
+                                }
+                                return hashValue.returning();
+                            });
                         })
                     );
                 }

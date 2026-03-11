@@ -22,11 +22,13 @@ import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.GenericPlaceholderElement;
 import io.micronaut.inject.ast.TypedElement;
 import io.micronaut.inject.ast.WildcardElement;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
@@ -65,6 +67,17 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @return The resolved type or the previous.
      */
     default TypeDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
+        return this.resolveTypeVariables(resolvedTypeVariables::get);
+    }
+
+    /**
+     * Resolve the type variables.
+     *
+     * @param resolveVariableFn The resolved variable function
+     * @return The resolved type or the previous.
+     * @since 2.0
+     */
+    default TypeDef resolveTypeVariables(Function<String, @Nullable TypeDef> resolveVariableFn) {
         return this;
     }
 
@@ -323,9 +336,23 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @param typedElement The typed element
      * @param resolvedTypeVariables The resolved type variables
      * @return a new type definition
+     * @deprecated replaced with {@link #erasure(TypedElement, Function)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     static TypeDef erasure(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables) {
-        return of(typedElement, resolvedTypeVariables, true);
+        return of(typedElement, resolvedTypeVariables::get, true);
+    }
+
+    /**
+     * Creates a new type erasure.
+     *
+     * @param typedElement The typed element
+     * @param resolvedVariableFn The resolved variable function
+     * @return a new type definition
+     * @since 2.0
+     */
+    static TypeDef erasure(TypedElement typedElement, Function<String, TypeDef> resolvedVariableFn) {
+        return of(typedElement, resolvedVariableFn, true);
     }
 
     /**
@@ -345,9 +372,23 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @param typedElement The typed element
      * @param resolvedTypeVariables The resolved type variables
      * @return a new type definition
+     * @deprecated replaced with {@link #of(TypedElement, Function)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     private static TypeDef of(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables) {
-        return of(typedElement, resolvedTypeVariables, false);
+        return of(typedElement, resolvedTypeVariables::get, false);
+    }
+
+    /**
+     * Creates a new type.
+     *
+     * @param typedElement The typed element
+     * @param resolvedVariableFn The resolve variable function
+     * @return a new type definition
+     * @since 2.0
+     */
+    private static TypeDef of(TypedElement typedElement, Function<String, TypeDef> resolvedVariableFn) {
+        return of(typedElement, resolvedVariableFn, false);
     }
 
     /**
@@ -357,8 +398,23 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @param resolvedTypeVariables The resolved type variables
      * @param erasure Is erasure type required
      * @return a new type definition
+     * @deprecated replaced with {@link #of(TypedElement, Function, boolean)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     static TypeDef of(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables, boolean erasure) {
+        return of(typedElement, resolvedTypeVariables::get, erasure);
+    }
+
+    /**
+     * Creates a new type.
+     *
+     * @param typedElement The typed element
+     * @param resolvedVariableFn The resolved variable function
+     * @param erasure Is erasure type required
+     * @return a new type definition
+     * @since 2.0
+     */
+    static TypeDef of(TypedElement typedElement, Function<String, @Nullable TypeDef> resolvedVariableFn, boolean erasure) {
         int dimensions = 0;
         while (typedElement.isArray()) {
             ClassElement arrayableClassElement = (ClassElement) typedElement;
@@ -374,25 +430,25 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
         if (typedElement instanceof GenericPlaceholderElement placeholderElement) {
             Optional<ClassElement> optionalResolved = placeholderElement.getResolved();
             if (optionalResolved.isPresent()) {
-                return of(optionalResolved.get(), resolvedTypeVariables, erasure);
+                return of(optionalResolved.get(), resolvedVariableFn, erasure);
             }
-            TypeDef resolved = resolvedTypeVariables.get(placeholderElement.getVariableName());
+            TypeDef resolved = resolvedVariableFn.apply(placeholderElement.getVariableName());
             if (resolved != null) {
                 return resolved;
             }
             return TypeDef.variable(
                 placeholderElement.getVariableName(),
-                placeholderElement.getBounds().stream().map(e -> TypeDef.of(e, resolvedTypeVariables, erasure)).toList()
+                placeholderElement.getBounds().stream().map(e -> TypeDef.of(e, resolvedVariableFn, erasure)).toList()
             );
         }
         if (typedElement instanceof WildcardElement wildcardElement) {
             return new Wildcard(
-                wildcardElement.getUpperBounds().stream().map(te -> of(te, resolvedTypeVariables)).toList(),
-                wildcardElement.getLowerBounds().stream().map(te -> of(te, resolvedTypeVariables)).toList()
+                wildcardElement.getUpperBounds().stream().map(te -> of(te, resolvedVariableFn)).toList(),
+                wildcardElement.getLowerBounds().stream().map(te -> of(te, resolvedVariableFn)).toList()
             );
         }
         if (typedElement instanceof ClassElement classElement) {
-            return ClassTypeDef.of(classElement, resolvedTypeVariables, erasure);
+            return ClassTypeDef.of(classElement, resolvedVariableFn, erasure);
         }
         throw new IllegalStateException("Unknown typed element: " + typedElement);
     }
@@ -620,8 +676,9 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
         }
 
         @Override
-        public TypeDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
-            return resolvedTypeVariables.getOrDefault(name, this);
+        public TypeDef resolveTypeVariables(Function<String, @Nullable TypeDef> resolveVariableFn) {
+            TypeDef value = resolveVariableFn.apply(name);
+            return value == null ? this : value;
         }
 
         @Override

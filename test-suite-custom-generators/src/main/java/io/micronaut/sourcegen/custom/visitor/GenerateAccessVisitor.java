@@ -64,14 +64,14 @@ public final class GenerateAccessVisitor implements TypeElementVisitor<GenerateA
                     if (fields.size() != 2) {
                         throw new IllegalStateException("Expected exactly 2 arguments for field accessor: Got " + fields.size());
                     }
-                    List<StatementDef> statements = new ArrayList<>(2);
-                    for (FieldElement field : fields) {
-                        statements.add(
-                            fooVar.field(field).put(ExpressionDef.constant("HelloWorld" + field.getDeclaringType().getSimpleName()))
-                        );
-                    }
-                    statements.add(fooVar.returning());
-                    return StatementDef.multi(statements);
+                    return StatementDef.multi(statements -> {
+                        for (FieldElement field : fields) {
+                            statements.add(
+                                fooVar.field(field).put(ExpressionDef.constant("HelloWorld" + field.getDeclaringType().getSimpleName()))
+                            );
+                        }
+                        return fooVar.returning();
+                    });
                 });
             }))
             .addMethod(

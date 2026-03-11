@@ -85,7 +85,7 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
     }
 
     /**
-     * The multi line statement.
+     * The multi-line statement.
      *
      * @param statements statements
      * @return statement
@@ -96,7 +96,7 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
     }
 
     /**
-     * The multi line statement.
+     * The multi-line statement.
      *
      * @param statements statements
      * @return statement
@@ -104,6 +104,20 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
      */
     static StatementDef multi(StatementDef... statements) {
         return multi(List.of(statements));
+    }
+
+    /**
+     * The multi-line statement. The method is supplying a list of statements which can be used to add additional statements
+     * to be added before the returned statement.
+     *
+     * @param fn statements
+     * @return statement
+     * @since 2.0
+     */
+    static StatementDef multi(Function<List<StatementDef>, StatementDef> fn) {
+        List<StatementDef> statements = new ArrayList<>();
+        statements.add(fn.apply(statements));
+        return multi(statements);
     }
 
     /**

@@ -16,11 +16,13 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * The parameter definition.
@@ -55,9 +57,22 @@ public final class ParameterDef extends AbstractElement {
      * @param resolvedTypeVariables The resolved type variables
      * @return The resolved parameter
      * @since 1.7
+     * @deprecated replaced with {@link #resolveTypeVariables(Function)}
      */
+    @Deprecated(since = "2.0", forRemoval = true)
     public ParameterDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
-        return ParameterDef.builder(name, type.resolveTypeVariables(resolvedTypeVariables))
+        return resolveTypeVariables(resolvedTypeVariables::get);
+    }
+
+    /**
+     * Resolve the type variables for this parameter.
+     *
+     * @param resolveVariableFn The resolved variable function
+     * @return The resolved parameter
+     * @since 2.0
+     */
+    public ParameterDef resolveTypeVariables(Function<String, @Nullable TypeDef> resolveVariableFn) {
+        return ParameterDef.builder(name, type.resolveTypeVariables(resolveVariableFn))
             .addAnnotations(annotations)
             .addModifiers(modifiers)
             .addJavadoc(javadoc)

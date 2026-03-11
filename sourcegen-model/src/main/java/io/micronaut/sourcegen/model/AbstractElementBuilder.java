@@ -42,7 +42,7 @@ import java.util.List;
 @Experimental
 public sealed class AbstractElementBuilder<ThisType> permits AnnotationMemberDefBuilder, AnnotationObjectDefBuilder, FieldDefBuilder, MethodDefBuilder, ObjectDefBuilder, ParameterDefBuilder, PropertyDefBuilder {
 
-    protected final String name;
+    protected String name;
     protected final EnumSet<Modifier> modifiers = EnumSet.noneOf(Modifier.class);
     protected final List<AnnotationDef> annotations = new ArrayList<>();
     protected final List<String> javadoc = new ArrayList<>();
@@ -52,6 +52,18 @@ public sealed class AbstractElementBuilder<ThisType> permits AnnotationMemberDef
     protected AbstractElementBuilder(String name) {
         this.name = name;
         this.thisInstance = (ThisType) this;
+    }
+
+    /**
+     * Modifies the name.
+     *
+     * @param name The name
+     * @return The builder
+     * @since 2.0
+     */
+    public final ThisType name(String name) {
+        this.name = name;
+        return thisInstance;
     }
 
     /**
