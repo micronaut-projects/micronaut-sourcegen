@@ -49,9 +49,9 @@ public sealed class AbstractElementBuilder<ThisType> permits AnnotationMemberDef
     protected final ThisType thisInstance;
     protected boolean synthetic;
 
-    protected AbstractElementBuilder(String name) {
+    protected AbstractElementBuilder(String name, Class<ThisType> builderType) {
         this.name = name;
-        this.thisInstance = (ThisType) this;
+        this.thisInstance = builderType.cast(this);
     }
 
     /**

@@ -237,7 +237,7 @@ public final class RecordDef extends ObjectDef {
         private final List<TypeDef.TypeVariable> typeVariables = new ArrayList<>();
 
         private RecordDefBuilder(String name) {
-            super(name);
+            super(name, RecordDefBuilder.class);
         }
 
         public RecordDefBuilder addTypeVariable(TypeDef.TypeVariable typeVariable) {

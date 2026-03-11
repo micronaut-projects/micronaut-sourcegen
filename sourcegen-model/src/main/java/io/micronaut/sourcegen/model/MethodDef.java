@@ -44,9 +44,8 @@ import java.util.stream.Stream;
 @Experimental
 public final class MethodDef extends AbstractElement {
 
-    private static final Function<String, @Nullable TypeDef> EMPTY = ignore -> null;
-
     public static final String CONSTRUCTOR = "<init>";
+    private static final Function<String, @Nullable TypeDef> EMPTY = ignore -> null;
     private final TypeDef returnType;
     private final List<ParameterDef> parameters;
     private final List<StatementDef> statements;
@@ -124,6 +123,7 @@ public final class MethodDef extends AbstractElement {
      * @deprecated replaced with {@link #of(MethodElement, Function)}
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @SuppressWarnings("java:S1133")
     public static MethodDef of(MethodElement methodElement, Map<String, TypeDef> resolvedTypeVariables) {
         return of(methodElement, resolvedTypeVariables::get);
     }
@@ -159,7 +159,7 @@ public final class MethodDef extends AbstractElement {
      * @since 1.5
      */
     public static MethodDefBuilder override(MethodElement methodElement) {
-        return override(methodElement, Map.of());
+        return override(methodElement, ignore -> null);
     }
 
     /**
@@ -172,6 +172,7 @@ public final class MethodDef extends AbstractElement {
      * @deprecated replaced with {@link #override(MethodElement, Function)}
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @SuppressWarnings("java:S1133")
     public static MethodDefBuilder override(MethodElement methodElement, Map<String, TypeDef> resolvedTypeVariables) {
         return override(methodElement, resolvedTypeVariables::get);
     }
@@ -184,7 +185,7 @@ public final class MethodDef extends AbstractElement {
      * @return The method definition builder
      * @since 2.0
      */
-    public static MethodDefBuilder override(MethodElement methodElement, Function<String, TypeDef> resolveVariableFn) {
+    public static MethodDefBuilder override(MethodElement methodElement, Function<String, @Nullable TypeDef> resolveVariableFn) {
         return MethodDef.builder(methodElement, resolveVariableFn)
             .overrides();
     }
@@ -244,6 +245,7 @@ public final class MethodDef extends AbstractElement {
      * @deprecated replaced with {@link #resolveTypeVariables(Function)}
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @SuppressWarnings("java:S1133")
     public MethodDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
         return resolveTypeVariables(resolvedTypeVariables::get);
     }
@@ -424,6 +426,8 @@ public final class MethodDef extends AbstractElement {
                                            Function<String, @Nullable TypeDef> resolvedVariableFn,
                                            boolean generic) {
         MethodDefBuilder builder = MethodDef.builder(methodElement.getName());
+        var returnTypeElement = generic ? methodElement.getGenericReturnType() : methodElement.getReturnType();
+        TypeDef returnType = methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(returnTypeElement, resolvedVariableFn);
         return builder
             .addModifiers(toModifiers(methodElement))
             .addParameters(
@@ -431,7 +435,7 @@ public final class MethodDef extends AbstractElement {
                     .map(p -> ParameterDef.of(p.getName(), TypeDef.erasure(generic ? p.getGenericType() : p.getType(), resolvedVariableFn)))
                     .toList()
             )
-            .returns(methodElement.isSuspend() ? TypeDef.OBJECT : TypeDef.erasure(generic ? methodElement.getGenericReturnType() : methodElement.getReturnType(), resolvedVariableFn));
+            .returns(returnType);
     }
 
     /**
@@ -507,7 +511,7 @@ public final class MethodDef extends AbstractElement {
         private final List<TypeDef> throwTypes = new ArrayList<>();
 
         private MethodDefBuilder(String name) {
-            super(name);
+            super(name, MethodDefBuilder.class);
         }
 
         /**

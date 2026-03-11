@@ -339,6 +339,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @deprecated replaced with {@link #erasure(TypedElement, Function)}
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @SuppressWarnings("java:S1133")
     static TypeDef erasure(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables) {
         return of(typedElement, resolvedTypeVariables::get, true);
     }
@@ -351,7 +352,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @return a new type definition
      * @since 2.0
      */
-    static TypeDef erasure(TypedElement typedElement, Function<String, TypeDef> resolvedVariableFn) {
+    static TypeDef erasure(TypedElement typedElement, Function<String, @Nullable TypeDef> resolvedVariableFn) {
         return of(typedElement, resolvedVariableFn, true);
     }
 
@@ -363,7 +364,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @return a new type definition
      */
     private static TypeDef of(TypedElement typedElement, boolean erasure) {
-        return of(typedElement, Map.of(), erasure);
+        return of(typedElement, ignore -> null, erasure);
     }
 
     /**
@@ -375,6 +376,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @deprecated replaced with {@link #of(TypedElement, Function)}
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @SuppressWarnings("java:S1133")
     private static TypeDef of(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables) {
         return of(typedElement, resolvedTypeVariables::get, false);
     }
@@ -387,7 +389,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @return a new type definition
      * @since 2.0
      */
-    private static TypeDef of(TypedElement typedElement, Function<String, TypeDef> resolvedVariableFn) {
+    private static TypeDef of(TypedElement typedElement, Function<String, @Nullable TypeDef> resolvedVariableFn) {
         return of(typedElement, resolvedVariableFn, false);
     }
 
@@ -401,6 +403,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @deprecated replaced with {@link #of(TypedElement, Function, boolean)}
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @SuppressWarnings("java:S1133")
     static TypeDef of(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables, boolean erasure) {
         return of(typedElement, resolvedTypeVariables::get, erasure);
     }

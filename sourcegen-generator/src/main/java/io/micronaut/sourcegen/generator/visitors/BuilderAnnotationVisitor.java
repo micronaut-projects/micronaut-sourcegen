@@ -519,8 +519,8 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     return buildType.instantiate(values).returning();
                 }
                 // Instantiate and set properties not assigned in the constructor
-                return buildType.instantiate(values).newLocal("instance", instanceVar -> {
-                    return StatementDef.multi(statements -> {
+                return buildType.instantiate(values).newLocal("instance", instanceVar ->
+                    StatementDef.multi(statements -> {
                         for (PropertyElement beanProperty : beanProperties) {
                             Optional<MethodElement> writeMethod = beanProperty.getWriteMethod();
                             if (writeMethod.isPresent()) {
@@ -549,8 +549,8 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                             }
                         }
                         return instanceVar.returning();
-                    });
-                });
+                    })
+                );
             });
     }
 

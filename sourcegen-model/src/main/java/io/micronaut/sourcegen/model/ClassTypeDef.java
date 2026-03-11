@@ -471,7 +471,7 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @return type definition
      */
     static ClassTypeDef erasure(ClassElement classElement) {
-        return of(classElement, Map.of(), true);
+        return of(classElement, ignore -> null, true);
     }
 
     /**
@@ -493,7 +493,7 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @return type definition
      */
     static ClassTypeDef of(ClassElement classElement) {
-        return of(classElement, Map.of(), false);
+        return of(classElement, ignore -> null, false);
     }
 
     /**
@@ -506,6 +506,7 @@ public sealed interface ClassTypeDef extends TypeDef {
      * @deprecated Replaced with {@link #of(TypedElement, Function, boolean)}
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @SuppressWarnings("java:S1133")
     static ClassTypeDef of(ClassElement classElement,
                            Map<String, TypeDef> resolvedTypeVariables,
                            boolean erasure) {
@@ -698,7 +699,7 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassElementType(ClassElement classElement, boolean nullable) implements ClassTypeDef {
 
         @Override
-        public LambdaDef getLambda(Function<String, TypeDef> resolveVariableFn) {
+        public LambdaDef getLambda(Function<String, @Nullable TypeDef> resolveVariableFn) {
             List<MethodElement> abstractMethods = classElement.getEnclosedElements(
                 ElementQuery.of(MethodElement.class).onlyAbstract());
             if (abstractMethods.size() != 1) {
@@ -777,7 +778,7 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassDefType(ObjectDef objectDef, boolean nullable) implements ClassTypeDef {
 
         @Override
-        public LambdaDef getLambda(Function<String, TypeDef> resolveVariableFn) {
+        public LambdaDef getLambda(Function<String, @Nullable TypeDef> resolveVariableFn) {
             List<MethodDef> methods = objectDef.getMethods()
                 .stream()
                 .filter(v -> v.getModifiers().contains(Modifier.ABSTRACT))

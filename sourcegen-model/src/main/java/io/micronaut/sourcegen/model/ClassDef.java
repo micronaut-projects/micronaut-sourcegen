@@ -174,7 +174,7 @@ public final class ClassDef extends ObjectDef {
         private StatementDef staticInitializer;
 
         private ClassDefBuilder(String name) {
-            super(name);
+            super(name, ClassDefBuilder.class);
         }
 
         public ClassDefBuilder superclass(ClassTypeDef superclass) {
