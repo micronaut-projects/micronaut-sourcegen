@@ -515,7 +515,7 @@ public class Example {
 
     @Test
     public void returnConstantStringArray() throws IOException {
-        ExpressionDef stringArray = new VariableDef.Constant(TypeDef.array(ClassTypeDef.of(String.class)),
+        ExpressionDef stringArray = new ExpressionDef.Constant(TypeDef.array(ClassTypeDef.of(String.class)),
             new String[] {"hello", "world"});
         String result = writeMethodWithExpression(stringArray);
 
@@ -524,7 +524,7 @@ public class Example {
 
     @Test
     public void returnConstantIntegerArray() throws IOException {
-        ExpressionDef integerArray = new VariableDef.Constant(TypeDef.array(ClassTypeDef.of(Integer.class)),
+        ExpressionDef integerArray = new ExpressionDef.Constant(TypeDef.array(ClassTypeDef.of(Integer.class)),
             new Integer[] {1, 2});
         String result = writeMethodWithExpression(integerArray);
 
@@ -533,7 +533,7 @@ public class Example {
 
     @Test
     public void returnConstantIntArray() throws IOException {
-        ExpressionDef integerArray = new VariableDef.Constant(TypeDef.array(TypeDef.primitive(Integer.TYPE)),
+        ExpressionDef integerArray = new ExpressionDef.Constant(TypeDef.array(TypeDef.primitive(Integer.TYPE)),
             new int[] {1, 2});
         String result = writeMethodWithExpression(integerArray);
 

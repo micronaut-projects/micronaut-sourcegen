@@ -99,10 +99,14 @@ public final class AnnotationDef {
         ClassTypeDef annotationType = ClassTypeDef.of(annotation.getAnnotationName(), annotation.getAnnotationName().contains("$"));
         AnnotationDefBuilder builder = AnnotationDef.builder(annotationType);
         Map<String, ClassElement> finalFieldTypes = fieldTypes;
-        annotation.getConvertibleValues().asMap().forEach((key, value) ->
-            copyAnnotationValue(value, finalFieldTypes.get(key), context)
-                    .ifPresent(copiedValue -> builder.addMember(key, copiedValue))
-        );
+        annotation.getConvertibleValues().asMap().forEach((key, value) -> {
+            ClassElement requiredType = finalFieldTypes.get(key);
+            if (requiredType == null) {
+                return;
+            }
+            copyAnnotationValue(value, requiredType, context)
+                .ifPresent(copiedValue -> builder.addMember(key, copiedValue));
+        });
         return builder.build();
     }
 
@@ -135,7 +139,11 @@ public final class AnnotationDef {
             return annotationDef.toAnnotationValue();
         } else if (member instanceof ExpressionDef expressionDef) {
             if (expressionDef instanceof ExpressionDef.Constant constant) {
-                return constant.value();
+                Object value = constant.value();
+                if (value == null) {
+                    throw new IllegalArgumentException("Constant annotation value cannot be null");
+                }
+                return value;
             }
             throw new IllegalArgumentException("Could not convert annotation that uses non-constant expressions to AnnotationValue");
         } else if (member instanceof ClassTypeDef classTypeDef) {

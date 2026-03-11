@@ -78,6 +78,9 @@ public final class DelegateAnnotationVisitor implements TypeElementVisitor<Deleg
     @Override
     public void visitClass(ClassElement element, VisitorContext context) {
         AnnotationValue<?> annotation = element.getAnnotation(Delegate.class);
+        if (annotation == null) {
+            throw new ProcessingException(element, "Element " + element.getName() + " is not annotated with @" + Delegate.class.getSimpleName());
+        }
         Optional<Class<?>> type = annotation.classValue(DELEGATE_TYPE_MEMBER);
 
         if (type.isPresent() && !type.get().equals(Void.class)) {

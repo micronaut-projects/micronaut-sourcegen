@@ -16,10 +16,12 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * The property definition.
@@ -62,7 +64,7 @@ public final class PropertyDef extends AbstractElement {
     @Experimental
     public static final class PropertyDefBuilder extends AbstractElementBuilder<PropertyDefBuilder> {
 
-        private TypeDef type;
+        private @Nullable TypeDef type;
 
         private PropertyDefBuilder(String name) {
             super(name, PropertyDefBuilder.class);
@@ -78,7 +80,8 @@ public final class PropertyDef extends AbstractElement {
         }
 
         public PropertyDef build() {
-            return new PropertyDef(name, modifiers, type, annotations, javadoc, synthetic);
+            TypeDef resolvedType = Objects.requireNonNull(type, "Property type must be specified");
+            return new PropertyDef(name, modifiers, resolvedType, annotations, javadoc, synthetic);
         }
 
     }

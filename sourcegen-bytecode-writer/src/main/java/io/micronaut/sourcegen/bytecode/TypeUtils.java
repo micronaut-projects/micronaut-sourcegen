@@ -106,7 +106,7 @@ public final class TypeUtils {
         throw new IllegalStateException("Unsupported type: " + typeDef);
     }
 
-    private static Type getBoundsType(List<TypeDef> bounds, ObjectDef objectDef) {
+    private static Type getBoundsType(List<TypeDef> bounds, @Nullable ObjectDef objectDef) {
         // Select first non-object type
         for (TypeDef bound : bounds) {
             Type type = getType(bound, objectDef);

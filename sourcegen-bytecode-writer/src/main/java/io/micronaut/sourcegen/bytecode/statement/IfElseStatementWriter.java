@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.bytecode.statement;
 import io.micronaut.sourcegen.bytecode.AbstractConditionalWriter;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.model.StatementDef;
+import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
@@ -29,7 +30,7 @@ final class IfElseStatementWriter extends AbstractConditionalWriter implements S
     }
 
     @Override
-    public void write(GeneratorAdapter generatorAdapter, MethodContext context, Runnable finallyBlock) {
+    public void write(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock) {
         Label elseLabel = new Label();
         pushElseConditionalExpression(generatorAdapter, context, ifStatement.condition(), elseLabel);
         Label end = new Label();

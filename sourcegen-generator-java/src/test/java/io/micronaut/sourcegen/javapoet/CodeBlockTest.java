@@ -285,7 +285,7 @@ public final class CodeBlockTest {
     CodeBlock codeBlock = CodeBlock.builder().add("$[$[").build();
     try {
       // We can't report this error until rendering type because code blocks might be composed.
-      codeBlock.toString();
+      assertThat(codeBlock.toString()).isNotNull();
       fail();
     } catch (IllegalStateException expected) {
       assertThat(expected).hasMessageThat().isEqualTo("statement enter $[ followed by statement enter $[");
@@ -296,7 +296,7 @@ public final class CodeBlockTest {
     CodeBlock codeBlock = CodeBlock.builder().add("$]").build();
     try {
       // We can't report this error until rendering type because code blocks might be composed.
-      codeBlock.toString();
+      assertThat(codeBlock.toString()).isNotNull();
       fail();
     } catch (IllegalStateException expected) {
       assertThat(expected).hasMessageThat().isEqualTo("statement exit $] has no matching statement enter $[");

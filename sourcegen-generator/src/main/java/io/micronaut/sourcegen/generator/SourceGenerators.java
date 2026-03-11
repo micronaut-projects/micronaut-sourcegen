@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.generator;
 
 import io.micronaut.core.annotation.Experimental;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import io.micronaut.core.io.service.SoftServiceLoader;
 import io.micronaut.inject.ast.Element;
 import io.micronaut.inject.processing.ProcessingException;
@@ -36,7 +37,7 @@ import java.util.function.Consumer;
 @Experimental
 public final class SourceGenerators {
 
-    private static List<SourceGenerator> sourceGenerators;
+    private static @Nullable List<SourceGenerator> sourceGenerators;
 
     private SourceGenerators() {
     }

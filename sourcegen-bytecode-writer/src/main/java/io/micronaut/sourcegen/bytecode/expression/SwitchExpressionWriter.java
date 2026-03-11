@@ -27,6 +27,7 @@ import org.objectweb.asm.commons.Method;
 import org.objectweb.asm.commons.TableSwitchGenerator;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 final class SwitchExpressionWriter extends AbstractSwitchWriter implements ExpressionWriter {
@@ -52,18 +53,22 @@ final class SwitchExpressionWriter extends AbstractSwitchWriter implements Expre
         pushSwitchExpression(generatorAdapter, context, expression);
         Map<Integer, ExpressionDef> map = aSwitch.cases().entrySet().stream().map(e -> Map.entry(toSwitchKey(e.getKey()), e.getValue())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         int[] keys = map.keySet().stream().mapToInt(x -> x).sorted().toArray();
+        ExpressionDef defaultCase = aSwitch.defaultCase();
         generatorAdapter.tableSwitch(keys, new TableSwitchGenerator() {
             @Override
             public void generateCase(int key, Label end) {
-                ExpressionDef exp = map.get(key);
+                ExpressionDef exp = Objects.requireNonNull(
+                    map.get(key),
+                    () -> "Switch expression missing for key: " + key
+                );
                 ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, exp, aSwitch.type());
                 generatorAdapter.goTo(end);
             }
 
             @Override
             public void generateDefault() {
-                if (aSwitch.defaultCase() != null) {
-                    ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aSwitch.defaultCase(), aSwitch.type());
+                if (defaultCase != null) {
+                    ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, defaultCase, aSwitch.type());
                 }
             }
         });
@@ -88,20 +93,34 @@ final class SwitchExpressionWriter extends AbstractSwitchWriter implements Expre
         int[] keys = map.keySet().stream().mapToInt(x -> x).sorted().toArray();
         Label defaultEnd = new Label();
         Label finalEnd = new Label();
-        boolean hasDefault = aSwitch.defaultCase() != null;
+        ExpressionDef defaultCase = aSwitch.defaultCase();
+        boolean hasDefault = defaultCase != null;
         generatorAdapter.tableSwitch(keys, new TableSwitchGenerator() {
             @Override
             public void generateCase(int key, Label end) {
-                Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef> e = map.get(key);
-                if (!(e.getKey().value() instanceof String stringValue)) {
-                    throw new IllegalStateException("Expected a switch string value got " + e.getKey());
+                Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef> entry = map.get(key);
+                if (entry == null) {
+                    if (hasDefault) {
+                        generatorAdapter.goTo(defaultEnd);
+                        return;
+                    }
+                    generatorAdapter.goTo(finalEnd);
+                    return;
+                }
+                if (!(entry.getKey().value() instanceof String stringValue)) {
+                    throw new IllegalStateException("Expected a switch string value got " + entry.getKey());
                 }
                 generatorAdapter.loadLocal(switchValueLocal, stringType);
                 generatorAdapter.push(stringValue);
                 generatorAdapter.invokeVirtual(stringType, Method.getMethod(ReflectionUtils.getRequiredMethod(String.class, "equals", Object.class)));
                 generatorAdapter.push(true);
                 generatorAdapter.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, defaultEnd);
-                ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, e.getValue(), aSwitch.type());
+                ExpressionWriter.writeExpressionCheckCast(
+                    generatorAdapter,
+                    context,
+                    Objects.requireNonNull(entry.getValue(), "Switch expression result cannot be null"),
+                    aSwitch.type()
+                );
                 generatorAdapter.goTo(finalEnd);
             }
 
@@ -114,7 +133,7 @@ final class SwitchExpressionWriter extends AbstractSwitchWriter implements Expre
         });
         if (hasDefault) {
             generatorAdapter.visitLabel(defaultEnd);
-            ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aSwitch.defaultCase(), aSwitch.type());
+            ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, Objects.requireNonNull(defaultCase), aSwitch.type());
         }
         generatorAdapter.visitLabel(finalEnd);
     }

@@ -467,7 +467,7 @@ public sealed interface ExpressionDef
      */
     default StatementDef.Switch asStatementSwitch(TypeDef type,
                                                   Map<Constant, StatementDef> cases,
-                                                  StatementDef defaultCase) {
+                                                  @Nullable StatementDef defaultCase) {
         if (defaultCase == null) {
             cases = new HashMap<>(cases);
             defaultCase = cases.remove(nullValue());
@@ -858,20 +858,23 @@ public sealed interface ExpressionDef
     @Experimental
     static ExpressionDef constant(ClassElement type, TypeDef typeDef, @Nullable Object value) {
         Objects.requireNonNull(type, "Type cannot be null");
+        if (value == null) {
+            return ExpressionDef.nullValue();
+        }
         if (type.isPrimitive()) {
             return ClassUtils.getPrimitiveType(type.getName()).flatMap(t ->
                 ConversionService.SHARED.convert(value, t)
-            ).map(o -> new Constant(typeDef, o)).orElse(null);
+            ).map(o -> (ExpressionDef) new Constant(typeDef, o)).orElseGet(ExpressionDef::nullValue);
         } else if (ClassUtils.isJavaLangType(type.getName())) {
             return ClassUtils.forName(type.getName(), ExpressionDef.class.getClassLoader())
                 .flatMap(t -> ConversionService.SHARED.convert(value, t))
-                .map(o -> new Constant(typeDef, o)).orElse(null);
+                .map(o -> (ExpressionDef) new Constant(typeDef, o)).orElseGet(ExpressionDef::nullValue);
         } else if (type.isEnum()) {
             String name;
             if (value instanceof Enum<?> anEnum) {
                 name = anEnum.name();
             } else {
-                name = value.toString();
+                name = Objects.toString(value);
             }
             return ((ClassTypeDef) typeDef).getStaticField(name, typeDef);
         }

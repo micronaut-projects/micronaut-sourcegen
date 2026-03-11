@@ -48,6 +48,7 @@ public final class AnnotationSpecTest {
 
   public enum Breakfast {
     WAFFLES, PANCAKES;
+    @Override
     public String toString() { return name() + " with cherries!"; }
   }
 

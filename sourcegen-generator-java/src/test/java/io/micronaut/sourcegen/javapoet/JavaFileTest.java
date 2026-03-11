@@ -86,7 +86,7 @@ public final class JavaFileTest {
   }
   @Test public void importStaticForCrazyFormatsWorks() {
     MethodSpec method = MethodSpec.methodBuilder("method").build();
-    JavaFile.builder("com.squareup.tacos",
+    String generated = JavaFile.builder("com.squareup.tacos",
         TypeSpec.classBuilder("Taco")
             .addStaticBlock(CodeBlock.builder()
                 .addStatement("$T", Runtime.class)
@@ -106,6 +106,7 @@ public final class JavaFileTest {
         .addStaticImport(Runtime.class, "*")
         .build()
         .toString(); // don't look at the generated code...
+    assertThat(generated).contains("Runtime");
   }
 
   @Test public void importStaticMixed() {

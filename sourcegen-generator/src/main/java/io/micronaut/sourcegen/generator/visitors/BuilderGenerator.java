@@ -69,7 +69,7 @@ public class BuilderGenerator {
     public static ClassDef.ClassDefBuilder createBuilder(
         String packageName,
         ClassTypeDef elementType,
-        AnnotationValue<Builder> builderAnnotationValue,
+        @Nullable AnnotationValue<Builder> builderAnnotationValue,
         List<PropertyElement> properties,
         List<ParameterElement> constructorParameters,
         Function<BuildContext, StatementDef> buildReturnStatement) {

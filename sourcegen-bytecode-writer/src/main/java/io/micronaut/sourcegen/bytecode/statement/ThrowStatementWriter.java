@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.bytecode.statement;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.expression.ExpressionWriter;
 import io.micronaut.sourcegen.model.StatementDef;
+import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 final class ThrowStatementWriter implements StatementWriter {
@@ -28,7 +29,7 @@ final class ThrowStatementWriter implements StatementWriter {
     }
 
     @Override
-    public void write(GeneratorAdapter generatorAdapter, MethodContext context, Runnable finallyBlock) {
+    public void write(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock) {
         ExpressionWriter.writeExpression(generatorAdapter, context, aThrow.expression());
         generatorAdapter.throwException();
     }

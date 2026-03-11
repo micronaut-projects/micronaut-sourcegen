@@ -184,7 +184,7 @@ public final class AnnotationObjectDef extends ObjectDef {
          * Get the default value of the member.
          * @return the default value
          */
-        public ExpressionDef getDefaultValue() {
+        public @Nullable ExpressionDef getDefaultValue() {
             return defaultValue;
         }
 
@@ -192,7 +192,7 @@ public final class AnnotationObjectDef extends ObjectDef {
          * Get the default value of the member when .
          * @return the default value
          */
-        public AnnotationDef getAnnotationDefaultValue() {
+        public @Nullable AnnotationDef getAnnotationDefaultValue() {
             return defaultAnnotationValue;
         }
     }

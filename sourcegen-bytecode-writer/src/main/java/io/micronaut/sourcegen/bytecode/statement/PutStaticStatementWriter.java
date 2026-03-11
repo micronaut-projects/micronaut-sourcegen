@@ -20,6 +20,7 @@ import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.bytecode.expression.ExpressionWriter;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.VariableDef;
+import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 final class PutStaticStatementWriter implements StatementWriter {
@@ -30,7 +31,7 @@ final class PutStaticStatementWriter implements StatementWriter {
     }
 
     @Override
-    public void write(GeneratorAdapter generatorAdapter, MethodContext context, Runnable finallyBlock) {
+    public void write(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock) {
         VariableDef.StaticField field = putStaticField.field();
         ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, putStaticField.expression(), field.type());
         generatorAdapter.putStatic(

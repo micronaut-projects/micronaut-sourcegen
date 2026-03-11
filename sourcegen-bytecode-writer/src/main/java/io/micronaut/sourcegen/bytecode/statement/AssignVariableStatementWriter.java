@@ -19,7 +19,10 @@ import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.expression.ExpressionWriter;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.VariableDef;
+import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.commons.GeneratorAdapter;
+
+import java.util.Objects;
 
 final class AssignVariableStatementWriter implements StatementWriter {
 
@@ -30,10 +33,13 @@ final class AssignVariableStatementWriter implements StatementWriter {
     }
 
     @Override
-    public void write(GeneratorAdapter generatorAdapter, MethodContext context, Runnable finallyBlock) {
+    public void write(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock) {
         VariableDef.Local var = assign.variable();
         ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, assign.expression(), var.type());
-        MethodContext.LocalData local = context.locals().get(var.name());
+        MethodContext.LocalData local = Objects.requireNonNull(
+            context.locals().get(var.name()),
+            () -> "Unknown local variable: " + var.name()
+        );
         generatorAdapter.storeLocal(local.index(), local.type());
     }
 }

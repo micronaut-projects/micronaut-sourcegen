@@ -61,16 +61,18 @@ public class FieldDefTest extends AbstractWriteTest {
             result = writer.toString();
         }
 
-        assertThat(result).isEqualTo("import jakarta.validation.constraints.Max;\n" +
-            "import jakarta.validation.constraints.Min;\n" +
-            "import jakarta.validation.constraints.NotNull;\n" +
-            "import java.lang.Float;\n" +
-            "import java.util.List;\n" +
-            "\n" +
-            "record Record(\n" +
-            "    @NotNull List<@Min(1) @Max(10) Float> numbers\n" +
-            ") {\n" +
-            "}\n");
+        assertThat(result).isEqualTo("""
+            import jakarta.validation.constraints.Max;
+            import jakarta.validation.constraints.Min;
+            import jakarta.validation.constraints.NotNull;
+            import java.lang.Float;
+            import java.util.List;
+
+            record Record(
+                @NotNull List<@Min(1) @Max(10) Float> numbers
+            ) {
+            }
+            """);
     }
 
     @Test public void annotatedGenericField() throws Exception {
@@ -92,14 +94,16 @@ public class FieldDefTest extends AbstractWriteTest {
             result = writer.toString();
         }
 
-        assertThat(result).isEqualTo("import jakarta.validation.constraints.Min;\n" +
-            "import java.lang.Float;\n" +
-            "import java.util.List;\n" +
-            "\n" +
-            "record Record(\n" +
-            "    List<@Min(1) Float> numbers\n" +
-            ") {\n" +
-            "}\n");
+        assertThat(result).isEqualTo("""
+            import jakarta.validation.constraints.Min;
+            import java.lang.Float;
+            import java.util.List;
+
+            record Record(
+                List<@Min(1) Float> numbers
+            ) {
+            }
+            """);
     }
 
     @Test public void annotatedClassField() throws Exception {
@@ -119,13 +123,15 @@ public class FieldDefTest extends AbstractWriteTest {
             result = writer.toString();
         }
 
-        assertThat(result).isEqualTo("import jakarta.validation.constraints.Min;\n" +
-            "import java.lang.Float;\n" +
-            "\n" +
-            "record Record(\n" +
-            "    @Min(1) Float numbers\n" +
-            ") {\n" +
-            "}\n");
+        assertThat(result).isEqualTo("""
+            import jakarta.validation.constraints.Min;
+            import java.lang.Float;
+
+            record Record(
+                @Min(1) Float numbers
+            ) {
+            }
+            """);
     }
 
 }

@@ -135,6 +135,7 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
             return statements.stream().flatMap(StatementDef::nestedExpressionsStream);
         }
 
+        @Override
         public List<StatementDef> statements() {
             return flatten();
         }

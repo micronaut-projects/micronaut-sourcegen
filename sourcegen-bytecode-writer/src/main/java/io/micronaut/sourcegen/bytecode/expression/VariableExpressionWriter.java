@@ -23,6 +23,8 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import java.util.Objects;
+
 final class VariableExpressionWriter implements ExpressionWriter {
     private final VariableDef variableDef;
 
@@ -37,12 +39,18 @@ final class VariableExpressionWriter implements ExpressionWriter {
             return;
         }
         if (variableDef instanceof VariableDef.ExceptionVar) {
-            MethodContext.LocalData localData = context.locals().get(TryCatchStatementWriter.EXCEPTION_NAME);
+            MethodContext.LocalData localData = Objects.requireNonNull(
+                context.locals().get(TryCatchStatementWriter.EXCEPTION_NAME),
+                () -> "Missing exception local for " + TryCatchStatementWriter.EXCEPTION_NAME
+            );
             generatorAdapter.loadLocal(localData.index(), localData.type());
             return;
         }
         if (variableDef instanceof VariableDef.Local localVariableDef) {
-            MethodContext.LocalData localData = context.locals().get(localVariableDef.name());
+            MethodContext.LocalData localData = Objects.requireNonNull(
+                context.locals().get(localVariableDef.name()),
+                () -> "Missing local variable: " + localVariableDef.name()
+            );
             generatorAdapter.loadLocal(localData.index(), localData.type());
             return;
         }

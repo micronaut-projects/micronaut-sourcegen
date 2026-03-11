@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.bytecode.expression;
 
 import io.micronaut.inject.ast.ClassElement;
+import org.jspecify.annotations.Nullable;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.model.ClassDef;
@@ -122,7 +123,7 @@ final class CastExpressionWriter implements ExpressionWriter {
         return true;
     }
 
-    private static ClassTypeDef getSuperclass(ObjectDef objectDef) {
+    private static @Nullable ClassTypeDef getSuperclass(ObjectDef objectDef) {
         if (objectDef instanceof ClassDef classDef) {
             return classDef.getSuperclass();
         }
