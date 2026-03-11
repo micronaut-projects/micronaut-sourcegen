@@ -175,7 +175,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
     static ClassDefBuilder createBuilder(
         String packageName,
         ClassTypeDef elementType,
-        AnnotationValue<Builder> builderAnnotationValue,
+        @Nullable AnnotationValue<Builder> builderAnnotationValue,
         List<PropertyElement> properties,
         List<ParameterElement> constructorParameters,
         Function<BuilderGenerator.BuildContext, StatementDef> buildReturnStatement) {
@@ -232,7 +232,10 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         return builder;
     }
 
-    static void addAnnotations(ClassDefBuilder builder, AnnotationValue<?> annotation) {
+    static void addAnnotations(ClassDefBuilder builder, @Nullable AnnotationValue<?> annotation) {
+        if (annotation == null) {
+            return;
+        }
         Optional<AnnotationClassValue[]> annotatedWith = annotation.getConvertibleValues()
             .get(BUILDER_ANNOTATED_WITH_MEMBER, AnnotationClassValue[].class);
         if (annotatedWith.isEmpty()) {

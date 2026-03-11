@@ -541,7 +541,7 @@ public final class ByteCodeWriter {
         }
     }
 
-    private List<StatementDef> adjustConstructorStatements(ObjectDef objectDef, List<StatementDef> statements) {
+    private List<StatementDef> adjustConstructorStatements(@Nullable ObjectDef objectDef, List<StatementDef> statements) {
         if (!(objectDef instanceof ClassDef classDef)) {
             return statements;
         }

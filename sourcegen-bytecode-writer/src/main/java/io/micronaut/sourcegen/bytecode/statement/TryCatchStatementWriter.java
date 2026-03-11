@@ -19,12 +19,14 @@ import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * The try-catch statement.
@@ -39,7 +41,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
     }
 
     @Override
-    public void write(GeneratorAdapter generatorAdapter, MethodContext context, Runnable finallyBlock) {
+    public void write(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock) {
         Label end = new Label();
         Label tryStart = new Label();
         Label tryEnd = new Label();
@@ -60,8 +62,9 @@ public final class TryCatchStatementWriter implements StatementWriter {
         }
 
         Label finallyExceptionHandler = null;
+        StatementDef finallyStatement = aTry.finallyStatement();
 
-        if (aTry.finallyStatement() != null) {
+        if (finallyStatement != null) {
             finallyExceptionHandler = new Label();
             generatorAdapter.visitTryCatchBlock(
                 tryStart,
@@ -82,7 +85,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
 
         generatorAdapter.visitLabel(tryStart);
 
-        Runnable thisFinallyBlock = aTry.finallyStatement() == null ? null : () -> StatementWriter.of(aTry.finallyStatement()).writeScoped(generatorAdapter, context, finallyBlock);
+        Runnable thisFinallyBlock = finallyStatement == null ? null : () -> StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, finallyBlock);
         StatementWriter.of(aTry.statement()).writeScoped(generatorAdapter, context, thisFinallyBlock);
 
         generatorAdapter.visitLabel(tryEnd);
@@ -106,8 +109,8 @@ public final class TryCatchStatementWriter implements StatementWriter {
                 generatorAdapter.visitLabel(catchBlock.to);
             }
 
-            if (aTry.finallyStatement() != null) {
-                StatementWriter.of(aTry.finallyStatement()).writeScoped(generatorAdapter, context, thisFinallyBlock);
+            if (finallyStatement != null) {
+                StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, thisFinallyBlock);
             }
 
             generatorAdapter.goTo(end);
@@ -120,7 +123,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
             int local = generatorAdapter.newLocal(exceptionType);
             generatorAdapter.storeLocal(local);
 
-            StatementWriter.of(aTry.finallyStatement()).writeScoped(generatorAdapter, context, finallyBlock);
+            StatementWriter.of(Objects.requireNonNull(finallyStatement)).writeScoped(generatorAdapter, context, finallyBlock);
 
             generatorAdapter.loadLocal(local);
             generatorAdapter.throwException();
@@ -135,11 +138,12 @@ public final class TryCatchStatementWriter implements StatementWriter {
 
         private final StatementDef.Try.Catch aCatch;
         private final Label from;
-        private Label to;
+        private @Nullable Label to;
 
         private CatchBlock(StatementDef.Try.Catch aCatch, Label from) {
             this.aCatch = aCatch;
             this.from = from;
+            this.to = null;
         }
     }
 }

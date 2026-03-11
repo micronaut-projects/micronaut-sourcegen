@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.javapoet;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import com.google.common.truth.PathSubject;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -30,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
 
+import static com.google.common.truth.Truth.assertAbout;
 import static com.google.common.truth.Truth.assertThat;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -184,21 +186,23 @@ public final class FileWritingTest {
 
     Path fooPath = fsRoot.resolve(fs.getPath("foo", "Test.java"));
     assertThat(Files.exists(fooPath)).isTrue();
-    String source = new String(Files.readAllBytes(fooPath));
+    String source = new String(Files.readAllBytes(fooPath), UTF_8);
 
-    assertThat(source).isEqualTo("package foo;\n"
-        + "\n"
-        + "import java.lang.String;\n"
-        + "import java.lang.System;\n"
-        + "import java.util.Date;\n"
-        + "\n"
-        + "class Test {\n"
-        + "\tDate madeFreshDate;\n"
-        + "\n"
-        + "\tpublic static void main(String[] args) {\n"
-        + "\t\tSystem.out.println(\"Hello World!\");\n"
-        + "\t}\n"
-        + "}\n");
+    assertThat(source).isEqualTo("""
+        package foo;
+
+        import java.lang.String;
+        import java.lang.System;
+        import java.util.Date;
+
+        class Test {
+        \tDate madeFreshDate;
+
+        \tpublic static void main(String[] args) {
+        \t\tSystem.out.println("Hello World!");
+        \t}
+        }
+        """);
   }
 
   /**
@@ -212,17 +216,20 @@ public final class FileWritingTest {
     javaFile.writeTo(fsRoot);
 
     Path fooPath = fsRoot.resolve(fs.getPath("foo", "Taco.java"));
-    assertThat(new String(Files.readAllBytes(fooPath), UTF_8)).isEqualTo("// Pi\u00f1ata\u00a1\n"
-        + "package foo;\n"
-        + "\n"
-        + "class Taco {\n"
-        + "}\n");
+    assertThat(new String(Files.readAllBytes(fooPath), UTF_8)).isEqualTo("""
+        // Piñata¡
+        package foo;
+
+        class Taco {
+        }
+        """);
   }
 
   @Test public void writeToPathReturnsPath() throws IOException {
     JavaFile javaFile = JavaFile.builder("foo", TypeSpec.classBuilder("Taco").build()).build();
     Path filePath = javaFile.writeToPath(fsRoot);
-    // Cast to avoid ambiguity between assertThat(Path) and assertThat(Iterable<?>)
-    assertThat((Iterable<?>) filePath).isEqualTo(fsRoot.resolve(fs.getPath("foo", "Taco.java")));
+    assertAbout(PathSubject.paths())
+        .that(filePath)
+        .isEqualTo(fsRoot.resolve(fs.getPath("foo", "Taco.java")));
   }
 }

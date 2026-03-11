@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 final class SwitchStatementWriter extends AbstractSwitchWriter implements StatementWriter {
@@ -43,7 +44,7 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
     }
 
     @Override
-    public void write(GeneratorAdapter generatorAdapter, MethodContext context, Runnable finallyBlock) {
+    public void write(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock) {
         boolean isStringSwitch = aSwitch.expression().type() instanceof ClassTypeDef classTypeDef && classTypeDef.getName().equals(String.class.getName());
         if (isStringSwitch) {
             writeStringSwitch(generatorAdapter, context, finallyBlock, aSwitch);
@@ -52,13 +53,13 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
         }
     }
 
-    private void writeSwitch(GeneratorAdapter generatorAdapter, MethodContext context, Runnable finallyBlock, StatementDef.Switch aSwitch) {
+    private void writeSwitch(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock, StatementDef.Switch aSwitch) {
         pushSwitchExpression(generatorAdapter, context, aSwitch.expression());
         Map<Integer, StatementDef> map = aSwitch.cases().entrySet().stream().map(e -> Map.entry(toSwitchKey(e.getKey()), e.getValue())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         tableSwitch(generatorAdapter, context, map, aSwitch.defaultCase(), finallyBlock);
     }
 
-    private void writeStringSwitch(GeneratorAdapter generatorAdapter, MethodContext context, Runnable finallyBlock, StatementDef.Switch aSwitch) {
+    private void writeStringSwitch(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock, StatementDef.Switch aSwitch) {
         ExpressionDef expression = aSwitch.expression();
 
         ExpressionWriter.writeExpression(generatorAdapter, context, expression);
@@ -81,8 +82,12 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
         generatorAdapter.tableSwitch(keys, new TableSwitchGenerator() {
             @Override
             public void generateCase(int key, Label end) {
-                Map.Entry<ExpressionDef.Constant, StatementDef> e = map.get(key);
-                ExpressionDef.Constant constant = e.getKey();
+                Map.Entry<ExpressionDef.Constant, StatementDef> entry = map.get(key);
+                if (entry == null) {
+                    generatorAdapter.goTo(defaultEnd);
+                    return;
+                }
+                ExpressionDef.Constant constant = entry.getKey();
                 if (!(constant.value() instanceof String stringValue)) {
                     throw new IllegalStateException("Expected a string value got: " + constant);
                 }
@@ -92,7 +97,8 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
                 generatorAdapter.invokeVirtual(stringType, Method.getMethod(ReflectionUtils.getRequiredMethod(String.class, "equals", Object.class)));
                 generatorAdapter.push(true);
                 generatorAdapter.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, defaultEnd);
-                StatementWriter.of(e.getValue()).writeScoped(generatorAdapter, context, finallyBlock);
+                StatementWriter.of(Objects.requireNonNull(entry.getValue(), "Switch case statement cannot be null"))
+                    .writeScoped(generatorAdapter, context, finallyBlock);
                 generatorAdapter.goTo(finalEnd);
             }
 
@@ -144,7 +150,10 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
                 List<Map.Entry<Label, StatementDef>> result = new ArrayList<>();
                 for (int key : keys) {
                     int i = key - min;
-                    StatementDef statementDef = cases.get(key);
+                    StatementDef statementDef = Objects.requireNonNull(
+                        cases.get(key),
+                        () -> "Switch case statement missing for key: " + key
+                    );
                     Label existingLabel = findIndex(result, statementDef);
                     if (existingLabel == null) {
                         Label newLabel = generatorAdapter.newLabel();
@@ -158,7 +167,8 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
                 generatorAdapter.visitTableSwitchInsn(min, max, defaultLabel, labels);
                 for (Map.Entry<Label, StatementDef> e : result) {
                     generatorAdapter.mark(e.getKey());
-                    StatementWriter.of(e.getValue()).writeScoped(generatorAdapter, context, finallyBlock);
+                    StatementWriter.of(Objects.requireNonNull(e.getValue(), "Switch case statement cannot be null"))
+                        .writeScoped(generatorAdapter, context, finallyBlock);
                     generatorAdapter.goTo(endLabel);
                 }
             } else {
@@ -166,7 +176,10 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
                 List<Map.Entry<Label, StatementDef>> result = new ArrayList<>();
                 for (int i = 0; i < numKeys; ++i) {
                     int key = keys[i];
-                    StatementDef statementDef = cases.get(key);
+                    StatementDef statementDef = Objects.requireNonNull(
+                        cases.get(key),
+                        () -> "Switch case statement missing for key: " + key
+                    );
                     Label existingLabel = findIndex(result, statementDef);
                     if (existingLabel == null) {
                         Label newLabel = generatorAdapter.newLabel();
@@ -192,7 +205,7 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
         generatorAdapter.mark(endLabel);
     }
 
-    private static Label findIndex(List<Map.Entry<Label, StatementDef>> result, StatementDef statement) {
+    private static @Nullable Label findIndex(List<Map.Entry<Label, StatementDef>> result, StatementDef statement) {
         for (Map.Entry<Label, StatementDef> e : result) {
             if (e.getValue() == statement) {
                 return e.getKey();

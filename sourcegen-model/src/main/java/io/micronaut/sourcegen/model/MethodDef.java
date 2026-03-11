@@ -793,7 +793,10 @@ public final class MethodDef extends AbstractElement {
                 }
             }
             if (returnType == null && !statements.isEmpty()) {
-                returnType = findReturnType(CollectionUtils.last(statements));
+                StatementDef last = CollectionUtils.last(statements);
+                if (last != null) {
+                    returnType = findReturnType(last);
+                }
             }
             if (returnType == null && !name.equals(CONSTRUCTOR)) {
                 returnType = TypeDef.VOID;
@@ -804,10 +807,15 @@ public final class MethodDef extends AbstractElement {
         @Nullable
         private static TypeDef findReturnType(StatementDef statement) {
             if (statement instanceof StatementDef.Multi multi) {
-                return findReturnType(CollectionUtils.last(multi.statements()));
+                StatementDef last = CollectionUtils.last(multi.statements());
+                if (last == null) {
+                    return null;
+                }
+                return findReturnType(last);
             }
             if (statement instanceof StatementDef.Return aReturn) {
-                return aReturn.expression().type();
+                ExpressionDef expression = aReturn.expression();
+                return expression == null ? null : expression.type();
             }
             if (statement instanceof StatementDef.Try aTry) {
                 return findReturnType(aTry.statement());

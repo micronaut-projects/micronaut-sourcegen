@@ -30,6 +30,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -58,13 +59,14 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
         List<VariableDef> capturedVariables = captureVariables(lambda.implementation());
         MethodDef implementationMethodDef = createLambdaMethodDef(context, lambda, capturedVariables);
         context.lambdaMethods().add(implementationMethodDef);
+        var objectDef = Objects.requireNonNull(context.objectDef(), "Object definition is required for lambda generation");
 
         // The captured variables are the parameters to the called bootstrap method
         for (VariableDef variable : capturedVariables) {
             new VariableExpressionWriter(variable).write(generatorAdapter, context);
         }
 
-        String descriptor = TypeUtils.getType(context.objectDef().getName()).getDescriptor();
+        String descriptor = TypeUtils.getType(objectDef.getName()).getDescriptor();
         if (descriptor.endsWith(";")) {
             descriptor = descriptor.substring(0, descriptor.length() - 1);
         }
@@ -75,7 +77,7 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
             Opcodes.H_INVOKESTATIC,
             descriptor,
             implementationMethodDef.getName(),
-            TypeUtils.getMethodDescriptor(context.objectDef(), implementationMethodDef),
+            TypeUtils.getMethodDescriptor(objectDef, implementationMethodDef),
             false
         );
         Handle bootstrapMethodHandle = new Handle(
@@ -90,17 +92,18 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
             lambda.implementation().getName(),
             createDynamicInvocationDescriptor(capturedVariables, context),
             bootstrapMethodHandle,
-            Type.getType(TypeUtils.getMethodDescriptor(context.objectDef(), lambda.target())),
+            Type.getType(TypeUtils.getMethodDescriptor(objectDef, lambda.target())),
             lambdaMethodHandle,
-            Type.getType(TypeUtils.getMethodDescriptor(context.objectDef(), lambda.implementation()))
+            Type.getType(TypeUtils.getMethodDescriptor(objectDef, lambda.implementation()))
         );
         popValueIfNeeded(generatorAdapter, lambda.type());
     }
 
     private String createDynamicInvocationDescriptor(List<VariableDef> capturedVariables, MethodContext context) {
+        var objectDef = Objects.requireNonNull(context.objectDef(), "Object definition is required for lambda generation");
         StringBuilder dynamicDescriptor = new StringBuilder("(");
         for (VariableDef variable : capturedVariables) {
-            dynamicDescriptor.append(TypeUtils.getType(variable.type(), context.objectDef()));
+            dynamicDescriptor.append(TypeUtils.getType(variable.type(), objectDef));
         }
         dynamicDescriptor.append(")");
         dynamicDescriptor.append(TypeUtils.getType(lambda.type()).getDescriptor());

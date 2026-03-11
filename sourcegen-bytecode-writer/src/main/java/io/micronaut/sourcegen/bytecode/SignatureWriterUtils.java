@@ -141,16 +141,15 @@ final class SignatureWriterUtils {
     }
 
     private static void writeSignature(SignatureVisitor signatureWriter,
-                                       ObjectDef objectDef,
+                                       @Nullable ObjectDef objectDef,
                                        TypeDef typeDef, boolean isDefinition) {
         writeSignature(signatureWriter, objectDef, null, typeDef, isDefinition);
     }
 
     private static void writeSignature(SignatureVisitor signatureWriter,
-                                       ObjectDef objectDef,
+                                       @Nullable ObjectDef objectDef,
                                        @Nullable MethodDef methodDef,
                                        TypeDef typeDef, boolean isDefinition) {
-        Objects.requireNonNull(objectDef);
         typeDef = ObjectDef.getContextualType(objectDef, typeDef);
         if (typeDef instanceof TypeDef.Primitive primitive) {
             Type type = Type.getType(JavaModelUtils.NAME_TO_TYPE_MAP.get(primitive.name()));
@@ -218,7 +217,7 @@ final class SignatureWriterUtils {
         throw new IllegalStateException("Not recognized typedef: " + typeDef);
     }
 
-    private static boolean isVariablePartOfTheDefinition(String variableName, ObjectDef objectDef, @Nullable MethodDef methodDef) {
+    private static boolean isVariablePartOfTheDefinition(String variableName, @Nullable ObjectDef objectDef, @Nullable MethodDef methodDef) {
         if (methodDef != null
             && methodDef.getTypeVariables().stream().anyMatch(v -> v.name().equals(variableName))) {
             return true;

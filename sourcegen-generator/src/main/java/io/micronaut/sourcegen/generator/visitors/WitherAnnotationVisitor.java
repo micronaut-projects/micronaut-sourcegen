@@ -231,7 +231,13 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             .returns(builderType)
             .build((self, parameterDefs) -> builderType.instantiate(
                 parameters.stream()
-                    .<ExpressionDef>map(parameter -> self.invoke(propertyAccessMethods.get(parameter.getName())))
+                    .map(parameter -> {
+                        MethodDef accessor = Objects.requireNonNull(
+                            propertyAccessMethods.get(parameter.getName()),
+                            () -> "Missing accessor for parameter: " + parameter.getName()
+                        );
+                        return (ExpressionDef) self.invoke(accessor);
+                    })
                     .toList()
             ).returning());
     }
@@ -253,7 +259,11 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                     if (parameter.getName().equals(beanProperty.getName())) {
                         exp = parameterDefs.get(0);
                     } else {
-                        exp = self.invoke(propertyAccessMethods.get(parameter.getName()));
+                        MethodDef accessor = Objects.requireNonNull(
+                            propertyAccessMethods.get(parameter.getName()),
+                            () -> "Missing accessor for parameter: " + parameter.getName()
+                        );
+                        exp = self.invoke(accessor);
                     }
                     values.add(exp);
                 }

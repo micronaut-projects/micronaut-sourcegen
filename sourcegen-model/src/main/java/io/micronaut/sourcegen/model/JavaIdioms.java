@@ -100,7 +100,8 @@ public final class JavaIdioms {
                 stringBuilderExp = stringBuilderExp.invoke(STRING_BUILDER_APPEND_OBJECT, expression);
             }
         }
-        return stringBuilderExp.invoke(STRING_BUILDER_TO_STRING);
+        return Objects.requireNonNull(stringBuilderExp, "StringBuilder expression cannot be null")
+            .invoke(STRING_BUILDER_TO_STRING);
     }
 
     /**
