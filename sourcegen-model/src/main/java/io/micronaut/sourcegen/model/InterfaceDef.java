@@ -80,7 +80,7 @@ public final class InterfaceDef extends ObjectDef {
         private final List<TypeDef.TypeVariable> typeVariables = new ArrayList<>();
 
         private InterfaceDefBuilder(String name) {
-            super(name);
+            super(name, InterfaceDefBuilder.class);
         }
 
         public InterfaceDefBuilder addTypeVariable(TypeDef.TypeVariable typeVariable) {

@@ -60,6 +60,7 @@ public final class ParameterDef extends AbstractElement {
      * @deprecated replaced with {@link #resolveTypeVariables(Function)}
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @SuppressWarnings("java:S1133")
     public ParameterDef resolveTypeVariables(Map<String, TypeDef> resolvedTypeVariables) {
         return resolveTypeVariables(resolvedTypeVariables::get);
     }
@@ -108,7 +109,7 @@ public final class ParameterDef extends AbstractElement {
         private final TypeDef type;
 
         private ParameterDefBuilder(String name, TypeDef type) {
-            super(name);
+            super(name, ParameterDefBuilder.class);
             this.type = type;
         }
 

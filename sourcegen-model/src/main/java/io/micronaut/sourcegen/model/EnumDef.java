@@ -169,7 +169,7 @@ public final class EnumDef extends ObjectDef {
         private final List<EnumConstantDef> enumConstants = new ArrayList<>();
 
         private EnumDefBuilder(String name) {
-            super(name);
+            super(name, EnumDefBuilder.class);
         }
 
         public EnumDefBuilder addField(FieldDef field) {

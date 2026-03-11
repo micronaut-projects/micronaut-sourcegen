@@ -34,7 +34,6 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
 import javax.lang.model.element.Modifier;
-import java.util.ArrayList;
 import java.util.List;
 
 @Internal

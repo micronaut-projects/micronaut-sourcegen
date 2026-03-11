@@ -39,8 +39,8 @@ public sealed class ObjectDefBuilder<ThisType>
     protected final List<TypeDef> superinterfaces = new ArrayList<>();
     protected final List<ObjectDef> innerTypes = new ArrayList<>();
 
-    protected ObjectDefBuilder(String name) {
-        super(name);
+    protected ObjectDefBuilder(String name, Class<ThisType> builderType) {
+        super(name, builderType);
     }
 
     /**

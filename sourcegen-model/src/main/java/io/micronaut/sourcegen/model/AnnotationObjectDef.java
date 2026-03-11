@@ -93,7 +93,7 @@ public final class AnnotationObjectDef extends ObjectDef {
         private final List<ObjectDef> innerTypes = new ArrayList<>();
 
         private AnnotationObjectDefBuilder(String className) {
-            super(className);
+            super(className, AnnotationObjectDefBuilder.class);
         }
 
         /**
@@ -209,7 +209,7 @@ public final class AnnotationObjectDef extends ObjectDef {
         private AnnotationDef defaultAnnotationValue;
 
         private AnnotationMemberDefBuilder(String name, TypeDef type) {
-            super(name);
+            super(name, AnnotationMemberDefBuilder.class);
             addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
             this.type = type;
         }

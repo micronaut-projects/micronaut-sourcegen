@@ -106,7 +106,7 @@ public final class FieldDef extends AbstractElement {
         private ExpressionDef initializer;
 
         private FieldDefBuilder(String name) {
-            super(name);
+            super(name, FieldDefBuilder.class);
         }
 
         private FieldDefBuilder(String name, TypeDef type) {

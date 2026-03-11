@@ -65,7 +65,7 @@ public final class PropertyDef extends AbstractElement {
         private TypeDef type;
 
         private PropertyDefBuilder(String name) {
-            super(name);
+            super(name, PropertyDefBuilder.class);
         }
 
         public PropertyDefBuilder ofType(TypeDef type) {
