@@ -383,12 +383,28 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      *
      * @param typedElement The typed element
      * @param resolvedTypeVariables The resolved type variables
+     * @return a new type definition
+     * @deprecated replaced with {@link #of(TypedElement, Function)}
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
+    private static TypeDef of(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables) {
+        return of(typedElement, resolvedTypeVariables::get, false);
+    }
+
+    /**
+     * Creates a new type.
+     *
+     * @param typedElement The typed element
+     * @param resolvedTypeVariables The resolved type variables
      * @param erasure Is erasure type required
      * @return a new type definition
      * @deprecated replaced with {@link #of(TypedElement, Function, boolean)}
      */
     @Deprecated(since = "2.0", forRemoval = true)
     static TypeDef of(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables, boolean erasure) {
+        if (!erasure) {
+            return of(typedElement, resolvedTypeVariables);
+        }
         return of(typedElement, resolvedTypeVariables::get, erasure);
     }
 
