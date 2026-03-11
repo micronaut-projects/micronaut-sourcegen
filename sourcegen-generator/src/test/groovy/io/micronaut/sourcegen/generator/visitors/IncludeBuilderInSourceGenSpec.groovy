@@ -22,6 +22,12 @@ interface Test {
     List<String> friends();
     Map<String, Object> metadata();
     int[] bytes();
+
+    boolean active();
+    long x();
+    float y();
+    char c();
+
     String[] stuff();
 
     Map<String, Stuff> moreStuff();
@@ -31,8 +37,16 @@ interface Stuff {}
 ''')
         expect:
         introspection != null
+
+        introspection.getBeanType().builder().build().x == 0
+        introspection.getBeanType().builder().build().c == '\u0000'
+        introspection.getBeanType().builder().y(1000).build().y == 1000
+        introspection.getBeanType().builder().active(true).build().active == true
+        introspection.getBeanType().builder().build().active == false
+        introspection.getBeanType().builder().active(true).build().active == true
+        introspection.getBeanType().builder().build().active == false
         introspection.getBeanType().builder().name("foo").age(30).build().name == 'foo'
-        introspection.getBeanType().builder().name("foo").build().age == 10
+        introspection.getBeanType().builder().name("foo").age(10).build().age == 10
         introspection.getBeanType().builder().name("foo").age(30).build().explicitlySet() == ["name", "age" ] as Set
         introspection.getBeanType().builder().name("foo").age(30).build().withName("bob").name == 'bob'
     }

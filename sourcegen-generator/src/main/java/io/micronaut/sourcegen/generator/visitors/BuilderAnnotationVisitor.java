@@ -143,6 +143,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
 
     /**
      * Create a builder for the given arguments.
+     *
      * @param packageName            The package name
      * @param elementType            The element type
      * @param builderAnnotationValue The builder annotation value.
@@ -507,11 +508,12 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         beanProperties.remove(propertyElement);
                     }
                     // We need to convert it for the correct type in Kotlin
-                    TypeDef fieldType = TypeDef.of(parameter.getType()).makeNullable();
-                    VariableDef.Field field = self.field(parameter.getName(), fieldType);
-                    values.add(
-                        valueExpression(propertyElement, field).cast(TypeDef.of(parameter.getType()))
-                    );
+                    TypeDef fieldType = TypeDef.of(parameter.getType());
+                    TypeDef nullableFieldType = fieldType.makeNullable();
+                    VariableDef.Field field = self.field(parameter.getName(), nullableFieldType);
+                    values.add(!fieldType.isPrimitive() ?
+                        valueExpression(propertyElement, field).cast(TypeDef.of(parameter.getType())) :
+                        field.ifNull(TypeDef.Primitive.defaultValue(parameter.getType().getName()), valueExpression(propertyElement, field)).cast(TypeDef.of(parameter.getType())));
                 }
                 if (beanProperties.isEmpty()) {
                     return buildType.instantiate(values).returning();
