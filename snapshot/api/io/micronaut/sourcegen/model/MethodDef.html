@@ -73,14 +73,17 @@ loadScripts(document, 'script');</script>
 <li><a href="#constructor(java.util.Collection,javax.lang.model.element.Modifier...)" tabindex="0">constructor(Collection, Modifier...)</a></li>
 <li><a href="#of(io.micronaut.inject.ast.MethodElement)" tabindex="0">of(MethodElement)</a></li>
 <li><a href="#of(io.micronaut.inject.ast.MethodElement,java.util.Map)" tabindex="0">of(MethodElement, Map)</a></li>
+<li><a href="#of(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" tabindex="0">of(MethodElement, Function)</a></li>
 <li><a href="#of(java.lang.reflect.Method)" tabindex="0">of(Method)</a></li>
 <li><a href="#override(io.micronaut.inject.ast.MethodElement)" tabindex="0">override(MethodElement)</a></li>
 <li><a href="#override(io.micronaut.inject.ast.MethodElement,java.util.Map)" tabindex="0">override(MethodElement, Map)</a></li>
+<li><a href="#override(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" tabindex="0">override(MethodElement, Function)</a></li>
 <li><a href="#overrideGeneric(io.micronaut.inject.ast.MethodElement)" tabindex="0">overrideGeneric(MethodElement)</a></li>
 <li><a href="#override(java.lang.reflect.Method)" tabindex="0">override(Method)</a></li>
 <li><a href="#override(io.micronaut.sourcegen.model.MethodDef)" tabindex="0">override(MethodDef)</a></li>
 <li><a href="#override(java.lang.reflect.Constructor)" tabindex="0">override(Constructor)</a></li>
 <li><a href="#resolveTypeVariables(java.util.Map)" tabindex="0">resolveTypeVariables(Map)</a></li>
+<li><a href="#resolveTypeVariables(java.util.function.Function)" tabindex="0">resolveTypeVariables(Function)</a></li>
 <li><a href="#getReturnType()" tabindex="0">getReturnType()</a></li>
 <li><a href="#getParameters()" tabindex="0">getParameters()</a></li>
 <li><a href="#getStatements()" tabindex="0">getStatements()</a></li>
@@ -91,6 +94,14 @@ loadScripts(document, 'script');</script>
 <li><a href="#getTypeVariables()" tabindex="0">getTypeVariables()</a></li>
 <li><a href="#getThrowTypes()" tabindex="0">getThrowTypes()</a></li>
 <li><a href="#builder(java.lang.String)" tabindex="0">builder(String)</a></li>
+<li><a href="#builder(io.micronaut.inject.ast.MethodElement)" tabindex="0">builder(MethodElement)</a></li>
+<li><a href="#builder(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" tabindex="0">builder(MethodElement, Function)</a></li>
+<li><a href="#builderGeneric(io.micronaut.inject.ast.MethodElement)" tabindex="0">builderGeneric(MethodElement)</a></li>
+<li><a href="#builderGeneric(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" tabindex="0">builderGeneric(MethodElement, Function)</a></li>
+<li><a href="#builder(io.micronaut.inject.ast.MethodElement,java.util.function.Function,boolean)" tabindex="0">builder(MethodElement, Function, boolean)</a></li>
+<li><a href="#builder(io.micronaut.sourcegen.model.MethodDef)" tabindex="0">builder(MethodDef)</a></li>
+<li><a href="#builder(java.lang.reflect.Method)" tabindex="0">builder(Method)</a></li>
+<li><a href="#builder(java.lang.reflect.Constructor)" tabindex="0">builder(Constructor)</a></li>
 <li><a href="#toString()" tabindex="0">toString()</a></li>
 <li><a href="#isSynthetic()" tabindex="0">isSynthetic()</a></li>
 <li><a href="#getName()" tabindex="0">getName()</a></li>
@@ -183,15 +194,59 @@ loadScripts(document, 'script');</script>
 <section class="method-summary" id="method-summary">
 <h2>Method Summary</h2>
 <div id="method-summary-table">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab1" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab1', 3)" class="table-tab">Static Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab1" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab1', 3)" class="table-tab">Static Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button><button id="method-summary-table-tab6" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab6', 3)" class="table-tab">Deprecated Methods</button></div>
 <div id="method-summary-table.tabpanel" role="tabpanel" aria-labelledby="method-summary-table-tab0">
 <div class="summary-table three-column-summary">
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#builder(io.micronaut.inject.ast.MethodElement)" class="member-name-link">builder</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a builder from <code>MethodElement</code>.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#builder(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" class="member-name-link">builder</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedVariableFn)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a builder from <code>MethodElement</code>.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#builder(io.micronaut.inject.ast.MethodElement,java.util.function.Function,boolean)" class="member-name-link">builder</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedVariableFn,
+ boolean&nbsp;generic)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a builder from <code>MethodElement</code>.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#builder(io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">builder</a><wbr>(<a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a builder from an existing <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model"><code>MethodDef</code></a>.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#builder(java.lang.reflect.Constructor)" class="member-name-link">builder</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Constructor.html" title="class or interface in java.lang.reflect" class="external-link">Constructor</a>&lt;?&gt;&nbsp;constructor)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a builder from a <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Constructor.html" title="class or interface in java.lang.reflect" class="external-link"><code>Constructor</code></a>.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#builder(java.lang.reflect.Method)" class="member-name-link">builder</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link">Method</a>&nbsp;method)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a builder from a <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link"><code>Method</code></a>.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#builder(java.lang.String)" class="member-name-link">builder</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#builderGeneric(io.micronaut.inject.ast.MethodElement)" class="member-name-link">builderGeneric</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a builder from <code>MethodElement</code> preserving generics.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#builderGeneric(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" class="member-name-link">builderGeneric</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedVariableFn)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a builder from <code>MethodElement</code> preserving generics.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#constructor()" class="member-name-link">constructor</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
@@ -252,26 +307,42 @@ loadScripts(document, 'script');</script>
 <div class="block">Creates a method definition from <code>MethodElement</code>.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#of(io.micronaut.inject.ast.MethodElement,java.util.Map)" class="member-name-link">of</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
- <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#of(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" class="member-name-link">of</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolveVariableFn)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Creates a method definition from <code>MethodElement</code>.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#of(java.lang.reflect.Method)" class="member-name-link">of</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link">Method</a>&nbsp;method)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4 method-summary-table-tab6"><code>static <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4 method-summary-table-tab6"><code><a href="#of(io.micronaut.inject.ast.MethodElement,java.util.Map)" class="member-name-link">of</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4 method-summary-table-tab6">
+<div class="block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="#of(io.micronaut.inject.ast.MethodElement,java.util.function.Function)"><code>of(MethodElement, Function)</code></a></div>
+</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#of(java.lang.reflect.Method)" class="member-name-link">of</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link">Method</a>&nbsp;method)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Creates a method definition from <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link"><code>Method</code></a>.</div>
 </div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#override(io.micronaut.inject.ast.MethodElement)" class="member-name-link">override</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a method definition builder from <code>MethodElement</code>.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#override(io.micronaut.inject.ast.MethodElement)" class="member-name-link">override</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#override(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" class="member-name-link">override</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolveVariableFn)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Creates a method definition builder from <code>MethodElement</code>.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#override(io.micronaut.inject.ast.MethodElement,java.util.Map)" class="member-name-link">override</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4 method-summary-table-tab6"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4 method-summary-table-tab6"><code><a href="#override(io.micronaut.inject.ast.MethodElement,java.util.Map)" class="member-name-link">override</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
-<div class="block">Creates a method definition builder from <code>MethodElement</code>.</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4 method-summary-table-tab6">
+<div class="block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="#override(io.micronaut.inject.ast.MethodElement,java.util.function.Function)"><code>override(MethodElement, Function)</code></a></div>
+</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#override(io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">override</a><wbr>(<a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method)</code></div>
@@ -294,11 +365,20 @@ loadScripts(document, 'script');</script>
 <div class="block">Creates a method definition builder from <code>MethodElement</code> it used `getGeneric` versions of parameters and the return type.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#resolveTypeVariables(java.util.function.Function)" class="member-name-link">resolveTypeVariables</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolveVariableFn)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Resolves type variables.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4 method-summary-table-tab6"><code><a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4 method-summary-table-tab6"><code><a href="#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4 method-summary-table-tab6">
+<div class="block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="#resolveTypeVariables(java.util.function.Function)"><code>resolveTypeVariables(Function)</code></a></div>
+</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
 </div>
@@ -430,8 +510,13 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="of(io.micronaut.inject.ast.MethodElement,java.util.Map)">
 <h3>of</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></span>&nbsp;<span class="element-name">of</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+<div class="member-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html" title="class or interface in java.lang" class="external-link">@Deprecated</a>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html#since()" title="class or interface in java.lang" class="external-link">since</a>="2.0",
+            <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html#forRemoval()" title="class or interface in java.lang" class="external-link">forRemoval</a>=true)
+</span><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></span>&nbsp;<span class="element-name">of</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</span></div>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="#of(io.micronaut.inject.ast.MethodElement,java.util.function.Function)"><code>of(MethodElement, Function)</code></a></div>
+</div>
 <div class="block">Creates a method definition from <code>MethodElement</code>.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -441,6 +526,25 @@ loadScripts(document, 'script');</script>
 <dd>The method definition</dd>
 <dt>Since:</dt>
 <dd>1.7</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="of(io.micronaut.inject.ast.MethodElement,java.util.function.Function)">
+<h3>of</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></span>&nbsp;<span class="element-name">of</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolveVariableFn)</span></div>
+<div class="block">Creates a method definition from <code>MethodElement</code>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>methodElement</code> - The method element</dd>
+<dd><code>resolveVariableFn</code> - The resolved variable function</dd>
+<dt>Returns:</dt>
+<dd>The method definition</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
 </dl>
 </div>
 </section>
@@ -483,8 +587,13 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="override(io.micronaut.inject.ast.MethodElement,java.util.Map)">
 <h3>override</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">override</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+<div class="member-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html" title="class or interface in java.lang" class="external-link">@Deprecated</a>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html#since()" title="class or interface in java.lang" class="external-link">since</a>="2.0",
+            <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html#forRemoval()" title="class or interface in java.lang" class="external-link">forRemoval</a>=true)
+</span><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">override</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</span></div>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="#override(io.micronaut.inject.ast.MethodElement,java.util.function.Function)"><code>override(MethodElement, Function)</code></a></div>
+</div>
 <div class="block">Creates a method definition builder from <code>MethodElement</code>.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -494,6 +603,25 @@ loadScripts(document, 'script');</script>
 <dd>The method definition builder</dd>
 <dt>Since:</dt>
 <dd>1.5</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="override(io.micronaut.inject.ast.MethodElement,java.util.function.Function)">
+<h3>override</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">override</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolveVariableFn)</span></div>
+<div class="block">Creates a method definition builder from <code>MethodElement</code>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>methodElement</code> - The methodElement</dd>
+<dd><code>resolveVariableFn</code> - The resolved variable function</dd>
+<dt>Returns:</dt>
+<dd>The method definition builder</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
 </dl>
 </div>
 </section>
@@ -570,7 +698,36 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="resolveTypeVariables(java.util.Map)">
 <h3>resolveTypeVariables</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></span>&nbsp;<span class="element-name">resolveTypeVariables</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</span></div>
+<div class="member-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html" title="class or interface in java.lang" class="external-link">@Deprecated</a>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html#since()" title="class or interface in java.lang" class="external-link">since</a>="2.0",
+            <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html#forRemoval()" title="class or interface in java.lang" class="external-link">forRemoval</a>=true)
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></span>&nbsp;<span class="element-name">resolveTypeVariables</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedTypeVariables)</span></div>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="#resolveTypeVariables(java.util.function.Function)"><code>resolveTypeVariables(Function)</code></a></div>
+</div>
+<div class="block">Resolves type variables.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>resolvedTypeVariables</code> - The type variables map</dd>
+<dt>Returns:</dt>
+<dd>the resolved method</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="resolveTypeVariables(java.util.function.Function)">
+<h3>resolveTypeVariables</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></span>&nbsp;<span class="element-name">resolveTypeVariables</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolveVariableFn)</span></div>
+<div class="block">Resolves type variables.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>resolveVariableFn</code> - The resolve variable function</dd>
+<dt>Returns:</dt>
+<dd>the resolved method</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
+</dl>
 </div>
 </section>
 </li>
@@ -667,6 +824,150 @@ loadScripts(document, 'script');</script>
 <h3>builder</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">builder</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</span></div>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="builder(io.micronaut.inject.ast.MethodElement)">
+<h3>builder</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">builder</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement)</span></div>
+<div class="block">Creates a builder from <code>MethodElement</code>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>methodElement</code> - The method element</dd>
+<dt>Returns:</dt>
+<dd>The method definition builder</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="builder(io.micronaut.inject.ast.MethodElement,java.util.function.Function)">
+<h3>builder</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">builder</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedVariableFn)</span></div>
+<div class="block">Creates a builder from <code>MethodElement</code>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>methodElement</code> - The method element</dd>
+<dd><code>resolvedVariableFn</code> - The type variable resolution function</dd>
+<dt>Returns:</dt>
+<dd>The method definition builder</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="builderGeneric(io.micronaut.inject.ast.MethodElement)">
+<h3>builderGeneric</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">builderGeneric</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement)</span></div>
+<div class="block">Creates a builder from <code>MethodElement</code> preserving generics.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>methodElement</code> - The method element</dd>
+<dt>Returns:</dt>
+<dd>The method definition builder</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="builderGeneric(io.micronaut.inject.ast.MethodElement,java.util.function.Function)">
+<h3>builderGeneric</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">builderGeneric</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedVariableFn)</span></div>
+<div class="block">Creates a builder from <code>MethodElement</code> preserving generics.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>methodElement</code> - The method element</dd>
+<dd><code>resolvedVariableFn</code> - The type variable resolution function</dd>
+<dt>Returns:</dt>
+<dd>The method definition builder</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="builder(io.micronaut.inject.ast.MethodElement,java.util.function.Function,boolean)">
+<h3>builder</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">builder</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolvedVariableFn,
+ boolean&nbsp;generic)</span></div>
+<div class="block">Creates a builder from <code>MethodElement</code>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>methodElement</code> - The method element</dd>
+<dd><code>resolvedVariableFn</code> - The type variable resolution function</dd>
+<dd><code>generic</code> - Whether generic types should be preserved</dd>
+<dt>Returns:</dt>
+<dd>The method definition builder</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="builder(io.micronaut.sourcegen.model.MethodDef)">
+<h3>builder</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">builder</span><wbr><span class="parameters">(<a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</span></div>
+<div class="block">Creates a builder from an existing <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model"><code>MethodDef</code></a>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>methodDef</code> - The method definition</dd>
+<dt>Returns:</dt>
+<dd>The method definition builder</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="builder(java.lang.reflect.Method)">
+<h3>builder</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">builder</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link">Method</a>&nbsp;method)</span></div>
+<div class="block">Creates a builder from a <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link"><code>Method</code></a>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>method</code> - The reflective method</dd>
+<dt>Returns:</dt>
+<dd>The method definition builder</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="builder(java.lang.reflect.Constructor)">
+<h3>builder</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">builder</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Constructor.html" title="class or interface in java.lang.reflect" class="external-link">Constructor</a>&lt;?&gt;&nbsp;constructor)</span></div>
+<div class="block">Creates a builder from a <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Constructor.html" title="class or interface in java.lang.reflect" class="external-link"><code>Constructor</code></a>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>constructor</code> - The reflective constructor</dd>
+<dt>Returns:</dt>
+<dd>The method definition builder</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
+</dl>
 </div>
 </section>
 </li>

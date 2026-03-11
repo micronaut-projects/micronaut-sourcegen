@@ -61,6 +61,8 @@ loadScripts(document, 'script');</script>
 <ol class="toc-list">
 <li><a href="#addTypeVariable(io.micronaut.sourcegen.model.TypeDef.TypeVariable)" tabindex="0">addTypeVariable(TypeDef.TypeVariable)</a></li>
 <li><a href="#addTypeVariables(java.util.List)" tabindex="0">addTypeVariables(List)</a></li>
+<li><a href="#addTypeVariables(io.micronaut.inject.ast.MethodElement)" tabindex="0">addTypeVariables(MethodElement)</a></li>
+<li><a href="#addTypeVariables(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" tabindex="0">addTypeVariables(MethodElement, Function)</a></li>
 <li><a href="#returns(io.micronaut.sourcegen.model.TypeDef)" tabindex="0">returns(TypeDef)</a></li>
 <li><a href="#overrides()" tabindex="0">overrides()</a></li>
 <li><a href="#overrides(boolean)" tabindex="0">overrides(boolean)</a></li>
@@ -220,6 +222,17 @@ loadScripts(document, 'script');</script>
 <div class="block">Add a type variable.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addTypeVariables(io.micronaut.inject.ast.MethodElement)" class="member-name-link">addTypeVariables</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Add a type variable.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addTypeVariables(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" class="member-name-link">addTypeVariables</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolveVariableFn)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Add a type variables from <code>MethodElement</code>.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addTypeVariables(java.util.List)" class="member-name-link">addTypeVariables</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeDef.TypeVariable.html" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a>&gt;&nbsp;typeVariables)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Add a type variable.</div>
@@ -260,7 +273,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-io.micronaut.sourcegen.model.AbstractElementBuilder">Methods inherited from class&nbsp;<a href="AbstractElementBuilder.html#method-summary" title="class in io.micronaut.sourcegen.model">AbstractElementBuilder</a></h3>
-<code><a href="AbstractElementBuilder.html#addAnnotation(io.micronaut.sourcegen.model.AnnotationDef)" title="addAnnotation(AnnotationDef)">addAnnotation</a>, <a href="AbstractElementBuilder.html#addAnnotation(io.micronaut.sourcegen.model.ClassTypeDef)" title="addAnnotation(ClassTypeDef)">addAnnotation</a>, <a href="AbstractElementBuilder.html#addAnnotation(java.lang.Class)" title="addAnnotation(Class)">addAnnotation</a>, <a href="AbstractElementBuilder.html#addAnnotation(java.lang.String)" title="addAnnotation(String)">addAnnotation</a>, <a href="AbstractElementBuilder.html#addAnnotations(io.micronaut.sourcegen.model.AnnotationDef...)" title="addAnnotations(AnnotationDef...)">addAnnotations</a>, <a href="AbstractElementBuilder.html#addAnnotations(java.util.List)" title="addAnnotations(List)">addAnnotations</a>, <a href="AbstractElementBuilder.html#addJavadoc(java.lang.String)" title="addJavadoc(String)">addJavadoc</a>, <a href="AbstractElementBuilder.html#addJavadoc(java.util.List)" title="addJavadoc(List)">addJavadoc</a>, <a href="AbstractElementBuilder.html#addModifiers(java.util.Collection)" title="addModifiers(Collection)">addModifiers</a>, <a href="AbstractElementBuilder.html#addModifiers(javax.lang.model.element.Modifier...)" title="addModifiers(Modifier...)">addModifiers</a>, <a href="AbstractElementBuilder.html#overrideModifiers(javax.lang.model.element.Modifier...)" title="overrideModifiers(Modifier...)">overrideModifiers</a>, <a href="AbstractElementBuilder.html#synthetic()" title="synthetic()">synthetic</a>, <a href="AbstractElementBuilder.html#synthetic(boolean)" title="synthetic(boolean)">synthetic</a></code></div>
+<code><a href="AbstractElementBuilder.html#addAnnotation(io.micronaut.sourcegen.model.AnnotationDef)" title="addAnnotation(AnnotationDef)">addAnnotation</a>, <a href="AbstractElementBuilder.html#addAnnotation(io.micronaut.sourcegen.model.ClassTypeDef)" title="addAnnotation(ClassTypeDef)">addAnnotation</a>, <a href="AbstractElementBuilder.html#addAnnotation(java.lang.Class)" title="addAnnotation(Class)">addAnnotation</a>, <a href="AbstractElementBuilder.html#addAnnotation(java.lang.String)" title="addAnnotation(String)">addAnnotation</a>, <a href="AbstractElementBuilder.html#addAnnotations(io.micronaut.sourcegen.model.AnnotationDef...)" title="addAnnotations(AnnotationDef...)">addAnnotations</a>, <a href="AbstractElementBuilder.html#addAnnotations(java.util.List)" title="addAnnotations(List)">addAnnotations</a>, <a href="AbstractElementBuilder.html#addJavadoc(java.lang.String)" title="addJavadoc(String)">addJavadoc</a>, <a href="AbstractElementBuilder.html#addJavadoc(java.util.List)" title="addJavadoc(List)">addJavadoc</a>, <a href="AbstractElementBuilder.html#addModifiers(java.util.Collection)" title="addModifiers(Collection)">addModifiers</a>, <a href="AbstractElementBuilder.html#addModifiers(javax.lang.model.element.Modifier...)" title="addModifiers(Modifier...)">addModifiers</a>, <a href="AbstractElementBuilder.html#name(java.lang.String)" title="name(String)">name</a>, <a href="AbstractElementBuilder.html#overrideModifiers(javax.lang.model.element.Modifier...)" title="overrideModifiers(Modifier...)">overrideModifiers</a>, <a href="AbstractElementBuilder.html#synthetic()" title="synthetic()">synthetic</a>, <a href="AbstractElementBuilder.html#synthetic(boolean)" title="synthetic(boolean)">synthetic</a></code></div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-java.lang.Object">Methods inherited from class&nbsp;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#method-summary" title="class or interface in java.lang" class="external-link">Object</a></h3>
 <code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#clone()" title="class or interface in java.lang" class="external-link">clone</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#equals(java.lang.Object)" title="class or interface in java.lang" class="external-link">equals</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#finalize()" title="class or interface in java.lang" class="external-link">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#toString()" title="class or interface in java.lang" class="external-link">toString</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
@@ -301,6 +314,42 @@ loadScripts(document, 'script');</script>
 <dd><code>typeVariables</code> - The type variables</dd>
 <dt>Returns:</dt>
 <dd>The type variable</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="addTypeVariables(io.micronaut.inject.ast.MethodElement)">
+<h3>addTypeVariables</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">addTypeVariables</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement)</span></div>
+<div class="block">Add a type variable.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>methodElement</code> - The method to copy type variables</dd>
+<dt>Returns:</dt>
+<dd>The type variable</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="addTypeVariables(io.micronaut.inject.ast.MethodElement,java.util.function.Function)">
+<h3>addTypeVariables</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></span>&nbsp;<span class="element-name">addTypeVariables</span><wbr><span class="parameters">(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolveVariableFn)</span></div>
+<div class="block">Add a type variables from <code>MethodElement</code>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>methodElement</code> - The type variables</dd>
+<dd><code>resolveVariableFn</code> - The type variable function</dd>
+<dt>Returns:</dt>
+<dd>The type variable</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
 </dl>
 </div>
 </section>

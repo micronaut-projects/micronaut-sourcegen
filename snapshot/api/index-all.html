@@ -427,6 +427,14 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/RecordDef.RecordDefBuilder.html#addTypeVariable(io.micronaut.sourcegen.model.TypeDef.TypeVariable)" class="member-name-link">addTypeVariable(TypeDef.TypeVariable)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/RecordDef.RecordDefBuilder.html" title="class in io.micronaut.sourcegen.model">RecordDef.RecordDefBuilder</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.MethodDefBuilder.html#addTypeVariables(io.micronaut.inject.ast.MethodElement)" class="member-name-link">addTypeVariables(MethodElement)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></dt>
+<dd>
+<div class="block">Add a type variable.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.MethodDefBuilder.html#addTypeVariables(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" class="member-name-link">addTypeVariables(MethodElement, Function)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></dt>
+<dd>
+<div class="block">Add a type variables from <code>MethodElement</code>.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/MethodSpec.Builder.html#addTypeVariables(java.lang.Iterable)" class="member-name-link">addTypeVariables(Iterable)</a> - Method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/MethodSpec.Builder.html" title="class in io.micronaut.sourcegen.javapoet">MethodSpec.Builder</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/TypeSpec.Builder.html#addTypeVariables(java.lang.Iterable)" class="member-name-link">addTypeVariables(Iterable)</a> - Method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/TypeSpec.Builder.html" title="class in io.micronaut.sourcegen.javapoet">TypeSpec.Builder</a></dt>
@@ -797,6 +805,18 @@ this <code>typeElement</code>.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/CodeBlock.html#builder()" class="member-name-link">builder()</a> - Static method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/CodeBlock.html" title="class in io.micronaut.sourcegen.javapoet">CodeBlock</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#builder(io.micronaut.inject.ast.MethodElement)" class="member-name-link">builder(MethodElement)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="block">Creates a builder from <code>MethodElement</code>.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#builder(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" class="member-name-link">builder(MethodElement, Function)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="block">Creates a builder from <code>MethodElement</code>.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#builder(io.micronaut.inject.ast.MethodElement,java.util.function.Function,boolean)" class="member-name-link">builder(MethodElement, Function, boolean)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="block">Creates a builder from <code>MethodElement</code>.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.html#builder(io.micronaut.sourcegen.javapoet.ClassName)" class="member-name-link">builder(ClassName)</a> - Static method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.html" title="class in io.micronaut.sourcegen.javapoet">AnnotationSpec</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/FieldSpec.html#builder(io.micronaut.sourcegen.javapoet.TypeName,java.lang.String,javax.lang.model.element.Modifier...)" class="member-name-link">builder(TypeName, String, Modifier...)</a> - Static method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/FieldSpec.html" title="class in io.micronaut.sourcegen.javapoet">FieldSpec</a></dt>
@@ -805,10 +825,22 @@ this <code>typeElement</code>.</div>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/AnnotationDef.html#builder(io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">builder(ClassTypeDef)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#builder(io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">builder(MethodDef)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="block">Creates a builder from an existing <a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model"><code>MethodDef</code></a>.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.html#builder(java.lang.Class)" class="member-name-link">builder(Class)</a> - Static method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.html" title="class in io.micronaut.sourcegen.javapoet">AnnotationSpec</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/AnnotationDef.html#builder(java.lang.Class)" class="member-name-link">builder(Class)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#builder(java.lang.reflect.Constructor)" class="member-name-link">builder(Constructor)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="block">Creates a builder from a <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Constructor.html" title="class or interface in java.lang.reflect" class="external-link"><code>Constructor</code></a>.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#builder(java.lang.reflect.Method)" class="member-name-link">builder(Method)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="block">Creates a builder from a <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link"><code>Method</code></a>.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/FieldSpec.html#builder(java.lang.reflect.Type,java.lang.String,javax.lang.model.element.Modifier...)" class="member-name-link">builder(Type, String, Modifier...)</a> - Static method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/FieldSpec.html" title="class in io.micronaut.sourcegen.javapoet">FieldSpec</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/ParameterSpec.html#builder(java.lang.reflect.Type,java.lang.String,javax.lang.model.element.Modifier...)" class="member-name-link">builder(Type, String, Modifier...)</a> - Static method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/ParameterSpec.html" title="class in io.micronaut.sourcegen.javapoet">ParameterSpec</a></dt>
@@ -870,6 +902,14 @@ this <code>typeElement</code>.</div>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a> - Record Class in <a href="io/micronaut/sourcegen/generator/visitors/package-summary.html">io.micronaut.sourcegen.generator.visitors</a></dt>
 <dd>
 <div class="block">Invocation context for when a builder method is called.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#builderGeneric(io.micronaut.inject.ast.MethodElement)" class="member-name-link">builderGeneric(MethodElement)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="block">Creates a builder from <code>MethodElement</code> preserving generics.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#builderGeneric(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" class="member-name-link">builderGeneric(MethodElement, Function)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="block">Creates a builder from <code>MethodElement</code> preserving generics.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/MethodDef.MethodDefBuilder.html#buildStatic(java.util.function.Function)" class="member-name-link">buildStatic(Function)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.MethodDefBuilder.html" title="class in io.micronaut.sourcegen.model">MethodDef.MethodDefBuilder</a></dt>
 <dd>
@@ -1646,9 +1686,15 @@ this <code>typeElement</code>.</div>
 <dd>
 <div class="block">Creates a new type erasure.</div>
 </dd>
-<dt><a href="io/micronaut/sourcegen/model/TypeDef.html#erasure(io.micronaut.inject.ast.TypedElement,java.util.Map)" class="member-name-link">erasure(TypedElement, Map)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></dt>
+<dt><a href="io/micronaut/sourcegen/model/TypeDef.html#erasure(io.micronaut.inject.ast.TypedElement,java.util.function.Function)" class="member-name-link">erasure(TypedElement, Function)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></dt>
 <dd>
 <div class="block">Creates a new type erasure.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/TypeDef.html#erasure(io.micronaut.inject.ast.TypedElement,java.util.Map)" class="member-name-link">erasure(TypedElement, Map)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></dt>
+<dd>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="io/micronaut/sourcegen/model/TypeDef.html#erasure(io.micronaut.inject.ast.TypedElement,java.util.function.Function)"><code>TypeDef.erasure(TypedElement, Function)</code></a></div>
+</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.Try.Catch.html#exception()" class="member-name-link">exception()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.Try.Catch.html" title="class in io.micronaut.sourcegen.model">StatementDef.Try.Catch</a></dt>
 <dd>
@@ -2144,16 +2190,20 @@ this <code>typeElement</code>.</div>
 <dd>
 <div class="block">Find the method that can be represented as a lambda.</div>
 </dd>
-<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassDefType.html#getLambda(java.util.Map)" class="member-name-link">getLambda(Map)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassDefType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassDefType</a></dt>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#getLambda(java.util.function.Function)" class="member-name-link">getLambda(Function)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dd>
+<div class="block">Find the method that can be represented as a lambda.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.Parameterized.html#getLambda(java.util.function.Function)" class="member-name-link">getLambda(Function)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassElementType.html#getLambda(java.util.Map)" class="member-name-link">getLambda(Map)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassElementType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassElementType</a></dt>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassDefType.html#getLambda(java.util.function.Function)" class="member-name-link">getLambda(Function)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassDefType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassDefType</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassElementType.html#getLambda(java.util.function.Function)" class="member-name-link">getLambda(Function)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassElementType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassElementType</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#getLambda(java.util.Map)" class="member-name-link">getLambda(Map)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
 <dd>
 <div class="block">Find the method that can be represented as a lambda.</div>
 </dd>
-<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.Parameterized.html#getLambda(java.util.Map)" class="member-name-link">getLambda(Map)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/bytecode/ByteCodeGenerator.html#getLanguage()" class="member-name-link">getLanguage()</a> - Method in class io.micronaut.sourcegen.generator.bytecode.<a href="io/micronaut/sourcegen/generator/bytecode/ByteCodeGenerator.html" title="class in io.micronaut.sourcegen.generator.bytecode">ByteCodeGenerator</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/SourceGenerator.html#getLanguage()" class="member-name-link">getLanguage()</a> - Method in interface io.micronaut.sourcegen.generator.<a href="io/micronaut/sourcegen/generator/SourceGenerator.html" title="interface in io.micronaut.sourcegen.generator">SourceGenerator</a></dt>
@@ -3606,11 +3656,15 @@ separated by <code>separator</code>.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.html#multi(io.micronaut.sourcegen.model.StatementDef...)" class="member-name-link">multi(StatementDef...)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></dt>
 <dd>
-<div class="block">The multi line statement.</div>
+<div class="block">The multi-line statement.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/StatementDef.html#multi(java.util.function.Function)" class="member-name-link">multi(Function)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></dt>
+<dd>
+<div class="block">The multi-line statement.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.html#multi(java.util.List)" class="member-name-link">multi(List)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></dt>
 <dd>
-<div class="block">The multi line statement.</div>
+<div class="block">The multi-line statement.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.Multi.html#%3Cinit%3E(java.util.List)" class="member-name-link">Multi(List)</a> - Constructor for record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.Multi.html" title="class in io.micronaut.sourcegen.model">StatementDef.Multi</a></dt>
 <dd>
@@ -3688,6 +3742,10 @@ separated by <code>separator</code>.</div>
 <dt><a href="io/micronaut/sourcegen/model/VariableDef.StaticField.html#name()" class="member-name-link">name()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/VariableDef.StaticField.html" title="class in io.micronaut.sourcegen.model">VariableDef.StaticField</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/model/VariableDef.StaticField.html#param-name"><code>name</code></a> record component.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/AbstractElementBuilder.html#name(java.lang.String)" class="member-name-link">name(String)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/AbstractElementBuilder.html" title="class in io.micronaut.sourcegen.model">AbstractElementBuilder</a></dt>
+<dd>
+<div class="block">Modifies the name.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/NameAllocator.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">NameAllocator</a> - Class in <a href="io/micronaut/sourcegen/javapoet/package-summary.html">io.micronaut.sourcegen.javapoet</a></dt>
 <dd>
@@ -3936,25 +3994,43 @@ annotation.</div>
 <dd>
 <div class="block">Create a new type definition.</div>
 </dd>
-<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#of(io.micronaut.inject.ast.ClassElement,java.util.Map,boolean)" class="member-name-link">of(ClassElement, Map, boolean)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#of(io.micronaut.inject.ast.ClassElement,java.util.function.Function,boolean)" class="member-name-link">of(ClassElement, Function, boolean)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
 <dd>
 <div class="block">Create a new type definition.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#of(io.micronaut.inject.ast.ClassElement,java.util.Map,boolean)" class="member-name-link">of(ClassElement, Map, boolean)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dd>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">Replaced with <a href="io/micronaut/sourcegen/model/TypeDef.html#of(io.micronaut.inject.ast.TypedElement,java.util.function.Function,boolean)"><code>TypeDef.of(TypedElement, Function, boolean)</code></a></div>
+</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/MethodDef.html#of(io.micronaut.inject.ast.MethodElement)" class="member-name-link">of(MethodElement)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
 <dd>
 <div class="block">Creates a method definition from <code>MethodElement</code>.</div>
 </dd>
-<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#of(io.micronaut.inject.ast.MethodElement,java.util.Map)" class="member-name-link">of(MethodElement, Map)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#of(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" class="member-name-link">of(MethodElement, Function)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
 <dd>
 <div class="block">Creates a method definition from <code>MethodElement</code>.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#of(io.micronaut.inject.ast.MethodElement,java.util.Map)" class="member-name-link">of(MethodElement, Map)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="io/micronaut/sourcegen/model/MethodDef.html#of(io.micronaut.inject.ast.MethodElement,java.util.function.Function)"><code>MethodDef.of(MethodElement, Function)</code></a></div>
+</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/TypeDef.html#of(io.micronaut.inject.ast.TypedElement)" class="member-name-link">of(TypedElement)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></dt>
 <dd>
 <div class="block">Creates a new type.</div>
 </dd>
-<dt><a href="io/micronaut/sourcegen/model/TypeDef.html#of(io.micronaut.inject.ast.TypedElement,java.util.Map,boolean)" class="member-name-link">of(TypedElement, Map, boolean)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></dt>
+<dt><a href="io/micronaut/sourcegen/model/TypeDef.html#of(io.micronaut.inject.ast.TypedElement,java.util.function.Function,boolean)" class="member-name-link">of(TypedElement, Function, boolean)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></dt>
 <dd>
 <div class="block">Creates a new type.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/TypeDef.html#of(io.micronaut.inject.ast.TypedElement,java.util.Map,boolean)" class="member-name-link">of(TypedElement, Map, boolean)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></dt>
+<dd>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="io/micronaut/sourcegen/model/TypeDef.html#of(io.micronaut.inject.ast.TypedElement,java.util.function.Function,boolean)"><code>TypeDef.of(TypedElement, Function, boolean)</code></a></div>
+</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/ArrayTypeName.html#of(io.micronaut.sourcegen.javapoet.TypeName)" class="member-name-link">of(TypeName)</a> - Static method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/ArrayTypeName.html" title="class in io.micronaut.sourcegen.javapoet">ArrayTypeName</a></dt>
 <dd>
@@ -4058,9 +4134,15 @@ annotation.</div>
 <dd>
 <div class="block">Creates a method definition builder from <code>MethodElement</code>.</div>
 </dd>
-<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#override(io.micronaut.inject.ast.MethodElement,java.util.Map)" class="member-name-link">override(MethodElement, Map)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#override(io.micronaut.inject.ast.MethodElement,java.util.function.Function)" class="member-name-link">override(MethodElement, Function)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
 <dd>
 <div class="block">Creates a method definition builder from <code>MethodElement</code>.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#override(io.micronaut.inject.ast.MethodElement,java.util.Map)" class="member-name-link">override(MethodElement, Map)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="io/micronaut/sourcegen/model/MethodDef.html#override(io.micronaut.inject.ast.MethodElement,java.util.function.Function)"><code>MethodDef.override(MethodElement, Function)</code></a></div>
+</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/MethodDef.html#override(io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">override(MethodDef)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
 <dd>
@@ -4249,22 +4331,40 @@ enclosing</code>.</div>
 <dd>
 <div class="block">Return the binary name of a class.</div>
 </dd>
-<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.Parameterized.html#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables(Map)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></dt>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.Parameterized.html#resolveTypeVariables(java.util.function.Function)" class="member-name-link">resolveTypeVariables(Function)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables(Map)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#resolveTypeVariables(java.util.function.Function)" class="member-name-link">resolveTypeVariables(Function)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables(Map)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="io/micronaut/sourcegen/model/ParameterDef.html#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables(Map)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ParameterDef.html" title="class in io.micronaut.sourcegen.model">ParameterDef</a></dt>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#resolveTypeVariables(java.util.function.Function)" class="member-name-link">resolveTypeVariables(Function)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="block">Resolves type variables.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/ParameterDef.html#resolveTypeVariables(java.util.function.Function)" class="member-name-link">resolveTypeVariables(Function)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ParameterDef.html" title="class in io.micronaut.sourcegen.model">ParameterDef</a></dt>
 <dd>
 <div class="block">Resolve the type variables for this parameter.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/TypeDef.html#resolveTypeVariables(java.util.function.Function)" class="member-name-link">resolveTypeVariables(Function)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></dt>
+<dd>
+<div class="block">Resolve the type variables.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/TypeDef.TypeVariable.html#resolveTypeVariables(java.util.function.Function)" class="member-name-link">resolveTypeVariables(Function)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.TypeVariable.html" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodDef.html#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables(Map)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
+<dd>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="io/micronaut/sourcegen/model/MethodDef.html#resolveTypeVariables(java.util.function.Function)"><code>MethodDef.resolveTypeVariables(Function)</code></a></div>
+</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/ParameterDef.html#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables(Map)</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ParameterDef.html" title="class in io.micronaut.sourcegen.model">ParameterDef</a></dt>
+<dd>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">replaced with <a href="io/micronaut/sourcegen/model/ParameterDef.html#resolveTypeVariables(java.util.function.Function)"><code>ParameterDef.resolveTypeVariables(Function)</code></a></div>
+</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/TypeDef.html#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables(Map)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></dt>
 <dd>
 <div class="block">Resolve the type variables.</div>
 </dd>
-<dt><a href="io/micronaut/sourcegen/model/TypeDef.TypeVariable.html#resolveTypeVariables(java.util.Map)" class="member-name-link">resolveTypeVariables(Map)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.TypeVariable.html" title="class in io.micronaut.sourcegen.model">TypeDef.TypeVariable</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.Return.html#%3Cinit%3E(io.micronaut.sourcegen.model.ExpressionDef)" class="member-name-link">Return(ExpressionDef)</a> - Constructor for record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.Return.html" title="class in io.micronaut.sourcegen.model">StatementDef.Return</a></dt>
 <dd>
 <div class="block">Creates an instance of a <code>Return</code> record class.</div>

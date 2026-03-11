@@ -65,6 +65,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#doTry(io.micronaut.sourcegen.model.StatementDef)" tabindex="0">doTry(StatementDef)</a></li>
 <li><a href="#multi(java.util.List)" tabindex="0">multi(List)</a></li>
 <li><a href="#multi(io.micronaut.sourcegen.model.StatementDef...)" tabindex="0">multi(StatementDef...)</a></li>
+<li><a href="#multi(java.util.function.Function)" tabindex="0">multi(Function)</a></li>
 </ol>
 </li>
 </ol>
@@ -210,16 +211,21 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static <a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#multi(io.micronaut.sourcegen.model.StatementDef...)" class="member-name-link">multi</a><wbr>(<a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a>...&nbsp;statements)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1">
-<div class="block">The multi line statement.</div>
+<div class="block">The multi-line statement.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1"><code>static <a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1"><code><a href="#multi(java.util.List)" class="member-name-link">multi</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a>&gt;&nbsp;statements)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1"><code><a href="#multi(java.util.function.Function)" class="member-name-link">multi</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a>&gt;, <a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a>&gt;&nbsp;fn)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1">
-<div class="block">The multi line statement.</div>
+<div class="block">The multi-line statement.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a><wbr>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#nestedExpressionsStream()" class="member-name-link">nestedExpressionsStream</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static <a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#multi(java.util.List)" class="member-name-link">multi</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a>&gt;&nbsp;statements)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1">
+<div class="block">The multi-line statement.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a><wbr>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#nestedExpressionsStream()" class="member-name-link">nestedExpressionsStream</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Stream of nested expressions included in this statement.</div>
 </div>
 </div>
@@ -320,7 +326,7 @@ loadScripts(document, 'script');</script>
 <h3>multi</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></span>&nbsp;<span class="element-name">multi</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a>&gt;&nbsp;statements)</span></div>
-<div class="block">The multi line statement.</div>
+<div class="block">The multi-line statement.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>statements</code> - statements</dd>
@@ -337,7 +343,7 @@ loadScripts(document, 'script');</script>
 <h3>multi</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></span>&nbsp;<span class="element-name">multi</span><wbr><span class="parameters">(<a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a>...&nbsp;statements)</span></div>
-<div class="block">The multi line statement.</div>
+<div class="block">The multi-line statement.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>statements</code> - statements</dd>
@@ -345,6 +351,24 @@ loadScripts(document, 'script');</script>
 <dd>statement</dd>
 <dt>Since:</dt>
 <dd>1.2</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="multi(java.util.function.Function)">
+<h3>multi</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a></span>&nbsp;<span class="element-name">multi</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a>&gt;, <a href="StatementDef.html" title="interface in io.micronaut.sourcegen.model">StatementDef</a>&gt;&nbsp;fn)</span></div>
+<div class="block">The multi-line statement. The method is supplying a list of statements which can be used to add additional statements
+to be added before the returned statement.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>fn</code> - statements</dd>
+<dt>Returns:</dt>
+<dd>statement</dd>
+<dt>Since:</dt>
+<dd>2.0</dd>
 </dl>
 </div>
 </section>
