@@ -18,9 +18,10 @@ package io.micronaut.sourcegen.example;
 import io.micronaut.core.beans.BeanIntrospection;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import java.util.Collections;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PersonBuilderTest {
 
@@ -80,5 +81,49 @@ class PersonBuilderTest {
         assertEquals("Fred", person2.getName());
         assertEquals(20, person2.getId());
         assertEquals(Person3.State.MARRIED, person2.getState());
+    }
+
+    @Test
+    public void buildsPerson5WithStrictBuilder() {
+        Person5 person = Person5Builder.builder()
+            .id(1)
+            .name("test")
+            .title(Person5.Title.MR)
+            .bytes(new byte[]{})
+            .strings(Collections.EMPTY_LIST)
+            .build();
+
+        assertEquals(person.getId(), 1);
+        assertEquals(person.getName(), "test");
+        assertEquals(person.getTitle(), Person5.Title.MR);
+        assertNotNull(person.getBytes());
+        assertNotNull(person.getStrings());
+
+        assertEquals("name cannot be reinitialized.", assertThrows(IllegalStateException.class, () -> Person5Builder.builder()
+            .id(1)
+            .name("test")
+            .name("test!")
+            .title(Person5.Title.MR)
+            .bytes(new byte[]{})
+            .strings(Collections.EMPTY_LIST)
+            .build()).getMessage());
+
+        assertEquals("id cannot be reinitialized.", assertThrows(IllegalStateException.class, () -> Person5Builder.builder()
+            .id(0)
+            .id(1)
+            .name("test")
+            .title(Person5.Title.MR)
+            .bytes(new byte[]{})
+            .strings(Collections.EMPTY_LIST)
+            .build()).getMessage());
+
+        assertEquals("strings cannot be reinitialized.", assertThrows(IllegalStateException.class, () -> Person5Builder.builder()
+            .id(0)
+            .name("test")
+            .title(Person5.Title.MR)
+            .bytes(new byte[]{})
+            .strings(Collections.EMPTY_LIST)
+            .strings(Collections.EMPTY_LIST)
+            .build()).getMessage());
     }
 }
