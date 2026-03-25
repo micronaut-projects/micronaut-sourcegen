@@ -12,7 +12,7 @@ nullaway = "0.12.15"
 
 managed-asm = "9.9.1"
 
-micronaut = "5.0.0-M11"
+micronaut = "5.0.0-M18"
 micronaut-platform = "4.10.8"
 micronaut-data = "5.0.0-M1"
 micronaut-validation = "5.0.0-M1"
