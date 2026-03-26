@@ -369,7 +369,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             .forEach { annotationSpec: AnnotationSpec -> enumBuilder.addAnnotation(annotationSpec) }
 
         enumDef.enumConstants.forEach { enumConstant: EnumConstantDef ->
-            if (enumConstant.constructorArgs != null && enumConstant.constructorArgs.isNotEmpty()) {
+            if (enumConstant.constructorArgs.isNotEmpty()) {
                 val exps = enumConstant.constructorArgs
                 val expBuilder: CodeBlock.Builder = CodeBlock.builder()
                 for (i in exps.indices) {

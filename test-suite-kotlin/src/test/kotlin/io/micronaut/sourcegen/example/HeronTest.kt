@@ -31,9 +31,9 @@ class HeronTest {
         )
         Assertions.assertNotNull(simple)
         Assertions.assertEquals("A", simple!!.stringValue("name").get())
-        Assertions.assertEquals(12, simple!!.intValue("age").asInt)
+        Assertions.assertEquals(12, simple.intValue("age").asInt)
         Assertions.assertEquals(
-            Heron.Color.WHITE, simple!!.enumValue(
+            Heron.Color.WHITE, simple.enumValue(
                 "color",
                 Heron.Color::class.java
             ).get()
@@ -54,8 +54,8 @@ class HeronTest {
             Heron.Simple::class.java
         )
         Assertions.assertEquals(2, simples.size)
-        Assertions.assertArrayEquals(intArrayOf(1, 2, 3), multi!!.intValues("values"))
-        Assertions.assertArrayEquals(arrayOf("a", "b"), multi!!.stringValues("strings"))
+        Assertions.assertArrayEquals(intArrayOf(1, 2, 3), multi.intValues("values"))
+        Assertions.assertArrayEquals(arrayOf("a", "b"), multi.stringValues("strings"))
 
         val boos = intro.getAnnotationValuesByType(
             Heron.Boo::class.java

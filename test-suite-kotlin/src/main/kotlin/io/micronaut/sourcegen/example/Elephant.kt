@@ -51,8 +51,8 @@ class Elephant { //tag::clazs[]
         return ElephantObject.toString(this)
     }
 
-    override fun equals(o: Any?): Boolean {
-        return ElephantObject.equals(this, o)
+    override fun equals(other: Any?): Boolean {
+        return ElephantObject.equals(this, other)
     }
 
     override fun hashCode(): Int {

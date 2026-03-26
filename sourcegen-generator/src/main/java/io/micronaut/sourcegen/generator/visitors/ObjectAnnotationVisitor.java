@@ -149,7 +149,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                         if (beanProperty.isWriteOnly()) {
                             continue;
                         }
-                        ExpressionDef propertyValue = parameterDef.get(0).getPropertyValue(beanProperty);
+                        ExpressionDef propertyValue = parameterDef.getFirst().getPropertyValue(beanProperty);
                         expressions.add(ExpressionDef.constant(beanProperty.getName() + "="));
                         expressions.add(propertyValue);
                         expressions.add(ExpressionDef.constant((i == properties.size() - 1) ? "]" : ", "));
@@ -231,7 +231,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                     if (!iterator.hasNext()) {
                         return ExpressionDef.primitiveConstant(0).returning();
                     }
-                    VariableDef.MethodParameter instance = parameterDef.get(0);
+                    VariableDef.MethodParameter instance = parameterDef.getFirst();
                 PropertyElement propertyElement1 = iterator.next();
                 return StatementDef.multi(
                         instance.ifNull(ExpressionDef.primitiveConstant(0).returning()),

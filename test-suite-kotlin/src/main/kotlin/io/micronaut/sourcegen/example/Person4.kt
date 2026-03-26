@@ -33,8 +33,8 @@ class Person4(val id: Long, val title: Title, val name: String?, val bytes: Byte
         return Person4Object.toString(this)
     }
 
-    override fun equals(o: Any?): Boolean {
-        return Person4Object.equals(this, o)
+    override fun equals(other: Any?): Boolean {
+        return Person4Object.equals(this, other)
     }
 
     override fun hashCode(): Int {
