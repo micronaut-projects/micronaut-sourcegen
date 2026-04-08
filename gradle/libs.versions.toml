@@ -1,5 +1,5 @@
 [versions]
-managed-kotlinpoet = "2.2.0"
+managed-kotlinpoet = "2.3.0"
 
 google-truth = "1.4.5"
 google-compile-testing = "0.23.0"
