@@ -8,7 +8,7 @@ intellij-java-decompiler = "253.31033.145"
 
 errorprone-gradle-plugin = "4.3.0"
 error_prone_core = "2.45.0"
-nullaway = "0.12.15"
+nullaway = "0.13.4"
 
 managed-asm = "9.9.1"
 
