@@ -15,7 +15,7 @@ managed-asm = "9.9.1"
 micronaut = "5.0.0-M24"
 micronaut-platform = "4.10.8"
 micronaut-data = "5.0.0-M6"
-micronaut-validation = "5.0.0-M1"
+micronaut-validation = "5.0.0-M2"
 micronaut-gradle-plugin = "4.6.2"
 
 [libraries]
