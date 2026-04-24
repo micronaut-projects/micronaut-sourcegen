@@ -16,7 +16,7 @@ micronaut = "5.0.0-M24"
 micronaut-platform = "4.10.8"
 micronaut-data = "5.0.0-M6"
 micronaut-validation = "5.0.0-M2"
-micronaut-gradle-plugin = "4.6.2"
+micronaut-gradle-plugin = "5.0.0-M1"
 
 [libraries]
 # Micronaut
