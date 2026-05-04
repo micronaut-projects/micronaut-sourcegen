@@ -26,7 +26,9 @@ import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
 import java.util.Map;
@@ -249,6 +251,29 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
             .build();
 
         sourceGenerator.write(switch9Def, context, element);
+
+        ClassDef switch10Def = ClassDef.builder(element.getPackageName() + ".Switch10")
+            .addMethod(MethodDef.builder("test").addParameter("param", String.class)
+                .addModifiers(Modifier.PUBLIC)
+                .returns(intType)
+                .build((self, parameterDefs) -> {
+                    VariableDef.Local result = new VariableDef.Local("result", intType);
+                    return StatementDef.multi(
+                        result.defineAndAssign(intType.constant(0)),
+                        parameterDefs.get(0).asStatementSwitch(
+                            intType,
+                            Map.of(
+                                ExpressionDef.constant("abc"), result.assign(intType.constant(1)),
+                                ExpressionDef.constant("xyz"), result.assign(intType.constant(2))
+                            ),
+                            result.assign(intType.constant(3))
+                        ),
+                        result.returning()
+                    );
+                }))
+            .build();
+
+        sourceGenerator.write(switch10Def, context, element);
     }
 
 }

@@ -90,4 +90,12 @@ internal class SwitchTest {
         assertEquals(TimeUnit.MINUTES, switch8.test("xyz"))
         assertEquals(TimeUnit.HOURS, switch8.test("ZZZZ"))
     }
+
+    @Test
+    fun switch10() {
+        val switch10: Switch10 = Switch10()
+        assertEquals(1, switch10.test("abc"))
+        assertEquals(2, switch10.test("xyz"))
+        assertEquals(3, switch10.test("ZZZZ"))
+    }
 }

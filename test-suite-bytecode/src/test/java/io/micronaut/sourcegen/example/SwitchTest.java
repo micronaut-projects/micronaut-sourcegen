@@ -102,4 +102,12 @@ class SwitchTest {
         assertEquals(3, switch8.test(0));
     }
 
+    @Test
+    public void switch10() {
+        Switch10 switch10 = new Switch10();
+        assertEquals(1, switch10.test("abc"));
+        assertEquals(2, switch10.test("xyz"));
+        assertEquals(3, switch10.test("ZZZZ"));
+    }
+
 }
