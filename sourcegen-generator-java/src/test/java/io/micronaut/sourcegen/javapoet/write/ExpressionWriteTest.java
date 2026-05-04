@@ -434,6 +434,50 @@ class MyClass {
     }
 
     @Test
+    void writeTryCatchFinallySpacing() throws IOException {
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
+        VariableDef.Local result = new VariableDef.Local("result", intType);
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .returns(intType)
+                .build((aThis, methodParameters) -> StatementDef.multi(
+                    result.defineAndAssign(intType.constant(0)),
+                    result.assign(intType.constant(1))
+                        .doTry()
+                        .doCatch(RuntimeException.class, exception -> result.assign(intType.constant(2)))
+                        .doFinally(result.assign(intType.constant(3))),
+                    result.returning()
+                ))
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        Assertions.assertFalse(data.contains(";\n\n    } catch"));
+        Assertions.assertFalse(data.contains(";\n\n    } finally"));
+        assertEquals("""
+package test;
+
+import java.lang.RuntimeException;
+
+class MyClass {
+  int test() {
+    int result = 0;
+    try {
+      result = 1;
+    } catch (RuntimeException e0) {
+      result = 2;
+    } finally {
+      result = 3;
+    }
+    return result;
+  }
+}
+""", data);
+    }
+
+    @Test
     public void compareOperations() throws IOException {
         String data = writeClass(
             ClassDef.builder("example.Example")

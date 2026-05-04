@@ -685,20 +685,26 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (statementDef instanceof StatementDef.Try tryStatement) {
             CodeBlock.Builder builder = CodeBlock.builder();
             builder.add("try {\n");
+            builder.indent();
             builder.add(renderStatementCodeBlock(objectDef, methodDef, remappedLocals, tryStatement.statement()));
+            builder.unindent();
             int i = 0;
             for (StatementDef.Try.Catch aCatch : tryStatement.catches()) {
                 String exceptionLocal = "e" + i++;
-                builder.add(CodeBlock.of("\n} catch ($T $L) {", asType(aCatch.exception(), objectDef), exceptionLocal));
+                builder.add(CodeBlock.of("} catch ($T $L) {\n", asType(aCatch.exception(), objectDef), exceptionLocal));
+                builder.indent();
                 Map<String, String> newRemappedLocals = new LinkedHashMap<>(remappedLocals);
                 newRemappedLocals.put(EXCEPTION_NAME, exceptionLocal);
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, newRemappedLocals, aCatch.statement()));
+                builder.unindent();
             }
             if (tryStatement.finallyStatement() != null) {
-                builder.add("\n} finally {");
+                builder.add("} finally {\n");
+                builder.indent();
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, remappedLocals, tryStatement.finallyStatement()));
+                builder.unindent();
             }
-            builder.add("\n}");
+            builder.add("}\n");
             return builder.build();
         }
         if (statementDef instanceof StatementDef.Synchronized s) {
