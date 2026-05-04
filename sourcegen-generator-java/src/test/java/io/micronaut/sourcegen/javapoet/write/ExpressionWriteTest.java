@@ -16,7 +16,9 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.util.AbstractList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
@@ -375,6 +377,57 @@ public class Example {
 
   void myMethod4() {
     return this.myMethod1(java.lang.String[].class);
+  }
+}
+""", data);
+    }
+
+    @Test
+    void writeStatementSwitchRulesDoNotFallThrough() throws IOException {
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
+        VariableDef.Local result = new VariableDef.Local("result", intType);
+        Map<ExpressionDef.Constant, StatementDef> cases = new LinkedHashMap<>();
+        cases.put(ExpressionDef.constant("abc"), result.assign(intType.constant(1)));
+        cases.put(ExpressionDef.constant("xyz"), result.assign(intType.constant(2)));
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("param", String.class)
+                .returns(intType)
+                .build((aThis, methodParameters) -> StatementDef.multi(
+                    result.defineAndAssign(intType.constant(0)),
+                    methodParameters.get(0).asStatementSwitch(
+                        intType,
+                        cases,
+                        result.assign(intType.constant(3))
+                    ),
+                    result.returning()
+                ))
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.String;
+
+class MyClass {
+  int test(String param) {
+    int result = 0;
+    switch (param) {
+      case "abc" -> {
+        result = 1;
+      }
+      case "xyz" -> {
+        result = 2;
+      }
+      default -> {
+        result = 3;
+      }
+    }
+    return result;
   }
 }
 """, data);

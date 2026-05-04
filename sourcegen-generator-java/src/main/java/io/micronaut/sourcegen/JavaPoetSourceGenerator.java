@@ -745,15 +745,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             for (Map.Entry<ExpressionDef.Constant, StatementDef> e : aSwitch.cases().entrySet()) {
                 builder.add("case ");
                 builder.add(renderConstantExpression(remappedLocals, e.getKey()));
-                builder.add(": {\n");
+                builder.add(" -> {\n");
                 builder.indent();
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, remappedLocals, e.getValue()));
                 builder.unindent();
                 builder.add("}\n");
             }
             if (aSwitch.defaultCase() != null) {
-                builder.add("default");
-                builder.add(": {\n");
+                builder.add("default -> {\n");
                 builder.indent();
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, remappedLocals, aSwitch.defaultCase()));
                 builder.unindent();
