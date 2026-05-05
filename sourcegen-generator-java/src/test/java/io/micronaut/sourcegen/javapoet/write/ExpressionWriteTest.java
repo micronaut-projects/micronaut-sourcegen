@@ -298,6 +298,128 @@ class MyClass implements Predicate {
     }
 
     @Test
+    void testDefineLocalWithCastedNullEliminatesCast() throws IOException {
+        TypeDef listOfStrings = TypeDef.parameterized(List.class, String.class);
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addStatement(StatementDef.multi(
+                    new VariableDef.Local("propertyValue0", TypeDef.STRING)
+                        .defineAndAssign(ExpressionDef.nullValue().cast(TypeDef.STRING)),
+                    new VariableDef.Local("propertyValue1", listOfStrings)
+                        .defineAndAssign(ExpressionDef.nullValue().cast(listOfStrings))
+                ))
+                .build())
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.String;
+import java.util.List;
+
+class MyClass {
+  void test() {
+    String propertyValue0 = null;
+    List<String> propertyValue1 = null;
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testMethodArgumentWithCastedNullEliminatesCast() throws IOException {
+        MethodDef acceptValue = MethodDef.builder("acceptValue")
+            .addParameter("value", TypeDef.STRING)
+            .build();
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(acceptValue)
+            .addMethod(MethodDef.builder("test")
+                .build((aThis, methodParameters) ->
+                    aThis.invoke(acceptValue, ExpressionDef.nullValue().cast(TypeDef.STRING))))
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.String;
+
+class MyClass {
+  void acceptValue(String value) {
+  }
+
+  void test() {
+    this.acceptValue(null);
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testDefineLocalWithTwiceCastedNullEliminatesCasts() throws IOException {
+        TypeDef listOfStrings = TypeDef.parameterized(List.class, String.class);
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addStatement(StatementDef.multi(
+                    new VariableDef.Local("propertyValue0", TypeDef.STRING)
+                        .defineAndAssign(ExpressionDef.nullValue().cast(TypeDef.OBJECT).cast(TypeDef.STRING)),
+                    new VariableDef.Local("propertyValue1", listOfStrings)
+                        .defineAndAssign(ExpressionDef.nullValue().cast(TypeDef.OBJECT).cast(listOfStrings))
+                ))
+                .build())
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.String;
+import java.util.List;
+
+class MyClass {
+  void test() {
+    String propertyValue0 = null;
+    List<String> propertyValue1 = null;
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testMethodArgumentWithTwiceCastedNullEliminatesCasts() throws IOException {
+        MethodDef acceptValue = MethodDef.builder("acceptValue")
+            .addParameter("value", TypeDef.STRING)
+            .build();
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(acceptValue)
+            .addMethod(MethodDef.builder("test")
+                .build((aThis, methodParameters) ->
+                    aThis.invoke(acceptValue, ExpressionDef.nullValue().cast(TypeDef.OBJECT).cast(TypeDef.STRING))))
+            .build();
+
+        String data = writeClass(classDef);
+        assertEquals("""
+package test;
+
+import java.lang.String;
+
+class MyClass {
+  void acceptValue(String value) {
+  }
+
+  void test() {
+    this.acceptValue(null);
+  }
+}
+            """, data);
+    }
+
+    @Test
     public void writeClass() throws IOException {
         String data = writeClass(
             ClassDef.builder("example.Example")

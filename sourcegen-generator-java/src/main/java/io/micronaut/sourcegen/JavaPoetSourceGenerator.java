@@ -787,6 +787,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         return renderExpression(objectDef, methodDef, remappedLocals, expressionDef, false);
     }
 
+    private static boolean isNullLiteral(ExpressionDef expressionDef) {
+        while (expressionDef instanceof ExpressionDef.Cast castExpressionDef) {
+            expressionDef = castExpressionDef.expressionDef();
+        }
+        return expressionDef instanceof ExpressionDef.Constant constant && constant.value() == null;
+    }
+
     private CodeBlock renderExpression(@Nullable ObjectDef objectDef,
                                        @Nullable MethodDef methodDef,
                                        Map<String, String> remappedLocals,
@@ -832,6 +839,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 }
                 // Only keep the last cast
                 exp = cast.expressionDef();
+            }
+            if (isNullLiteral(exp)) {
+                return renderExpression(objectDef, methodDef, remappedLocals, exp);
             }
             if (castExpressionDef.type().equals(exp.type()) || isRef) {
                 return renderExpression(objectDef, methodDef, remappedLocals, exp);
