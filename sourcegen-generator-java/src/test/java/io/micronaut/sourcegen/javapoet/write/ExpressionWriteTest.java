@@ -128,7 +128,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() == null) {
       return 0;
     }
-    return (int) (this.getIntegerValue());
+    return (int) this.getIntegerValue();
   }
 }
             """, data);
@@ -169,7 +169,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() == null) {
       return 0;
     }
-    return (int) (this.getIntegerValue());
+    return (int) this.getIntegerValue();
   }
 }
             """, data);
@@ -210,7 +210,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() != null) {
       return 0;
     }
-    return (int) (this.getIntegerValue());
+    return (int) this.getIntegerValue();
   }
 }
             """, data);
@@ -251,7 +251,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() instanceof java.lang.String) {
       return 0;
     }
-    return (int) (this.getIntegerValue());
+    return (int) this.getIntegerValue();
   }
 }
             """, data);
@@ -293,7 +293,71 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() == "Hello") {
       return 0;
     }
-    return (int) (this.getIntegerValue());
+    return (int) this.getIntegerValue();
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testObjectCastEliminatesFromReferenceChecks() throws IOException {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("value", String.class)
+                .addParameter("other", String.class)
+                .returns(boolean.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef value = methodParameters.get(0).cast(TypeDef.OBJECT);
+                    ExpressionDef other = methodParameters.get(1).cast(TypeDef.OBJECT);
+                    return value.equalsReferentially(other)
+                        .and(value.isNonNull())
+                        .and(value.notEqualsReferentially(ExpressionDef.constant("ignored").cast(TypeDef.OBJECT)))
+                        .returning();
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.String;
+
+class MyClass {
+  boolean test(String value, String other) {
+    return value == other && value != null && value != "ignored";
+  }
+}
+            """, data);
+    }
+
+    @Test
+    void testObjectCastRetainsForPrimitiveReferenceChecks() throws IOException {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("value", int.class)
+                .returns(boolean.class)
+                .build((aThis, methodParameters) -> {
+                    ExpressionDef value = methodParameters.get(0);
+                    return value.equalsReferentially(ExpressionDef.constant(1))
+                        .and(value.isNonNull())
+                        .and(value.instanceOf(ClassTypeDef.of(Integer.class)))
+                        .returning();
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+
+class MyClass {
+  boolean test(int value) {
+    return value == 1 && (Object) value != null && (Object) value instanceof java.lang.Integer;
   }
 }
             """, data);
@@ -556,6 +620,43 @@ class MyClass {
     }
 
     @Test
+    void writeExpressionSwitchAlignment() throws IOException {
+        TypeDef resultType = TypeDef.of(Integer.class);
+        Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
+        cases.put(ExpressionDef.constant("abc"), ExpressionDef.constant(1));
+        cases.put(ExpressionDef.constant("xyz"), ExpressionDef.constant(2));
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("param", String.class)
+                .returns(resultType)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .asExpressionSwitch(resultType, cases, ExpressionDef.constant(3))
+                    .returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.Integer;
+import java.lang.String;
+
+class MyClass {
+  Integer test(String param) {
+    return switch (param) {
+      case "abc" -> 1;
+      case "xyz" -> 2;
+      default -> 3;
+    };
+  }
+}
+""", data);
+    }
+
+    @Test
     void writeTryCatchFinallySpacing() throws IOException {
         TypeDef.Primitive intType = TypeDef.Primitive.INT;
         VariableDef.Local result = new VariableDef.Local("result", intType);
@@ -600,6 +701,154 @@ class MyClass {
     }
 
     @Test
+    void writeSynchronizedBlock() throws IOException {
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
+        VariableDef.Local result = new VariableDef.Local("result", intType);
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .returns(intType)
+                .build((aThis, methodParameters) -> StatementDef.multi(
+                    result.defineAndAssign(intType.constant(0)),
+                    new StatementDef.Synchronized(aThis, result.assign(intType.constant(1))),
+                    result.returning()
+                ))
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+class MyClass {
+  int test() {
+    int result = 0;
+    synchronized (this) {
+      result = 1;
+    }
+    return result;
+  }
+}
+""", data);
+    }
+
+    @Test
+    void writeSynchronizedBlockWithReturn() throws IOException {
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .returns(intType)
+                .build((aThis, methodParameters) ->
+                    new StatementDef.Synchronized(aThis, intType.constant(1).returning()))
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+class MyClass {
+  int test() {
+    synchronized (this) {
+      return 1;
+    }
+  }
+}
+""", data);
+    }
+
+    @Test
+    void writeTryMultipleCatchFinally() throws IOException {
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
+        VariableDef.Local result = new VariableDef.Local("result", intType);
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .returns(intType)
+                .build((aThis, methodParameters) -> StatementDef.multi(
+                    result.defineAndAssign(intType.constant(0)),
+                    result.assign(intType.constant(1))
+                        .doTry()
+                        .doCatch(RuntimeException.class, exception -> result.assign(intType.constant(2)))
+                        .doCatch(IOException.class, exception -> result.assign(intType.constant(3)))
+                        .doFinally(result.assign(intType.constant(4))),
+                    result.returning()
+                ))
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.io.IOException;
+import java.lang.RuntimeException;
+
+class MyClass {
+  int test() {
+    int result = 0;
+    try {
+      result = 1;
+    } catch (RuntimeException e0) {
+      result = 2;
+    } catch (IOException e1) {
+      result = 3;
+    } finally {
+      result = 4;
+    }
+    return result;
+  }
+}
+""", data);
+    }
+
+    @Test
+    void writeTryMultipleCatchFinallyWithReturn() throws IOException {
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .returns(intType)
+                .build((aThis, methodParameters) -> StatementDef.multi(
+                    intType.constant(1)
+                        .returning()
+                        .doTry()
+                        .doCatch(RuntimeException.class, exception -> intType.constant(2).returning())
+                        .doCatch(IOException.class, exception -> intType.constant(3).returning())
+                        .doFinally(intType.constant(4).returning())
+                ))
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.io.IOException;
+import java.lang.RuntimeException;
+
+class MyClass {
+  int test() {
+    try {
+      return 1;
+    } catch (RuntimeException e0) {
+      return 2;
+    } catch (IOException e1) {
+      return 3;
+    } finally {
+      return 4;
+    }
+  }
+}
+""", data);
+    }
+
+    @Test
     public void compareOperations() throws IOException {
         String data = writeClass(
             ClassDef.builder("example.Example")
@@ -628,7 +877,7 @@ import java.lang.Object;
 
 public class Example {
   Object[] myMethod(int arg1, int arg2) {
-    return new Object[]{arg1 == arg2,arg1 != arg2,arg1 > arg2,arg1 < arg2,arg1 >= arg2,arg1 <= arg2,arg1 == null,arg1 != null};
+    return new Object[]{arg1 == arg2,arg1 != arg2,arg1 > arg2,arg1 < arg2,arg1 >= arg2,arg1 <= arg2,(Object) arg1 == null,(Object) arg1 != null};
   }
 }
 """, data);
@@ -766,7 +1015,7 @@ public class Example {
             .cast(TypeDef.Primitive.FLOAT);
         String result = writeMethodWithExpression(castedExpression);
 
-        assertEquals("(float) (10.5d)", result);
+        assertEquals("(float) 10.5d", result);
     }
 
     @Test
@@ -777,7 +1026,7 @@ public class Example {
         );
         String result = writeMethodWithExpression(castedExpression);
 
-        assertEquals("(Object) (\"hello\")", result);
+        assertEquals("(Object) \"hello\"", result);
     }
 
     @Test
@@ -789,6 +1038,187 @@ public class Example {
         String result = writeMethodWithExpression(castedExpression);
 
         assertEquals("(Integer) field", result);
+    }
+
+    @Test
+    public void returnCastedConditionWithParentheses() throws IOException {
+        ExpressionDef castedExpression = ExpressionDef.constant(1)
+            .compare(LESS_THAN, ExpressionDef.constant(2))
+            .cast(TypeDef.OBJECT);
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(Object) (1 < 2)", result);
+    }
+
+    @Test
+    public void returnCastedIfElseWithParentheses() throws IOException {
+        ExpressionDef castedExpression = ExpressionDef.trueValue()
+            .ifTrue(ExpressionDef.constant("yes"), ExpressionDef.constant("no"))
+            .cast(TypeDef.OBJECT);
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(Object) (true ? \"yes\" : \"no\")", result);
+    }
+
+    @Test
+    public void returnCastedMathOperationWithParentheses() throws IOException {
+        ExpressionDef castedExpression = ExpressionDef.constant(1)
+            .math(ADDITION, ExpressionDef.constant(2))
+            .cast(TypeDef.Primitive.LONG);
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(long) (1 + 2)", result);
+    }
+
+    @Test
+    public void returnNestedMathOperationWithParentheses() throws IOException {
+        ExpressionDef expression = ExpressionDef.constant(1)
+            .math(MULTIPLICATION, ExpressionDef.constant(2)
+                .math(ADDITION, ExpressionDef.constant(3)));
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("1 * (2 + 3)", result);
+    }
+
+    @Test
+    public void returnRightNestedMathOperationWithSamePrecedenceParentheses() throws IOException {
+        ExpressionDef expression = ExpressionDef.constant(1)
+            .math(SUBTRACTION, ExpressionDef.constant(2)
+                .math(SUBTRACTION, ExpressionDef.constant(3)));
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("1 - (2 - 3)", result);
+    }
+
+    @Test
+    public void returnBinaryComparisonWithMathOperandsParentheses() throws IOException {
+        ExpressionDef expression = ExpressionDef.constant(1)
+            .math(ADDITION, ExpressionDef.constant(2))
+            .compare(LESS_THAN, ExpressionDef.constant(3)
+                .math(SUBTRACTION, ExpressionDef.constant(4)));
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("(1 + 2) < (3 - 4)", result);
+    }
+
+    @Test
+    public void returnCastedNestedMathOperationWithParentheses() throws IOException {
+        ExpressionDef castedExpression = ExpressionDef.constant(1)
+            .math(MULTIPLICATION, ExpressionDef.constant(2)
+                .math(ADDITION, ExpressionDef.constant(3)))
+            .cast(TypeDef.Primitive.LONG);
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(long) (1 * (2 + 3))", result);
+    }
+
+    @Test
+    public void returnCastedStringConcatenationWithParentheses() throws IOException {
+        ExpressionDef castedExpression = ExpressionDef.constant("value: ")
+            .stringConcat(ExpressionDef.constant(1))
+            .cast(TypeDef.OBJECT);
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(Object) (\"value: \" + 1)", result);
+    }
+
+    @Test
+    public void returnSwitchWithoutCast() throws IOException {
+        Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
+        cases.put(ExpressionDef.constant(1), ExpressionDef.constant("one"));
+        cases.put(ExpressionDef.constant(2), ExpressionDef.constant("two"));
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("value", TypeDef.Primitive.INT)
+                .returns(TypeDef.OBJECT)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .asExpressionSwitch(TypeDef.OBJECT, cases, ExpressionDef.constant("other"))
+                    .returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+
+class MyClass {
+  Object test(int value) {
+    return switch (value) {
+      case 1 -> "one";
+      case 2 -> "two";
+      default -> "other";
+    };
+  }
+}
+""", data);
+    }
+
+    @Test
+    public void returnStringSwitchWithoutCast() throws IOException {
+        Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
+        cases.put(ExpressionDef.constant(1), ExpressionDef.constant("one"));
+        cases.put(ExpressionDef.constant(2), ExpressionDef.constant("two"));
+
+        ClassDef classDef = ClassDef.builder("test.CastedSwitch")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("value", TypeDef.Primitive.INT)
+                .returns(TypeDef.STRING)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .asExpressionSwitch(TypeDef.STRING, cases, ExpressionDef.constant("other"))
+                    .returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.String;
+
+class CastedSwitch {
+  String test(int value) {
+    return switch (value) {
+      case 1 -> "one";
+      case 2 -> "two";
+      default -> "other";
+    };
+  }
+}
+""", data);
+    }
+
+    @Test
+    public void invokeMethodOnCastedExpressionWithParentheses() throws IOException {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("value", TypeDef.OBJECT)
+                .returns(TypeDef.STRING)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .cast(TypeDef.STRING)
+                    .invoke("trim", TypeDef.STRING)
+                    .returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.lang.String;
+
+class MyClass {
+  String test(Object value) {
+    return ((String) value).trim();
+  }
+}
+""", data);
     }
 
     @Test
@@ -843,7 +1273,7 @@ public class Example {
         );
         String result = writeMethodWithExpression(orExpression);
 
-        assertEquals("(true || field)", result);
+        assertEquals("true || field", result);
     }
 
     @Test
@@ -854,7 +1284,7 @@ public class Example {
         );
         String result = writeMethodWithExpression(orExpression);
 
-        assertEquals("(true && false || (true || false))", result);
+        assertEquals("true && false || true || false", result);
     }
 
     @Test
