@@ -77,6 +77,7 @@ import static io.micronaut.sourcegen.javapoet.TypeSpec.anonymousClassBuilder;
  * @since 1.0
  */
 @Internal
+@SuppressWarnings("java:S6201")
 public sealed class JavaPoetSourceGenerator implements SourceGenerator permits GroovyPoetSourceGenerator {
     private static final String EXCEPTION_NAME = "$exception";
 
@@ -471,12 +472,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 builder.addMember(memberName, asAnnotationSpec(annotationValue));
             case VariableDef variableDef ->
                 builder.addMember(memberName, renderVariable(null, null, Map.of(), variableDef));
-            case Class<?> aClass -> builder.addMember(memberName, "$T.class", value);
-            case Enum anEnum ->
+            case Class<?> _ -> builder.addMember(memberName, "$T.class", value);
+            case Enum<?> anEnum ->
                 builder.addMember(memberName, "$T.$L", value.getClass(), anEnum.name());
-            case String s -> builder.addMember(memberName, "$S", value);
-            case Float v -> builder.addMember(memberName, "$Lf", value);
-            case Character c ->
+            case String _ -> builder.addMember(memberName, "$S", value);
+            case Float _ -> builder.addMember(memberName, "$Lf", value);
+            case Character _ ->
                 builder.addMember(memberName, "'$L'", Util.characterLiteralWithoutSingleQuotes((char) value));
             case ClassTypeDef typeDef ->
                 builder.addMember(memberName, "$L.class", typeDef.getSimpleName());
@@ -572,10 +573,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 var annotationsSpecs = annotatedType.annotations().stream().map(this::asAnnotationSpec).toList();
                 return asType(annotatedType.typeDef(), objectDef).annotated(annotationsSpecs);
             }
-            default -> {
-            }
+            default -> throw new IllegalStateException("Unrecognized type definition " + typeDef);
         }
-        throw new IllegalStateException("Unrecognized type definition " + typeDef);
     }
 
     private static boolean isVariablePartOfTheDefinition(String variableName, @Nullable ObjectDef objectDef, @Nullable MethodDef methodDef) {
@@ -658,10 +657,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             case ExpressionDef expressionDef -> {
                 return renderExpression(objectDef, methodDef, remappedLocals, expressionDef);
             }
-            case null, default -> {
-            }
+            case null, default -> throw new IllegalStateException("Unrecognized statement: " + statementDef);
         }
-        throw new IllegalStateException("Unrecognized statement: " + statementDef);
     }
 
     private CodeBlock renderStatementCodeBlock(@Nullable ObjectDef objectDef,
@@ -776,18 +773,18 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return builder.build();
             }
             case null, default -> {
+                CodeBlock statement = renderStatement(objectDef, methodDef, remappedLocals, statementDef);
+                if (statementDef != null && containsSwitchExpression(statementDef)) {
+                    return CodeBlock.builder()
+                        .add(statement)
+                        .add(";\n")
+                        .build();
+                }
+                return CodeBlock.builder()
+                    .addStatement(statement)
+                    .build();
             }
         }
-        CodeBlock statement = renderStatement(objectDef, methodDef, remappedLocals, statementDef);
-        if (statementDef != null && containsSwitchExpression(statementDef)) {
-            return CodeBlock.builder()
-                .add(statement)
-                .add(";\n")
-                .build();
-        }
-        return CodeBlock.builder()
-            .addStatement(statement)
-            .build();
     }
 
     private static boolean containsSwitchExpression(StatementDef statementDef) {
@@ -1028,10 +1025,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     renderExpression(objectDef, methodDef, remappedLocals, concat.right())
                 );
             }
-            case null, default -> {
-            }
+            case null, default -> throw new IllegalStateException("Unrecognized expression: " + expressionDef);
         }
-        throw new IllegalStateException("Unrecognized expression: " + expressionDef);
     }
 
     private static String getMathOp(ExpressionDef.MathBinaryOperation mathOperation) {
@@ -1161,13 +1156,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private static boolean requiresMethodCallTargetParentheses(ExpressionDef expressionDef) {
         return expressionDef instanceof ExpressionDef.Cast
-            || expressionDef instanceof ExpressionDef.ConditionExpressionDef
             || expressionDef instanceof ExpressionDef.IfElse
-            || expressionDef instanceof ExpressionDef.MathBinaryOperation
-            || expressionDef instanceof ExpressionDef.MathUnaryOperation
             || expressionDef instanceof ExpressionDef.StringConcatenation
-            || expressionDef instanceof ExpressionDef.Switch
-            || expressionDef instanceof Lambda;
+            || expressionDef instanceof ExpressionDef.Switch;
     }
 
     private static boolean canEliminateCastToObject(ExpressionDef.Cast castExpressionDef,
@@ -1298,10 +1289,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 ExpressionDef right = notEqualsReferentially.other();
                 return renderNotEqualsReferentially(objectDef, methodDef, remappedLocals, left, right);
             }
-            case null, default -> {
-            }
+            case null, default -> throw new IllegalStateException("Unrecognized condition: " + expressionDef);
         }
-        throw new IllegalStateException("Unrecognized condition: " + expressionDef);
     }
 
     private CodeBlock renderAndConditionOperand(@Nullable ObjectDef objectDef,
@@ -1317,7 +1306,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private static boolean isOrCondition(ExpressionDef.ConditionExpressionDef expressionDef) {
         return switch (expressionDef) {
-            case ExpressionDef.Or ignore -> true;
+            case ExpressionDef.Or _ -> true;
             case ExpressionDef.IsTrue isTrue when unwrapCasts(isTrue.expression()) instanceof ExpressionDef.ConditionExpressionDef conditionExpressionDef ->
                 isOrCondition(conditionExpressionDef);
             case null, default -> false;
@@ -1465,22 +1454,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return CodeBlock.of("$T.$L", asType(staticField.ownerType(), objectDef), staticField.name());
             }
             case VariableDef.Field field -> {
-                switch (objectDef) {
-                    case ClassDef classDef -> {
-                        if (!classDef.hasField(field.name())) {
-                            throw new IllegalStateException("Field '" + field.name() + "' is not available in [" + classDef + "]:" + classDef.getFields());
-                        }
-                    }
-                    case EnumDef enumDef -> {
-                        if (!enumDef.hasField(field.name())) {
-                            throw new IllegalStateException("Field '" + field.name() + "' is not available in [" + enumDef + "]:" + enumDef.getProperties());
-                        }
-                    }
-                    case null ->
-                        throw new IllegalStateException("Accessing 'this' is not available");
-                    default ->
-                        throw new IllegalStateException("Field access not supported on the object definition: " + objectDef);
-                }
+                validateFieldAccess(objectDef, field);
                 ExpressionDef instance = field.instance();
                 if (!instance.type().equals(field.declaringType())) {
                     return CodeBlock.of(
@@ -1488,7 +1462,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 }
                 return CodeBlock.of(renderExpression(objectDef, methodDef, remappedLocals, instance) + "." + field.name());
             }
-            case VariableDef.This ignore -> {
+            case VariableDef.This _ -> {
                 if (objectDef == null) {
                     throw new IllegalStateException("Accessing 'this' is not available");
                 }
@@ -1503,10 +1477,27 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 }
                 return CodeBlock.of("super");
             }
-            case null, default -> {
-            }
+            case null, default -> throw new IllegalStateException("Unrecognized variable: " + variableDef);
         }
-        throw new IllegalStateException("Unrecognized variable: " + variableDef);
+    }
+
+    private static void validateFieldAccess(@Nullable ObjectDef objectDef, VariableDef.Field field) {
+        switch (objectDef) {
+            case null ->
+                throw new IllegalStateException("Accessing 'this' is not available");
+            case ClassDef classDef when classDef.hasField(field.name()) -> {
+                return;
+            }
+            case ClassDef classDef ->
+                throw new IllegalStateException("Field '" + field.name() + "' is not available in [" + classDef + "]:" + classDef.getFields());
+            case EnumDef enumDef when enumDef.hasField(field.name()) -> {
+                return;
+            }
+            case EnumDef enumDef ->
+                throw new IllegalStateException("Field '" + field.name() + "' is not available in [" + enumDef.getName() + "]:" + enumDef.getProperties());
+            default ->
+                throw new IllegalStateException("Field access not supported on the object definition: " + objectDef);
+        }
     }
 
 }

@@ -1041,7 +1041,7 @@ public class Example {
     }
 
     @Test
-    public void returnCastedConditionWithParentheses() throws IOException {
+    void returnCastedConditionWithParentheses() throws IOException {
         ExpressionDef castedExpression = ExpressionDef.constant(1)
             .compare(LESS_THAN, ExpressionDef.constant(2))
             .cast(TypeDef.OBJECT);
@@ -1051,7 +1051,7 @@ public class Example {
     }
 
     @Test
-    public void returnCastedIfElseWithParentheses() throws IOException {
+    void returnCastedIfElseWithParentheses() throws IOException {
         ExpressionDef castedExpression = ExpressionDef.trueValue()
             .ifTrue(ExpressionDef.constant("yes"), ExpressionDef.constant("no"))
             .cast(TypeDef.OBJECT);
@@ -1061,7 +1061,7 @@ public class Example {
     }
 
     @Test
-    public void returnCastedMathOperationWithParentheses() throws IOException {
+    void returnCastedMathOperationWithParentheses() throws IOException {
         ExpressionDef castedExpression = ExpressionDef.constant(1)
             .math(ADDITION, ExpressionDef.constant(2))
             .cast(TypeDef.Primitive.LONG);
@@ -1071,7 +1071,7 @@ public class Example {
     }
 
     @Test
-    public void returnNestedMathOperationWithParentheses() throws IOException {
+    void returnNestedMathOperationWithParentheses() throws IOException {
         ExpressionDef expression = ExpressionDef.constant(1)
             .math(MULTIPLICATION, ExpressionDef.constant(2)
                 .math(ADDITION, ExpressionDef.constant(3)));
@@ -1081,7 +1081,7 @@ public class Example {
     }
 
     @Test
-    public void returnRightNestedMathOperationWithSamePrecedenceParentheses() throws IOException {
+    void returnRightNestedMathOperationWithSamePrecedenceParentheses() throws IOException {
         ExpressionDef expression = ExpressionDef.constant(1)
             .math(SUBTRACTION, ExpressionDef.constant(2)
                 .math(SUBTRACTION, ExpressionDef.constant(3)));
@@ -1091,7 +1091,7 @@ public class Example {
     }
 
     @Test
-    public void returnBinaryComparisonWithMathOperandsParentheses() throws IOException {
+    void returnBinaryComparisonWithMathOperandsParentheses() throws IOException {
         ExpressionDef expression = ExpressionDef.constant(1)
             .math(ADDITION, ExpressionDef.constant(2))
             .compare(LESS_THAN, ExpressionDef.constant(3)
@@ -1102,7 +1102,7 @@ public class Example {
     }
 
     @Test
-    public void returnCastedNestedMathOperationWithParentheses() throws IOException {
+    void returnCastedNestedMathOperationWithParentheses() throws IOException {
         ExpressionDef castedExpression = ExpressionDef.constant(1)
             .math(MULTIPLICATION, ExpressionDef.constant(2)
                 .math(ADDITION, ExpressionDef.constant(3)))
@@ -1113,7 +1113,7 @@ public class Example {
     }
 
     @Test
-    public void returnCastedStringConcatenationWithParentheses() throws IOException {
+    void returnCastedStringConcatenationWithParentheses() throws IOException {
         ExpressionDef castedExpression = ExpressionDef.constant("value: ")
             .stringConcat(ExpressionDef.constant(1))
             .cast(TypeDef.OBJECT);
@@ -1123,7 +1123,7 @@ public class Example {
     }
 
     @Test
-    public void returnSwitchWithoutCast() throws IOException {
+    void returnSwitchWithoutCast() throws IOException {
         Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
         cases.put(ExpressionDef.constant(1), ExpressionDef.constant("one"));
         cases.put(ExpressionDef.constant(2), ExpressionDef.constant("two"));
@@ -1158,7 +1158,7 @@ class MyClass {
     }
 
     @Test
-    public void returnStringSwitchWithoutCast() throws IOException {
+    void returnStringSwitchWithoutCast() throws IOException {
         Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
         cases.put(ExpressionDef.constant(1), ExpressionDef.constant("one"));
         cases.put(ExpressionDef.constant(2), ExpressionDef.constant("two"));
@@ -1193,7 +1193,7 @@ class CastedSwitch {
     }
 
     @Test
-    public void invokeMethodOnCastedExpressionWithParentheses() throws IOException {
+    void invokeMethodOnCastedExpressionWithParentheses() throws IOException {
         ClassDef classDef = ClassDef.builder("test.MyClass")
             .addMethod(MethodDef.builder("test")
                 .addParameter("value", TypeDef.OBJECT)
@@ -1216,6 +1216,62 @@ import java.lang.String;
 class MyClass {
   String test(Object value) {
     return ((String) value).trim();
+  }
+}
+""", data);
+    }
+
+    @Test
+    void invokeMethodOnIfElseExpressionWithParentheses() throws IOException {
+        ExpressionDef expression = ExpressionDef.trueValue()
+            .ifTrue(ExpressionDef.constant(" yes "), ExpressionDef.constant(" no "))
+            .invoke("trim", TypeDef.STRING);
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("(true ? \" yes \" : \" no \").trim()", result);
+    }
+
+    @Test
+    void invokeMethodOnStringConcatenationWithParentheses() throws IOException {
+        ExpressionDef expression = ExpressionDef.constant("value: ")
+            .stringConcat(ExpressionDef.constant(1))
+            .invoke("trim", TypeDef.STRING);
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("(\"value: \" + 1).trim()", result);
+    }
+
+    @Test
+    void invokeMethodOnSwitchExpressionWithParentheses() throws IOException {
+        Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
+        cases.put(ExpressionDef.constant(1), ExpressionDef.constant("one"));
+        cases.put(ExpressionDef.constant(2), ExpressionDef.constant("two"));
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("value", TypeDef.Primitive.INT)
+                .returns(TypeDef.STRING)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .asExpressionSwitch(TypeDef.STRING, cases, ExpressionDef.constant("other"))
+                    .invoke("trim", TypeDef.STRING)
+                    .returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.String;
+
+class MyClass {
+  String test(int value) {
+    return (switch (value) {
+      case 1 -> "one";
+      case 2 -> "two";
+      default -> "other";
+    }).trim();
   }
 }
 """, data);
