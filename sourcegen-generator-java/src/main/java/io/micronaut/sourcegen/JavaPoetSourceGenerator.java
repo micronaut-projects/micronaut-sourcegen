@@ -970,7 +970,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     throw new IllegalStateException("SwitchYieldCase did not return any statements");
                 }
                 StatementDef last = flatten.getLast();
-                if (!(last instanceof StatementDef.Return)) {
+                if (!hasSwitchYieldReturn(statement)) {
                     throw new IllegalStateException("The last statement of SwitchYieldCase should be a return. Found: " + last);
                 }
                 builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, statement));
@@ -1345,6 +1345,20 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             .build();
     }
 
+    private static boolean hasSwitchYieldReturn(StatementDef statementDef) {
+        List<StatementDef> statements = statementDef.flatten();
+        if (statements.isEmpty()) {
+            return false;
+        }
+        StatementDef last = statements.getLast();
+        return switch (last) {
+            case StatementDef.Return(_) -> true;
+            case StatementDef.IfElse(_, StatementDef statement, StatementDef elseStatement) ->
+                hasSwitchYieldReturn(statement) && hasSwitchYieldReturn(elseStatement);
+            default -> false;
+        };
+    }
+
     private void renderYield(CodeBlock.Builder builder, @Nullable MethodDef methodDef, Map<String, String> remappedLocals, StatementDef statementDef, @Nullable ObjectDef objectDef) {
         if (statementDef instanceof StatementDef.Return aReturn) {
             ExpressionDef expression = aReturn.expression();
@@ -1367,35 +1381,35 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                                           Map<String, String> remappedLocals,
                                                           StatementDef statementDef) {
         return switch (statementDef) {
-            case StatementDef.Multi multi -> {
+            case StatementDef.Multi(List<StatementDef> statements) -> {
                 CodeBlock.Builder builder = CodeBlock.builder();
-                for (StatementDef statement : multi.statements()) {
+                for (StatementDef statement : statements) {
                     builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, statement));
                 }
                 yield builder.build();
             }
-            case StatementDef.If ifStatement -> {
+            case StatementDef.If(ExpressionDef condition, StatementDef statement) -> {
                 CodeBlock.Builder builder = CodeBlock.builder();
                 builder.add("if (");
-                builder.add(renderExpression(objectDef, methodDef, remappedLocals, ifStatement.condition()));
+                builder.add(renderExpression(objectDef, methodDef, remappedLocals, condition));
                 builder.add(") {\n");
                 builder.indent();
-                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, ifStatement.statement()));
+                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, statement));
                 builder.unindent();
                 builder.add("}\n");
                 yield builder.build();
             }
-            case StatementDef.IfElse ifStatement -> {
+            case StatementDef.IfElse(ExpressionDef condition, StatementDef statement, StatementDef elseStatement) -> {
                 CodeBlock.Builder builder = CodeBlock.builder();
                 builder.add("if (");
-                builder.add(renderExpression(objectDef, methodDef, remappedLocals, ifStatement.condition()));
+                builder.add(renderExpression(objectDef, methodDef, remappedLocals, condition));
                 builder.add(") {\n");
                 builder.indent();
-                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, ifStatement.statement()));
+                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, statement));
                 builder.unindent();
                 builder.add("} else {\n");
                 builder.indent();
-                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, ifStatement.elseStatement()));
+                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, elseStatement));
                 builder.unindent();
                 builder.add("}\n");
                 yield builder.build();

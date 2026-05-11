@@ -111,7 +111,7 @@ class SwitchTest {
     }
 
     @Test
-    public void switch11() {
+    void switch11() {
         Switch11 switch11 = new Switch11();
         assertEquals(11, switch11.test("abc", 1));
         assertEquals(12, switch11.test("abc", 2));
