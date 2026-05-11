@@ -657,6 +657,114 @@ class MyClass {
     }
 
     @Test
+    void writeExpressionSwitchCaseWithMultipleYields() throws IOException {
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
+        Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("param1", String.class)
+                .addParameter("param2", intType)
+                .returns(intType)
+                .build((aThis, methodParameters) -> {
+                    cases.put(ExpressionDef.constant("abc"), yieldWithConditionalBranch(intType, methodParameters.get(1), 1, 11, 12));
+                    cases.put(ExpressionDef.constant("xyz"), yieldWithConditionalBranch(intType, methodParameters.get(1), 2, 22, 23));
+                    return methodParameters.get(0)
+                        .asExpressionSwitch(
+                            intType,
+                            cases,
+                            yieldWithConditionalBranch(intType, methodParameters.get(1), 3, 33, 34)
+                        )
+                        .returning();
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.String;
+
+class MyClass {
+  int test(String param1, int param2) {
+    return switch (param1) {
+      case "abc" -> {
+        if (param2 == 1) {
+          yield 11;
+        }
+        yield 12;
+      }
+      case "xyz" -> {
+        if (param2 == 2) {
+          yield 22;
+        }
+        yield 23;
+      }
+      default -> {
+        if (param2 == 3) {
+          yield 33;
+        }
+        yield 34;
+      }
+    };
+  }
+}
+""", data);
+    }
+
+    @Test
+    void writeExpressionSwitchCaseWithIfElseYields() throws IOException {
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
+        Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("param1", String.class)
+                .addParameter("param2", intType)
+                .returns(intType)
+                .build((aThis, methodParameters) -> {
+                    cases.put(ExpressionDef.constant("abc"), new ExpressionDef.SwitchYieldCase(
+                        intType,
+                        methodParameters.get(1).compare(EQUAL_TO, intType.constant(1))
+                            .ifTrue(
+                                intType.constant(11).returning(),
+                                intType.constant(12).returning()
+                            )
+                    ));
+                    return methodParameters.get(0)
+                        .asExpressionSwitch(intType, cases, intType.constant(0))
+                        .returning();
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.String;
+
+class MyClass {
+  int test(String param1, int param2) {
+    return switch (param1) {
+      case "abc" -> {
+        if (param2 == 1) {
+          yield 11;
+        } else {
+          yield 12;
+        }
+      }
+      default -> 0;
+    };
+  }
+}
+""", data);
+    }
+
+    @Test
     void writeTryCatchFinallySpacing() throws IOException {
         TypeDef.Primitive intType = TypeDef.Primitive.INT;
         VariableDef.Local result = new VariableDef.Local("result", intType);
@@ -1371,6 +1479,21 @@ class MyClass {
         result = writeMethodWithExpression(concat);
 
         assertEquals("\"Hello \" + 1 + \"Welcome!\"", result);
+    }
+
+    private static ExpressionDef.SwitchYieldCase yieldWithConditionalBranch(TypeDef.Primitive intType,
+                                                                            ExpressionDef conditionValue,
+                                                                            int expectedValue,
+                                                                            int matchingResult,
+                                                                            int fallbackResult) {
+        return new ExpressionDef.SwitchYieldCase(
+            intType,
+            StatementDef.multi(
+                conditionValue.compare(EQUAL_TO, intType.constant(expectedValue))
+                    .ifTrue(intType.constant(matchingResult).returning()),
+                intType.constant(fallbackResult).returning()
+            )
+        );
     }
 
 }

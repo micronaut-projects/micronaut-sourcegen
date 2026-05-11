@@ -34,6 +34,8 @@ import javax.lang.model.element.Modifier;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
+
 @Internal
 public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateSwitch, Object> {
 
@@ -274,6 +276,41 @@ public final class GenerateSwitchVisitor implements TypeElementVisitor<GenerateS
             .build();
 
         sourceGenerator.write(switch10Def, context, element);
+
+        ClassDef switch11Def = ClassDef.builder(element.getPackageName() + ".Switch11")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("param1", String.class)
+                .addParameter("param2", int.class)
+                .addModifiers(Modifier.PUBLIC)
+                .returns(intType)
+                .build((self, parameterDefs) ->
+                    parameterDefs.get(0).asExpressionSwitch(
+                        intType,
+                        Map.of(
+                            ExpressionDef.constant("abc"), yieldWithConditionalBranch(intType, parameterDefs.get(1), 1, 11, 12),
+                            ExpressionDef.constant("xyz"), yieldWithConditionalBranch(intType, parameterDefs.get(1), 2, 22, 23)
+                        ),
+                        yieldWithConditionalBranch(intType, parameterDefs.get(1), 3, 33, 34)
+                    ).returning()
+                ))
+            .build();
+
+        sourceGenerator.write(switch11Def, context, element);
+    }
+
+    private static ExpressionDef.SwitchYieldCase yieldWithConditionalBranch(TypeDef.Primitive intType,
+                                                                            ExpressionDef conditionValue,
+                                                                            int expectedValue,
+                                                                            int matchingResult,
+                                                                            int fallbackResult) {
+        return new ExpressionDef.SwitchYieldCase(
+            intType,
+            StatementDef.multi(
+                conditionValue.compare(EQUAL_TO, intType.constant(expectedValue))
+                    .ifTrue(intType.constant(matchingResult).returning()),
+                intType.constant(fallbackResult).returning()
+            )
+        );
     }
 
 }
