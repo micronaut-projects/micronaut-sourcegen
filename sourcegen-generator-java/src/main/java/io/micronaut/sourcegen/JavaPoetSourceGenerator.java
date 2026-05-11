@@ -969,12 +969,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 if (flatten.isEmpty()) {
                     throw new IllegalStateException("SwitchYieldCase did not return any statements");
                 }
-                StatementDef last = flatten.get(flatten.size() - 1);
-                List<StatementDef> rest = flatten.subList(0, flatten.size() - 1);
-                for (StatementDef statementDef : rest) {
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, remappedLocals, statementDef));
+                StatementDef last = flatten.getLast();
+                if (!(last instanceof StatementDef.Return)) {
+                    throw new IllegalStateException("The last statement of SwitchYieldCase should be a return. Found: " + last);
                 }
-                renderYield(builder, methodDef, remappedLocals, last, objectDef);
+                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, statement));
                 builder.unindent();
                 builder.add("}");
                 String str = builder.build().toString();
@@ -1361,6 +1360,53 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         } else {
             throw new IllegalStateException("The last statement of SwitchYieldCase should be a return. Found: " + statementDef);
         }
+    }
+
+    private CodeBlock renderSwitchYieldStatementCodeBlock(@Nullable ObjectDef objectDef,
+                                                          @Nullable MethodDef methodDef,
+                                                          Map<String, String> remappedLocals,
+                                                          StatementDef statementDef) {
+        return switch (statementDef) {
+            case StatementDef.Multi multi -> {
+                CodeBlock.Builder builder = CodeBlock.builder();
+                for (StatementDef statement : multi.statements()) {
+                    builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, statement));
+                }
+                yield builder.build();
+            }
+            case StatementDef.If ifStatement -> {
+                CodeBlock.Builder builder = CodeBlock.builder();
+                builder.add("if (");
+                builder.add(renderExpression(objectDef, methodDef, remappedLocals, ifStatement.condition()));
+                builder.add(") {\n");
+                builder.indent();
+                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, ifStatement.statement()));
+                builder.unindent();
+                builder.add("}\n");
+                yield builder.build();
+            }
+            case StatementDef.IfElse ifStatement -> {
+                CodeBlock.Builder builder = CodeBlock.builder();
+                builder.add("if (");
+                builder.add(renderExpression(objectDef, methodDef, remappedLocals, ifStatement.condition()));
+                builder.add(") {\n");
+                builder.indent();
+                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, ifStatement.statement()));
+                builder.unindent();
+                builder.add("} else {\n");
+                builder.indent();
+                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, remappedLocals, ifStatement.elseStatement()));
+                builder.unindent();
+                builder.add("}\n");
+                yield builder.build();
+            }
+            case StatementDef.Return aReturn -> {
+                CodeBlock.Builder builder = CodeBlock.builder();
+                renderYield(builder, methodDef, remappedLocals, aReturn, objectDef);
+                yield builder.build();
+            }
+            case null, default -> renderStatementCodeBlock(objectDef, methodDef, remappedLocals, statementDef);
+        };
     }
 
     private CodeBlock renderConstantExpression(Map<String, String> remappedLocals, ExpressionDef.Constant constant) {
