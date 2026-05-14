@@ -676,12 +676,16 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
         @OptIn(KotlinPoetJavaPoetPreview::class)
         private fun asClassName(classType: ClassTypeDef): ClassName {
-            val packageName = classType.packageName
-            var simpleName = classType.simpleName
-            if (classType.isEnum) {
-                simpleName = simpleName.substringAfter("$")
+            val result = if (classType.isInner) {
+                ClassName.bestGuess(classType.name.replace("$", "."))
+            } else {
+                val packageName = classType.packageName
+                var simpleName = classType.simpleName
+                if (classType.isEnum) {
+                    simpleName = simpleName.substringAfter("$")
+                }
+                com.squareup.javapoet.ClassName.get(packageName, simpleName).toKClassName()
             }
-            val result: ClassName = com.squareup.javapoet.ClassName.get(packageName, simpleName).toKClassName()
             if (result.isNullable) {
                 return asNullable(result) as ClassName
             }
