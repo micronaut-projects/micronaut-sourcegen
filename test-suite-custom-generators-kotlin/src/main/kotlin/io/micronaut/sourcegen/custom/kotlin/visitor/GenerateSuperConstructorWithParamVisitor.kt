@@ -22,7 +22,13 @@ import io.micronaut.inject.visitor.TypeElementVisitor.VisitorKind
 import io.micronaut.inject.visitor.VisitorContext
 import io.micronaut.sourcegen.custom.example.GenerateSuperConstructorWithParam
 import io.micronaut.sourcegen.generator.SourceGenerators
-import io.micronaut.sourcegen.model.*
+import io.micronaut.sourcegen.model.ClassDef
+import io.micronaut.sourcegen.model.ClassTypeDef
+import io.micronaut.sourcegen.model.MethodDef
+import io.micronaut.sourcegen.model.ParameterDef
+import io.micronaut.sourcegen.model.StatementDef
+import io.micronaut.sourcegen.model.TypeDef
+import io.micronaut.sourcegen.model.VariableDef
 import java.io.StringWriter
 import javax.lang.model.element.Modifier
 

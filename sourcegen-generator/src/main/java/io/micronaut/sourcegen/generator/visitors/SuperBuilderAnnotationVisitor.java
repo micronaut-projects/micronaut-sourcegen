@@ -51,8 +51,8 @@ import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor
 @Internal
 public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<SuperBuilder, Object> {
 
-    private final Set<String> processed = new HashSet<>();
     private static final String BUILDER_STRICT_MEMBER = "strict";
+    private final Set<String> processed = new HashSet<>();
 
     @Override
     public void start(VisitorContext visitorContext) {
