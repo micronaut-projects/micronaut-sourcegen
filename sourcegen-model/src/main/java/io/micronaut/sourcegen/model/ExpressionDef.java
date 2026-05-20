@@ -30,7 +30,7 @@ import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -444,7 +444,7 @@ public sealed interface ExpressionDef
                                                     Map<Constant, ? extends ExpressionDef> cases,
                                                     ExpressionDef defaultCase) {
         if (defaultCase == null) {
-            cases = new HashMap<>(cases);
+            cases = new LinkedHashMap<>(cases);
             defaultCase = cases.remove(nullValue());
             if (defaultCase == null) {
                 defaultCase = cases.remove(null);
@@ -469,7 +469,7 @@ public sealed interface ExpressionDef
                                                   Map<Constant, StatementDef> cases,
                                                   @Nullable StatementDef defaultCase) {
         if (defaultCase == null) {
-            cases = new HashMap<>(cases);
+            cases = new LinkedHashMap<>(cases);
             defaultCase = cases.remove(nullValue());
             if (defaultCase == null) {
                 defaultCase = cases.remove(null);
@@ -1436,6 +1436,10 @@ public sealed interface ExpressionDef
                   Map<Constant, ? extends ExpressionDef> cases,
                   @Nullable
                   ExpressionDef defaultCase) implements ExpressionDef {
+        public Switch {
+            cases = new LinkedHashMap<>(cases);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.concat(

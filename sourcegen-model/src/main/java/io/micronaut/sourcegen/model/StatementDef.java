@@ -20,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 import io.micronaut.core.util.CollectionUtils;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -326,6 +327,9 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
                   TypeDef type,
                   Map<ExpressionDef.Constant, StatementDef> cases,
                   @Nullable StatementDef defaultCase) implements StatementDef {
+        public Switch {
+            cases = new LinkedHashMap<>(cases);
+        }
 
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {

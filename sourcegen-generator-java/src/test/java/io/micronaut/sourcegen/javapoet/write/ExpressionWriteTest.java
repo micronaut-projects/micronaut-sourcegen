@@ -620,6 +620,56 @@ class MyClass {
     }
 
     @Test
+    void writeStatementSwitchWithoutDefaultPreservesCallerCaseOrder() throws IOException {
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
+        VariableDef.Local result = new VariableDef.Local("result", intType);
+        Map<ExpressionDef.Constant, StatementDef> cases = new LinkedHashMap<>();
+        cases.put(ExpressionDef.constant(1), result.assign(intType.constant(10)));
+        cases.put(ExpressionDef.constant(0), result.assign(intType.constant(20)));
+        cases.put(ExpressionDef.constant(3), result.assign(intType.constant(30)));
+        cases.put(ExpressionDef.constant(2), result.assign(intType.constant(40)));
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(MethodDef.builder("test")
+                .addParameter("value", intType)
+                .returns(intType)
+                .build((aThis, methodParameters) -> StatementDef.multi(
+                    result.defineAndAssign(intType.constant(-1)),
+                    methodParameters.get(0).asStatementSwitch(intType, cases),
+                    result.returning()
+                ))
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+class MyClass {
+  int test(int value) {
+    int result = -1;
+    switch (value) {
+      case 1 -> {
+        result = 10;
+      }
+      case 0 -> {
+        result = 20;
+      }
+      case 3 -> {
+        result = 30;
+      }
+      case 2 -> {
+        result = 40;
+      }
+    }
+    return result;
+  }
+}
+""", data);
+    }
+
+    @Test
     void writeExpressionSwitchAlignment() throws IOException {
         TypeDef resultType = TypeDef.of(Integer.class);
         Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
