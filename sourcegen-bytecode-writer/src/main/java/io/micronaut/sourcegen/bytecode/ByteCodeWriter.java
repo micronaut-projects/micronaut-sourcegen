@@ -19,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.sourcegen.bytecode.statement.StatementWriter;
 import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -53,6 +54,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.objectweb.asm.Opcodes.ACC_ABSTRACT;
+import static org.objectweb.asm.Opcodes.ACC_ANNOTATION;
 import static org.objectweb.asm.Opcodes.ACC_ENUM;
 import static org.objectweb.asm.Opcodes.ACC_FINAL;
 import static org.objectweb.asm.Opcodes.ACC_INTERFACE;
@@ -121,6 +123,8 @@ public final class ByteCodeWriter {
             writeInterface(classVisitor, interfaceDef, outerType);
         } else if (objectDef instanceof EnumDef enumDef) {
             writeClass(classVisitor, EnumGenUtils.toClassDef(enumDef), outerType);
+        } else if (objectDef instanceof AnnotationObjectDef annotationDef) {
+            writeAnnotation(classVisitor, annotationDef, outerType);
         } else {
             throw new UnsupportedOperationException("Unknown object definition: " + objectDef);
         }
@@ -192,6 +196,100 @@ public final class ByteCodeWriter {
         }
         for (PropertyDef property : interfaceDef.getProperties()) {
             writeProperty(classVisitor, interfaceDef, property);
+        }
+    }
+
+    /**
+     * Write an annotation.
+     *
+     * @param classVisitor  The class visitor
+     * @param annotationDef The annotation definition
+     * @param outerType     The outer type
+     */
+    public void writeAnnotation(ClassVisitor classVisitor, AnnotationObjectDef annotationDef, @Nullable ClassTypeDef outerType) {
+        int modifiersFlag = ACC_ANNOTATION | ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(annotationDef.getModifiers());
+        if (annotationDef.isSynthetic()) {
+            modifiersFlag |= ACC_SYNTHETIC;
+        }
+        classVisitor.visit(
+            V17,
+            modifiersFlag,
+            TypeUtils.getType(annotationDef.asTypeDef()).getInternalName(),
+            null,
+            TypeUtils.OBJECT_TYPE.getInternalName(),
+            new String[]{Type.getType(java.lang.annotation.Annotation.class).getInternalName()}
+        );
+        writeOuterInner(classVisitor, annotationDef.asTypeDef(), annotationDef, outerType);
+
+        for (AnnotationDef annotation : annotationDef.getAnnotations()) {
+            AnnotationVisitor annotationVisitor = classVisitor.visitAnnotation(
+                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
+                true);
+            visitAnnotation(annotation, annotationVisitor);
+        }
+
+        for (FieldDef field : annotationDef.getFields()) {
+            writeField(classVisitor, annotationDef, field);
+        }
+
+        for (AnnotationObjectDef.AnnotationMemberDef member : annotationDef.getMembers()) {
+            writeAnnotationMember(classVisitor, annotationDef, member);
+        }
+    }
+
+    private void writeAnnotationMember(ClassVisitor classVisitor, AnnotationObjectDef annotationDef, AnnotationObjectDef.AnnotationMemberDef member) {
+        int modifiersFlag = getModifiersFlag(member.getModifiers());
+        MethodVisitor methodVisitor = classVisitor.visitMethod(
+            modifiersFlag,
+            member.getName(),
+            "()" + TypeUtils.getType(member.getType(), annotationDef).getDescriptor(),
+            null,
+            null
+        );
+        for (AnnotationDef annotation : member.getAnnotations()) {
+            AnnotationVisitor annotationVisitor = methodVisitor.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
+            visitAnnotation(annotation, annotationVisitor);
+        }
+        AnnotationDef annotationDefaultValue = member.getAnnotationDefaultValue();
+        ExpressionDef defaultValue = member.getDefaultValue();
+        if (annotationDefaultValue != null) {
+            AnnotationVisitor defaultVisitor = methodVisitor.visitAnnotationDefault();
+            AnnotationVisitor nestedVisitor = defaultVisitor.visitAnnotation(null, TypeUtils.getType(annotationDefaultValue.getType(), null).getDescriptor());
+            visitAnnotation(annotationDefaultValue, nestedVisitor);
+            defaultVisitor.visitEnd();
+        } else if (defaultValue != null) {
+            AnnotationVisitor defaultVisitor = methodVisitor.visitAnnotationDefault();
+            visitAnnotationDefaultValue(defaultVisitor, member.getType(), defaultValue);
+            defaultVisitor.visitEnd();
+        }
+        methodVisitor.visitEnd();
+    }
+
+    private void visitAnnotationDefaultValue(AnnotationVisitor annotationVisitor, TypeDef type, ExpressionDef expressionDef) {
+        if (expressionDef instanceof VariableDef.StaticField staticField) {
+            annotationVisitor.visitEnum(
+                null,
+                TypeUtils.getType(staticField.ownerType(), null).getDescriptor(),
+                staticField.name()
+            );
+        } else if (expressionDef instanceof ExpressionDef.Constant constant) {
+            Object value = constant.value();
+            if (type instanceof TypeDef.Array arrayType && value != null && value.getClass().isArray()) {
+                AnnotationVisitor arrayVisitor = annotationVisitor.visitArray(null);
+                int length = java.lang.reflect.Array.getLength(value);
+                for (int i = 0; i < length; i++) {
+                    visitAnnotationDefaultValue(
+                        arrayVisitor,
+                        arrayType.componentType(),
+                        new ExpressionDef.Constant(arrayType.componentType(), java.lang.reflect.Array.get(value, i))
+                    );
+                }
+                arrayVisitor.visitEnd();
+            } else {
+                annotationVisitor.visit(null, value);
+            }
+        } else {
+            throw new UnsupportedOperationException("Unsupported annotation member default value: " + expressionDef);
         }
     }
 
@@ -350,6 +448,9 @@ public final class ByteCodeWriter {
         if (objectDef instanceof RecordDef recordDef) {
             return getModifiersFlag(recordDef.getModifiers());
         }
+        if (objectDef instanceof AnnotationObjectDef annotationObjectDef) {
+            return ACC_ANNOTATION | ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(annotationObjectDef.getModifiers());
+        }
         return getModifiersFlag(objectDef.getModifiers());
     }
 
@@ -368,6 +469,12 @@ public final class ByteCodeWriter {
                 name,
                 TypeUtils.getType(staticField.ownerType(), null).getDescriptor(),
                 staticField.name()
+            );
+        } else if (value instanceof Enum<?> enumValue) {
+            annotationVisitor.visitEnum(
+                name,
+                Type.getType(enumValue.getDeclaringClass()).getDescriptor(),
+                enumValue.name()
             );
         } else if (value instanceof AnnotationDef nestedAnnotation) {
             visitAnnotation(

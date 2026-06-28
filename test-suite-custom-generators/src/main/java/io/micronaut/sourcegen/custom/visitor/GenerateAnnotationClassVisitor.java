@@ -32,6 +32,7 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeDef.Primitive;
 
 import javax.lang.model.element.Modifier;
+import java.util.List;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -65,7 +66,7 @@ public final class GenerateAnnotationClassVisitor implements TypeElementVisitor<
                 .build()
             )
             .addAnnotation(AnnotationDef.builder(Target.class)
-                .addMember("value", ElementType.TYPE)
+                .addMember("value", List.of(ElementType.TYPE))
                 .build()
             )
             .addJavadoc("This is my annotation")
@@ -90,7 +91,7 @@ public final class GenerateAnnotationClassVisitor implements TypeElementVisitor<
                 .build())
             .addMember(AnnotationMemberDef.builder("inner", ClassTypeDef.of(Target.class))
                 .withDefault(AnnotationDef.builder(Target.class)
-                    .addMember("value", ElementType.TYPE)
+                    .addMember("value", List.of(ElementType.TYPE))
                     .build())
                 .addJavadoc("An annotation value with default")
                 .build())

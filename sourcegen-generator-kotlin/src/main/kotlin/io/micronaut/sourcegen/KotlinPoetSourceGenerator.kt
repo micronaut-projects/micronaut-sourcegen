@@ -74,6 +74,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 writeEnumDef(writer, objectDef)
             }
 
+            is AnnotationObjectDef -> {
+                writeAnnotationDef(writer, objectDef)
+            }
+
             else -> {
                 throw IllegalStateException("Unknown object definition: $objectDef")
             }
@@ -418,6 +422,119 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         return enumBuilder
     }
 
+    @Throws(IOException::class)
+    private fun writeAnnotationDef(writer: Writer, annotationDef: AnnotationObjectDef) {
+        val annotationBuilder = getAnnotationDefBuilder(annotationDef)
+        FileSpec.builder(annotationDef.packageName, annotationDef.simpleName + ".kt")
+            .addType(annotationBuilder.build())
+            .build()
+            .writeTo(writer)
+    }
+
+    private fun getAnnotationDefBuilder(annotationDef: AnnotationObjectDef): TypeSpec.Builder {
+        val annotationBuilder = TypeSpec.annotationBuilder(annotationDef.simpleName)
+        annotationBuilder.addModifiers(asKModifiers(annotationDef.modifiers))
+        annotationDef.javadoc.forEach(Consumer { format: String -> annotationBuilder.addKdoc(format) })
+        annotationDef.annotations.stream().map { a: AnnotationDef -> asAnnotationSpec(a) }
+            .forEach { annotationSpec: AnnotationSpec -> annotationBuilder.addAnnotation(annotationSpec) }
+
+        val members = annotationDef.members.filterNot { shouldSkipAnnotationMember(it) }
+        if (members.isNotEmpty()) {
+            val constructorBuilder = FunSpec.constructorBuilder()
+            for (member in members) {
+                val type = asAnnotationMemberType(member.type, annotationDef)
+                val parameterBuilder = ParameterSpec.builder(member.name, type)
+                val defaultValue = renderAnnotationMemberDefault(member)
+                if (defaultValue != null) {
+                    parameterBuilder.defaultValue(defaultValue)
+                }
+                constructorBuilder.addParameter(parameterBuilder.build())
+                annotationBuilder.addProperty(
+                    PropertySpec.builder(member.name, type)
+                        .initializer(member.name)
+                        .apply { member.javadoc.forEach(Consumer { format: String -> addKdoc(format) }) }
+                        .build()
+                )
+            }
+            annotationBuilder.primaryConstructor(constructorBuilder.build())
+        }
+
+        buildFields(annotationDef, null, annotationBuilder)?.let {
+            annotationBuilder.addType(it.build())
+        }
+
+        addInnerTypes(annotationDef.innerTypes, annotationBuilder)
+        return annotationBuilder
+    }
+
+    /**
+     * Whether the given annotation member is skipped when generating the Kotlin annotation.
+     * A member whose default value is a nested annotation is skipped: the Kotlin compiler crashes with
+     * an internal error when a Java annotation is emitted in default-value position, and Java- and
+     * Kotlin-defined annotations cannot be told apart here without reflection (which this generator
+     * avoids), so such a default cannot be rendered safely. Members with primitive, string, enum,
+     * class or array defaults — and members without a default — are fully supported.
+     */
+    private fun shouldSkipAnnotationMember(member: AnnotationObjectDef.AnnotationMemberDef): Boolean {
+        return member.annotationDefaultValue != null
+    }
+
+    /**
+     * Maps an annotation member type to a valid Kotlin type. An array of a primitive must use the
+     * specialized Kotlin array type (e.g. `IntArray`, `FloatArray`) rather than `Array<Int>` /
+     * `Array<Float>`, which are not valid as annotation member types. Arrays of reference types
+     * (String, enum, KClass, nested annotation) keep the regular `Array<...>` representation.
+     */
+    private fun asAnnotationMemberType(typeDef: TypeDef, objectDef: ObjectDef): TypeName {
+        if (typeDef is TypeDef.Array && typeDef.dimensions == 1) {
+            val componentType = typeDef.componentType
+            if (componentType is TypeDef.Primitive) {
+                val primitiveArray: ClassName? = when (componentType.name()) {
+                    "byte" -> BYTE_ARRAY
+                    "short" -> SHORT_ARRAY
+                    "char" -> CHAR_ARRAY
+                    "int" -> INT_ARRAY
+                    "long" -> LONG_ARRAY
+                    "float" -> FLOAT_ARRAY
+                    "double" -> DOUBLE_ARRAY
+                    "boolean" -> BOOLEAN_ARRAY
+                    else -> null
+                }
+                if (primitiveArray != null) {
+                    return primitiveArray
+                }
+            }
+        }
+        return asType(typeDef, objectDef)
+    }
+
+    /**
+     * Renders the default value of an annotation member as valid Kotlin source.
+     * Arrays are rendered using the Kotlin array literal syntax (`[a, b, c]`). Members with a
+     * nested-annotation default are not rendered here — they are skipped earlier (see
+     * [shouldSkipAnnotationMember]) because Kotlin cannot emit a Java annotation in default position.
+     */
+    private fun renderAnnotationMemberDefault(member: AnnotationObjectDef.AnnotationMemberDef): CodeBlock? {
+        val defaultValue = member.defaultValue ?: return null
+        if (defaultValue is Constant) {
+            val value = defaultValue.value
+            if (defaultValue.type is TypeDef.Array && value != null && value.javaClass.isArray) {
+                val arrayDef = defaultValue.type as TypeDef.Array
+                val componentType = arrayDef.componentType
+                val length = Array.getLength(value)
+                val values = CodeBlock.builder()
+                for (i in 0 until length) {
+                    values.add(renderConstantExpression(Constant(componentType, Array.get(value, i)), EMPTY_METHOD))
+                    if (i + 1 != length) {
+                        values.add(", ")
+                    }
+                }
+                return CodeBlock.builder().add("[").add(values.build()).add("]").build()
+            }
+        }
+        return renderExpressionCode(null, EMPTY_METHOD, defaultValue)
+    }
+
     fun addInnerTypes(objectDefs: List<ObjectDef>, classBuilder: TypeSpec.Builder, isInterface: Boolean = false) {
         for (objectDef in objectDefs) {
             var innerBuilder: TypeSpec.Builder
@@ -506,6 +623,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         if (objectDef is ClassDef)
             fields = objectDef.fields
         else if (objectDef is EnumDef)
+            fields = objectDef.fields
+        else if (objectDef is AnnotationObjectDef)
             fields = objectDef.fields
         else return builder
 
@@ -659,6 +778,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     }
 
     companion object {
+        private val EMPTY_METHOD: MethodDef = MethodDef.builder("").returns(TypeDef.VOID).build()
+
         private fun stripStatic(modifiers: MutableSet<Modifier>): MutableSet<Modifier> {
             val mutable = HashSet(modifiers)
             mutable.remove(Modifier.STATIC)
@@ -1610,7 +1731,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
 
             is Enum<*> -> {
-                // Enum values gets represented as a Static Variable and does not enter here
+                // Enum values are normally wrapped as a static field and handled by the VariableDef
+                // branch; raw enum values arrive here. Array-valued members (e.g. `@Target`) are
+                // supplied as collections in the model and rendered by the Collection branch below.
                 builder.addMember("$memberName = %T.%L", value.javaClass, value.name)
             }
 

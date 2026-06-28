@@ -15,22 +15,14 @@
  */
 package io.micronaut.sourcegen.example
 
-import io.micronaut.sourcegen.custom.example.*
-
-@GenerateMyBean1
-@GenerateMyBean2
-@GenerateMyBean3
-@GenerateInterface
-@GenerateMyRepository1
-@GenerateMyRecord1
-@GenerateMyEnum1
-@GenerateIfsPredicate
-@GenerateSwitch
-@GenerateArray
-@GenerateAnnotatedType
-@GenerateInnerTypes
-@GenerateMyEnum2
-@GenerateLambda
-@GenerateSuperTypeReference
-@GenerateAnnotationClass
-class Trigger
+// Verifies that the generated Kotlin annotation actually compiles by using it.
+// Note: the shared annotation fixture also declares an `inner` member typed as a Java annotation
+// (java.lang.annotation.Target) with a Java-annotation default; the Kotlin generator omits such
+// members because the Kotlin compiler crashes on a Java annotation in default-value position
+// (see KotlinPoetSourceGenerator).
+@MyAnnotation(
+    string = "this",
+    primitive = 3,
+    floats = [1.0f, 2.0f]
+)
+class MyAnnotationUsage
