@@ -8,7 +8,7 @@ google-jimfs = "1.3.1"
 intellij-java-decompiler = "261.25134.95"
 
 errorprone-gradle-plugin = "5.1.0"
-error_prone_core = "2.49.0"
+error_prone_core = "2.50.0"
 nullaway = "0.13.8"
 
 managed-asm = "9.10.1"
