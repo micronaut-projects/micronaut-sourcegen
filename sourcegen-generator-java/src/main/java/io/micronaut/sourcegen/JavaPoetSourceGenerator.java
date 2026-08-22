@@ -841,7 +841,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             case null, default -> {
                 CodeBlock statement = renderStatement(objectDef, methodDef, scope, statementDef);
-                if (statementDef != null && containsSwitchExpression(statementDef)) {
+                // Both render statements of their own, and JavaPoet rejects nesting its statement markers
+                if (statementDef != null
+                    && (containsSwitchExpression(statementDef) || containsBlockBodyLambda(statementDef))) {
                     return CodeBlock.builder()
                         .add(statement)
                         .add(";\n")
@@ -852,6 +854,28 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     .build();
             }
         }
+    }
+
+    /**
+     * @param lambda The lambda
+     * @return The expression of a single expression body, or {@code null} for a block body
+     */
+    @Nullable
+    private static ExpressionDef singleExpressionBody(Lambda lambda) {
+        List<StatementDef> statements = lambda.implementation().getStatements();
+        if (statements.size() == 1 && statements.get(0) instanceof StatementDef.Return returnStatement) {
+            return returnStatement.expression();
+        }
+        return null;
+    }
+
+    private static boolean containsBlockBodyLambda(StatementDef statementDef) {
+        return statementDef.nestedExpressionsStream().anyMatch(JavaPoetSourceGenerator::containsBlockBodyLambda);
+    }
+
+    private static boolean containsBlockBodyLambda(ExpressionDef expressionDef) {
+        return expressionDef instanceof Lambda lambda && singleExpressionBody(lambda) == null
+            || expressionDef.nestedExpressionsStream().anyMatch(JavaPoetSourceGenerator::containsBlockBodyLambda);
     }
 
     private static boolean containsSwitchExpression(StatementDef statementDef) {
@@ -1087,13 +1111,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 }
                 builder.add(") -> ");
                 List<StatementDef> statements = implementation.getStatements();
-                if (statements.size() == 1 && statements.get(0) instanceof StatementDef.Return returnStatement
-                    && returnStatement.expression() != null) {
-                    builder.add(renderExpression(objectDef, implementation, lambdaScope, returnStatement.expression()));
+                ExpressionDef body = singleExpressionBody(lambda);
+                if (body != null) {
+                    builder.add(renderExpression(objectDef, implementation, lambdaScope, body));
                 } else {
-                    builder.add("{").indent();
+                    builder.add("{\n").indent();
                     for (StatementDef statement : statements) {
-                        builder.addStatement(renderStatementCodeBlock(objectDef, implementation, lambdaScope, statement));
+                        builder.add(renderStatementCodeBlock(objectDef, implementation, lambdaScope, statement));
                     }
                     builder.unindent().add("}");
                 }
