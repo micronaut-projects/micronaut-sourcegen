@@ -179,23 +179,12 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         Local constant = new Local("constant", TypeDef.STRING);
         Local function = new Local("function", TypeDef.parameterized(Function.class, String.class, String.class));
 
-        MethodDef target = MethodDef.builder("apply")
-            .addParameters(TypeDef.OBJECT)
-            .returns(TypeDef.OBJECT)
-            .addModifiers(Modifier.ABSTRACT)
-            .build();
-        Lambda lambda = new Lambda(
-            ClassTypeDef.of(Function.class),
-            target,
-            MethodDef.builder("apply")
-                .addParameters(TypeDef.STRING)
-                .returns(TypeDef.STRING)
-                .addModifiers(Modifier.ABSTRACT)
-                .build((t, params) -> JavaIdioms.concatStrings(
-                    constant,
-                    params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
-                ).returning())
-        );
+        Lambda lambda = ClassTypeDef.of(Function.class)
+            .getLambda(Map.of("T", TypeDef.STRING, "R", TypeDef.STRING))
+            .implement((t, params) -> JavaIdioms.concatStrings(
+                constant,
+                params.get(0).invoke("substring", TypeDef.STRING, ExpressionDef.constant(1))
+            ).returning());
 
         return MethodDef.builder("callGenericLambda")
             .addModifiers(Modifier.PUBLIC)

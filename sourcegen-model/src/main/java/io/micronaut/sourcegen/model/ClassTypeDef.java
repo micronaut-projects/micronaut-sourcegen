@@ -586,6 +586,87 @@ public sealed interface ClassTypeDef extends TypeDef {
     record JavaClass(Class<?> type, boolean nullable) implements ClassTypeDef {
 
         @Override
+        public LambdaDef getLambda(Function<String, @Nullable TypeDef> resolveVariableFn) {
+            List<Method> abstractMethods = Arrays.stream(type.getMethods())
+                .filter(JavaClass::isAbstractMethod)
+                .filter(m -> !isObjectMethod(m))
+                .toList();
+            if (abstractMethods.size() != 1) {
+                throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
+                    "abstract method but has " + abstractMethods.size());
+            }
+            Method method = abstractMethods.get(0);
+            return new LambdaDef(
+                ClassTypeDef.of(type).resolveTypeVariables(resolveVariableFn),
+                MethodDef.of(method),
+                asImplementation(method, resolveVariableFn)
+            );
+        }
+
+        private static boolean isAbstractMethod(Method method) {
+            int modifiers = method.getModifiers();
+            return java.lang.reflect.Modifier.isAbstract(modifiers)
+                && !java.lang.reflect.Modifier.isStatic(modifiers)
+                && !method.isDefault()
+                && !method.isBridge()
+                && !method.isSynthetic();
+        }
+
+        /**
+         * An interface can redeclare a public method of {@link Object} as abstract - {@code Comparator}
+         * does with {@code equals} - without that making it a second abstract method for the purpose of
+         * being a functional interface.
+         *
+         * @param method The method
+         * @return True if the method is a public method of {@link Object}
+         */
+        private static boolean isObjectMethod(Method method) {
+            try {
+                Object.class.getMethod(method.getName(), method.getParameterTypes());
+                return true;
+            } catch (NoSuchMethodException e) {
+                return false;
+            }
+        }
+
+        private static MethodDef asImplementation(Method method, Function<String, @Nullable TypeDef> resolveVariableFn) {
+            MethodDef.MethodDefBuilder builder = MethodDef.builder(method.getName())
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(asTypeDef(method.getGenericReturnType(), method.getReturnType(), resolveVariableFn));
+            java.lang.reflect.Parameter[] parameters = method.getParameters();
+            java.lang.reflect.Type[] genericParameterTypes = method.getGenericParameterTypes();
+            for (int i = 0; i < parameters.length; i++) {
+                builder.addParameter(
+                    parameters[i].getName(),
+                    asTypeDef(genericParameterTypes[i], parameters[i].getType(), resolveVariableFn)
+                );
+            }
+            return builder.build();
+        }
+
+        /**
+         * Resolves a reflective type, substituting a type variable when the caller provided a value for
+         * it and falling back to the erasure otherwise, so that an unresolved variable never leaks into
+         * the model.
+         *
+         * @param genericType       The generic type
+         * @param erasure           The erasure of the generic type
+         * @param resolveVariableFn The resolve variable function
+         * @return The type definition
+         */
+        private static TypeDef asTypeDef(java.lang.reflect.Type genericType,
+                                         Class<?> erasure,
+                                         Function<String, @Nullable TypeDef> resolveVariableFn) {
+            if (genericType instanceof java.lang.reflect.TypeVariable<?> typeVariable) {
+                TypeDef resolved = resolveVariableFn.apply(typeVariable.getName());
+                if (resolved != null) {
+                    return resolved;
+                }
+            }
+            return TypeDef.of(erasure);
+        }
+
+        @Override
         public String getName() {
             return type.getName();
         }
@@ -654,6 +735,13 @@ public sealed interface ClassTypeDef extends TypeDef {
 
         public ClassName(String name, boolean isInner) {
             this(name, isInner, false);
+        }
+
+        @Override
+        public LambdaDef getLambda(Function<String, @Nullable TypeDef> resolveVariableFn) {
+            throw new UnsupportedOperationException("ClassTypeDef: " + name + " doesn't support lambdas" +
+                " because it is defined by name only and carries no member information." +
+                " Use ClassTypeDef.of(Class) or ClassTypeDef.of(ClassElement) instead.");
         }
 
         @Override
