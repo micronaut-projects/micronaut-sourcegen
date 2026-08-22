@@ -166,6 +166,26 @@ public class Example {
     }
 
     @Test
+    public void innerTypeOfADollarPrefixedOuterType() throws IOException {
+        ClassDef classDef = ClassDef.builder("test.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addField(FieldDef.builder("inner", new ClassTypeDef.ClassName("test.$Outer$Inner", true))
+                .addModifiers(Modifier.PUBLIC)
+                .build())
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+public class Example {
+  public $Outer.Inner inner;
+}
+            """, data);
+    }
+
+    @Test
     public void defaultPackageClassAsFieldType() throws IOException {
         ClassDef classDef = ClassDef.builder("test.Example")
             .addModifiers(Modifier.PUBLIC)

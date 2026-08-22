@@ -605,7 +605,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private static ClassName asClassType(ClassTypeDef classTypeDef) {
         if (classTypeDef.isInner()) {
             String binaryName = classTypeDef.getName();
-            int i = binaryName.indexOf('$');
+            // The separator is the first '$' of the simple name that is not its first character, so that
+            // an enclosing type following the generated `$Foo` convention is not split in the middle
+            int simpleNameStart = binaryName.lastIndexOf('.') + 1;
+            int i = binaryName.indexOf('$', simpleNameStart + 1);
             if (i != -1) {
                 String enclosing = binaryName.substring(0, i);
                 String[] nested = binaryName.substring(i + 1).split("\\$", -1);
