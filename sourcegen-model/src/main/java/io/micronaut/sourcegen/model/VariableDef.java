@@ -206,7 +206,7 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Ex
         /**
          * Invoke super constructor statement.
          *
-         * <p>The constructor is resolved with {@link ClassTypeDef#findDeclaredMethod(String, int)} when the
+         * <p>The constructor is resolved with {@link ClassTypeDef#findDeclaredMethods(String, int)} when the
          * super type carries member information. When it does not, the signature is inferred from the static
          * types of the values, which names a constructor that does not exist if any of them is narrower than
          * the declared parameter - use {@link #invokeSuperConstructor(List, List)} or

@@ -54,6 +54,43 @@ class InvocationResolutionTest {
     }
 
     @Test
+    void variableArityOverloadsAreResolvedWithASingleTrailingArgument() {
+        // String.format(String, Object...) and format(Locale, String, Object...) both accept two arguments
+        ExpressionDef.InvokeStaticMethod call = ClassTypeDef.of(String.class)
+            .invokeStatic("format", TypeDef.STRING, A_STRING, B_STRING);
+
+        assertEquals(List.of(TypeDef.STRING, TypeDef.OBJECT.array()), parameterTypes(call.method()));
+        assertEquals(2, call.values().size());
+        assertEquals(TypeDef.OBJECT.array(), call.values().get(1).type());
+    }
+
+    @Test
+    void aReferenceArgumentDoesNotUnboxToAPrimitiveParameter() {
+        // Neither pick(int) nor pick(String) accepts an Object, so the signature stays inferred
+        ExpressionDef object = new VariableDef.Local("value", TypeDef.OBJECT);
+
+        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("pick", TypeDef.STRING, object);
+
+        assertEquals(List.of(TypeDef.OBJECT), parameterTypes(call.method()));
+    }
+
+    @Test
+    void aPrimitiveArgumentBoxesToAWiderParameter() {
+        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("describe", TypeDef.STRING, ExpressionDef.constant(1));
+
+        assertEquals(List.of(TypeDef.of(Number.class)), parameterTypes(call.method()));
+    }
+
+    @Test
+    void arrayOverloadsAreToldApartByTheComponentType() {
+        ExpressionDef strings = new VariableDef.Local("values", TypeDef.STRING.array());
+
+        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("first", TypeDef.STRING, strings);
+
+        assertEquals(List.of(TypeDef.STRING.array()), parameterTypes(call.method()));
+    }
+
+    @Test
     void anArrayAlreadyPassedForAVariableArityParameterIsLeftAlone() {
         ExpressionDef array = new ExpressionDef.NewArrayInitialized(TypeDef.OBJECT.array(), List.of(A_STRING));
 
@@ -123,6 +160,30 @@ class InvocationResolutionTest {
 
         static String ambiguous(Object value) {
             return String.valueOf(value);
+        }
+
+        static String pick(int value) {
+            return String.valueOf(value);
+        }
+
+        static String pick(String value) {
+            return value;
+        }
+
+        static String first(String[] values) {
+            return values[0];
+        }
+
+        static String first(Integer[] values) {
+            return String.valueOf(values[0]);
+        }
+
+        static String describe(Number value) {
+            return String.valueOf(value);
+        }
+
+        static String describe(String value) {
+            return value;
         }
 
         String join(Object left, Object right) {

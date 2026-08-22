@@ -71,7 +71,10 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
         ClassElement myRepository = context.getRequiredClassElement("io.micronaut.sourcegen.example.MyRepository", context.getElementAnnotationMetadataFactory());
         ClassTypeDef repositoryType = ClassTypeDef.of(myRepository);
 
-        ClassDef methodInvoker = createMethodInvokerClass(repositoryType);
+        // An AST type, so that the argument below is a ClassElementType rather than a reflective class
+        ClassTypeDef integerType = ClassTypeDef.of(context.getRequiredClassElement(Integer.class.getName(), context.getElementAnnotationMetadataFactory()));
+
+        ClassDef methodInvoker = createMethodInvokerClass(repositoryType, integerType);
         sourceGenerator.write(methodInvoker, context, element);
 
         ClassDef interfaceSuperInvokerDef = createInterfaceSuperInvoker(myRepository);
@@ -81,8 +84,18 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
         sourceGenerator.write(swapper, context, element);
     }
 
-    private ClassDef createMethodInvokerClass(ClassTypeDef repositoryType) {
+    private ClassDef createMethodInvokerClass(ClassTypeDef repositoryType, ClassTypeDef integerType) {
         return ClassDef.builder("io.micronaut.sourcegen.example.MethodInvoker")
+
+            // MyRepository.describe is overloaded for Number and String with the same arity; the argument
+            // is an AST Integer, so the overload has to be picked through the element model
+            .addMethod(MethodDef.builder("invokeOverloadedAstMethod")
+                .addParameter("value", integerType)
+                .returns(String.class)
+                .buildStatic(methodParameters -> repositoryType
+                    .invokeStatic("describe", TypeDef.STRING, methodParameters)
+                    .returning())
+            )
 
             .addMethod(MethodDef.builder("invokeDefaultMethod")
                 .addParameter(repositoryType)

@@ -83,14 +83,6 @@ final class Invocations {
     }
 
     /**
-     * Packs the trailing arguments of a variable arity call into an array, so that the number of arguments
-     * matches the declared parameters.
-     *
-     * @param parameterTypes The declared parameter types
-     * @param values         The argument expressions
-     * @return The adapted arguments
-     */
-    /**
      * Drops the candidates an argument provably cannot be passed to, so that overloads of the same arity -
      * {@code ArrayList(int)} against {@code ArrayList(Collection)} - can still be told apart. A candidate is
      * kept whenever compatibility cannot be decided from the model alone.
@@ -114,9 +106,19 @@ final class Invocations {
         // With variable arity only the fixed prefix can be checked; the tail is packed into the array later
         int fixed = parameters.size() == values.size() ? parameters.size() : parameters.size() - 1;
         for (int i = 0; i < fixed && i < values.size(); i++) {
-            if (!maybeAssignable(parameters.get(i).getType(), values.get(i).type())) {
-                return false;
+            TypeDef parameter = parameters.get(i).getType();
+            TypeDef argument = values.get(i).type();
+            if (maybeAssignable(parameter, argument)) {
+                continue;
             }
+            // The model does not record variable arity, so the last argument of an exact-count call to an
+            // array parameter may also be a single element of it
+            boolean lastOfExactCount = i == parameters.size() - 1 && parameters.size() == values.size();
+            if (lastOfExactCount && erase(parameter) instanceof TypeDef.Array array
+                && maybeAssignable(array.componentType(), argument)) {
+                continue;
+            }
+            return false;
         }
         return true;
     }
@@ -127,45 +129,78 @@ final class Invocations {
         }
         TypeDef parameter = erase(parameterType);
         TypeDef argument = erase(argumentType);
-        if (parameter instanceof TypeDef.Primitive != argument instanceof TypeDef.Primitive) {
-            // Only boxing crosses the divide between a primitive and a reference type
-            return boxes(parameter, argument);
+        if (parameter instanceof TypeDef.Primitive primitive) {
+            // Only the exact wrapper unboxes to a primitive; a wider reference type does not
+            return argument instanceof ClassTypeDef classTypeDef
+                && isWrapperOf(primitive, classTypeDef.getName());
         }
-        Class<?> parameterClass = rawClass(parameter);
+        if (argument instanceof TypeDef.Primitive primitive) {
+            // A primitive boxes, and the box widens to any supertype of the wrapper
+            Class<?> wrapper = WRAPPERS.get(primitive.clazz());
+            return wrapper != null && parameter instanceof ClassTypeDef classTypeDef
+                && isSuperTypeName(wrapper, classTypeDef.getName());
+        }
+        if (argument instanceof TypeDef.Array argumentArray) {
+            if (parameter instanceof TypeDef.Array parameterArray) {
+                return parameterArray.dimensions() == argumentArray.dimensions()
+                    && maybeAssignable(parameterArray.componentType(), argumentArray.componentType());
+            }
+            return parameter instanceof ClassTypeDef classTypeDef && isArraySuperTypeName(classTypeDef.getName());
+        }
+        if (parameter instanceof TypeDef.Array) {
+            return false;
+        }
+        if (parameter instanceof ClassTypeDef parameterClass && argument instanceof ClassTypeDef argumentClass) {
+            return maybeAssignable(parameterClass, argumentClass);
+        }
+        // Not resolvable from the model - assume it could match
+        return true;
+    }
+
+    private static boolean maybeAssignable(ClassTypeDef parameter, ClassTypeDef argument) {
+        if (argument instanceof ClassTypeDef.ClassElementType argumentElement) {
+            Class<?> parameterClass = rawClass(parameter);
+            return parameterClass != null
+                ? argumentElement.classElement().isAssignable(parameterClass)
+                : argumentElement.classElement().isAssignable(parameter.getName());
+        }
         Class<?> argumentClass = rawClass(argument);
-        if (parameterClass == null || argumentClass == null) {
-            // Not resolvable from the model - assume it could match
+        if (argumentClass == null) {
             return true;
         }
-        return parameterClass.isAssignableFrom(argumentClass);
+        Class<?> parameterClass = rawClass(parameter);
+        if (parameterClass != null) {
+            return parameterClass.isAssignableFrom(argumentClass);
+        }
+        return isSuperTypeName(argumentClass, parameter.getName());
     }
 
-    private static boolean boxes(TypeDef left, TypeDef right) {
-        TypeDef.Primitive primitive = left instanceof TypeDef.Primitive p ? p : (TypeDef.Primitive) right;
-        TypeDef reference = left instanceof TypeDef.Primitive ? right : left;
-        if (!(reference instanceof ClassTypeDef classTypeDef)) {
-            return false;
-        }
+    private static boolean isWrapperOf(TypeDef.Primitive primitive, String name) {
         Class<?> wrapper = WRAPPERS.get(primitive.clazz());
-        if (wrapper == null) {
-            return false;
-        }
-        // A boxed primitive widens to its wrapper's supertypes, up to Object
-        return isSuperTypeName(wrapper, classTypeDef.getName());
+        return wrapper != null && wrapper.getName().equals(name);
     }
 
-    private static boolean isSuperTypeName(Class<?> wrapper, String name) {
-        for (Class<?> c = wrapper; c != null; c = c.getSuperclass()) {
-            if (c.getName().equals(name)) {
+    private static boolean isArraySuperTypeName(String name) {
+        return name.equals(Object.class.getName())
+            || name.equals(Cloneable.class.getName())
+            || name.equals(java.io.Serializable.class.getName());
+    }
+
+    /**
+     * @param type The type
+     * @param name The binary name of a candidate supertype
+     * @return True if the type is, extends or implements the named type
+     */
+    private static boolean isSuperTypeName(Class<?> type, String name) {
+        if (type.getName().equals(name)) {
+            return true;
+        }
+        for (Class<?> i : type.getInterfaces()) {
+            if (isSuperTypeName(i, name)) {
                 return true;
             }
-            for (Class<?> i : c.getInterfaces()) {
-                if (i.getName().equals(name)) {
-                    return true;
-                }
-            }
         }
-        return false;
+        return type.getSuperclass() != null && isSuperTypeName(type.getSuperclass(), name);
     }
 
     @Nullable
@@ -221,6 +256,14 @@ final class Invocations {
         return new Resolved(parameterTypes, adaptToVarArgs(parameterTypes, values));
     }
 
+    /**
+     * Packs the trailing arguments of a variable arity call into an array, so that the number of arguments
+     * matches the declared parameters.
+     *
+     * @param parameterTypes The declared parameter types
+     * @param values         The argument expressions
+     * @return The adapted arguments
+     */
     private static List<? extends ExpressionDef> adaptToVarArgs(List<TypeDef> parameterTypes,
                                                                 List<? extends ExpressionDef> values) {
         if (parameterTypes.isEmpty()) {

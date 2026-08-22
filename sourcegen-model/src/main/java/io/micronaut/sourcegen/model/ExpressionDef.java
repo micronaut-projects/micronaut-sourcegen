@@ -714,7 +714,7 @@ public sealed interface ExpressionDef
     /**
      * The call the instance method expression.
      *
-     * <p>The method is resolved with {@link ClassTypeDef#findDeclaredMethod(String, int)} when the type of
+     * <p>The method is resolved with {@link ClassTypeDef#findDeclaredMethods(String, int)} when the type of
      * this expression carries member information. When it does not, the signature is inferred from the
      * static types of the values, which names a method that does not exist if any of them is narrower than
      * the declared parameter - use {@link #invoke(String, List, TypeDef, List)},

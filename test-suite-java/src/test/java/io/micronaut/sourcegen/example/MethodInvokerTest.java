@@ -168,6 +168,14 @@ public class MethodInvokerTest {
     }
 
     @Test
+    public void testInvokeOverloadedAstMethod() {
+        Assertions.assertEquals(
+            "number:1",
+            MethodInvoker.invokeOverloadedAstMethod(1)
+        );
+    }
+
+    @Test
     public void testInvokeWiderParameterMethod() {
         Assertions.assertEquals(
             "a",
