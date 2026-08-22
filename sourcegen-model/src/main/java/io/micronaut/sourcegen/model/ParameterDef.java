@@ -81,6 +81,25 @@ public final class ParameterDef extends AbstractElement {
             .build();
     }
 
+    /**
+     * Creates a copy of this parameter with a different name.
+     *
+     * @param name The new name
+     * @return The renamed parameter
+     * @since 2.2
+     */
+    public ParameterDef withName(String name) {
+        if (this.name.equals(name)) {
+            return this;
+        }
+        return ParameterDef.builder(name, type)
+            .addAnnotations(annotations)
+            .addModifiers(modifiers)
+            .addJavadoc(javadoc)
+            .synthetic(synthetic)
+            .build();
+    }
+
     public TypeDef getType() {
         return type;
     }
