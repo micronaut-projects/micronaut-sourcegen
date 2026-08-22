@@ -874,8 +874,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private static boolean containsBlockBodyLambda(ExpressionDef expressionDef) {
-        return expressionDef instanceof Lambda lambda && singleExpressionBody(lambda) == null
-            || expressionDef.nestedExpressionsStream().anyMatch(JavaPoetSourceGenerator::containsBlockBodyLambda);
+        if (expressionDef instanceof Lambda lambda) {
+            // A lambda does not expose its body as nested expressions, so descend into it explicitly
+            return singleExpressionBody(lambda) == null
+                || lambda.implementation().getStatements().stream().anyMatch(JavaPoetSourceGenerator::containsBlockBodyLambda);
+        }
+        return expressionDef.nestedExpressionsStream().anyMatch(JavaPoetSourceGenerator::containsBlockBodyLambda);
     }
 
     private static boolean containsSwitchExpression(StatementDef statementDef) {

@@ -205,6 +205,54 @@ public class MyClass {
     }
 
     @Test
+    public void blockBodyLambdaInsideASingleExpressionLambda() throws IOException {
+        ClassTypeDef nestedType = ClassTypeDef.of("test.Nested");
+        InterfaceDef nestedDef = InterfaceDef.builder("test.Nested")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("apply")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("context", TypeDef.STRING)
+                .returns(nestedType)
+                .build())
+            .build();
+        ClassTypeDef lambdaType = nestedDef.asTypeDef();
+        VariableDef.Local tmp = new VariableDef.Local("tmp", TypeDef.STRING);
+
+        ExpressionDef.Lambda inner = lambdaType.getLambda().implement((aThis, params) -> StatementDef.multi(
+            tmp.defineAndAssign(params.get(0).invoke("trim", TypeDef.STRING)),
+            ExpressionDef.nullValue().returning()
+        ));
+        // The outer lambda is a single expression, so the block body is not visible as a nested expression
+        ExpressionDef.Lambda outer = lambdaType.getLambda().implement((aThis, params) -> inner.returning());
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("evaluate")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(lambdaType)
+                .build((aThis, methodParameters) -> outer.returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.String;
+
+public class MyClass {
+  public Nested evaluate() {
+    return (context) -> (context) -> {
+      String tmp = context.trim();
+      return null;
+    };
+  }
+}
+            """, data);
+    }
+
+    @Test
     public void nestedBlockBodyLambdas() throws IOException {
         InterfaceDef functionDef = stringFunction();
         ClassTypeDef lambdaType = functionDef.asTypeDef();
