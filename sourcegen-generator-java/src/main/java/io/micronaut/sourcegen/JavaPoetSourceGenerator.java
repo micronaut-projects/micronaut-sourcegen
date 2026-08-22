@@ -59,6 +59,7 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -457,7 +458,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private AnnotationSpec asAnnotationSpec(AnnotationDef annotationDef) {
-        AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.bestGuess(annotationDef.getType().getCanonicalName()));
+        AnnotationSpec.Builder builder = AnnotationSpec.builder(asClassType(annotationDef.getType()));
         for (Map.Entry<String, Object> e : annotationDef.getValues().entrySet()) {
             addAnnotationValue(builder, e.getKey(), e.getValue());
         }
@@ -542,7 +543,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return asType(annotatedType.typeDef(), objectDef).annotated(annotationsSpecs);
             }
             case ClassTypeDef classType -> {
-                return ClassName.bestGuess(classType.getCanonicalName());
+                return asClassType(classType);
             }
             case TypeDef.Wildcard wildcard -> {
                 if (!wildcard.lowerBounds().isEmpty()) {
@@ -591,8 +592,66 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         };
     }
 
+    /**
+     * Converts a {@link ClassTypeDef} into a JavaPoet {@link ClassName}.
+     *
+     * <p>For an inner type the split is taken from the binary name ({@link ClassTypeDef#getName()}),
+     * which is unambiguous; {@link ClassTypeDef#getCanonicalName()} cannot be used because it
+     * rewrites {@code $} to {@code .}.
+     *
+     * @param classTypeDef The class type definition
+     * @return The class name
+     */
     private static ClassName asClassType(ClassTypeDef classTypeDef) {
-        return ClassName.bestGuess(classTypeDef.getCanonicalName());
+        if (classTypeDef.isInner()) {
+            String binaryName = classTypeDef.getName();
+            int i = binaryName.indexOf('$');
+            if (i != -1) {
+                String enclosing = binaryName.substring(0, i);
+                String[] nested = binaryName.substring(i + 1).split("\\$", -1);
+                return ClassName.get(packageNameOf(enclosing), simpleNameOf(enclosing), nested);
+            }
+        }
+        return asClassName(classTypeDef.getCanonicalName());
+    }
+
+    /**
+     * A lenient variant of {@link ClassName#bestGuess(String)}.
+     *
+     * <p>It infers the package the same way - by consuming the leading lower-case segments - but it
+     * does not require the remaining simple names to start with an upper-case letter, so generated
+     * names following the {@code $Foo$Bar} convention are supported, and it does not fail when the
+     * name has no package at all.
+     *
+     * @param name The fully qualified name
+     * @return The class name
+     */
+    private static ClassName asClassName(String name) {
+        int p = 0;
+        while (p < name.length() && Character.isLowerCase(name.codePointAt(p))) {
+            int dot = name.indexOf('.', p);
+            if (dot == -1) {
+                break;
+            }
+            p = dot + 1;
+        }
+        String packageName = p == 0 ? "" : name.substring(0, p - 1);
+        String[] simpleNames = name.substring(p).split("\\.", -1);
+        return ClassName.get(
+            packageName,
+            simpleNames[0],
+            Arrays.copyOfRange(simpleNames, 1, simpleNames.length)
+        );
+    }
+
+    private static String packageNameOf(String binaryName) {
+        int i = binaryName.lastIndexOf('.');
+        return i == -1 ? "" : binaryName.substring(0, i);
+    }
+
+    private static String simpleNameOf(String binaryName) {
+        int i = binaryName.lastIndexOf('.');
+        return i == -1 ? binaryName : binaryName.substring(i + 1);
     }
 
     private CodeBlock renderStatement(@Nullable ObjectDef objectDef,
@@ -1485,8 +1544,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private String getClassName(TypeDef typeDef) {
         return switch (typeDef) {
-            case ClassTypeDef classType ->
-                ClassName.bestGuess(classType.getCanonicalName()).canonicalName();
+            case ClassTypeDef classType -> asClassType(classType).canonicalName();
             case TypeDef.Primitive primitive -> primitive.name();
             case TypeDef.Array array -> getClassName(array.componentType()) + "[]";
             case null, default ->
