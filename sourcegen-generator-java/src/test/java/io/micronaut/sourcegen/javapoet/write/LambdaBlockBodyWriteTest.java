@@ -86,6 +86,37 @@ public class MyClass {
     }
 
     @Test
+    public void singleExpressionLambdaIsUnchanged() throws IOException {
+        InterfaceDef functionDef = stringFunction();
+        ClassTypeDef lambdaType = functionDef.asTypeDef();
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("evaluate")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(lambdaType)
+                .build((aThis, methodParameters) -> lambdaType.getLambda()
+                    .implement((t, params) -> params.get(0).invoke("trim", TypeDef.STRING).returning())
+                    .returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+public class MyClass {
+  public StringFunction evaluate() {
+    return (context) -> context.trim();
+  }
+}
+            """, data);
+
+        JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+    }
+
+    @Test
     public void blockBodyLambdaInALocalVariable() throws IOException {
         InterfaceDef functionDef = stringFunction();
         ClassTypeDef lambdaType = functionDef.asTypeDef();

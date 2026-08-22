@@ -863,8 +863,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     @Nullable
     private static ExpressionDef singleExpressionBody(Lambda lambda) {
         List<StatementDef> statements = lambda.implementation().getStatements();
-        if (statements.size() == 1 && statements.get(0) instanceof StatementDef.Return returnStatement) {
-            return returnStatement.expression();
+        if (statements.size() == 1 && statements.get(0) instanceof StatementDef.Return(ExpressionDef expression)) {
+            return expression;
         }
         return null;
     }
