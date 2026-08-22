@@ -624,7 +624,7 @@ public sealed interface ClassTypeDef extends TypeDef {
             try {
                 Object.class.getMethod(method.getName(), method.getParameterTypes());
                 return true;
-            } catch (NoSuchMethodException e) {
+            } catch (NoSuchMethodException _) {
                 return false;
             }
         }

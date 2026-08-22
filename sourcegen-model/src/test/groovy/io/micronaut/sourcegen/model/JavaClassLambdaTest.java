@@ -60,20 +60,18 @@ class JavaClassLambdaTest {
 
     @Test
     void failsForMoreThanOneAbstractMethod() {
-        IllegalArgumentException e = assertThrows(
-            IllegalArgumentException.class,
-            () -> ClassTypeDef.of(TwoAbstractMethods.class).getLambda()
-        );
+        ClassTypeDef typeDef = ClassTypeDef.of(TwoAbstractMethods.class);
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, typeDef::getLambda);
 
         assertEquals("Parent of a lambda should have exactly one abstract method but has 2", e.getMessage());
     }
 
     @Test
     void failsForANameOnlyClassTypeDefWithAHelpfulMessage() {
-        UnsupportedOperationException e = assertThrows(
-            UnsupportedOperationException.class,
-            () -> ClassTypeDef.of("com.example.Foo").getLambda()
-        );
+        ClassTypeDef typeDef = ClassTypeDef.of("com.example.Foo");
+
+        UnsupportedOperationException e = assertThrows(UnsupportedOperationException.class, typeDef::getLambda);
 
         assertTrue(e.getMessage().contains("com.example.Foo"), e.getMessage());
         assertTrue(e.getMessage().contains("ClassTypeDef.of(Class)"), e.getMessage());
