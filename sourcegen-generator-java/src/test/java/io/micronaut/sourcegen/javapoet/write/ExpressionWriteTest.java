@@ -6,6 +6,7 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Cast;
 import io.micronaut.sourcegen.model.InterfaceDef;
+import io.micronaut.sourcegen.model.LambdaDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -1710,10 +1711,11 @@ public class MyClass {
                 .build())
             .build();
 
+        LambdaDef lambda = functionDef.asTypeDef().getLambda();
+
         IllegalArgumentException e = Assertions.assertThrows(
             IllegalArgumentException.class,
-            () -> functionDef.asTypeDef().getLambda()
-                .implement(List.of("a", "b"), (aThis, params) -> params.get(0).returning())
+            () -> lambda.implement(List.of("a", "b"), (aThis, params) -> params.get(0).returning())
         );
 
         assertEquals("Lambda method apply has 1 parameter(s) but 2 name(s) were provided", e.getMessage());
