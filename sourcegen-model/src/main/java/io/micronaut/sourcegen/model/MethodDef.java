@@ -328,7 +328,7 @@ public final class MethodDef extends AbstractElement {
     public ParameterDef getParameter(String name) {
         ParameterDef parameter = findParameter(name);
         if (parameter == null) {
-            throw new IllegalStateException("Method: " + name + " doesn't have parameter: " + name);
+            throw new IllegalStateException("Method: " + this.name + " doesn't have parameter: " + name);
         }
         return parameter;
     }
