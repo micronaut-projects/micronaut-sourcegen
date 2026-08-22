@@ -38,6 +38,7 @@ import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -148,6 +149,25 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
                 .addStaticStatement(methodParameters -> repositoryType
                     .invokeStatic("staticMethod", TypeDef.STRING, methodParameters))
                 .buildStatic(methodParameters -> ExpressionDef.constant("Ignored").returning())
+            )
+
+            // The declared parameters are wider than the arguments: a signature inferred from the argument
+            // types would name Objects.toString(String, String), which does not exist
+            .addMethod(MethodDef.builder("invokeWiderParameterMethod")
+                .addParameters(String.class, String.class)
+                .returns(String.class)
+                .buildStatic(methodParameters -> ClassTypeDef.of(Objects.class)
+                    .invokeStatic("toString", TypeDef.STRING, methodParameters)
+                    .returning())
+            )
+
+            // A variable arity target: the trailing arguments belong in an array
+            .addMethod(MethodDef.builder("invokeVarArgsMethod")
+                .addParameters(String.class, String.class, String.class)
+                .returns(String.class)
+                .buildStatic(methodParameters -> ClassTypeDef.of(String.class)
+                    .invokeStatic("format", TypeDef.STRING, methodParameters)
+                    .returning())
             )
 
             .addMethod(MethodDef.builder("invokeTryFinallyReadLock")

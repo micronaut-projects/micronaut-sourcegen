@@ -168,6 +168,22 @@ public class MethodInvokerTest {
     }
 
     @Test
+    public void testInvokeWiderParameterMethod() {
+        Assertions.assertEquals(
+            "a",
+            MethodInvoker.invokeWiderParameterMethod("a", "b")
+        );
+    }
+
+    @Test
+    public void testInvokeVarArgsMethod() {
+        Assertions.assertEquals(
+            "x-y",
+            MethodInvoker.invokeVarArgsMethod("%s-%s", "x", "y")
+        );
+    }
+
+    @Test
     public void testInvokeTryFinallyLockMethod() {
         ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
         assertEquals(

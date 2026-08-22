@@ -206,11 +206,22 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Ex
         /**
          * Invoke super constructor statement.
          *
+         * <p>The constructor is resolved with {@link ClassTypeDef#findDeclaredMethod(String, int)} when the
+         * super type carries member information. When it does not, the signature is inferred from the static
+         * types of the values, which names a constructor that does not exist if any of them is narrower than
+         * the declared parameter - use {@link #invokeSuperConstructor(List, List)} or
+         * {@link #invokeSuperConstructor(Constructor, List)} then.
+         *
          * @param values The values
          * @return The call to the instance method
          * @since 1.5
          */
         public StatementDef.InvokeSuperConstructor invokeSuperConstructor(List<? extends ExpressionDef> values) {
+            ClassTypeDef owner = type() instanceof ClassTypeDef classTypeDef ? classTypeDef : null;
+            Invocations.Resolved resolved = Invocations.resolve(owner, MethodDef.CONSTRUCTOR, null, values);
+            if (resolved != null) {
+                return invokeSuperConstructor(resolved.parameterTypes(), resolved.values());
+            }
             return invokeSuperConstructor(values.stream().map(ExpressionDef::type).toList(), values);
         }
 

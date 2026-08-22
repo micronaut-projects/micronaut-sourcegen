@@ -546,6 +546,11 @@ public sealed interface ExpressionDef
      */
     @Deprecated(since = "2.0", forRemoval = true)
     default InvokeInstanceMethod invokeConstructor(List<? extends ExpressionDef> values) {
+        ClassTypeDef owner = type() instanceof ClassTypeDef classTypeDef ? classTypeDef : null;
+        Invocations.Resolved resolved = Invocations.resolve(owner, MethodDef.CONSTRUCTOR, null, values);
+        if (resolved != null) {
+            return invokeConstructor(resolved.parameterTypes(), resolved.values());
+        }
         return invokeConstructor(values.stream().map(ExpressionDef::type).toList(), values);
     }
 
@@ -709,6 +714,12 @@ public sealed interface ExpressionDef
     /**
      * The call the instance method expression.
      *
+     * <p>The method is resolved with {@link ClassTypeDef#findDeclaredMethod(String, int)} when the type of
+     * this expression carries member information. When it does not, the signature is inferred from the
+     * static types of the values, which names a method that does not exist if any of them is narrower than
+     * the declared parameter - use {@link #invoke(String, List, TypeDef, List)},
+     * {@link #invoke(Method, List)} or {@link #invoke(MethodElement, List)} then.
+     *
      * @param name      The method name
      * @param returning The returning
      * @param values    The values
@@ -716,6 +727,11 @@ public sealed interface ExpressionDef
      * @since 1.2
      */
     default InvokeInstanceMethod invoke(String name, TypeDef returning, List<? extends ExpressionDef> values) {
+        ClassTypeDef owner = type() instanceof ClassTypeDef classTypeDef ? classTypeDef : null;
+        Invocations.Resolved resolved = Invocations.resolve(owner, name, returning, values);
+        if (resolved != null) {
+            return invoke(name, resolved.parameterTypes(), returning, resolved.values());
+        }
         return invoke(
             name,
             values.stream().map(ExpressionDef::type).toList(),
