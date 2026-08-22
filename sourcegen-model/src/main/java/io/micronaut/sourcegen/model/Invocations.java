@@ -106,21 +106,19 @@ final class Invocations {
         // With variable arity only the fixed prefix can be checked; the tail is packed into the array later
         int fixed = parameters.size() == values.size() ? parameters.size() : parameters.size() - 1;
         for (int i = 0; i < fixed && i < values.size(); i++) {
-            TypeDef parameter = parameters.get(i).getType();
-            TypeDef argument = values.get(i).type();
-            if (maybeAssignable(parameter, argument)) {
-                continue;
-            }
             // The model does not record variable arity, so the last argument of an exact-count call to an
             // array parameter may also be a single element of it
             boolean lastOfExactCount = i == parameters.size() - 1 && parameters.size() == values.size();
-            if (lastOfExactCount && erase(parameter) instanceof TypeDef.Array array
-                && maybeAssignable(array.componentType(), argument)) {
-                continue;
+            if (!canAccept(parameters.get(i).getType(), values.get(i).type(), lastOfExactCount)) {
+                return false;
             }
-            return false;
         }
         return true;
+    }
+
+    private static boolean canAccept(TypeDef parameter, TypeDef argument, boolean orElement) {
+        return maybeAssignable(parameter, argument)
+            || orElement && erase(parameter) instanceof TypeDef.Array array && maybeAssignable(array.componentType(), argument);
     }
 
     private static boolean maybeAssignable(TypeDef parameterType, TypeDef argumentType) {
@@ -207,7 +205,6 @@ final class Invocations {
     private static Class<?> rawClass(TypeDef typeDef) {
         return switch (erase(typeDef)) {
             case ClassTypeDef.JavaClass javaClass -> javaClass.type();
-            case TypeDef.Primitive primitive -> primitive.clazz();
             default -> null;
         };
     }
@@ -275,9 +272,6 @@ final class Invocations {
         int fixed = parameterTypes.size() - 1;
         if (values.size() == parameterTypes.size() && values.getLast().type() instanceof TypeDef.Array) {
             // The caller already passed the array
-            return values;
-        }
-        if (values.size() < fixed) {
             return values;
         }
         List<ExpressionDef> adapted = new ArrayList<>(parameterTypes.size());

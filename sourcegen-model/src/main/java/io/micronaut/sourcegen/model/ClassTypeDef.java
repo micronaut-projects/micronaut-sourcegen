@@ -720,6 +720,9 @@ public sealed interface ClassTypeDef extends TypeDef {
                 }
             }
             return TypeDef.of(erasure);
+        }
+
+        @Override
         public List<MethodDef> findDeclaredMethods(String name, int argumentCount) {
             if (MethodDef.CONSTRUCTOR.equals(name)) {
                 return Arrays.stream(type.getDeclaredConstructors())

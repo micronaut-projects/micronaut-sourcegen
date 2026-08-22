@@ -1,6 +1,9 @@
 package io.micronaut.sourcegen.model;
 
+import io.micronaut.inject.ast.ClassElement;
 import org.junit.jupiter.api.Test;
+
+import javax.lang.model.element.Modifier;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -88,6 +91,71 @@ class InvocationResolutionTest {
         ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("first", TypeDef.STRING, strings);
 
         assertEquals(List.of(TypeDef.STRING.array()), parameterTypes(call.method()));
+    }
+
+    @Test
+    void anAstArgumentIsCheckedAgainstAReflectiveParameter() {
+        ExpressionDef integer = new VariableDef.Local("value", ClassTypeDef.of(ClassElement.of(Integer.class)));
+
+        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("describe", TypeDef.STRING, integer);
+
+        assertEquals(List.of(TypeDef.of(Number.class)), parameterTypes(call.method()));
+    }
+
+    @Test
+    void aReflectiveArgumentIsCheckedAgainstAParameterKnownByName() {
+        // A definition being generated can declare its parameters by name only; Comparable is reached
+        // through Integer's interfaces
+        ClassTypeDef owner = ClassDef.builder("test.Generated")
+            .addMethod(MethodDef.builder("describe").addModifiers(Modifier.STATIC)
+                .addParameter("value", ClassTypeDef.of("java.lang.Comparable")).returns(TypeDef.STRING).build())
+            .addMethod(MethodDef.builder("describe").addModifiers(Modifier.STATIC)
+                .addParameter("value", ClassTypeDef.of("java.lang.String")).returns(TypeDef.STRING).build())
+            .build()
+            .asTypeDef();
+
+        ExpressionDef.InvokeStaticMethod call = owner.invokeStatic("describe", TypeDef.STRING, ExpressionDef.constant(1));
+
+        assertEquals(List.of(ClassTypeDef.of("java.lang.Comparable")), parameterTypes(call.method()));
+    }
+
+    @Test
+    void anArgumentKnownByNameOnlyCannotNarrowOverloads() {
+        ExpressionDef unknown = new VariableDef.Local("value", ClassTypeDef.of("com.example.Unknown"));
+
+        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("describe", TypeDef.STRING, unknown);
+
+        assertEquals(List.of(ClassTypeDef.of("com.example.Unknown")), parameterTypes(call.method()));
+    }
+
+    @Test
+    void anUnboundedTypeVariableErasesToObject() {
+        ExpressionDef variable = new VariableDef.Local("value", TypeDef.variable("T"));
+
+        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("describe", TypeDef.STRING, variable);
+
+        assertEquals(List.of(TypeDef.variable("T")), parameterTypes(call.method()));
+    }
+
+    @Test
+    void annotatedTypesAreComparedByTheTypeTheyAnnotate() {
+        AnnotationDef deprecated = AnnotationDef.builder(ClassTypeDef.of(Deprecated.class)).build();
+        ExpressionDef annotatedClass = new VariableDef.Local("value", ClassTypeDef.of(Integer.class).annotated(deprecated));
+        ExpressionDef annotatedPrimitive = new VariableDef.Local("other", TypeDef.Primitive.INT.annotated(deprecated));
+
+        assertEquals(List.of(TypeDef.of(Number.class)),
+            parameterTypes(SUPPORT.invokeStatic("describe", TypeDef.STRING, annotatedClass).method()));
+        assertEquals(List.of(TypeDef.of(Number.class)),
+            parameterTypes(SUPPORT.invokeStatic("describe", TypeDef.STRING, annotatedPrimitive).method()));
+    }
+
+    @Test
+    void aWildcardArgumentCannotNarrowOverloads() {
+        ExpressionDef wildcard = new VariableDef.Local("value", TypeDef.wildcard());
+
+        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("describe", TypeDef.STRING, wildcard);
+
+        assertEquals(List.of(TypeDef.wildcard()), parameterTypes(call.method()));
     }
 
     @Test

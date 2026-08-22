@@ -46,6 +46,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @Internal
 public final class GenerateMethodInvocationVisitor implements TypeElementVisitor<GenerateMethodInvocation, Object> {
 
+    private static final String VALUE = "value";
+
     private static final java.lang.reflect.Method LOCK_METHOD = ReflectionUtils.getRequiredInternalMethod(
         Lock.class,
         "lock"
@@ -90,7 +92,7 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
             // MyRepository.describe is overloaded for Number and String with the same arity; the argument
             // is an AST Integer, so the overload has to be picked through the element model
             .addMethod(MethodDef.builder("invokeOverloadedAstMethod")
-                .addParameter("value", integerType)
+                .addParameter(VALUE, integerType)
                 .returns(String.class)
                 .buildStatic(methodParameters -> repositoryType
                     .invokeStatic("describe", TypeDef.STRING, methodParameters)
@@ -219,7 +221,7 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
             .addMethod(MethodDef.builder("invokeTypeVariable")
                 .addTypeVariable(new TypeVariable("T"))
                 .returns(TypeDef.STRING)
-                .addParameter("value", TypeDef.variable("T"))
+                .addParameter(VALUE, TypeDef.variable("T"))
                 .build((t, p) ->
                     p.get(0).invoke("toString", TypeDef.STRING).returning()
                 )
@@ -228,7 +230,7 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
             .addMethod(MethodDef.builder("invokeTypeVariableWithBounds")
                 .addTypeVariable(new TypeVariable("T", List.of(TypeDef.of(CharSequence.class))))
                 .returns(TypeDef.Primitive.INT)
-                .addParameter("value", TypeDef.variable("T", List.of(TypeDef.of(CharSequence.class))))
+                .addParameter(VALUE, TypeDef.variable("T", List.of(TypeDef.of(CharSequence.class))))
                 .build((t, p) ->
                     p.get(0).invoke("length", TypeDef.Primitive.INT).returning()
                 )
