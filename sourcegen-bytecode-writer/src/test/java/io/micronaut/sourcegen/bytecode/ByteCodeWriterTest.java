@@ -699,7 +699,7 @@ public class example/MyClassWithLambda {
     INVOKEVIRTUAL java/lang/String.substring (I)Ljava/lang/String;
     ARETURN
    L1
-    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 1
+    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 0
 
   // access flags 0x1
   public callStatefulLambda(Ljava/lang/String;)Ljava/lang/String;
@@ -749,9 +749,9 @@ public class example/MyClassWithLambda {
     INVOKEVIRTUAL java/lang/StringBuilder.toString ()Ljava/lang/String;
     ARETURN
    L1
-    LOCALVARIABLE constant Ljava/lang/String; L0 L1 1
-    LOCALVARIABLE this Lexample/MyClassWithLambda; L0 L1 2
-    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 3
+    LOCALVARIABLE constant Ljava/lang/String; L0 L1 0
+    LOCALVARIABLE this Lexample/MyClassWithLambda; L0 L1 1
+    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 2
 
   // access flags 0x1
   public callGenericLambda(Ljava/lang/String;)Ljava/lang/String;
@@ -795,8 +795,8 @@ public class example/MyClassWithLambda {
     INVOKEVIRTUAL java/lang/StringBuilder.toString ()Ljava/lang/String;
     ARETURN
    L1
-    LOCALVARIABLE constant Ljava/lang/String; L0 L1 1
-    LOCALVARIABLE arg0 Ljava/lang/String; L0 L1 2
+    LOCALVARIABLE constant Ljava/lang/String; L0 L1 0
+    LOCALVARIABLE arg0 Ljava/lang/String; L0 L1 1
 
   // access flags 0x1
   public callGenericLambda2(Ljava/lang/String;)Ljava/lang/String;
@@ -836,8 +836,8 @@ public class example/MyClassWithLambda {
     INVOKEVIRTUAL java/lang/StringBuilder.toString ()Ljava/lang/String;
     ARETURN
    L1
-    LOCALVARIABLE constant Ljava/lang/String; L0 L1 1
-    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 2
+    LOCALVARIABLE constant Ljava/lang/String; L0 L1 0
+    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 1
 }
 """, bytecode);
 
@@ -862,8 +862,8 @@ public class MyClassWithLambda {
       return function.apply(input);
    }
 
-   private static String lambda$callLambda$0(String var0) {
-      return var0.substring(1);
+   private static String lambda$callLambda$0(String arg1) {
+      return arg1.substring(1);
    }
 
    public String callStatefulLambda(String input) {
@@ -872,8 +872,8 @@ public class MyClassWithLambda {
       return function.apply(input);
    }
 
-   private static String lambda$callStatefulLambda$0(String var0, MyClassWithLambda constant, String var2) {
-      return var0 + ((String)var2).substring(1) + ((MyClassWithLambda)constant).toString() + constant.name;
+   private static String lambda$callStatefulLambda$0(String constant, MyClassWithLambda var1, String arg1) {
+      return constant + arg1.substring(1) + var1.toString() + var1.name;
    }
 
    public String callGenericLambda(String input) {
@@ -882,8 +882,8 @@ public class MyClassWithLambda {
       return (String)function.apply(input);
    }
 
-   private static String lambda$callGenericLambda$0(String var0, String constant) {
-      return var0 + constant.substring(1);
+   private static String lambda$callGenericLambda$0(String constant, String arg0) {
+      return constant + arg0.substring(1);
    }
 
    public String callGenericLambda2(String input) {
@@ -891,8 +891,8 @@ public class MyClassWithLambda {
       return this.methodInvoker(MyClassWithLambda::lambda$callGenericLambda2$0, input);
    }
 
-   private static String lambda$callGenericLambda2$0(String var0, String constant) {
-      return var0 + constant.substring(1);
+   private static String lambda$callGenericLambda2$0(String constant, String arg1) {
+      return constant + arg1.substring(1);
    }
 }
 """, decompileToJava(bytes));
@@ -1521,7 +1521,7 @@ public class example/Example {
     ARETURN
    L1
     LOCALVARIABLE arg1 D L0 L1 1
-    LOCALVARIABLE arg2 D L0 L1 2
+    LOCALVARIABLE arg2 D L0 L1 3
 }
 """, bytecode);
 
@@ -1529,8 +1529,8 @@ public class example/Example {
 package example;
 
 public class Example {
-   Object myMethod(double arg1, double var3) {
-      return (long)Math.pow(arg1, var3);
+   Object myMethod(double arg1, double arg2) {
+      return (long)Math.pow(arg1, arg2);
    }
 }
 """, decompileToJava(bytes));
@@ -1918,7 +1918,7 @@ public class example/Example {
     LOCALVARIABLE arg3 F L0 L1 3
     LOCALVARIABLE arg4 F L0 L1 4
     LOCALVARIABLE arg5 D L0 L1 5
-    LOCALVARIABLE arg6 D L0 L1 6
+    LOCALVARIABLE arg6 D L0 L1 7
 }
 """, bytecode);
 
@@ -1926,8 +1926,8 @@ public class example/Example {
 package example;
 
 public class Example {
-   Object[] myMethod(int arg1, int arg2, float arg3, float arg4, double arg5, double var7) {
-      return new Object[]{arg1 + arg2, arg3 + arg4, arg5 + var7};
+   Object[] myMethod(int arg1, int arg2, float arg3, float arg4, double arg5, double arg6) {
+      return new Object[]{arg1 + arg2, arg3 + arg4, arg5 + arg6};
    }
 }
 """, decompileToJava(bytes));
@@ -2623,7 +2623,7 @@ final enum MyEnum extends java/lang/Enum {
     CHECKCAST MyEnum
     ARETURN
    L1
-    LOCALVARIABLE value Ljava/lang/String; L0 L1 1
+    LOCALVARIABLE value Ljava/lang/String; L0 L1 0
 }
 """, bytecode);
     }
@@ -3361,7 +3361,7 @@ public final enum example/MyEnumWithInnerTypes extends java/lang/Enum {
     CHECKCAST example/MyEnumWithInnerTypes
     ARETURN
    L1
-    LOCALVARIABLE value Ljava/lang/String; L0 L1 1
+    LOCALVARIABLE value Ljava/lang/String; L0 L1 0
 
   // access flags 0x1
   public myName()Ljava/lang/String;
@@ -4163,13 +4163,11 @@ public class MyClass {
       return items.filter(MyClass::lambda$evaluate$0);
    }
 
-   private static boolean lambda$evaluate$0(Object var0, Object context) {
-      return Objects.equals(var0, context);
+   private static boolean lambda$evaluate$0(Object context, Object item) {
+      return Objects.equals(context, item);
    }
 }
 """, decompileToJava(bytes));
-        // The captured parameter is the first argument of the synthetic method; the local variable names
-        // the decompiler shows are shifted by one, which is a separate defect of the debug information
     }
 
     @Test
@@ -4212,8 +4210,8 @@ public class MyClass {
       items.forEach(MyClass::lambda$printAll$0);
    }
 
-   private static void lambda$printAll$0(Object var0) {
-      System.out.println(var0);
+   private static void lambda$printAll$0(Object item) {
+      System.out.println(item);
    }
 }
 """, decompileToJava(bytes));
