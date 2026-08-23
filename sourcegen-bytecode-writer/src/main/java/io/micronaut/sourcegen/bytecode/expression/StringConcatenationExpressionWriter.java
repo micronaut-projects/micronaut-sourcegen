@@ -57,7 +57,9 @@ final class StringConcatenationExpressionWriter extends AbstractStatementAwareEx
             } else {
                 ++numDynamicParts;
                 stringExpression.append(ARG_CODE);
-                ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, value, TypeDef.OBJECT);
+                // Written as its own type: the descriptor below declares that type, and the concat factory
+                // accepts a primitive directly, which keeps it off the heap
+                ExpressionWriter.writeExpression(generatorAdapter, context, value);
             }
         }
 

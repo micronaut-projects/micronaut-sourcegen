@@ -4219,6 +4219,59 @@ public class MyClass {
 """, decompileToJava(bytes));
     }
 
+    @Test
+    void testStringConcatenationWithPrimitives() {
+        ClassDef classDef = ClassDef.builder("example.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("describe")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("count", TypeDef.Primitive.INT)
+                .addParameter("price", TypeDef.Primitive.DOUBLE)
+                .returns(TypeDef.STRING)
+                .build((t, params) ->
+                    ExpressionDef.constant("Count: ")
+                        .stringConcat(params.get(0))
+                        .stringConcat(ExpressionDef.constant(", price: "))
+                        .stringConcat(params.get(1))
+                        .returning()
+                )
+            )
+            .build();
+
+        // The descriptor has to declare what is on the stack: the primitives themselves, not their boxes
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x1
+// signature Ljava/lang/Object;
+// declaration: example/MyClass
+public class example/MyClass {
+
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public describe(ID)Ljava/lang/String;
+   L0
+    ILOAD 1
+    DLOAD 2
+    INVOKEDYNAMIC makeConcatWithConstants(ID)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/StringConcatFactory.makeConcatWithConstants(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      "Count: \\u0001, price: \\u0001"
+    ]
+    ARETURN
+   L1
+    LOCALVARIABLE count I L0 L1 1
+    LOCALVARIABLE price D L0 L1 2
+}
+""", toBytecode(classDef));
+    }
+
     private String toBytecode(ObjectDef objectDef) {
         StringWriter stringWriter = new StringWriter();
         generateFile(objectDef, stringWriter);
