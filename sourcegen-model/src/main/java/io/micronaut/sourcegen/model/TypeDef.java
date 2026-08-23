@@ -323,6 +323,11 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
     /**
      * Creates a new type erasure.
      *
+     * <p>A type variable erases to the erasure of its bound and a wildcard to the erasure of its upper
+     * bound - {@link #OBJECT} when there is none - so the result can always be rendered, as a parameter
+     * type or as a class literal. Type arguments of a parameterized type are kept, so that an overriding
+     * signature stays generic.
+     *
      * @param typedElement The typed element
      * @return a new type definition
      */
@@ -425,7 +430,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             dimensions++;
         }
         if (dimensions > 0) {
-            return array(of(typedElement), dimensions);
+            return array(of(typedElement, resolvedVariableFn, erasure), dimensions);
         }
         if (typedElement.isPrimitive()) {
             return primitive(typedElement.getName());
@@ -439,12 +444,20 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             if (resolved != null) {
                 return resolved;
             }
+            if (erasure) {
+                // JLS 4.6: a type variable erases to the erasure of its bound
+                return erasureOfBounds(placeholderElement.getBounds(), resolvedVariableFn);
+            }
             return TypeDef.variable(
                 placeholderElement.getVariableName(),
-                placeholderElement.getBounds().stream().map(e -> TypeDef.of(e, resolvedVariableFn, erasure)).toList()
+                placeholderElement.getBounds().stream().map(e -> TypeDef.of(e, resolvedVariableFn, false)).toList()
             );
         }
         if (typedElement instanceof WildcardElement wildcardElement) {
+            if (erasure) {
+                // A wildcard erases to the erasure of its upper bound; `?` and `? super X` to Object
+                return erasureOfBounds(wildcardElement.getUpperBounds(), resolvedVariableFn);
+            }
             return new Wildcard(
                 wildcardElement.getUpperBounds().stream().map(te -> of(te, resolvedVariableFn)).toList(),
                 wildcardElement.getLowerBounds().stream().map(te -> of(te, resolvedVariableFn)).toList()
@@ -454,6 +467,25 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             return ClassTypeDef.of(classElement, resolvedVariableFn, erasure);
         }
         throw new IllegalStateException("Unknown typed element: " + typedElement);
+    }
+
+    /**
+     * Erases a list of bounds to the first one that does not erase to {@link Object}, the way the writers
+     * already resolve a type variable: an element model may list a self-referencing placeholder before
+     * the declared bound, so the leftmost entry is not always the one that carries the type.
+     *
+     * @param bounds             The bounds
+     * @param resolvedVariableFn The resolved variable function
+     * @return The erasure of the first significant bound, or {@link #OBJECT} without one
+     */
+    private static TypeDef erasureOfBounds(List<? extends ClassElement> bounds, Function<String, @Nullable TypeDef> resolvedVariableFn) {
+        for (ClassElement bound : bounds) {
+            TypeDef erased = of(bound, resolvedVariableFn, true);
+            if (!(erased instanceof ClassTypeDef classTypeDef && classTypeDef.getName().equals(Object.class.getName()))) {
+                return erased;
+            }
+        }
+        return TypeDef.OBJECT;
     }
 
     /**

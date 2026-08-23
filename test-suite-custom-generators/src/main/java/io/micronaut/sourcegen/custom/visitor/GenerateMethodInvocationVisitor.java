@@ -19,7 +19,9 @@ import io.micronaut.core.annotation.Internal;
 import org.jspecify.annotations.NonNull;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.ast.MethodElement;
+import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.example.GenerateMethodInvocation;
@@ -37,6 +39,7 @@ import io.micronaut.sourcegen.model.TypeDef.TypeVariable;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -76,7 +79,7 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
         // An AST type, so that the argument below is a ClassElementType rather than a reflective class
         ClassTypeDef integerType = ClassTypeDef.of(context.getRequiredClassElement(Integer.class.getName(), context.getElementAnnotationMetadataFactory()));
 
-        ClassDef methodInvoker = createMethodInvokerClass(repositoryType, integerType);
+        ClassDef methodInvoker = createMethodInvokerClass(repositoryType, integerType, myRepository);
         sourceGenerator.write(methodInvoker, context, element);
 
         ClassDef interfaceSuperInvokerDef = createInterfaceSuperInvoker(myRepository);
@@ -86,8 +89,34 @@ public final class GenerateMethodInvocationVisitor implements TypeElementVisitor
         sourceGenerator.write(swapper, context, element);
     }
 
-    private ClassDef createMethodInvokerClass(ClassTypeDef repositoryType, ClassTypeDef integerType) {
+    /**
+     * Generates {@code static Class[] erasuresOfPick()} returning the erasure of every type in the signature
+     * of {@code MyRepository.pick}, as class literals - a type variable, a wildcard or an array of either
+     * cannot be rendered as one unless it is erased.
+     */
+    private static MethodDef createErasuresMethod(ClassElement myRepository) {
+        MethodElement pick = myRepository.getEnclosedElement(ElementQuery.ALL_METHODS.named("pick")).orElseThrow();
+        List<TypeDef> erasures = new ArrayList<>();
+        for (ParameterElement parameter : pick.getParameters()) {
+            ClassElement type = parameter.getGenericType();
+            erasures.add(TypeDef.erasure(type));
+            // The erasure of the type argument: `? extends Number` -> Number, `? super Integer` -> Object, T -> Number
+            type.getFirstTypeArgument().ifPresent(argument -> erasures.add(TypeDef.erasure(argument)));
+        }
+        erasures.add(TypeDef.erasure(pick.getGenericReturnType()));
+        ClassTypeDef classType = ClassTypeDef.of(Class.class);
+        return MethodDef.builder("erasuresOfPick")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .returns(classType.array())
+            .build((t, params) -> classType.array()
+                .instantiate(erasures.stream().map(e -> new ExpressionDef.Constant(classType, e)).toList())
+                .returning());
+    }
+
+    private ClassDef createMethodInvokerClass(ClassTypeDef repositoryType, ClassTypeDef integerType, ClassElement myRepository) {
         return ClassDef.builder("io.micronaut.sourcegen.example.MethodInvoker")
+
+            .addMethod(createErasuresMethod(myRepository))
 
             // MyRepository.describe is overloaded for Number and String with the same arity; the argument
             // is an AST Integer, so the overload has to be picked through the element model

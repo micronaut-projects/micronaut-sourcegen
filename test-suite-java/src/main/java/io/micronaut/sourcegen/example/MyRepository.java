@@ -25,6 +25,14 @@ public interface MyRepository {
         return "string:" + string;
     }
 
+    /**
+     * A generic signature whose erasures are rendered by the generated code.
+     */
+    static <T extends Number, U> T pick(T value, U unbounded, java.util.List<? extends Number> numbers,
+                                      java.util.List<? super Integer> sink, T[] values, java.util.Optional<T> optional) {
+        return value;
+    }
+
     static String staticMethod(String string, Integer integer, int i) {
         return string + (integer + i);
     }
