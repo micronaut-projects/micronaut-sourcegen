@@ -15,6 +15,10 @@ import org.junit.jupiter.api.Test;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -243,13 +247,64 @@ import java.lang.String;
 
 public class MyClass {
   public Nested evaluate() {
-    return (context) -> (context) -> {
-      String tmp = context.trim();
+    return (context) -> (context1) -> {
+      String tmp = context1.trim();
       return null;
     };
   }
 }
             """, data);
+    }
+
+    @Test
+    public void consumerWithAnInvocationBodyAsAMethodArgument() throws Exception {
+        // A void functional interface whose body is a statement, not a return - passed as an argument
+        Method accept = Consumer.class.getMethod("accept", Object.class);
+        Method forEach = Iterable.class.getMethod("forEach", Consumer.class);
+        VariableDef.Local sink = new VariableDef.Local("sink", TypeDef.parameterized(List.class, String.class));
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("copy")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("items", TypeDef.parameterized(List.class, String.class))
+                .returns(TypeDef.parameterized(List.class, String.class))
+                .build((aThis, params) -> StatementDef.multi(
+                    sink.defineAndAssign(ClassTypeDef.of(ArrayList.class).instantiate()),
+                    params.get(0).invoke(forEach, new ExpressionDef.Lambda(
+                        ClassTypeDef.of(Consumer.class),
+                        MethodDef.of(accept),
+                        MethodDef.builder("accept")
+                            .addModifiers(Modifier.PUBLIC)
+                            .addParameter("t", TypeDef.OBJECT)
+                            .returns(TypeDef.VOID)
+                            .build((lt, lp) -> sink.invoke("add", TypeDef.Primitive.BOOLEAN, lp.get(0)))
+                    )),
+                    sink.returning()
+                ))
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.String;
+import java.util.List;
+
+public class MyClass {
+  public List<String> copy(List<String> items) {
+    List<String> sink = new java.util.ArrayList();
+    items.forEach((t) -> {
+      sink.add(t);
+    });
+    return sink;
+  }
+}
+            """, data);
+
+        JavaCompileAssertions.assertCompiles(data);
     }
 
     @Test
@@ -282,8 +337,8 @@ import java.lang.String;
 public class MyClass {
   public StringFunction evaluate() {
     return (context) -> {
-      StringFunction inner = (context) -> {
-        String tmp = context.trim();
+      StringFunction inner = (context1) -> {
+        String tmp = context1.trim();
         return tmp;
       };
       return inner.apply("a");
@@ -291,8 +346,6 @@ public class MyClass {
   }
 }
             """, data);
-        // Not compiled: both lambdas declare `context`, which Java rejects. That is a separate defect -
-        // the writer emits the interface's parameter name for every lambda over the same interface.
     }
 
 }
