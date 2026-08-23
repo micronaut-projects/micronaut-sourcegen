@@ -4238,6 +4238,10 @@ public class MyClass {
             )
             .build();
 
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
         // The descriptor has to declare what is on the stack: the primitives themselves, not their boxes
         assertEquals("""
 // class version 61.0 (61)
@@ -4269,7 +4273,16 @@ public class example/MyClass {
     LOCALVARIABLE count I L0 L1 1
     LOCALVARIABLE price D L0 L1 2
 }
-""", toBytecode(classDef));
+""", bytecode);
+        assertEquals("""
+package example;
+
+public class MyClass {
+   public String describe(int count, double price) {
+      return "Count: " + count + ", price: " + price;
+   }
+}
+""", decompileToJava(bytes));
     }
 
     private String toBytecode(ObjectDef objectDef) {
