@@ -179,6 +179,24 @@ public sealed interface ClassTypeDef extends TypeDef {
     }
 
     /**
+     * An interface may redeclare a public method of {@link Object} as abstract - {@code Comparator} does
+     * with {@code equals} - without that making it a second abstract method for the purpose of being a
+     * functional interface (JLS 9.8).
+     *
+     * @param name           The method name
+     * @param parameterTypes The parameter type names
+     * @return True if the method is a public method of {@link Object}
+     * @since 2.2
+     */
+    private static boolean isObjectMethod(String name, List<String> parameterTypes) {
+        return switch (name) {
+            case "equals" -> parameterTypes.equals(List.of(Object.class.getName()));
+            case "hashCode", "toString" -> parameterTypes.isEmpty();
+            default -> false;
+        };
+    }
+
+    /**
      * Find the method that can be represented as a lambda.
      *
      * @param resolvedTypeVariables The resolved type variables
@@ -880,10 +898,14 @@ public sealed interface ClassTypeDef extends TypeDef {
         @Override
         public LambdaDef getLambda(Function<String, @Nullable TypeDef> resolveVariableFn) {
             List<MethodElement> abstractMethods = classElement.getEnclosedElements(
-                ElementQuery.of(MethodElement.class).onlyAbstract());
+                    ElementQuery.of(MethodElement.class).onlyAbstract())
+                .stream()
+                .filter(m -> !isObjectMethod(m.getName(), Arrays.stream(m.getParameters()).map(ParameterElement::getType).map(ClassElement::getName).toList()))
+                .toList();
             if (abstractMethods.size() != 1) {
                 throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
-                    "abstract method but has " + abstractMethods.size());
+                    "abstract method but has " + abstractMethods.size() + ": "
+                    + abstractMethods.stream().map(MethodElement::getName).toList());
             }
             MethodElement methodElement = abstractMethods.get(0);
             MethodDef build = MethodDef.builder(methodElement, resolveVariableFn).addTypeVariables(methodElement, resolveVariableFn).build();
@@ -970,10 +992,15 @@ public sealed interface ClassTypeDef extends TypeDef {
             List<MethodDef> methods = objectDef.getMethods()
                 .stream()
                 .filter(v -> v.getModifiers().contains(Modifier.ABSTRACT))
+                .filter(v -> !isObjectMethod(v.getName(), v.getParameters().stream()
+                    .map(ParameterDef::getType)
+                    .map(t -> t instanceof ClassTypeDef classTypeDef ? classTypeDef.getName() : t.toString())
+                    .toList()))
                 .toList();
             if (methods.size() != 1) {
                 throw new IllegalArgumentException("Parent of a lambda should have exactly one " +
-                    "abstract method but has " + methods.size());
+                    "abstract method but has " + methods.size() + ": "
+                    + methods.stream().map(MethodDef::getName).toList());
             }
             MethodDef methodDef = methods.get(0);
             return new LambdaDef(

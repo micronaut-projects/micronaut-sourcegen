@@ -37,6 +37,7 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef.Local;
 
 import javax.lang.model.element.Modifier;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -95,6 +96,7 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             .addMethod(createGenericLambda2(methodInvokerDef));
         if (context != null) {
             classDefBuilder.addMethod(createGenericLambdaAst(context));
+            classDefBuilder.addMethod(createComparatorLambdaAst(context));
         }
         ClassDef theClass = classDefBuilder
             .build();
@@ -265,6 +267,36 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
                 function.defineAndAssign(lambda),
                 function.invoke("apply", List.of(TypeDef.OBJECT), TypeDef.OBJECT, List.of(params.get(0)))
                     .cast(TypeDef.STRING).returning()
+            ));
+    }
+
+    // compareAst(String left, String right) {
+    //    Comparator<String> comparator = (arg0, arg1) -> arg0.compareTo(arg1);
+    //    return comparator.compare(left, right);
+    // }
+    //
+    // Comparator redeclares Object#equals as abstract; it must not count as a second abstract method
+    private static MethodDef createComparatorLambdaAst(VisitorContext context) {
+        ClassElement comparatorType = context.getClassElement(Comparator.class).orElseThrow();
+        Map<String, TypeDef> resolvedVariables = Map.of("T", TypeDef.STRING);
+
+        Local comparator = new Local("comparator", TypeDef.of(comparatorType).resolveTypeVariables(resolvedVariables));
+
+        Lambda lambda = ClassTypeDef.of(comparatorType)
+            .getLambda(resolvedVariables)
+            .implement((t, params) -> params.get(0)
+                .invoke("compareTo", TypeDef.Primitive.INT, params.get(1))
+                .returning());
+
+        return MethodDef.builder("compareAst")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(TypeDef.Primitive.INT)
+            .addParameter("left", TypeDef.STRING)
+            .addParameter("right", TypeDef.STRING)
+            .build((t, params) -> StatementDef.multi(
+                comparator.defineAndAssign(lambda),
+                comparator.invoke("compare", List.of(TypeDef.OBJECT, TypeDef.OBJECT), TypeDef.Primitive.INT, List.of(params.get(0), params.get(1)))
+                    .returning()
             ));
     }
 }
