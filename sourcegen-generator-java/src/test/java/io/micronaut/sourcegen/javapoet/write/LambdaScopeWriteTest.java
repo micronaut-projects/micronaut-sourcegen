@@ -15,6 +15,9 @@ import org.junit.jupiter.api.Test;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -279,6 +282,54 @@ public class MyClass {
             """, data);
 
         JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+    }
+
+    @Test
+    public void predicateLambdaCapturesAnEnclosingMethodParameter() throws Exception {
+        // The shape from the report: a Predicate whose body uses a parameter of the enclosing method
+        Method test = Predicate.class.getMethod("test", Object.class);
+        Method filter = Stream.class.getMethod("filter", Predicate.class);
+        ClassTypeDef helper = ClassTypeDef.of("test.Helper");
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("evaluate")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("context", TypeDef.OBJECT)
+                .addParameter("items", TypeDef.parameterized(Stream.class, Object.class))
+                .returns(TypeDef.parameterized(Stream.class, Object.class))
+                .build((aThis, params) -> {
+                    ExpressionDef context = params.get(0);
+                    ExpressionDef.Lambda lambda = new ExpressionDef.Lambda(
+                        ClassTypeDef.of(Predicate.class),
+                        MethodDef.of(test),
+                        MethodDef.builder("test")
+                            .addModifiers(Modifier.PUBLIC)
+                            .addParameter("t", TypeDef.OBJECT)
+                            .returns(TypeDef.Primitive.BOOLEAN)
+                            .build((lt, lp) -> helper
+                                .invokeStatic("check", TypeDef.Primitive.BOOLEAN, context, lp.get(0))
+                                .returning())
+                    );
+                    return params.get(1).invoke(filter, lambda).returning();
+                })
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.util.stream.Stream;
+
+public class MyClass {
+  public Stream<Object> evaluate(Object context, Stream<Object> items) {
+    return items.filter((t) -> Helper.check(context, t));
+  }
+}
+            """, data);
     }
 
     @Test
