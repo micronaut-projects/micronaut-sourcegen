@@ -589,7 +589,9 @@ public sealed interface ClassTypeDef extends TypeDef {
                 new ClassElementType(classElement, classElement.isNullable()),
                 classElement.getTypeArguments().values()
                     .stream()
-                    .map(value -> TypeDef.of(value, resolvedVariableFn, erasure))
+                    // Erasure applies to the type itself; the arguments keep the generic signature, so
+                    // that `Set<?>` does not become `Set<Object>`
+                    .map(value -> TypeDef.of(value, resolvedVariableFn, false))
                     .toList()
             );
         }

@@ -191,6 +191,25 @@ public class MethodInvokerTest {
     }
 
     @Test
+    public void testErasures() {
+        Assertions.assertArrayEquals(
+            new Class<?>[] {
+                Number.class,             // T extends Number
+                Object.class,             // U
+                java.util.List.class,     // List<? extends Number>
+                Number.class,             //   ? extends Number
+                java.util.List.class,     // List<? super Integer>
+                Object.class,             //   ? super Integer
+                Number[].class,           // T[]
+                java.util.Optional.class, // Optional<T>
+                Number.class,             //   T
+                Number.class              // T (return)
+            },
+            MethodInvoker.erasuresOfPick()
+        );
+    }
+
+    @Test
     public void testInvokeTryFinallyLockMethod() {
         ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
         Assertions.assertEquals(
