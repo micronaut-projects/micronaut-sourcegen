@@ -792,7 +792,7 @@ public class example/MyClassWithLambda {
     ARETURN
    L1
     LOCALVARIABLE constant Ljava/lang/String; L0 L1 1
-    LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 2
+    LOCALVARIABLE arg0 Ljava/lang/String; L0 L1 2
 
   // access flags 0x1
   public callGenericLambda2(Ljava/lang/String;)Ljava/lang/String;
