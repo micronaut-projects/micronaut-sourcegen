@@ -1972,7 +1972,8 @@ public class example/Example {
     ALOAD 2
     INVOKEVIRTUAL java/lang/StringBuilder.append (Ljava/lang/Object;)Ljava/lang/StringBuilder;
     ALOAD 3
-    INVOKESTATIC java/util/Arrays.toString ([Ljava/lang/String;)Ljava/lang/String;
+    CHECKCAST [Ljava/lang/Object;
+    INVOKESTATIC java/util/Arrays.toString ([Ljava/lang/Object;)Ljava/lang/String;
     INVOKEVIRTUAL java/lang/StringBuilder.append (Ljava/lang/String;)Ljava/lang/StringBuilder;
     INVOKEVIRTUAL java/lang/StringBuilder.toString ()Ljava/lang/String;
     ARETURN
@@ -1990,7 +1991,7 @@ import java.util.Arrays;
 
 public class Example {
    String myMethod(String arg1, Object arg2, String[] arg3) {
-      return arg1 + arg2 + Arrays.toString(arg3);
+      return arg1 + arg2 + Arrays.toString((Object[])arg3);
    }
 }
 """, decompileToJava(bytes));

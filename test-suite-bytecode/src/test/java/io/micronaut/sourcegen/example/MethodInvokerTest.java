@@ -167,6 +167,30 @@ public class MethodInvokerTest {
     }
 
     @Test
+    public void testInvokeOverloadedAstMethod() {
+        Assertions.assertEquals(
+            "number:1",
+            MethodInvoker.invokeOverloadedAstMethod(1)
+        );
+    }
+
+    @Test
+    public void testInvokeWiderParameterMethod() {
+        Assertions.assertEquals(
+            "a",
+            MethodInvoker.invokeWiderParameterMethod("a", "b")
+        );
+    }
+
+    @Test
+    public void testInvokeVarArgsMethod() {
+        Assertions.assertEquals(
+            "x-y",
+            MethodInvoker.invokeVarArgsMethod("%s-%s", "x", "y")
+        );
+    }
+
+    @Test
     public void testInvokeTryFinallyLockMethod() {
         ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
         Assertions.assertEquals(

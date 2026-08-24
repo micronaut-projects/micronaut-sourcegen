@@ -297,7 +297,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                                                         VariableDef.MethodParameter parameter) {
         return propertyField.put(
             ClassTypeDef.of(ArrayList.class).instantiate(
-                parameter.invoke("entrySet", ClassTypeDef.of(Map.Entry.class))
+                parameter.invoke("entrySet", ClassTypeDef.of(Set.class))
             )
         );
     }

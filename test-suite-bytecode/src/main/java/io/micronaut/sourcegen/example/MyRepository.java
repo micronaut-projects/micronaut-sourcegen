@@ -17,6 +17,14 @@ package io.micronaut.sourcegen.example;
 
 public interface MyRepository {
 
+    static String describe(Number number) {
+        return "number:" + number;
+    }
+
+    static String describe(String string) {
+        return "string:" + string;
+    }
+
     static String staticMethod(String string, Integer integer, int i) {
         return string + (integer + i);
     }

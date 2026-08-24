@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * The class type definition.
@@ -142,6 +143,42 @@ public sealed interface ClassTypeDef extends TypeDef {
     }
 
     /**
+     * Find the methods this type declares that a call with the given name and number of arguments could
+     * target, variable arity included.
+     *
+     * <p>Used by the convenience overloads that would otherwise build the invoked signature from the
+     * static types of the arguments, which names a method that does not exist whenever an argument is
+     * statically narrower than the declared parameter.
+     *
+     * <p>Bridge methods are included, because their descriptors are real: a covariant override such as
+     * {@code ReentrantReadWriteLock.readLock()} leaves a bridge returning the supertype, and a call
+     * declaring that return type does resolve.
+     *
+     * <p>Only implementations that carry member information return anything - {@link #of(Class)},
+     * {@link #of(ClassElement)} and a definition being generated. {@link #of(String)} has nothing to
+     * resolve against and returns an empty list, which leaves the signature inferred as before.
+     *
+     * @param name          The method name, or {@link MethodDef#CONSTRUCTOR}
+     * @param argumentCount The number of arguments at the call site
+     * @return The candidate methods, or an empty list when they cannot be resolved
+     * @since 2.2
+     */
+    default List<MethodDef> findDeclaredMethods(String name, int argumentCount) {
+        return List.of();
+    }
+
+    /**
+     * @param parameterCount The number of declared parameters
+     * @param varArgs        True if the declaration has variable arity
+     * @param argumentCount  The number of arguments at the call site
+     * @return True if a call with that many arguments can target the declaration
+     * @since 2.2
+     */
+    private static boolean matchesArity(int parameterCount, boolean varArgs, int argumentCount) {
+        return varArgs ? argumentCount >= parameterCount - 1 : argumentCount == parameterCount;
+    }
+
+    /**
      * Find the method that can be represented as a lambda.
      *
      * @param resolvedTypeVariables The resolved type variables
@@ -187,11 +224,20 @@ public sealed interface ClassTypeDef extends TypeDef {
     /**
      * The new instance expression.
      *
+     * <p>The constructor is resolved with {@link #findDeclaredMethods(String, int)} when this type carries
+     * member information. When it does not, the signature is inferred from the static types of the
+     * values, which names a constructor that does not exist if any of them is narrower than the declared
+     * parameter - use {@link #instantiate(List, List)} or {@link #instantiate(Constructor, List)} then.
+     *
      * @param values The constructor values
      * @return The new instance
      */
     @Experimental
     default ExpressionDef.NewInstance instantiate(List<? extends ExpressionDef> values) {
+        Invocations.Resolved resolved = Invocations.resolve(this, MethodDef.CONSTRUCTOR, null, values);
+        if (resolved != null) {
+            return instantiate(resolved.parameterTypes(), resolved.values());
+        }
         return instantiate(values.stream().map(ExpressionDef::type).toList(), values);
     }
 
@@ -293,6 +339,12 @@ public sealed interface ClassTypeDef extends TypeDef {
     /**
      * Invoke static method.
      *
+     * <p>The method is resolved with {@link #findDeclaredMethods(String, int)} when this type carries member
+     * information. When it does not, the signature is inferred from the static types of the values, which
+     * names a method that does not exist if any of them is narrower than the declared parameter - use
+     * {@link #invokeStatic(String, List, TypeDef, List)}, {@link #invokeStatic(Method, List)} or
+     * {@link #invokeStatic(MethodElement, List)} then.
+     *
      * @param name          The method name
      * @param returningType The return type
      * @param values        The values
@@ -302,6 +354,10 @@ public sealed interface ClassTypeDef extends TypeDef {
     default ExpressionDef.InvokeStaticMethod invokeStatic(String name,
                                                           TypeDef returningType,
                                                           List<? extends ExpressionDef> values) {
+        Invocations.Resolved resolved = Invocations.resolve(this, name, returningType, values);
+        if (resolved != null) {
+            return invokeStatic(name, resolved.parameterTypes(), returningType, resolved.values());
+        }
         return invokeStatic(name, values.stream().map(ExpressionDef::type).toList(), returningType, values);
     }
 
@@ -667,6 +723,25 @@ public sealed interface ClassTypeDef extends TypeDef {
         }
 
         @Override
+        public List<MethodDef> findDeclaredMethods(String name, int argumentCount) {
+            if (MethodDef.CONSTRUCTOR.equals(name)) {
+                return Arrays.stream(type.getDeclaredConstructors())
+                    .filter(c -> !c.isSynthetic())
+                    .filter(c -> matchesArity(c.getParameterCount(), c.isVarArgs(), argumentCount))
+                    .<MethodDef>map(c -> MethodDef.builder(c).build())
+                    .toList();
+            }
+            // getMethods() covers the inherited public methods, getDeclaredMethods() the non-public ones
+            return Stream.concat(Arrays.stream(type.getMethods()), Arrays.stream(type.getDeclaredMethods()))
+                .distinct()
+                // A bridge method is synthetic but its descriptor is real, so a call declaring it resolves
+                .filter(m -> m.getName().equals(name) && (!m.isSynthetic() || m.isBridge()))
+                .filter(m -> matchesArity(m.getParameterCount(), m.isVarArgs(), argumentCount))
+                .map(MethodDef::of)
+                .toList();
+        }
+
+        @Override
         public String getName() {
             return type.getName();
         }
@@ -787,6 +862,20 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassElementType(ClassElement classElement, boolean nullable) implements ClassTypeDef {
 
         @Override
+        public List<MethodDef> findDeclaredMethods(String name, int argumentCount) {
+            List<MethodElement> methods;
+            if (MethodDef.CONSTRUCTOR.equals(name)) {
+                methods = List.copyOf(classElement.getEnclosedElements(ElementQuery.CONSTRUCTORS));
+            } else {
+                methods = classElement.getEnclosedElements(ElementQuery.ALL_METHODS.named(name));
+            }
+            return methods.stream()
+                .filter(m -> matchesArity(m.getParameters().length, m.isVarArgs(), argumentCount))
+                .map(MethodDef::of)
+                .toList();
+        }
+
+        @Override
         public LambdaDef getLambda(Function<String, @Nullable TypeDef> resolveVariableFn) {
             List<MethodElement> abstractMethods = classElement.getEnclosedElements(
                 ElementQuery.of(MethodElement.class).onlyAbstract());
@@ -864,6 +953,15 @@ public sealed interface ClassTypeDef extends TypeDef {
      */
     @Experimental
     record ClassDefType(ObjectDef objectDef, boolean nullable) implements ClassTypeDef {
+
+        @Override
+        public List<MethodDef> findDeclaredMethods(String name, int argumentCount) {
+            return objectDef.getMethods()
+                .stream()
+                .filter(m -> m.getName().equals(name))
+                .filter(m -> matchesArity(m.getParameters().size(), false, argumentCount))
+                .toList();
+        }
 
         @Override
         public LambdaDef getLambda(Function<String, @Nullable TypeDef> resolveVariableFn) {
@@ -946,6 +1044,11 @@ public sealed interface ClassTypeDef extends TypeDef {
                 lambda.getMethod(),
                 lambda.getImplementation()
             );
+        }
+
+        @Override
+        public List<MethodDef> findDeclaredMethods(String name, int argumentCount) {
+            return rawType.findDeclaredMethods(name, argumentCount);
         }
 
         @Override
