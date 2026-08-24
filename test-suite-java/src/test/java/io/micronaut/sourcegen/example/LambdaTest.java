@@ -52,4 +52,13 @@ class LambdaTest {
         assertEquals("prefix_ello!", owner.callGenericLambdaAst("Hello!"));
     }
 
+
+    @Test
+    public void testComparatorLambdaAst() {
+        MyClassWithLambda owner = new MyClassWithLambda();
+        assertEquals(0, owner.compareAst("a", "a"));
+        assertEquals(-1, owner.compareAst("a", "b"));
+        assertEquals(1, owner.compareAst("b", "a"));
+    }
+
 }
