@@ -58,6 +58,8 @@ loadScripts(document, 'script');</script>
 <li><a href="#method-detail" tabindex="0">Method Details</a>
 <ol class="toc-list">
 <li><a href="#implement(io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder)" tabindex="0">implement(MethodDef.MethodBodyBuilder)</a></li>
+<li><a href="#implement(java.util.List,io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder)" tabindex="0">implement(List, MethodDef.MethodBodyBuilder)</a></li>
+<li><a href="#implement(java.lang.String%5B%5D,io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder)" tabindex="0">implement(String[], MethodDef.MethodBodyBuilder)</a></li>
 <li><a href="#getType()" tabindex="0">getType()</a></li>
 <li><a href="#getMethod()" tabindex="0">getMethod()</a></li>
 <li><a href="#getImplementation()" tabindex="0">getImplementation()</a></li>
@@ -115,6 +117,18 @@ Use <a href="ClassTypeDef.html#getLambda()"><code>ClassTypeDef.getLambda()</code
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Implement lambda by providing the method body.</div>
 </div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="ExpressionDef.Lambda.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Lambda</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#implement(java.lang.String%5B%5D,io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder)" class="member-name-link">implement</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;parameterNames,
+ <a href="MethodDef.MethodBodyBuilder.html" title="interface in io.micronaut.sourcegen.model">MethodDef.MethodBodyBuilder</a>&nbsp;lambdaBuilder)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Implement lambda by providing the parameter names and the method body.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="ExpressionDef.Lambda.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Lambda</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#implement(java.util.List,io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder)" class="member-name-link">implement</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;parameterNames,
+ <a href="MethodDef.MethodBodyBuilder.html" title="interface in io.micronaut.sourcegen.model">MethodDef.MethodBodyBuilder</a>&nbsp;lambdaBuilder)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Implement lambda by providing the parameter names and the method body.</div>
+</div>
 </div>
 </div>
 </div>
@@ -145,6 +159,49 @@ Use <a href="ClassTypeDef.html#getLambda()"><code>ClassTypeDef.getLambda()</code
 <dd>the lambda expression</dd>
 <dt>Since:</dt>
 <dd>1.7</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="implement(java.util.List,io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder)">
+<h3>implement</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="ExpressionDef.Lambda.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Lambda</a></span>&nbsp;<span class="element-name">implement</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;parameterNames,
+ <a href="MethodDef.MethodBodyBuilder.html" title="interface in io.micronaut.sourcegen.model">MethodDef.MethodBodyBuilder</a>&nbsp;lambdaBuilder)</span></div>
+<div class="block">Implement lambda by providing the parameter names and the method body.
+
+<p>The implementation carries the parameter names of the functional interface's own method, so
+every lambda over the same interface declares the same names. Java forbids a lambda parameter
+from shadowing a name that is already in scope, which makes nested lambdas over one interface
+fail to compile; naming the parameters explicitly avoids the collision.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>parameterNames</code> - The lambda parameter names</dd>
+<dd><code>lambdaBuilder</code> - The lambda builder</dd>
+<dt>Returns:</dt>
+<dd>the lambda expression</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="implement(java.lang.String[],io.micronaut.sourcegen.model.MethodDef.MethodBodyBuilder)">
+<h3>implement</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="ExpressionDef.Lambda.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Lambda</a></span>&nbsp;<span class="element-name">implement</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;parameterNames,
+ <a href="MethodDef.MethodBodyBuilder.html" title="interface in io.micronaut.sourcegen.model">MethodDef.MethodBodyBuilder</a>&nbsp;lambdaBuilder)</span></div>
+<div class="block">Implement lambda by providing the parameter names and the method body.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>parameterNames</code> - The lambda parameter names</dd>
+<dd><code>lambdaBuilder</code> - The lambda builder</dd>
+<dt>Returns:</dt>
+<dd>the lambda expression</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
 </dl>
 </div>
 </section>
