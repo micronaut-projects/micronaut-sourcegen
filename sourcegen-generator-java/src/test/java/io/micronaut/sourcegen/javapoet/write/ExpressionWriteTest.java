@@ -1221,6 +1221,58 @@ public class Example {
     }
 
     @Test
+    void returnIfElseWithIfElseConditionParentheses() throws IOException {
+        ExpressionDef expression = new ExpressionDef.IfElse(
+            new ExpressionDef.IfElse(ExpressionDef.constant(true), ExpressionDef.constant(false), ExpressionDef.constant(false)),
+            ExpressionDef.constant("yes"),
+            ExpressionDef.constant("no")
+        );
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("(true ? false : false) ? \"yes\" : \"no\"", result);
+    }
+
+    @Test
+    void returnIfElseWithIfElseElseBranchWithoutParentheses() throws IOException {
+        ExpressionDef expression = new ExpressionDef.IfElse(
+            ExpressionDef.constant(true),
+            ExpressionDef.constant("a"),
+            new ExpressionDef.IfElse(ExpressionDef.constant(false), ExpressionDef.constant("b"), ExpressionDef.constant("c"))
+        );
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("true ? \"a\" : false ? \"b\" : \"c\"", result);
+    }
+
+    @Test
+    void returnCastedNegativeConstantWithParentheses() throws IOException {
+        ExpressionDef castedExpression = ExpressionDef.constant(-1L)
+            .cast(TypeDef.OBJECT);
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(Object) (-1l)", result);
+    }
+
+    @Test
+    void returnCastedNegatedValueWithParentheses() throws IOException {
+        ExpressionDef castedExpression = ExpressionDef.constant(1L)
+            .math(NEGATE)
+            .cast(TypeDef.OBJECT);
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(Object) (-1l)", result);
+    }
+
+    @Test
+    void returnPrimitiveCastedNegativeConstantWithParentheses() throws IOException {
+        ExpressionDef castedExpression = ExpressionDef.constant(-1)
+            .cast(TypeDef.Primitive.LONG);
+        String result = writeMethodWithExpression(castedExpression);
+
+        assertEquals("(long) (-1)", result);
+    }
+
+    @Test
     void returnCastedMathOperationWithParentheses() throws IOException {
         ExpressionDef castedExpression = ExpressionDef.constant(1)
             .math(ADDITION, ExpressionDef.constant(2))

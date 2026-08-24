@@ -1027,8 +1027,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 );
             }
             case ExpressionDef.IfElse condition -> {
+                CodeBlock conditionBlock = renderExpression(objectDef, methodDef, scope, condition.condition());
+                if (unwrapCasts(condition.condition()) instanceof ExpressionDef.IfElse) {
+                    // `?:` is right-associative, a conditional used as a condition needs parentheses
+                    conditionBlock = addParentheses(conditionBlock);
+                }
                 return CodeBlock.concat(
-                    renderExpression(objectDef, methodDef, scope, condition.condition()),
+                    conditionBlock,
                     CodeBlock.of(" ? "),
                     renderExpression(objectDef, methodDef, scope, condition.ifExpression()),
                     CodeBlock.of(" : "),
@@ -1263,8 +1268,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         return expressionDef instanceof ExpressionDef.ConditionExpressionDef
             || expressionDef instanceof ExpressionDef.IfElse
             || expressionDef instanceof ExpressionDef.MathBinaryOperation
+            || expressionDef instanceof ExpressionDef.MathUnaryOperation
             || expressionDef instanceof ExpressionDef.StringConcatenation
-            || expressionDef instanceof ExpressionDef.Switch;
+            || expressionDef instanceof ExpressionDef.Switch
+            || isNegativeNumericConstant(expressionDef);
+    }
+
+    private static boolean isNegativeNumericConstant(ExpressionDef expressionDef) {
+        // `(Object) -1` would parse as a subtraction of the variable `Object`
+        return expressionDef instanceof ExpressionDef.Constant constant
+            && constant.value() instanceof Number number
+            && number.toString().startsWith("-");
     }
 
     private static boolean requiresMethodCallTargetParentheses(ExpressionDef expressionDef) {
