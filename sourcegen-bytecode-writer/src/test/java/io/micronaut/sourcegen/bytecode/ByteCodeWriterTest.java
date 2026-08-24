@@ -32,11 +32,14 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
+import java.lang.reflect.Method;
 import java.util.AbstractList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static io.micronaut.sourcegen.bytecode.DecompilerUtils.decompileToJava;
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
@@ -4115,6 +4118,56 @@ public class MyClass {
    }
 }
 """, decompileToJava(bytes));
+    }
+
+    @Test
+    void testLambdaCapturesAMethodParameter() throws Exception {
+        Method test = Predicate.class.getMethod("test", Object.class);
+        Method filter = Stream.class.getMethod("filter", Predicate.class);
+        Method equals = Objects.class.getMethod("equals", Object.class, Object.class);
+
+        ClassDef classDef = ClassDef.builder("example.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("evaluate")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("context", TypeDef.OBJECT)
+                .addParameter("items", TypeDef.parameterized(Stream.class, Object.class))
+                .returns(TypeDef.parameterized(Stream.class, Object.class))
+                .build((t, params) -> params.get(1).invoke(filter, new ExpressionDef.Lambda(
+                    ClassTypeDef.of(Predicate.class),
+                    MethodDef.of(test),
+                    MethodDef.builder("test")
+                        .addModifiers(Modifier.PUBLIC)
+                        .addParameter("item", TypeDef.OBJECT)
+                        .returns(TypeDef.Primitive.BOOLEAN)
+                        .build((lt, lp) -> ClassTypeDef.of(Objects.class)
+                            .invokeStatic(equals, params.get(0), lp.get(0))
+                            .returning())
+                )).returning())
+            )
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+
+        assertEquals("""
+package example;
+
+import java.util.Objects;
+import java.util.stream.Stream;
+
+public class MyClass {
+   public Stream evaluate(Object context, Stream items) {
+      return items.filter(MyClass::lambda$evaluate$0);
+   }
+
+   private static boolean lambda$evaluate$0(Object var0, Object context) {
+      return Objects.equals(var0, context);
+   }
+}
+""", decompileToJava(bytes));
+        // The captured parameter is the first argument of the synthetic method; the local variable names
+        // the decompiler shows are shifted by one, which is a separate defect of the debug information
     }
 
     private String toBytecode(ObjectDef objectDef) {
