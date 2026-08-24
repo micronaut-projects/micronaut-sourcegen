@@ -21,3 +21,14 @@ repositories {
 dependencies {
     testRuntimeOnly(mnTest.junit.platform.suite)
 }
+
+// The test suites are fixtures: the generator visitors in their main sources run inside the annotation
+// processor of the suites that use them, where no coverage agent runs, so analysing them only reports
+// uncovered code. They are already left out of the aggregate coverage report for the same reason.
+// The extension is added by the root project after the subprojects are evaluated.
+gradle.projectsEvaluated {
+    def sonar = extensions.findByName("sonar")
+    if (sonar != null) {
+        sonar.skipProject = true
+    }
+}
