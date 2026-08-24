@@ -476,6 +476,8 @@ public final class ByteCodeWriter {
         Label startMethod = null;
 
         int parameterIndex = 0;
+        // The slot of a parameter: `this` takes slot 0 of an instance method, and a long or double takes two
+        int slot = methodDef.getModifiers().contains(Modifier.STATIC) ? 0 : 1;
         for (ParameterDef parameter : methodDef.getParameters()) {
             if (startMethod == null) {
                 startMethod = new Label();
@@ -484,16 +486,18 @@ public final class ByteCodeWriter {
                 AnnotationVisitor annotationVisitor = generatorAdapter.visitParameterAnnotation(parameterIndex, TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
                 visitAnnotation(annotation, annotationVisitor);
             }
+            Type parameterType = TypeUtils.getType(parameter.getType(), objectDef);
             MethodContext.LocalData prevParam = context.locals().put(parameter.getName(), new MethodContext.LocalData(
                 parameter.getName(),
-                TypeUtils.getType(parameter.getType(), objectDef),
+                parameterType,
                 startMethod,
-                parameterIndex + 1
+                slot
             ));
             if (prevParam != null) {
                 throw new IllegalStateException("Duplicate method parameter: " + parameter.getName() + " of method: " + methodDef.getName() + " " + (objectDef == null ? "" : objectDef.getName()));
             }
             parameterIndex++;
+            slot += parameterType.getSize();
         }
 
         List<StatementDef> statements = methodDef.getStatements();
