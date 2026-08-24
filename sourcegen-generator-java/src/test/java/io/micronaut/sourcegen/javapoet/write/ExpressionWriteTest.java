@@ -5,6 +5,8 @@ import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Cast;
+import io.micronaut.sourcegen.model.InterfaceDef;
+import io.micronaut.sourcegen.model.LambdaDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -1656,6 +1658,67 @@ public class MyClass {
   }
 }
             """, data);
+    }
+
+    @Test
+    public void nestedLambdasCanBeGivenDistinctParameterNames() throws IOException {
+        ClassTypeDef nestedType = ClassTypeDef.of("test.Nested");
+        InterfaceDef nestedDef = InterfaceDef.builder("test.Nested")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("apply")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("context", TypeDef.STRING)
+                .returns(nestedType)
+                .build())
+            .build();
+        ClassTypeDef lambdaType = nestedDef.asTypeDef();
+
+        ExpressionDef.Lambda inner = lambdaType.getLambda()
+            .implement(List.of("innerContext"), (aThis, params) -> ExpressionDef.nullValue().returning());
+        ExpressionDef.Lambda outer = lambdaType.getLambda()
+            .implement(List.of("outerContext"), (aThis, params) -> inner.returning());
+
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("evaluate")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(lambdaType)
+                .build((aThis, methodParameters) -> outer.returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+public class MyClass {
+  public Nested evaluate() {
+    return (outerContext) -> (innerContext) -> null;
+  }
+}
+            """, data);
+    }
+
+    @Test
+    public void lambdaParameterNamesAreValidatedAgainstTheArity() {
+        InterfaceDef functionDef = InterfaceDef.builder("test.StringFunction")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("apply")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("context", TypeDef.STRING)
+                .returns(TypeDef.STRING)
+                .build())
+            .build();
+
+        LambdaDef lambda = functionDef.asTypeDef().getLambda();
+
+        IllegalArgumentException e = Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> lambda.implement(List.of("a", "b"), (aThis, params) -> params.get(0).returning())
+        );
+
+        assertEquals("Lambda method apply has 1 parameter(s) but 2 name(s) were provided", e.getMessage());
     }
 
     private static ExpressionDef.SwitchYieldCase yieldWithConditionalBranch(TypeDef.Primitive intType,

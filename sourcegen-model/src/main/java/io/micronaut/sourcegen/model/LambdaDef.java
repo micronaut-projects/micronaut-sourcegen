@@ -17,6 +17,9 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
 
+import java.util.List;
+import java.util.Objects;
+
 /**
  * Definition holding information about a lambda interface that can be implemented.
  * Use {@link ClassTypeDef#getLambda()} to create an instance from an existing type definition.
@@ -51,6 +54,48 @@ public final class LambdaDef {
             method,
             MethodDef.override(implementation).build(lambdaBuilder)
         );
+    }
+
+    /**
+     * Implement lambda by providing the parameter names and the method body.
+     *
+     * <p>The implementation carries the parameter names of the functional interface's own method, so
+     * every lambda over the same interface declares the same names. Java forbids a lambda parameter
+     * from shadowing a name that is already in scope, which makes nested lambdas over one interface
+     * fail to compile; naming the parameters explicitly avoids the collision.
+     *
+     * @param parameterNames The lambda parameter names
+     * @param lambdaBuilder  The lambda builder
+     * @return the lambda expression
+     * @since 2.2
+     */
+    public ExpressionDef.Lambda implement(List<String> parameterNames, MethodDef.MethodBodyBuilder lambdaBuilder) {
+        Objects.requireNonNull(parameterNames, "Parameter names cannot be null");
+        List<ParameterDef> parameters = implementation.getParameters();
+        if (parameterNames.size() != parameters.size()) {
+            throw new IllegalArgumentException("Lambda method " + implementation.getName() + " has "
+                + parameters.size() + " parameter(s) but " + parameterNames.size() + " name(s) were provided");
+        }
+        MethodDef.MethodDefBuilder builder = MethodDef.builder(implementation.getName())
+            .addModifiers(implementation.getModifiers())
+            .returns(implementation.getReturnType())
+            .overrides();
+        for (int i = 0; i < parameters.size(); i++) {
+            builder.addParameter(parameters.get(i).withName(parameterNames.get(i)));
+        }
+        return new ExpressionDef.Lambda(type, method, builder.build(lambdaBuilder));
+    }
+
+    /**
+     * Implement lambda by providing the parameter names and the method body.
+     *
+     * @param parameterNames The lambda parameter names
+     * @param lambdaBuilder  The lambda builder
+     * @return the lambda expression
+     * @since 2.2
+     */
+    public ExpressionDef.Lambda implement(String[] parameterNames, MethodDef.MethodBodyBuilder lambdaBuilder) {
+        return implement(List.of(parameterNames), lambdaBuilder);
     }
 
     /**
