@@ -837,6 +837,18 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     CodeBlock.of(")")
                 );
             }
+            case ExpressionDef.ArrayElement arrayElement -> {
+                CodeBlock array = renderExpression(objectDef, methodDef, remappedLocals, arrayElement.expression());
+                if (requiresMethodCallTargetParentheses(arrayElement.expression())) {
+                    array = addParentheses(array);
+                }
+                return CodeBlock.concat(
+                    array,
+                    CodeBlock.of("["),
+                    renderExpression(objectDef, methodDef, remappedLocals, arrayElement.indexExpression()),
+                    CodeBlock.of("]")
+                );
+            }
             case ExpressionDef.NewArrayOfSize newArray -> {
                 return CodeBlock.of("new $T[$L]", asType(newArray.type().componentType(), objectDef), newArray.size());
             }

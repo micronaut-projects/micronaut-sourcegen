@@ -1531,6 +1531,133 @@ class MyClass {
         assertEquals("\"Hello \" + 1 + \"Welcome!\"", result);
     }
 
+    @Test
+    public void arrayElementByConstantIndex() throws IOException {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("args", TypeDef.OBJECT.array())
+                .returns(TypeDef.OBJECT)
+                .build((aThis, methodParameters) -> methodParameters.get(0).arrayElement(0).returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+
+public class MyClass {
+  public Object run(Object[] args) {
+    return args[0];
+  }
+}
+            """, data);
+    }
+
+    @Test
+    public void arrayElementByExpressionIndex() throws IOException {
+        TypeDef.Primitive intType = TypeDef.Primitive.INT;
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("args", TypeDef.OBJECT.array())
+                .addParameter("i", intType)
+                .returns(TypeDef.OBJECT)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .arrayElement(methodParameters.get(1).math(ADDITION, intType.constant(1)))
+                    .returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+
+public class MyClass {
+  public Object run(Object[] args, int i) {
+    return args[i + 1];
+  }
+}
+            """, data);
+    }
+
+    @Test
+    public void arrayElementOfCast() throws IOException {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("o", TypeDef.OBJECT)
+                .returns(STRING)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .cast(TypeDef.array(STRING))
+                    .arrayElement(0)
+                    .returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.Object;
+import java.lang.String;
+
+public class MyClass {
+  public String run(Object o) {
+    return ((String[]) o)[0];
+  }
+}
+            """, data);
+    }
+
+    @Test
+    public void arrayElementOfMethodCall() throws IOException {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("values")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.array(STRING))
+                .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning())
+            )
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(STRING)
+                .build((aThis, methodParameters) -> aThis
+                    .invoke("values", TypeDef.array(STRING))
+                    .arrayElement(0)
+                    .returning())
+            )
+            .build();
+
+        String data = writeClass(classDef);
+
+        assertEquals("""
+package test;
+
+import java.lang.String;
+
+public class MyClass {
+  public String[] values() {
+    return null;
+  }
+
+  public String run() {
+    return this.values()[0];
+  }
+}
+            """, data);
+    }
+
     private static ExpressionDef.SwitchYieldCase yieldWithConditionalBranch(TypeDef.Primitive intType,
                                                                             ExpressionDef conditionValue,
                                                                             int expectedValue,
