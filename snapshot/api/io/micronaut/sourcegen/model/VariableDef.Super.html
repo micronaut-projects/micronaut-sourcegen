@@ -304,7 +304,13 @@ implements <a href="VariableDef.html" title="interface in io.micronaut.sourcegen
 <h3>invokeSuperConstructor</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="StatementDef.InvokeSuperConstructor.html" title="class in io.micronaut.sourcegen.model">StatementDef.InvokeSuperConstructor</a></span>&nbsp;<span class="element-name">invokeSuperConstructor</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</span></div>
-<div class="block">Invoke super constructor statement.</div>
+<div class="block">Invoke super constructor statement.
+
+<p>The constructor is resolved with <a href="ClassTypeDef.html#findDeclaredMethods(java.lang.String,int)"><code>ClassTypeDef.findDeclaredMethods(String, int)</code></a> when the
+super type carries member information. When it does not, the signature is inferred from the static
+types of the values, which names a constructor that does not exist if any of them is narrower than
+the declared parameter - use <a href="#invokeSuperConstructor(java.util.List,java.util.List)"><code>invokeSuperConstructor(List, List)</code></a> or
+<a href="#invokeSuperConstructor(java.lang.reflect.Constructor,java.util.List)"><code>invokeSuperConstructor(Constructor, List)</code></a> then.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>values</code> - The values</dd>

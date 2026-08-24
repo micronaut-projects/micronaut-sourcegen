@@ -1756,7 +1756,13 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="ExpressionDef.InvokeInstanceMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeInstanceMethod</a></span>&nbsp;<span class="element-name">invoke</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
  <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returning,
  <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</span></div>
-<div class="block">The call the instance method expression.</div>
+<div class="block">The call the instance method expression.
+
+<p>The method is resolved with <a href="ClassTypeDef.html#findDeclaredMethods(java.lang.String,int)"><code>ClassTypeDef.findDeclaredMethods(String, int)</code></a> when the type of
+this expression carries member information. When it does not, the signature is inferred from the
+static types of the values, which names a method that does not exist if any of them is narrower than
+the declared parameter - use <a href="#invoke(java.lang.String,java.util.List,io.micronaut.sourcegen.model.TypeDef,java.util.List)"><code>invoke(String, List, TypeDef, List)</code></a>,
+<a href="#invoke(java.lang.reflect.Method,java.util.List)"><code>invoke(Method, List)</code></a> or <a href="#invoke(io.micronaut.inject.ast.MethodElement,java.util.List)"><code>invoke(MethodElement, List)</code></a> then.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>name</code> - The method name</dd>
