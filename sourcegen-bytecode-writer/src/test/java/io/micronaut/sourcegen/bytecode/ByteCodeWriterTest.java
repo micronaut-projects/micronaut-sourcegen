@@ -37,6 +37,7 @@ import java.util.AbstractList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -4168,6 +4169,53 @@ public class MyClass {
 """, decompileToJava(bytes));
         // The captured parameter is the first argument of the synthetic method; the local variable names
         // the decompiler shows are shifted by one, which is a separate defect of the debug information
+    }
+
+    @Test
+    void testLambdaWithABlockBodyAsAnArgument() throws Exception {
+        // A Consumer whose body is an invocation statement, passed as the argument of another statement -
+        // the shape that the Java writer could not render at all
+        Method accept = Consumer.class.getMethod("accept", Object.class);
+        Method forEach = Iterable.class.getMethod("forEach", Consumer.class);
+        Method println = PrintStream.class.getMethod("println", Object.class);
+
+        ClassDef classDef = ClassDef.builder("example.MyClass")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("printAll")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("items", TypeDef.parameterized(List.class, String.class))
+                .build((t, params) -> params.get(0).invoke(forEach, new ExpressionDef.Lambda(
+                    ClassTypeDef.of(Consumer.class),
+                    MethodDef.of(accept),
+                    MethodDef.builder("accept")
+                        .addModifiers(Modifier.PUBLIC)
+                        .addParameter("item", TypeDef.OBJECT)
+                        .returns(TypeDef.VOID)
+                        .build((lt, lp) -> ClassTypeDef.of(System.class)
+                            .getStaticField("out", TypeDef.of(PrintStream.class))
+                            .invoke(println, lp.get(0)))
+                )))
+            )
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+
+        assertEquals("""
+package example;
+
+import java.util.List;
+
+public class MyClass {
+   public void printAll(List items) {
+      items.forEach(MyClass::lambda$printAll$0);
+   }
+
+   private static void lambda$printAll$0(Object var0) {
+      System.out.println(var0);
+   }
+}
+""", decompileToJava(bytes));
     }
 
     private String toBytecode(ObjectDef objectDef) {
