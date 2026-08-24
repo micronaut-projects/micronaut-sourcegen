@@ -72,6 +72,17 @@ public final class GenerateMyBean3Visitor implements TypeElementVisitor<Generate
                 .returns(TypeDef.STRING)
                 .build((t, params) -> ExpressionDef.constant("Hello, ").stringConcat(params.get(0)).returning())
             )
+            // Primitive parts: the indy descriptor has to agree with what is on the stack
+            .addMethod(MethodDef.builder("concatenationWithPrimitives")
+                .addParameter(ParameterDef.of("count", TypeDef.Primitive.INT))
+                .addParameter(ParameterDef.of("price", TypeDef.Primitive.DOUBLE))
+                .addParameter(ParameterDef.of("flag", TypeDef.Primitive.BOOLEAN))
+                .returns(TypeDef.STRING)
+                .build((t, params) -> ExpressionDef.constant("Count: ").stringConcat(params.get(0))
+                    .stringConcat(ExpressionDef.constant(", price: ")).stringConcat(params.get(1))
+                    .stringConcat(ExpressionDef.constant(", flag: ")).stringConcat(params.get(2))
+                    .returning())
+            )
             .addMethod(createMethodWithThrows())
             .build();
 

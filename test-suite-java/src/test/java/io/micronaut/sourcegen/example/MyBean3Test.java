@@ -56,4 +56,11 @@ class MyBean3Test {
 
         assertThrows(IOException.class, bean3::getStringUnsafe);
     }
+
+    @Test
+    void testConcatenateWithPrimitives() {
+        MyBean3 bean3 = new MyBean3();
+
+        assertEquals("Count: 3, price: 1.5, flag: true", bean3.concatenationWithPrimitives(3, 1.5, true));
+    }
 }
