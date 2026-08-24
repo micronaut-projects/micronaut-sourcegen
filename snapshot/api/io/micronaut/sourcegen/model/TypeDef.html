@@ -794,7 +794,12 @@ Not-null by default.</div>
 <h3>erasure</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></span>&nbsp;<span class="element-name">erasure</span><wbr><span class="parameters">(io.micronaut.inject.ast.TypedElement&nbsp;typedElement)</span></div>
-<div class="block">Creates a new type erasure.</div>
+<div class="block">Creates a new type erasure.
+
+<p>A type variable erases to the erasure of its bound and a wildcard to the erasure of its upper
+bound - <a href="#OBJECT"><code>OBJECT</code></a> when there is none - so the result can always be rendered, as a parameter
+type or as a class literal. Type arguments of a parameterized type are kept, so that an overriding
+signature stays generic.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>typedElement</code> - The typed element</dd>
