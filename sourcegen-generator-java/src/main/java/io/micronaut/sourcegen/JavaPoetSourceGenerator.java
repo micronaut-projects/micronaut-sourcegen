@@ -905,14 +905,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 );
             }
             case ExpressionDef.ArrayElement arrayElement -> {
-                CodeBlock array = renderExpression(objectDef, methodDef, remappedLocals, arrayElement.expression());
+                CodeBlock array = renderExpression(objectDef, methodDef, scope, arrayElement.expression());
                 if (requiresMethodCallTargetParentheses(arrayElement.expression())) {
                     array = addParentheses(array);
                 }
                 return CodeBlock.concat(
                     array,
                     CodeBlock.of("["),
-                    renderExpression(objectDef, methodDef, remappedLocals, arrayElement.indexExpression()),
+                    renderExpression(objectDef, methodDef, scope, arrayElement.indexExpression()),
                     CodeBlock.of("]")
                 );
             }
