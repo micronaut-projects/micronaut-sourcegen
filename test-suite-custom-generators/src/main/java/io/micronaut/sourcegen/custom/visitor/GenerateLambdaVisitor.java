@@ -30,10 +30,12 @@ import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
+import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.VariableDef;
 import io.micronaut.sourcegen.model.VariableDef.Local;
 
 import javax.lang.model.element.Modifier;
@@ -73,6 +75,8 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
         String className = packageName + ".MyClassWithLambda";
 
         FieldDef field = FieldDef.builder("name").ofType(TypeDef.STRING.makeNullable()).build();
+        MethodDef staticShout = createShout("staticShout", "static_", Modifier.STATIC);
+        MethodDef instanceShout = createShout("instanceShout", "bound_");
         MethodDef methodInvokerDef = MethodDef.builder("methodInvoker")
             .addParameter(TypeDef.parameterized(Function.class, String.class, String.class))
             .addParameter(String.class)
@@ -93,7 +97,11 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             .addMethod(createStatelessLambda(lambdaType))
             .addMethod(createStatefulLambda(lambdaType, field))
             .addMethod(createGenericLambda())
-            .addMethod(createGenericLambda2(methodInvokerDef));
+            .addMethod(createGenericLambda2(methodInvokerDef))
+            .addMethod(staticShout)
+            .addMethod(instanceShout)
+            .addMethod(createStaticMethodReference(lambdaType, className, staticShout))
+            .addMethod(createBoundMethodReference(lambdaType, instanceShout));
         if (context != null) {
             classDefBuilder.addMethod(createGenericLambdaAst(context));
             classDefBuilder.addMethod(createComparatorLambdaAst(context));
@@ -117,6 +125,50 @@ public final class GenerateLambdaVisitor implements TypeElementVisitor<GenerateL
             )
             .addAnnotation(FunctionalInterface.class)
             .build();
+    }
+
+    // <name>(String value) { return "<prefix>" + value; }
+    private static MethodDef createShout(String name, String prefix, Modifier... modifiers) {
+        return MethodDef.builder(name)
+            .addModifiers(Modifier.PUBLIC)
+            .addModifiers(modifiers)
+            .addParameter("value", TypeDef.STRING)
+            .returns(TypeDef.STRING)
+            .build((aThis, params) -> JavaIdioms.concatStrings(ExpressionDef.constant(prefix), params.get(0)).returning());
+    }
+
+    // callStaticMethodReference(String input) {
+    //    StringFunction function = MyClassWithLambda::staticShout;
+    //    return function.apply(input);
+    // }
+    private static MethodDef createStaticMethodReference(ObjectDef lambdaType, String className, MethodDef staticShout) {
+        return applyReference("callStaticMethodReference", lambdaType,
+            iface -> iface.staticMethodReference(ClassTypeDef.of(className), staticShout));
+    }
+
+    // callBoundMethodReference(String input) {
+    //    StringFunction function = this::instanceShout;
+    //    return function.apply(input);
+    // }
+    private static MethodDef createBoundMethodReference(ObjectDef lambdaType, MethodDef instanceShout) {
+        return applyReference("callBoundMethodReference", lambdaType,
+            iface -> iface.methodReference(new VariableDef.This(), instanceShout));
+    }
+
+    private static MethodDef applyReference(String name,
+                                            ObjectDef lambdaType,
+                                            Function<ClassTypeDef, MethodReferenceExpression> reference) {
+        Local function = new Local("function", lambdaType.asTypeDef());
+        // The interface goes in as a ClassTypeDef; no LambdaDef is built by the caller
+        MethodReferenceExpression methodReference = reference.apply(lambdaType.asTypeDef());
+        return MethodDef.builder(name)
+            .addModifiers(Modifier.PUBLIC)
+            .returns(TypeDef.STRING)
+            .addParameter("input", TypeDef.STRING)
+            .build((aThis, params) -> StatementDef.multi(
+                function.defineAndAssign(methodReference),
+                function.invoke("apply", TypeDef.STRING, params.get(0)).returning()
+            ));
     }
 
     private static MethodDef createStatelessLambda(ObjectDef lambdaType) {

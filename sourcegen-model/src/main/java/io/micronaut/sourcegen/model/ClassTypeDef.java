@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.model;
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.ElementQuery;
+import io.micronaut.inject.ast.GenericPlaceholderElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.ast.TypedElement;
@@ -168,6 +169,19 @@ public sealed interface ClassTypeDef extends TypeDef {
     }
 
     /**
+     * The names of the type variables this type declares, in declaration order.
+     *
+     * <p>Used to line up the arguments of a {@link Parameterized} type with the variables the raw type
+     * declares. Only implementations that carry member information return anything.
+     *
+     * @return The type variable names, or an empty list when they cannot be resolved
+     * @since 2.2
+     */
+    default List<String> getTypeVariableNames() {
+        return List.of();
+    }
+
+    /**
      * @param parameterCount The number of declared parameters
      * @param varArgs        True if the declaration has variable arity
      * @param argumentCount  The number of arguments at the call site
@@ -226,6 +240,149 @@ public sealed interface ClassTypeDef extends TypeDef {
      */
     default LambdaDef getLambda() {
         return getLambda(Map.of());
+    }
+
+    /**
+     * Implement this interface with a reference to a static method, e.g. {@code MyClass::staticMethod}.
+     *
+     * @param lambda The interface the reference implements
+     * @param method The referenced method
+     * @return The method reference
+     * @since 2.2
+     */
+    /**
+     * Implement this interface with a reference to a method of the given receiver,
+     * e.g. {@code myInstance::instanceMethod}.
+     *
+     * <p>Here {@code this} is the functional interface being implemented, as it is for
+     * {@link #getLambda()}. The receiver is evaluated where the reference is created, not where the
+     * interface method is called.
+     *
+     * <p>Parameterize the interface - {@code TypeDef.parameterized(Function.class, String.class,
+     * String.class)} - so that its type variables resolve; a raw interface leaves them erased to
+     * {@link Object} and the reference fails to link.
+     *
+     * @param instance The receiver the reference is bound to
+     * @param method   The referenced method
+     * @return The method reference
+     * @since 2.2
+     */
+    @Experimental
+    default MethodReferenceExpression methodReference(ExpressionDef instance, MethodDef method) {
+        LambdaDef lambda = getLambda();
+        return new InstanceMethodReferenceExpression(
+            lambda.getType(), lambda.getMethod(), lambda.getImplementation(),
+            receiverType(instance), instance, method);
+    }
+
+    /**
+     * Implement this interface with a reference to a method of the given receiver,
+     * e.g. {@code myInstance::instanceMethod}.
+     *
+     * @param instance The receiver the reference is bound to
+     * @param method   The referenced method
+     * @return The method reference
+     * @since 2.2
+     */
+    @Experimental
+    default MethodReferenceExpression methodReference(ExpressionDef instance, Method method) {
+        return methodReference(instance, MethodDef.of(method));
+    }
+
+    /**
+     * Implement this interface with a reference to a method of the given receiver,
+     * e.g. {@code myInstance::instanceMethod}.
+     *
+     * <p>The method is resolved with {@link #findDeclaredMethods(String, int)} against the type of
+     * {@code instance}, which requires it to carry member information. Use
+     * {@link #methodReference(ExpressionDef, MethodDef)} when it does not.
+     *
+     * @param instance The receiver the reference is bound to
+     * @param name     The name of the referenced method
+     * @return The method reference
+     * @since 2.2
+     */
+    @Experimental
+    default MethodReferenceExpression methodReference(ExpressionDef instance, String name) {
+        return methodReference(instance,
+            MethodReferences.resolve(receiverType(instance), name, getLambda().getImplementation().getParameters().size()));
+    }
+
+    /**
+     * @param instance The receiver of a method reference
+     * @return The type of the receiver, which must be a class type
+     */
+    private static ClassTypeDef receiverType(ExpressionDef instance) {
+        if (instance.type() instanceof ClassTypeDef owner) {
+            return owner;
+        }
+        throw new IllegalArgumentException(
+            "The receiver of a method reference must be of a class type, but was: " + instance.type());
+    }
+
+    /**
+     * Implement this interface with a reference to a static method, e.g. {@code MyClass::staticMethod}.
+     *
+     * <p>Parameterize this interface - {@code TypeDef.parameterized(Function.class, String.class,
+     * String.class)} - so that its type variables resolve; a raw interface leaves them erased to
+     * {@link Object} and the reference fails to link.
+     *
+     * @param owner  The type declaring the method
+     * @param method The referenced method
+     * @return The method reference
+     * @since 2.2
+     */
+    @Experimental
+    default MethodReferenceExpression staticMethodReference(ClassTypeDef owner, MethodDef method) {
+        LambdaDef lambda = getLambda();
+        return new StaticMethodReferenceExpression(
+            lambda.getType(), lambda.getMethod(), lambda.getImplementation(), owner, method);
+    }
+
+    /**
+     * Implement this interface with a reference to a static method, e.g. {@code MyClass::staticMethod}.
+     *
+     * @param owner The type declaring the method
+     * @param name  The name of the referenced method
+     * @return The method reference
+     * @since 2.2
+     */
+    @Experimental
+    default MethodReferenceExpression staticMethodReference(ClassTypeDef owner, String name) {
+        return staticMethodReference(owner,
+            MethodReferences.resolve(owner, name, getLambda().getImplementation().getParameters().size()));
+    }
+
+    /**
+     * Implement this interface with a reference to a constructor, e.g. {@code MyClass::new}.
+     *
+     * @param owner       The type to construct
+     * @param constructor The referenced constructor
+     * @return The method reference
+     * @since 2.2
+     */
+    @Experimental
+    default MethodReferenceExpression constructorReference(ClassTypeDef owner, MethodDef constructor) {
+        LambdaDef lambda = getLambda();
+        return new ConstructorMethodReferenceExpression(
+            lambda.getType(), lambda.getMethod(), lambda.getImplementation(), owner, constructor);
+    }
+
+    /**
+     * Implement this interface with a reference to a constructor, e.g. {@code MyClass::new}.
+     *
+     * <p>The constructor is resolved with {@link #findDeclaredMethods(String, int)}, which requires
+     * {@code owner} to carry member information. Use {@link #constructorReference(ClassTypeDef, MethodDef)}
+     * when it does not, or when more than one constructor takes the arguments of the interface.
+     *
+     * @param owner The type to construct
+     * @return The method reference
+     * @since 2.2
+     */
+    @Experimental
+    default MethodReferenceExpression constructorReference(ClassTypeDef owner) {
+        return constructorReference(owner, MethodReferences.resolve(owner, MethodDef.CONSTRUCTOR,
+            getLambda().getImplementation().getParameters().size()));
     }
 
     /**
@@ -743,6 +900,11 @@ public sealed interface ClassTypeDef extends TypeDef {
         }
 
         @Override
+        public List<String> getTypeVariableNames() {
+            return Arrays.stream(type.getTypeParameters()).map(java.lang.reflect.TypeVariable::getName).toList();
+        }
+
+        @Override
         public List<MethodDef> findDeclaredMethods(String name, int argumentCount) {
             if (MethodDef.CONSTRUCTOR.equals(name)) {
                 return Arrays.stream(type.getDeclaredConstructors())
@@ -882,6 +1044,13 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassElementType(ClassElement classElement, boolean nullable) implements ClassTypeDef {
 
         @Override
+        public List<String> getTypeVariableNames() {
+            return classElement.getDeclaredGenericPlaceholders().stream()
+                .map(GenericPlaceholderElement::getVariableName)
+                .toList();
+        }
+
+        @Override
         public List<MethodDef> findDeclaredMethods(String name, int argumentCount) {
             List<MethodElement> methods;
             if (MethodDef.CONSTRUCTOR.equals(name)) {
@@ -979,6 +1148,17 @@ public sealed interface ClassTypeDef extends TypeDef {
     record ClassDefType(ObjectDef objectDef, boolean nullable) implements ClassTypeDef {
 
         @Override
+        public List<String> getTypeVariableNames() {
+            List<TypeDef.TypeVariable> variables = switch (objectDef) {
+                case ClassDef classDef -> classDef.getTypeVariables();
+                case InterfaceDef interfaceDef -> interfaceDef.getTypeVariables();
+                case RecordDef recordDef -> recordDef.getTypeVariables();
+                default -> List.of();
+            };
+            return variables.stream().map(TypeDef.TypeVariable::name).toList();
+        }
+
+        @Override
         public List<MethodDef> findDeclaredMethods(String name, int argumentCount) {
             return objectDef.getMethods()
                 .stream()
@@ -1065,9 +1245,24 @@ public sealed interface ClassTypeDef extends TypeDef {
         }
 
         @Override
+        public List<String> getTypeVariableNames() {
+            return rawType.getTypeVariableNames();
+        }
+
+        @Override
         public LambdaDef getLambda(Function<String, @Nullable TypeDef> resolveVariableFn) {
-            ClassTypeDef lambdaType = resolveTypeVariables(resolveVariableFn);
-            LambdaDef lambda = rawType.getLambda(resolveVariableFn);
+            Parameterized lambdaType = resolveTypeVariables(resolveVariableFn);
+            // The arguments of this type resolve the variables the raw type declares - without this the
+            // implementation stays erased, and a method reference to it fails to link
+            List<String> names = rawType.getTypeVariableNames();
+            List<TypeDef> arguments = lambdaType.typeArguments();
+            LambdaDef lambda = rawType.getLambda(name -> {
+                int i = names.indexOf(name);
+                if (i >= 0 && i < arguments.size()) {
+                    return arguments.get(i);
+                }
+                return resolveVariableFn.apply(name);
+            });
             return new LambdaDef(
                 lambdaType,
                 lambda.getMethod(),

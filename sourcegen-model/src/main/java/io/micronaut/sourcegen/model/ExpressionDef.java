@@ -58,6 +58,7 @@ public sealed interface ExpressionDef
         ExpressionDef.InvokeStaticMethod,
         ExpressionDef.MathBinaryOperation,
         ExpressionDef.MathUnaryOperation,
+        MethodReferenceExpression,
         ExpressionDef.NewArrayInitialized,
         ExpressionDef.NewArrayOfSize,
         ExpressionDef.NewInstance,
@@ -1761,6 +1762,7 @@ public sealed interface ExpressionDef
             return Stream.empty();
         }
     }
+
 
     /**
      * The conditional expression.

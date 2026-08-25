@@ -838,6 +838,79 @@ public class example/MyClassWithLambda {
    L1
     LOCALVARIABLE constant Ljava/lang/String; L0 L1 0
     LOCALVARIABLE arg1 Ljava/lang/String; L0 L1 1
+
+  // access flags 0x9
+  public static staticShout(Ljava/lang/String;)Ljava/lang/String;
+   L0
+    NEW java/lang/StringBuilder
+    DUP
+    LDC "static_"
+    INVOKESPECIAL java/lang/StringBuilder.<init> (Ljava/lang/String;)V
+    ALOAD 0
+    INVOKEVIRTUAL java/lang/StringBuilder.append (Ljava/lang/String;)Ljava/lang/StringBuilder;
+    INVOKEVIRTUAL java/lang/StringBuilder.toString ()Ljava/lang/String;
+    ARETURN
+   L1
+    LOCALVARIABLE value Ljava/lang/String; L0 L1 0
+
+  // access flags 0x1
+  public instanceShout(Ljava/lang/String;)Ljava/lang/String;
+   L0
+    NEW java/lang/StringBuilder
+    DUP
+    LDC "bound_"
+    INVOKESPECIAL java/lang/StringBuilder.<init> (Ljava/lang/String;)V
+    ALOAD 1
+    INVOKEVIRTUAL java/lang/StringBuilder.append (Ljava/lang/String;)Ljava/lang/StringBuilder;
+    INVOKEVIRTUAL java/lang/StringBuilder.toString ()Ljava/lang/String;
+    ARETURN
+   L1
+    LOCALVARIABLE value Ljava/lang/String; L0 L1 1
+
+  // access flags 0x1
+  public callStaticMethodReference(Ljava/lang/String;)Ljava/lang/String;
+   L0
+   L1
+    INVOKEDYNAMIC apply()Lexample/StringFunction; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/LambdaMetafactory.metafactory(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      (Ljava/lang/String;)Ljava/lang/String;,\s
+      // handle kind 0x6 : INVOKESTATIC
+      example/MyClassWithLambda.staticShout(Ljava/lang/String;)Ljava/lang/String;,\s
+      (Ljava/lang/String;)Ljava/lang/String;
+    ]
+    ASTORE 2
+    ALOAD 2
+    ALOAD 1
+    INVOKEINTERFACE example/StringFunction.apply (Ljava/lang/String;)Ljava/lang/String; (itf)
+    ARETURN
+   L2
+    LOCALVARIABLE input Ljava/lang/String; L0 L2 1
+    LOCALVARIABLE function Lexample/StringFunction; L1 L2 2
+
+  // access flags 0x1
+  public callBoundMethodReference(Ljava/lang/String;)Ljava/lang/String;
+   L0
+   L1
+    ALOAD 0
+    INVOKEDYNAMIC apply(Lexample/MyClassWithLambda;)Lexample/StringFunction; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/invoke/LambdaMetafactory.metafactory(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;
+      // arguments:
+      (Ljava/lang/String;)Ljava/lang/String;,\s
+      // handle kind 0x5 : INVOKEVIRTUAL
+      example/MyClassWithLambda.instanceShout(Ljava/lang/String;)Ljava/lang/String;,\s
+      (Ljava/lang/String;)Ljava/lang/String;
+    ]
+    ASTORE 2
+    ALOAD 2
+    ALOAD 1
+    INVOKEINTERFACE example/StringFunction.apply (Ljava/lang/String;)Ljava/lang/String; (itf)
+    ARETURN
+   L2
+    LOCALVARIABLE input Ljava/lang/String; L0 L2 1
+    LOCALVARIABLE function Lexample/StringFunction; L1 L2 2
 }
 """, bytecode);
 
@@ -893,6 +966,24 @@ public class MyClassWithLambda {
 
    private static String lambda$callGenericLambda2$0(String constant, String arg1) {
       return constant + arg1.substring(1);
+   }
+
+   public static String staticShout(String value) {
+      return "static_" + value;
+   }
+
+   public String instanceShout(String value) {
+      return "bound_" + value;
+   }
+
+   public String callStaticMethodReference(String input) {
+      StringFunction function = MyClassWithLambda::staticShout;
+      return function.apply(input);
+   }
+
+   public String callBoundMethodReference(String input) {
+      StringFunction function = this::instanceShout;
+      return function.apply(input);
    }
 }
 """, decompileToJava(bytes));
