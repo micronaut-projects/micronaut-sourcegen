@@ -24,3 +24,4 @@ io.micronaut.sourcegen.custom.visitor.GenerateStatementsVisitor
 io.micronaut.sourcegen.custom.visitor.GenerateAnnotationClassVisitor
 io.micronaut.sourcegen.custom.visitor.GenerateAccessVisitor
 io.micronaut.sourcegen.custom.visitor.GenerateExpressionsVisitor
+io.micronaut.sourcegen.custom.visitor.GenerateGenericBridgesVisitor

@@ -471,7 +471,8 @@ public final class ByteCodeWriter {
             modifiersFlag,
             name,
             methodDescriptor,
-            SignatureWriterUtils.getMethodSignature(objectDef, methodDef),
+            // A bridge carries an erased signature, it never gets a Signature attribute
+            (modifiersFlag & ACC_BRIDGE) == 0 ? SignatureWriterUtils.getMethodSignature(objectDef, methodDef) : null,
             exceptions
         );
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, methodDescriptor);

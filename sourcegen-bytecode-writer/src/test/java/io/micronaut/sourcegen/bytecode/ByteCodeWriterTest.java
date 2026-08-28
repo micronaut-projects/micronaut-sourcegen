@@ -13,6 +13,7 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
+import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
@@ -34,6 +35,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.lang.reflect.Method;
 import java.util.AbstractList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -4987,6 +4989,181 @@ public abstract class example/Example {
 
   // access flags 0x1441
   public abstract synthetic bridge self()Ljava/lang/Object;
+}
+""", bytecodeWriter.toString());
+    }
+
+    @Test
+    void testTypeVariableBridgeIsErasedThroughItsBound() {
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addTypeVariable(TypeDef.variable("T", TypeDef.of(Number.class)))
+            .addMethod(MethodDef.builder("value")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(ClassTypeDef.of(Number.class))
+                // The type variable erases to its bound, which is the method's own return type,
+                // so only the Object bridge survives
+                .addBridge(TypeDef.variable("T"))
+                .addBridge(TypeDef.OBJECT)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(Integer.class)
+                    .invokeStatic("valueOf", ClassTypeDef.of(Integer.class), ExpressionDef.primitiveConstant(1))
+                    .returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(def, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x401
+// signature <T:Ljava/lang/Number;>Ljava/lang/Object;
+// declaration: example/Example<T extends java.lang.Number>
+public abstract class example/Example {
+
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public value()Ljava/lang/Number;
+    ICONST_1
+    INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
+    ARETURN
+
+  // access flags 0x1041
+  public synthetic bridge value()Ljava/lang/Object;
+    ALOAD 0
+    INVOKEVIRTUAL example/Example.value ()Ljava/lang/Number;
+    ARETURN
+}
+""", bytecodeWriter.toString());
+    }
+
+    @Test
+    void testParameterizedBridgeIsErasedToItsRawType() {
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("values")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.of(String.class)))
+                // The raw type is the erasure of the method's own return type, so no bridge is written
+                .addBridge(ClassTypeDef.of(List.class))
+                .build((aThis, methodParameters) -> ClassTypeDef.of(ArrayList.class).instantiate().returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(def, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x1
+// signature Ljava/lang/Object;
+// declaration: example/Example
+public class example/Example {
+
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  // signature ()Ljava/util/List<Ljava/lang/String;>;
+  // declaration: java.util.List<java.lang.String> values()
+  public values()Ljava/util/List;
+    NEW java/util/ArrayList
+    DUP
+    INVOKESPECIAL java/util/ArrayList.<init> ()V
+    ARETURN
+}
+""", bytecodeWriter.toString());
+    }
+
+    @Test
+    void testArrayBridge() {
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("toArray")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("values", TypeDef.of(String.class).array())
+                .returns(TypeDef.of(String.class).array())
+                // The classic Collection.toArray shape: the array component is what gets erased
+                .addBridge(TypeDef.OBJECT.array(), List.of(TypeDef.OBJECT.array()))
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(def, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x1
+// signature Ljava/lang/Object;
+// declaration: example/Example
+public class example/Example {
+
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public toArray([Ljava/lang/String;)[Ljava/lang/String;
+   L0
+    ALOAD 1
+    ARETURN
+   L1
+    LOCALVARIABLE values [Ljava/lang/String; L0 L1 1
+
+  // access flags 0x1041
+  public synthetic bridge toArray([Ljava/lang/Object;)[Ljava/lang/Object;
+   L0
+    ALOAD 0
+    ALOAD 1
+    CHECKCAST [Ljava/lang/String;
+    INVOKEVIRTUAL example/Example.toArray ([Ljava/lang/String;)[Ljava/lang/String;
+    CHECKCAST [Ljava/lang/Object;
+    ARETURN
+   L1
+    LOCALVARIABLE values [Ljava/lang/Object; L0 L1 1
+}
+""", bytecodeWriter.toString());
+    }
+
+    @Test
+    void testInterfaceBridge() {
+        InterfaceDef def = InterfaceDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("get")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(ClassTypeDef.of("example.Example"))
+                .addBridge(TypeDef.OBJECT)
+                .build())
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(def, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x601
+// signature <T:Ljava/lang/Object;>Ljava/lang/Object;
+// declaration: example/Example<T>
+public abstract interface example/Example {
+
+
+  // access flags 0x401
+  public abstract get()Lexample/Example;
+
+  // access flags 0x1441
+  public abstract synthetic bridge get()Ljava/lang/Object;
 }
 """, bytecodeWriter.toString());
     }
