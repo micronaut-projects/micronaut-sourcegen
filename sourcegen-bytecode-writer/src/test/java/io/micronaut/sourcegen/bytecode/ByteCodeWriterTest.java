@@ -4858,6 +4858,139 @@ public class MyClass {
         return stringWriter.toString();
     }
 
+    @Test
+    void testCovariantReturnBridge() {
+        ClassDef def = ClassDef.builder("example.Example")
+            .addMethod(MethodDef.builder("self")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(ClassTypeDef.of("example.Example"))
+                .addBridge(TypeDef.OBJECT)
+                .build((aThis, methodParameters) -> aThis.returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(def, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;
+// declaration: example/Example
+class example/Example {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public self()Lexample/Example;
+    ALOAD 0
+    ARETURN
+
+  // access flags 0x1041
+  public synthetic bridge self()Ljava/lang/Object;
+    ALOAD 0
+    INVOKEVIRTUAL example/Example.self ()Lexample/Example;
+    ARETURN
+}
+""", bytecodeWriter.toString());
+    }
+
+    @Test
+    void testErasedParameterBridge() {
+        ClassDef def = ClassDef.builder("example.Example")
+            .addMethod(MethodDef.builder("accept")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.Primitive.INT)
+                .addParameter("value", TypeDef.of(String.class))
+                .addBridge(TypeDef.Primitive.INT, List.of(TypeDef.OBJECT))
+                .build((aThis, methodParameters) ->
+                    methodParameters.get(0).invoke("length", TypeDef.Primitive.INT).returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(def, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;
+// declaration: example/Example
+class example/Example {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public accept(Ljava/lang/String;)I
+   L0
+    ALOAD 1
+    INVOKEVIRTUAL java/lang/String.length ()I
+    IRETURN
+   L1
+    LOCALVARIABLE value Ljava/lang/String; L0 L1 1
+
+  // access flags 0x1041
+  public synthetic bridge accept(Ljava/lang/Object;)I
+   L0
+    ALOAD 0
+    ALOAD 1
+    CHECKCAST java/lang/String
+    INVOKEVIRTUAL example/Example.accept (Ljava/lang/String;)I
+    IRETURN
+   L1
+    LOCALVARIABLE value Ljava/lang/Object; L0 L1 1
+}
+""", bytecodeWriter.toString());
+    }
+
+    @Test
+    void testAbstractBridgeAndRedundantBridgesAreSkipped() {
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addMethod(MethodDef.builder("self")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(ClassTypeDef.of("example.Example"))
+                // The first bridge repeats the method's own signature and the third one is a duplicate
+                .addBridge(ClassTypeDef.of("example.Example"))
+                .addBridge(TypeDef.OBJECT)
+                .addBridge(TypeDef.OBJECT)
+                .build())
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(def, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x401
+// signature Ljava/lang/Object;
+// declaration: example/Example
+public abstract class example/Example {
+
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x401
+  public abstract self()Lexample/Example;
+
+  // access flags 0x1441
+  public abstract synthetic bridge self()Ljava/lang/Object;
+}
+""", bytecodeWriter.toString());
+    }
+
     private byte[] generateFile(ObjectDef objectDef, StringWriter stringWriter) {
         var classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         var checkClassAdapter = new CheckClassAdapter(classWriter);

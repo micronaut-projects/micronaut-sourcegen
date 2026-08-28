@@ -19,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.sourcegen.bytecode.statement.StatementWriter;
 import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.BridgeDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -46,6 +47,7 @@ import org.objectweb.asm.util.CheckClassAdapter;
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -53,6 +55,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.objectweb.asm.Opcodes.ACC_ABSTRACT;
+import static org.objectweb.asm.Opcodes.ACC_BRIDGE;
 import static org.objectweb.asm.Opcodes.ACC_ENUM;
 import static org.objectweb.asm.Opcodes.ACC_FINAL;
 import static org.objectweb.asm.Opcodes.ACC_INTERFACE;
@@ -444,9 +447,17 @@ public final class ByteCodeWriter {
     }
 
     private void writeMethod(ClassVisitor classVisitor, @Nullable ObjectDef objectDef, MethodDef methodDef, boolean isLambda) {
+        writeMethod(classVisitor, objectDef, methodDef, isLambda, 0);
+    }
+
+    private void writeMethod(ClassVisitor classVisitor,
+                             @Nullable ObjectDef objectDef,
+                             MethodDef methodDef,
+                             boolean isLambda,
+                             int extraModifiersFlag) {
         String name = methodDef.getName();
         String methodDescriptor = TypeUtils.getMethodDescriptor(objectDef, methodDef);
-        int modifiersFlag = getModifiersFlag(methodDef.getModifiers());
+        int modifiersFlag = getModifiersFlag(methodDef.getModifiers()) | extraModifiersFlag;
         if (methodDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
@@ -543,6 +554,59 @@ public final class ByteCodeWriter {
         for (MethodDef lambdaDef: context.lambdaMethods()) {
             writeMethod(classVisitor, objectDef, lambdaDef, true);
         }
+
+        writeBridgeMethods(classVisitor, objectDef, methodDef, methodDescriptor);
+    }
+
+    /**
+     * Write the bridge methods declared by a method.
+     *
+     * <p>A bridge carries the erased signature of an overridden method and delegates to the method that
+     * declared it, casting any parameter whose type was erased. Bridges of an abstract method are
+     * abstract too, matching what the Java compiler emits.
+     *
+     * @param classVisitor     The class visitor
+     * @param objectDef        The object definition
+     * @param methodDef        The method the bridges delegate to
+     * @param methodDescriptor The descriptor of that method
+     */
+    private void writeBridgeMethods(ClassVisitor classVisitor,
+                                    @Nullable ObjectDef objectDef,
+                                    MethodDef methodDef,
+                                    String methodDescriptor) {
+        if (methodDef.getBridges().isEmpty()) {
+            return;
+        }
+        boolean isAbstract = methodDef.getModifiers().contains(Modifier.ABSTRACT);
+        List<ParameterDef> parameters = methodDef.getParameters();
+        // A bridge with the same descriptor as the method itself, or as a bridge already written, is redundant
+        Set<String> writtenDescriptors = new HashSet<>();
+        writtenDescriptors.add(methodDescriptor);
+        for (BridgeDef bridge : methodDef.getBridges()) {
+            MethodDef.MethodDefBuilder builder = MethodDef.builder(methodDef.getName())
+                .addModifiers(bridgeModifiers(methodDef))
+                .returns(bridge.returnType());
+            for (int i = 0; i < parameters.size(); i++) {
+                builder.addParameter(parameters.get(i).getName(), bridge.parameterTypes().get(i));
+            }
+            if (!isAbstract) {
+                builder.addStatement((aThis, bridgeParameters) -> {
+                    // The invocation casts every parameter to the type of the delegate
+                    ExpressionDef.InvokeInstanceMethod invocation = aThis.invoke(methodDef, bridgeParameters);
+                    return bridge.returnType().equals(TypeDef.VOID) ? invocation : invocation.returning();
+                });
+            }
+            MethodDef bridgeDef = builder.build();
+            if (writtenDescriptors.add(TypeUtils.getMethodDescriptor(objectDef, bridgeDef))) {
+                writeMethod(classVisitor, objectDef, bridgeDef, false, ACC_BRIDGE | ACC_SYNTHETIC);
+            }
+        }
+    }
+
+    private static Collection<Modifier> bridgeModifiers(MethodDef methodDef) {
+        return methodDef.getModifiers().stream()
+            .filter(m -> m == Modifier.PUBLIC || m == Modifier.PROTECTED || m == Modifier.PRIVATE || m == Modifier.ABSTRACT)
+            .toList();
     }
 
     private List<StatementDef> adjustConstructorStatements(@Nullable ObjectDef objectDef, List<StatementDef> statements) {

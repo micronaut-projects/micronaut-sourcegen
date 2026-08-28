@@ -227,7 +227,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         builder.addMethod(createBuildMethod(
             elementType,
             properties,
-            constructorParameters)
+            constructorParameters).build()
         );
         return builder;
     }
@@ -498,11 +498,11 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         }
     }
 
-    static MethodDef createBuildMethod(ClassTypeDef buildType, List<PropertyElement> properties, List<ParameterElement> constructorParameters) {
+    static MethodDef.MethodDefBuilder createBuildMethod(ClassTypeDef buildType, List<PropertyElement> properties, List<ParameterElement> constructorParameters) {
         return MethodDef.builder("build")
             .addModifiers(Modifier.PUBLIC)
             .returns(buildType)
-            .build((self, parameterDefs) -> {
+            .addStatement((self, parameterDefs) -> {
                 List<PropertyElement> beanProperties = new ArrayList<>(properties);
                 List<ExpressionDef> values = new ArrayList<>();
                 for (ParameterElement parameter : constructorParameters) {

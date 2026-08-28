@@ -33,6 +33,7 @@ import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.TypeDef;
 
 import javax.lang.model.element.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -94,6 +95,19 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 ));
             }
 
+            // `self` and `build` are redeclared by every builder in the hierarchy, and each redeclaration
+            // erases to a different descriptor, so they need a bridge per ancestor to be considered
+            // implemented by the JVM. The Java compiler adds them when generating sources, the bytecode
+            // writer needs them spelled out.
+            List<TypeDef> selfBridges = new ArrayList<>();
+            List<TypeDef> buildBridges = new ArrayList<>();
+            ClassElement ancestor = superType;
+            while (ancestor != null && !ancestor.getName().equals("java.lang.Object") && !ancestor.getName().equals("java.lang.Record")) {
+                selfBridges.add(ClassTypeDef.of(getAbstractSuperBuilderName(ancestor)));
+                buildBridges.add(TypeDef.of(ancestor));
+                ancestor = ancestor.getSuperType().orElse(null);
+            }
+
             List<PropertyElement> properties = element.getBeanProperties();
             for (PropertyElement beanProperty : properties) {
                 if (!beanProperty.getDeclaringType().equals(element)) {
@@ -102,8 +116,8 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 createModifyPropertyMethod(abstractBuilder, abstractBuilderType, beanProperty, buildContext -> buildContext.aThis().invoke("self", buildContext.aThis().type()).cast(selfType).returning());
             }
 
-            abstractBuilder.addMethod(MethodDef.builder("self").addModifiers(Modifier.ABSTRACT).returns(selfType).build());
-            abstractBuilder.addMethod(MethodDef.builder("build").addModifiers(Modifier.ABSTRACT).returns(producingType).build());
+            abstractBuilder.addMethod(MethodDef.builder("self").addModifiers(Modifier.ABSTRACT).returns(selfType).addBridges(selfBridges).build());
+            abstractBuilder.addMethod(MethodDef.builder("build").addModifiers(Modifier.ABSTRACT).returns(producingType).addBridges(buildBridges).build());
 
             ClassDef abstractBuilderDef = abstractBuilder.build();
 
@@ -144,8 +158,10 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                     .map(MethodElement::getParameters).orElse(ParameterElement.ZERO_PARAMETER_ELEMENTS);
                 List<ParameterElement> constructorParameters = Arrays.asList(constructorElement);
 
-                builder.addMethod(createSelfMethod());
-                builder.addMethod(BuilderAnnotationVisitor.createBuildMethod(ClassTypeDef.of(element), properties, constructorParameters));
+                builder.addMethod(createSelfMethod(abstractBuilderType, selfBridges));
+                builder.addMethod(BuilderAnnotationVisitor.createBuildMethod(ClassTypeDef.of(element), properties, constructorParameters)
+                    .addBridges(buildBridges)
+                    .build());
                 builder.addMethod(createBuilderMethod(builderType));
 
                 ClassDef builderDef = builder.build();
@@ -174,9 +190,11 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
             .build();
     }
 
-    private MethodDef createSelfMethod() {
+    private MethodDef createSelfMethod(ClassTypeDef abstractBuilderType, List<TypeDef> selfBridges) {
         return MethodDef.builder("self")
             .addModifiers(Modifier.PUBLIC)
+            .addBridge(abstractBuilderType)
+            .addBridges(selfBridges)
             .build((self, parameterDefs) -> self.returning());
     }
 
