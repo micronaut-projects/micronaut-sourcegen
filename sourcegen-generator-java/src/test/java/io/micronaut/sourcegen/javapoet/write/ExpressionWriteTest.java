@@ -1773,6 +1773,46 @@ public class MyClass {
         assertEquals("Lambda method apply has 1 parameter(s) but 2 name(s) were provided", e.getMessage());
     }
 
+    @Test
+    void returnMathOperationMethodCallTargetWithParentheses() throws IOException {
+        ExpressionDef expression = ExpressionDef.constant(100)
+            .math(DIVISION, new VariableDef.Local("divisor", TypeDef.Primitive.INT))
+            .invoke("toString", TypeDef.STRING);
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("(100 / divisor).toString()", result);
+    }
+
+    @Test
+    void returnNegatedValueMethodCallTargetWithParentheses() throws IOException {
+        ExpressionDef expression = new VariableDef.Local("value", TypeDef.Primitive.INT)
+            .math(NEGATE)
+            .invoke("toString", TypeDef.STRING);
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("(-value).toString()", result);
+    }
+
+    @Test
+    void returnComparisonMethodCallTargetWithParentheses() throws IOException {
+        ExpressionDef expression = ExpressionDef.constant(1)
+            .compare(LESS_THAN, ExpressionDef.constant(2))
+            .invoke("toString", TypeDef.STRING);
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("(1 < 2).toString()", result);
+    }
+
+    @Test
+    void returnInstanceOfMethodCallTargetWithParentheses() throws IOException {
+        ExpressionDef expression = new VariableDef.Local("value", TypeDef.OBJECT)
+            .instanceOf(ClassTypeDef.STRING)
+            .invoke("toString", TypeDef.STRING);
+        String result = writeMethodWithExpression(expression);
+
+        assertEquals("(value instanceof java.lang.String).toString()", result);
+    }
+
     private static ExpressionDef.SwitchYieldCase yieldWithConditionalBranch(TypeDef.Primitive intType,
                                                                             ExpressionDef conditionValue,
                                                                             int expectedValue,

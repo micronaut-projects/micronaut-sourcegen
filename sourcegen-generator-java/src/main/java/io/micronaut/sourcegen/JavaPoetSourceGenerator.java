@@ -1283,7 +1283,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private static boolean requiresMethodCallTargetParentheses(ExpressionDef expressionDef) {
         return expressionDef instanceof ExpressionDef.Cast
+            || expressionDef instanceof ExpressionDef.ConditionExpressionDef
             || expressionDef instanceof ExpressionDef.IfElse
+            || expressionDef instanceof ExpressionDef.MathBinaryOperation
+            || expressionDef instanceof ExpressionDef.MathUnaryOperation
             || expressionDef instanceof ExpressionDef.StringConcatenation
             || expressionDef instanceof ExpressionDef.Switch;
     }
