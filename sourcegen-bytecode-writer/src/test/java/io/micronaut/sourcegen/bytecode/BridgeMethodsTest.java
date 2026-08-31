@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
@@ -38,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -363,7 +365,7 @@ public abstract class example/Example extends example/Top {
     }
 
     @Test
-    void testInterfaceRedeclarationGetsAnAbstractBridge() {
+    void testInterfaceRedeclarationGetsADefaultBridge() {
         InterfaceDef parent = InterfaceDef.builder("example.ParentInterface")
             .addModifiers(Modifier.PUBLIC)
             .addTypeVariable(TypeDef.variable("T"))
@@ -390,8 +392,11 @@ public abstract interface example/Example implements example/ParentInterface {
   // access flags 0x401
   public abstract get()Lexample/Example;
 
-  // access flags 0x1441
-  public abstract synthetic bridge get()Ljava/lang/Object;
+  // access flags 0x1041
+  public synthetic bridge default get()Ljava/lang/Object;
+    ALOAD 0
+    INVOKEINTERFACE example/Example.get ()Lexample/Example; (itf)
+    ARETURN
 }
 """, generate(def));
     }
@@ -800,13 +805,245 @@ public class example/Example extends example/UnknownParent {
         assertEquals(expected, bridgeMethodsOf(writer.write(def)));
     }
 
+    @Test
+    void testAbstractOverrideWithErasedParameterGetsAnAbstractBridge() {
+        ClassDef parent = ClassDef.builder("example.Parent")
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("set")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("T"))
+                .returns(TypeDef.VOID)
+                .build())
+            .build();
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .superclass(TypeDef.parameterized(ClassTypeDef.of(parent), TypeDef.of(String.class)))
+            .addMethod(MethodDef.builder("set")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .overrides()
+                .addParameter("value", TypeDef.of(String.class))
+                .returns(TypeDef.VOID)
+                .build())
+            .build();
+
+        assertEquals(
+            List.of("set(Ljava/lang/Object;)V (abstract)"),
+            bridgeMethodsOf(new ByteCodeWriter(false, false).write(def))
+        );
+    }
+
+    @Test
+    void testInterfaceChainBridgesOnlyWhereTheErasureNarrows() {
+        InterfaceDef top = InterfaceDef.builder("example.Top")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("A"))
+            .addMethod(MethodDef.builder("id").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("A")).returns(TypeDef.variable("A")).build())
+            .build();
+        // The middle redeclares with its own variable: same erasure, no bridge
+        InterfaceDef middle = InterfaceDef.builder("example.Middle")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("B"))
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(top), TypeDef.variable("B")))
+            .addMethod(MethodDef.builder("id").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("B")).returns(TypeDef.variable("B")).build())
+            .build();
+        // The leaf narrows the erasure: a concrete default bridge, like javac emits in an interface
+        InterfaceDef leaf = InterfaceDef.builder("example.Leaf")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(middle), TypeDef.of(String.class)))
+            .addMethod(MethodDef.builder("id").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.of(String.class)).returns(TypeDef.of(String.class)).build())
+            .build();
+
+        ByteCodeWriter writer = new ByteCodeWriter(false, false);
+        assertEquals(List.of(), bridgeMethodsOf(writer.write(middle)));
+        assertEquals(List.of("id(Ljava/lang/Object;)Ljava/lang/Object;"), bridgeMethodsOf(writer.write(leaf)));
+    }
+
+    @Test
+    void testInterfaceDefaultMethodGetsADefaultBridge() {
+        InterfaceDef top = InterfaceDef.builder("example.Top")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("A"))
+            .addMethod(MethodDef.builder("id").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("A")).returns(TypeDef.variable("A")).build())
+            .build();
+        InterfaceDef def = InterfaceDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(top), TypeDef.of(String.class)))
+            .addMethod(MethodDef.builder("id")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addParameter("value", TypeDef.of(String.class))
+                .returns(TypeDef.of(String.class))
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+
+        assertEquals(
+            List.of("id(Ljava/lang/Object;)Ljava/lang/Object;"),
+            bridgeMethodsOf(new ByteCodeWriter(false, false).write(def))
+        );
+    }
+
+    @Test
+    void testEnumImplementingAGenericInterface() {
+        InterfaceDef id = InterfaceDef.builder("example.Id")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("id").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("T")).returns(TypeDef.variable("T")).build())
+            .build();
+        EnumDef def = EnumDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addEnumConstant("A")
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(id), TypeDef.of(String.class)))
+            .addMethod(MethodDef.builder("id")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addParameter("value", TypeDef.of(String.class))
+                .returns(TypeDef.of(String.class))
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+
+        assertEquals(
+            List.of("id(Ljava/lang/Object;)Ljava/lang/Object;"),
+            bridgeMethodsOf(new ByteCodeWriter(false, false).write(def))
+        );
+    }
+
+    @Test
+    void testReflectedInterfaceInheritance() {
+        // UnaryOperator declares nothing itself: apply is inherited from the reflected Function parent
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(UnaryOperator.class), TypeDef.of(String.class)))
+            .addMethod(MethodDef.builder("apply")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addParameter("value", TypeDef.of(String.class))
+                .returns(TypeDef.of(String.class))
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+
+        assertEquals(
+            List.of("apply(Ljava/lang/Object;)Ljava/lang/Object;"),
+            bridgeMethodsOf(new ByteCodeWriter(false, false).write(def))
+        );
+    }
+
+    @Test
+    void testGenericMethodsGetNoBridge() {
+        // The type variables live on the methods, not the type: both erase identically
+        ClassDef parent = ClassDef.builder("example.Parent")
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addMethod(MethodDef.builder("pick")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addTypeVariable(TypeDef.variable("M"))
+                .addParameter("value", TypeDef.variable("M"))
+                .returns(TypeDef.variable("M"))
+                .build())
+            .addMethod(MethodDef.builder("pickBounded")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addTypeVariable(TypeDef.variable("M", TypeDef.of(Number.class)))
+                .addParameter("value", TypeDef.variable("M", TypeDef.of(Number.class)))
+                .returns(TypeDef.variable("M", TypeDef.of(Number.class)))
+                .build())
+            .build();
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(parent))
+            .addMethod(MethodDef.builder("pick")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addTypeVariable(TypeDef.variable("M"))
+                .addParameter("value", TypeDef.variable("M"))
+                .returns(TypeDef.variable("M"))
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .addMethod(MethodDef.builder("pickBounded")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addTypeVariable(TypeDef.variable("M", TypeDef.of(Number.class)))
+                .addParameter("value", TypeDef.variable("M", TypeDef.of(Number.class)))
+                .returns(TypeDef.variable("M", TypeDef.of(Number.class)))
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+
+        assertEquals(List.of(), bridgeMethodsOf(new ByteCodeWriter(false, false).write(def)));
+    }
+
+    @Test
+    void testMixedClassAndMethodGenerics() {
+        // The class variable erases through the bridge, the method variable stays Object on both sides
+        ClassDef parent = ClassDef.builder("example.Parent")
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("convert")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addTypeVariable(TypeDef.variable("M"))
+                .addParameter("input", TypeDef.variable("T"))
+                .addParameter("seed", TypeDef.variable("M"))
+                .returns(TypeDef.variable("M"))
+                .build())
+            .build();
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(TypeDef.parameterized(ClassTypeDef.of(parent), TypeDef.of(String.class)))
+            .addMethod(MethodDef.builder("convert")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addTypeVariable(TypeDef.variable("M"))
+                .addParameter("input", TypeDef.of(String.class))
+                .addParameter("seed", TypeDef.variable("M"))
+                .returns(TypeDef.variable("M"))
+                .build((aThis, methodParameters) -> methodParameters.get(1).returning()))
+            .build();
+
+        assertEquals(
+            List.of("convert(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
+            bridgeMethodsOf(new ByteCodeWriter(false, false).write(def))
+        );
+    }
+
+    @Test
+    void testOnlyTheMatchingOverloadGetsTheBridge() {
+        InterfaceDef setter = InterfaceDef.builder("example.Setter")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("set").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("T")).returns(TypeDef.VOID).build())
+            .build();
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(setter), TypeDef.of(String.class)))
+            .addMethod(MethodDef.builder("set")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addParameter("value", TypeDef.of(String.class))
+                .returns(TypeDef.VOID)
+                .build())
+            .addMethod(MethodDef.builder("set")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("value", TypeDef.of(Integer.class))
+                .returns(TypeDef.VOID)
+                .build())
+            .build();
+
+        // The Integer overload does not implement Setter<String>.set, so only one bridge exists
+        assertEquals(
+            List.of("set(Ljava/lang/Object;)V"),
+            bridgeMethodsOf(new ByteCodeWriter(false, false).write(def))
+        );
+    }
+
     private static List<String> bridgeMethodsOf(byte[] bytecode) {
         List<String> bridges = new ArrayList<>();
         new ClassReader(bytecode).accept(new ClassVisitor(Opcodes.ASM9) {
             @Override
             public org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
                 if ((access & Opcodes.ACC_BRIDGE) != 0) {
-                    bridges.add(name + descriptor);
+                    bridges.add(name + descriptor + ((access & Opcodes.ACC_ABSTRACT) != 0 ? " (abstract)" : ""));
                 }
                 return null;
             }

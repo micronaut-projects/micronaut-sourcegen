@@ -117,6 +117,19 @@ class GenericBridgeTest {
     }
 
     @Test
+    void defaultMethodBridgeDispatchesThroughTheInterface() {
+        // The generated StringTransformer overrides the inherited abstract method with a default one,
+        // so the bridge is a default method too; the class implementing it declares nothing
+        StringTransformer transformer = new StringTransformer() { };
+        assertEquals("HELLO", transformer.transform("hello"));
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        Transformer<Object> raw = (Transformer) transformer;
+        assertEquals("HELLO", raw.transform("hello"));
+        assertThrows(ClassCastException.class, () -> raw.transform(42));
+    }
+
+    @Test
     void declaredBridges() {
         assertEquals(List.of("()Ljava/lang/Object;"), bridges(StringHolder.class, "get"));
         assertEquals(List.of("(Ljava/lang/Object;)V"), bridges(StringHolder.class, "set"));
@@ -126,6 +139,12 @@ class GenericBridgeTest {
         assertEquals(List.of("(Ljava/lang/Object;)Ljava/lang/Object;"), bridges(StringSourceHolder.class, "value"));
         assertEquals(List.of("()Ljava/lang/Object;"), bridges(NumberHolder.class, "get"));
         assertEquals(List.of("(Ljava/lang/Object;)V"), bridges(NumberHolder.class, "set"));
+        // An interface bridge is a default method, not an abstract one
+        Method interfaceBridge = Arrays.stream(StringTransformer.class.getDeclaredMethods())
+            .filter(Method::isBridge)
+            .findFirst()
+            .orElseThrow();
+        assertTrue(interfaceBridge.isDefault());
         // The generic super class declares the erasure the others bridge to
         assertEquals(List.of(), bridges(GenericHolder.class, "get"));
         assertEquals(List.of(), bridges(GenericHolder.class, "set"));

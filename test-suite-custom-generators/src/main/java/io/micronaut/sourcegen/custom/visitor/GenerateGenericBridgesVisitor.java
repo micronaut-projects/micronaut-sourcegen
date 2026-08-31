@@ -73,10 +73,56 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
         sourceGenerator.write(throwingHandler, context, element);
         sourceGenerator.write(stringHandler(packageName, throwingHandler), context, element);
 
+        InterfaceDef transformer = transformer(packageName);
+        sourceGenerator.write(transformer, context, element);
+        sourceGenerator.write(stringTransformer(packageName, transformer), context, element);
+
         ClassElement sourceHolder = context.getClassElement(packageName + ".SourceValueHolder").orElse(null);
         if (sourceHolder != null) {
             sourceGenerator.write(stringSourceHolder(packageName, sourceHolder), context, element);
         }
+    }
+
+    /**
+     * {@code interface Transformer<T>} with a single abstract method.
+     *
+     * @param packageName The package
+     * @return The definition
+     */
+    private InterfaceDef transformer(String packageName) {
+        return InterfaceDef.builder(packageName + ".Transformer")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("transform")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("T"))
+                .returns(TypeDef.variable("T"))
+                .build())
+            .build();
+    }
+
+    /**
+     * {@code interface StringTransformer extends Transformer<String>} overriding the inherited method
+     * with a default one, whose bridge is a default method too.
+     *
+     * @param packageName    The package
+     * @param transformerDef The generic super interface
+     * @return The definition
+     */
+    private InterfaceDef stringTransformer(String packageName, InterfaceDef transformerDef) {
+        TypeDef stringType = TypeDef.of(String.class);
+        return InterfaceDef.builder(packageName + ".StringTransformer")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(transformerDef), stringType))
+            .addMethod(MethodDef.builder("transform")
+                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .overrides()
+                .addParameter("value", stringType)
+                .returns(stringType)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .invoke("toUpperCase", stringType)
+                    .returning()))
+            .build();
     }
 
     /**

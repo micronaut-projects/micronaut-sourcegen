@@ -590,11 +590,15 @@ public final class ByteCodeWriter {
         if (resolved.isEmpty()) {
             return;
         }
-        boolean isAbstract = methodDef.getModifiers().contains(Modifier.ABSTRACT);
+        // An interface bridge is always a concrete default method delegating through the interface,
+        // even when the method it bridges is abstract; that is what the Java compiler emits, because
+        // interface dispatch reaches the implementation either way
+        boolean isInterface = objectDef instanceof InterfaceDef;
+        boolean isAbstract = !isInterface && methodDef.getModifiers().contains(Modifier.ABSTRACT);
         List<ParameterDef> parameters = methodDef.getParameters();
         for (BridgeResolver.BridgeMethod bridge : resolved) {
             MethodDef.MethodDefBuilder builder = MethodDef.builder(methodDef.getName())
-                .addModifiers(bridgeModifiers(methodDef))
+                .addModifiers(bridgeModifiers(methodDef, isAbstract))
                 .returns(bridge.returnType())
                 .addAnnotations(methodDef.getAnnotations())
                 .addThrows(methodDef.getThrowTypes());
@@ -620,9 +624,9 @@ public final class ByteCodeWriter {
         }
     }
 
-    private static Collection<Modifier> bridgeModifiers(MethodDef methodDef) {
+    private static Collection<Modifier> bridgeModifiers(MethodDef methodDef, boolean isAbstract) {
         return methodDef.getModifiers().stream()
-            .filter(m -> m == Modifier.PUBLIC || m == Modifier.PROTECTED || m == Modifier.PRIVATE || m == Modifier.ABSTRACT)
+            .filter(m -> m == Modifier.PUBLIC || m == Modifier.PROTECTED || m == Modifier.PRIVATE || (isAbstract && m == Modifier.ABSTRACT))
             .toList();
     }
 
