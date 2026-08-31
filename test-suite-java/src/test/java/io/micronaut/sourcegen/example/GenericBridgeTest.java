@@ -96,12 +96,21 @@ class GenericBridgeTest {
     }
 
     @Test
+    void sourceParentIsResolvedThroughTheAst() {
+        // The generated child extends a hand-written generic class, so its hierarchy is only visible
+        // through the annotation-processing AST
+        SourceValueHolder<String> holder = new StringSourceHolder();
+        assertEquals("hello", holder.value("hello"));
+    }
+
+    @Test
     void declaredBridges() {
         assertEquals(List.of("()Ljava/lang/Object;"), bridges(StringHolder.class, "get"));
         assertEquals(List.of("(Ljava/lang/Object;)V"), bridges(StringHolder.class, "set"));
         assertEquals(List.of("(Ljava/lang/Object;)Ljava/lang/Object;"), bridges(LengthFunction.class, "apply"));
         assertEquals(List.of("(Ljava/lang/Object;Ljava/lang/Object;)I"), bridges(LengthComparator.class, "compare"));
         assertEquals(List.of("(Ljava/lang/Object;)Ljava/lang/Object;"), bridges(StringHandler.class, "handle"));
+        assertEquals(List.of("(Ljava/lang/Object;)Ljava/lang/Object;"), bridges(StringSourceHolder.class, "value"));
         // The generic super class declares the erasure the others bridge to
         assertEquals(List.of(), bridges(GenericHolder.class, "get"));
         assertEquals(List.of(), bridges(GenericHolder.class, "set"));

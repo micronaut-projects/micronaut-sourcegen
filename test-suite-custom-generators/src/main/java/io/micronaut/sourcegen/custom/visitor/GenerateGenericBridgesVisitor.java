@@ -27,6 +27,7 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.jspecify.annotations.NonNull;
@@ -39,8 +40,11 @@ import java.util.function.Function;
 
 /**
  * Generates types whose supertypes are generic, so that every method implementing one of them needs a
- * bridge carrying the erased signature. The Java compiler adds those bridges when the source generators
- * are used, the bytecode writer needs them declared as a {@link io.micronaut.sourcegen.model.BridgeDef}.
+ * bridge carrying the erased signature. The methods carry no bridge information: the Java compiler adds
+ * bridges when the source generators are used, and the bytecode writer resolves them from the generic
+ * supertypes. The supertype references therefore carry the parent definitions — the generated parents
+ * as their {@code ClassDef}, the source parent as its {@code ClassElement}, and the JDK interfaces as
+ * their {@code Class}.
  */
 @Internal
 public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<GenerateGenericBridges, Object> {
@@ -58,15 +62,48 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
         }
         String packageName = element.getPackageName();
 
-        ClassTypeDef holderType = ClassTypeDef.of(packageName + ".GenericHolder");
-        sourceGenerator.write(genericHolder(holderType), context, element);
-        sourceGenerator.write(stringHolder(packageName, holderType), context, element);
+        ClassDef genericHolder = genericHolder(ClassTypeDef.of(packageName + ".GenericHolder"));
+        sourceGenerator.write(genericHolder, context, element);
+        sourceGenerator.write(stringHolder(packageName, genericHolder), context, element);
         sourceGenerator.write(lengthFunction(packageName), context, element);
         sourceGenerator.write(lengthComparator(packageName), context, element);
 
-        ClassTypeDef handlerType = ClassTypeDef.of(packageName + ".ThrowingHandler");
-        sourceGenerator.write(throwingHandler(handlerType), context, element);
-        sourceGenerator.write(stringHandler(packageName, handlerType), context, element);
+        InterfaceDef throwingHandler = throwingHandler(ClassTypeDef.of(packageName + ".ThrowingHandler"));
+        sourceGenerator.write(throwingHandler, context, element);
+        sourceGenerator.write(stringHandler(packageName, throwingHandler), context, element);
+
+        ClassElement sourceHolder = context.getClassElement(packageName + ".SourceValueHolder").orElse(null);
+        if (sourceHolder != null) {
+            sourceGenerator.write(stringSourceHolder(packageName, sourceHolder), context, element);
+        }
+    }
+
+    /**
+     * {@code class StringSourceHolder extends SourceValueHolder<String>}, extending a hand-written
+     * generic source class, so the hierarchy is only available as a {@code ClassElement}.
+     *
+     * @param packageName  The package
+     * @param sourceHolder The hand-written generic super class
+     * @return The definition
+     */
+    private ClassDef stringSourceHolder(String packageName, ClassElement sourceHolder) {
+        TypeDef stringType = TypeDef.of(String.class);
+        FieldDef valueField = FieldDef.builder("value", stringType)
+            .addModifiers(Modifier.PRIVATE)
+            .build();
+        return ClassDef.builder(packageName + ".StringSourceHolder")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(TypeDef.parameterized(ClassTypeDef.of(sourceHolder), stringType))
+            .addField(valueField)
+            .addMethod(MethodDef.builder("value")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addParameter("value", stringType)
+                .returns(stringType)
+                .build((aThis, methodParameters) -> StatementDef.multi(
+                    aThis.field(valueField).put(methodParameters.get(0)),
+                    aThis.field(valueField).returning())))
+            .build();
     }
 
     /**
@@ -96,11 +133,11 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
      * @param handlerType The raw type of the generic interface
      * @return The definition
      */
-    private ClassDef stringHandler(String packageName, ClassTypeDef handlerType) {
+    private ClassDef stringHandler(String packageName, InterfaceDef handlerDef) {
         TypeDef stringType = TypeDef.of(String.class);
         return ClassDef.builder(packageName + ".StringHandler")
             .addModifiers(Modifier.PUBLIC)
-            .addSuperinterface(TypeDef.parameterized(handlerType, stringType))
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(handlerDef), stringType))
             .addMethod(MethodDef.builder("handle")
                 .addModifiers(Modifier.PUBLIC)
                 .overrides()
@@ -110,7 +147,6 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
                     .build())
                 .returns(stringType)
                 .addThrows(TypeDef.of(IOException.class))
-                .addBridge(TypeDef.OBJECT, List.of(TypeDef.OBJECT))
                 .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
             .build();
     }
@@ -145,27 +181,25 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
      * @param holderType  The raw type of the generic super class
      * @return The definition
      */
-    private ClassDef stringHolder(String packageName, ClassTypeDef holderType) {
+    private ClassDef stringHolder(String packageName, ClassDef holderDef) {
         TypeDef stringType = TypeDef.of(String.class);
         FieldDef valueField = FieldDef.builder("value", stringType)
             .addModifiers(Modifier.PRIVATE)
             .build();
         return ClassDef.builder(packageName + ".StringHolder")
             .addModifiers(Modifier.PUBLIC)
-            .superclass(TypeDef.parameterized(holderType, stringType))
+            .superclass(TypeDef.parameterized(ClassTypeDef.of(holderDef), stringType))
             .addField(valueField)
             .addMethod(MethodDef.builder("get")
                 .addModifiers(Modifier.PUBLIC)
                 .overrides()
                 .returns(stringType)
-                .addCovariantReturnBridge(TypeDef.OBJECT)
                 .build((aThis, methodParameters) -> aThis.field(valueField).returning()))
             .addMethod(MethodDef.builder("set")
                 .addModifiers(Modifier.PUBLIC)
                 .overrides()
                 .addParameter("value", stringType)
                 .returns(TypeDef.VOID)
-                .addBridge(TypeDef.VOID, List.of(TypeDef.OBJECT))
                 .build((aThis, methodParameters) -> aThis.field(valueField).put(methodParameters.get(0))))
             .build();
     }
@@ -188,7 +222,6 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
                 .overrides()
                 .addParameter("value", stringType)
                 .returns(integerType)
-                .addBridge(TypeDef.OBJECT, List.of(TypeDef.OBJECT))
                 .build((aThis, methodParameters) -> methodParameters.get(0)
                     .invoke("length", TypeDef.Primitive.INT)
                     .cast(integerType)
@@ -214,7 +247,6 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
                 .addParameter("first", stringType)
                 .addParameter("second", stringType)
                 .returns(TypeDef.Primitive.INT)
-                .addBridge(TypeDef.Primitive.INT, List.of(TypeDef.OBJECT, TypeDef.OBJECT))
                 .build((aThis, methodParameters) -> methodParameters.get(0)
                     .invoke("compareTo", TypeDef.Primitive.INT, methodParameters.get(1))
                     .returning()))

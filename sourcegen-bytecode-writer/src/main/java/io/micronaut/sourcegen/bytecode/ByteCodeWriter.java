@@ -19,7 +19,6 @@ import org.jspecify.annotations.Nullable;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.sourcegen.bytecode.statement.StatementWriter;
 import io.micronaut.sourcegen.model.AnnotationDef;
-import io.micronaut.sourcegen.model.BridgeDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -48,6 +47,7 @@ import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -77,6 +77,7 @@ public final class ByteCodeWriter {
 
     private final boolean checkClass;
     private final boolean visitMaxs;
+    private final IdentityHashMap<ObjectDef, Set<String>> writtenBridges = new IdentityHashMap<>();
 
     public ByteCodeWriter() {
         this(false, true);
@@ -556,35 +557,35 @@ public final class ByteCodeWriter {
             writeMethod(classVisitor, objectDef, lambdaDef, true);
         }
 
-        writeBridgeMethods(classVisitor, objectDef, methodDef, methodDescriptor);
+        if (!isLambda && (extraModifiersFlag & ACC_BRIDGE) == 0) {
+            writeBridgeMethods(classVisitor, objectDef, methodDef);
+        }
     }
 
     /**
-     * Write the bridge methods declared by a method.
+     * Write the bridge methods a method requires.
      *
-     * <p>A bridge carries the erased signature of an overridden method and delegates to the method that
-     * declared it, casting any parameter whose type was erased. Bridges of an abstract method are
-     * abstract too, and the declared exceptions and the annotations of the delegate are repeated on the
-     * bridge, matching what the Java compiler emits.
+     * <p>The bridges are resolved from the declared supertypes: one per inherited method that this
+     * method overrides with a different erasure. A bridge delegates to the method, casting any
+     * parameter whose type was erased. Bridges of an abstract method are abstract too, and the declared
+     * exceptions and the annotations of the delegate are repeated on the bridge, matching what the Java
+     * compiler emits.
      *
-     * @param classVisitor     The class visitor
-     * @param objectDef        The object definition
-     * @param methodDef        The method the bridges delegate to
-     * @param methodDescriptor The descriptor of that method
+     * @param classVisitor The class visitor
+     * @param objectDef    The object definition
+     * @param methodDef    The method the bridges delegate to
      */
     private void writeBridgeMethods(ClassVisitor classVisitor,
                                     @Nullable ObjectDef objectDef,
-                                    MethodDef methodDef,
-                                    String methodDescriptor) {
-        if (methodDef.getBridges().isEmpty()) {
+                                    MethodDef methodDef) {
+        List<BridgeResolver.BridgeMethod> resolved = BridgeResolver.resolve(objectDef, methodDef);
+        if (resolved.isEmpty()) {
             return;
         }
+        Set<String> written = writtenBridges.computeIfAbsent(objectDef, k -> new HashSet<>());
         boolean isAbstract = methodDef.getModifiers().contains(Modifier.ABSTRACT);
         List<ParameterDef> parameters = methodDef.getParameters();
-        // A bridge with the same descriptor as the method itself, or as a bridge already written, is redundant
-        Set<String> writtenDescriptors = new HashSet<>();
-        writtenDescriptors.add(methodDescriptor);
-        for (BridgeDef bridge : methodDef.getBridges()) {
+        for (BridgeResolver.BridgeMethod bridge : resolved) {
             MethodDef.MethodDefBuilder builder = MethodDef.builder(methodDef.getName())
                 .addModifiers(bridgeModifiers(methodDef))
                 .returns(bridge.returnType())
@@ -604,7 +605,8 @@ public final class ByteCodeWriter {
                 });
             }
             MethodDef bridgeDef = builder.build();
-            if (writtenDescriptors.add(TypeUtils.getMethodDescriptor(objectDef, bridgeDef))) {
+            // The same erasure can be inherited through more than one path
+            if (written.add(TypeUtils.getMethodDescriptor(objectDef, bridgeDef))) {
                 writeMethod(classVisitor, objectDef, bridgeDef, false, ACC_BRIDGE | ACC_SYNTHETIC);
             }
         }
