@@ -16,15 +16,16 @@
 package io.micronaut.sourcegen.model;
 
 import io.micronaut.core.annotation.Experimental;
-
+import io.micronaut.inject.ast.MethodElement;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
 /**
- * An erased signature that a method must additionally be callable under.
+ * The signature of an overridden method that a method must additionally be callable under.
  *
  * <p>A bridge is required when a method overrides a generic method whose erasure differs, for example
  * {@code B self()} declared in {@code AbstractCatBuilder<C, B extends AbstractCatBuilder<C, B>>} overriding
@@ -32,13 +33,18 @@ import java.util.function.Function;
  * declarations erase to a different descriptor, so the JVM does not consider the second one implemented
  * without a bridge.
  *
+ * <p>The types are those of the overridden method and are erased when the bridge is written, so they may
+ * be given either erased or with their generics: a type variable erases to its bound and a parameterized
+ * type to its raw type. A bridge that ends up with the descriptor of the method that declares it, or with
+ * one of a bridge already written, is discarded.
+ *
  * <p>Bridges are declared on the method they delegate to, via
- * {@link MethodDef.MethodDefBuilder#addBridge(TypeDef)} and friends, and are only materialized by writers
- * that emit bytecode. Source generators ignore them because the Java, Kotlin and Groovy compilers
+ * {@link MethodDef.MethodDefBuilder#addBridge(BridgeDef)} and friends, and are only materialized by
+ * writers that emit bytecode. Source generators ignore them because the Java, Kotlin and Groovy compilers
  * synthesize bridges themselves.
  *
- * @param returnType     The erased return type of the overridden method
- * @param parameterTypes The erased parameter types of the overridden method
+ * @param returnType     The return type of the overridden method
+ * @param parameterTypes The parameter types of the overridden method
  * @author Denis Stepanov
  * @since 2.2
  */
@@ -51,10 +57,39 @@ public record BridgeDef(TypeDef returnType, List<TypeDef> parameterTypes) {
     }
 
     /**
+     * Creates a bridge from the overridden method.
+     *
+     * @param overriddenMethod The method being overridden
+     * @return The bridge
+     * @since 2.2
+     */
+    public static BridgeDef of(MethodDef overriddenMethod) {
+        return new BridgeDef(
+            overriddenMethod.getReturnType(),
+            overriddenMethod.getParameters().stream().map(ParameterDef::getType).toList()
+        );
+    }
+
+    /**
+     * Creates a bridge from the overridden method.
+     *
+     * @param overriddenMethod The method being overridden
+     * @return The bridge
+     * @since 2.2
+     */
+    public static BridgeDef of(MethodElement overriddenMethod) {
+        return new BridgeDef(
+            TypeDef.erasure(overriddenMethod.getReturnType()),
+            Arrays.stream(overriddenMethod.getParameters()).map(p -> TypeDef.erasure(p.getType())).toList()
+        );
+    }
+
+    /**
      * Resolves type variables.
      *
      * @param resolveVariableFn The resolve variable function
      * @return the resolved bridge
+     * @since 2.2
      */
     public BridgeDef resolveTypeVariables(Function<String, @Nullable TypeDef> resolveVariableFn) {
         return new BridgeDef(

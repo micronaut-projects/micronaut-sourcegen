@@ -25,11 +25,14 @@ import io.micronaut.sourcegen.generator.SourceGenerators;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.FieldDef;
+import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.jspecify.annotations.NonNull;
 
 import javax.lang.model.element.Modifier;
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
@@ -37,7 +40,7 @@ import java.util.function.Function;
 /**
  * Generates types whose supertypes are generic, so that every method implementing one of them needs a
  * bridge carrying the erased signature. The Java compiler adds those bridges when the source generators
- * are used, the bytecode writer needs them declared with {@code MethodDef.MethodDefBuilder#addBridge}.
+ * are used, the bytecode writer needs them declared as a {@link io.micronaut.sourcegen.model.BridgeDef}.
  */
 @Internal
 public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<GenerateGenericBridges, Object> {
@@ -60,6 +63,56 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
         sourceGenerator.write(stringHolder(packageName, holderType), context, element);
         sourceGenerator.write(lengthFunction(packageName), context, element);
         sourceGenerator.write(lengthComparator(packageName), context, element);
+
+        ClassTypeDef handlerType = ClassTypeDef.of(packageName + ".ThrowingHandler");
+        sourceGenerator.write(throwingHandler(handlerType), context, element);
+        sourceGenerator.write(stringHandler(packageName, handlerType), context, element);
+    }
+
+    /**
+     * {@code interface ThrowingHandler<T>} whose method declares a checked exception.
+     *
+     * @param handlerType The type of the generated interface
+     * @return The definition
+     */
+    private InterfaceDef throwingHandler(ClassTypeDef handlerType) {
+        return InterfaceDef.builder(handlerType.getName())
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("handle")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("T"))
+                .returns(TypeDef.variable("T"))
+                .addThrows(TypeDef.of(IOException.class))
+                .build())
+            .build();
+    }
+
+    /**
+     * {@code class StringHandler implements ThrowingHandler<String>}, whose bridge has to repeat the
+     * declared exception and the annotations of the method it delegates to.
+     *
+     * @param packageName The package
+     * @param handlerType The raw type of the generic interface
+     * @return The definition
+     */
+    private ClassDef stringHandler(String packageName, ClassTypeDef handlerType) {
+        TypeDef stringType = TypeDef.of(String.class);
+        return ClassDef.builder(packageName + ".StringHandler")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(handlerType, stringType))
+            .addMethod(MethodDef.builder("handle")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addAnnotation(Deprecated.class)
+                .addParameter(ParameterDef.builder("value", stringType)
+                    .addAnnotation(Deprecated.class)
+                    .build())
+                .returns(stringType)
+                .addThrows(TypeDef.of(IOException.class))
+                .addBridge(TypeDef.OBJECT, List.of(TypeDef.OBJECT))
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
     }
 
     /**
@@ -105,7 +158,7 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
                 .addModifiers(Modifier.PUBLIC)
                 .overrides()
                 .returns(stringType)
-                .addBridge(TypeDef.OBJECT)
+                .addCovariantReturnBridge(TypeDef.OBJECT)
                 .build((aThis, methodParameters) -> aThis.field(valueField).returning()))
             .addMethod(MethodDef.builder("set")
                 .addModifiers(Modifier.PUBLIC)

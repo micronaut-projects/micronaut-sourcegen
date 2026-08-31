@@ -564,7 +564,8 @@ public final class ByteCodeWriter {
      *
      * <p>A bridge carries the erased signature of an overridden method and delegates to the method that
      * declared it, casting any parameter whose type was erased. Bridges of an abstract method are
-     * abstract too, matching what the Java compiler emits.
+     * abstract too, and the declared exceptions and the annotations of the delegate are repeated on the
+     * bridge, matching what the Java compiler emits.
      *
      * @param classVisitor     The class visitor
      * @param objectDef        The object definition
@@ -586,9 +587,14 @@ public final class ByteCodeWriter {
         for (BridgeDef bridge : methodDef.getBridges()) {
             MethodDef.MethodDefBuilder builder = MethodDef.builder(methodDef.getName())
                 .addModifiers(bridgeModifiers(methodDef))
-                .returns(bridge.returnType());
+                .returns(bridge.returnType())
+                .addAnnotations(methodDef.getAnnotations())
+                .addThrows(methodDef.getThrowTypes());
             for (int i = 0; i < parameters.size(); i++) {
-                builder.addParameter(parameters.get(i).getName(), bridge.parameterTypes().get(i));
+                ParameterDef parameter = parameters.get(i);
+                builder.addParameter(ParameterDef.builder(parameter.getName(), bridge.parameterTypes().get(i))
+                    .addAnnotations(parameter.getAnnotations())
+                    .build());
             }
             if (!isAbstract) {
                 builder.addStatement((aThis, bridgeParameters) -> {

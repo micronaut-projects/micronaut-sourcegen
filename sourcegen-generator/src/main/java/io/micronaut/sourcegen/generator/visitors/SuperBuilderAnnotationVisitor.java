@@ -116,8 +116,8 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 createModifyPropertyMethod(abstractBuilder, abstractBuilderType, beanProperty, buildContext -> buildContext.aThis().invoke("self", buildContext.aThis().type()).cast(selfType).returning());
             }
 
-            abstractBuilder.addMethod(MethodDef.builder("self").addModifiers(Modifier.ABSTRACT).returns(selfType).addBridges(selfBridges).build());
-            abstractBuilder.addMethod(MethodDef.builder("build").addModifiers(Modifier.ABSTRACT).returns(producingType).addBridges(buildBridges).build());
+            abstractBuilder.addMethod(MethodDef.builder("self").addModifiers(Modifier.ABSTRACT).returns(selfType).addCovariantReturnBridges(selfBridges).build());
+            abstractBuilder.addMethod(MethodDef.builder("build").addModifiers(Modifier.ABSTRACT).returns(producingType).addCovariantReturnBridges(buildBridges).build());
 
             ClassDef abstractBuilderDef = abstractBuilder.build();
 
@@ -160,7 +160,7 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
 
                 builder.addMethod(createSelfMethod(abstractBuilderType, selfBridges));
                 builder.addMethod(BuilderAnnotationVisitor.createBuildMethod(ClassTypeDef.of(element), properties, constructorParameters)
-                    .addBridges(buildBridges)
+                    .addCovariantReturnBridges(buildBridges)
                     .build());
                 builder.addMethod(createBuilderMethod(builderType));
 
@@ -193,8 +193,8 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
     private MethodDef createSelfMethod(ClassTypeDef abstractBuilderType, List<TypeDef> selfBridges) {
         return MethodDef.builder("self")
             .addModifiers(Modifier.PUBLIC)
-            .addBridge(abstractBuilderType)
-            .addBridges(selfBridges)
+            .addCovariantReturnBridge(abstractBuilderType)
+            .addCovariantReturnBridges(selfBridges)
             .build((self, parameterDefs) -> self.returning());
     }
 

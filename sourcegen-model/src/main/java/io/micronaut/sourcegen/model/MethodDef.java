@@ -460,6 +460,12 @@ public final class MethodDef extends AbstractElement {
     /**
      * Creates a builder from an existing {@link MethodDef}.
      *
+     * <p>Only the signature is copied: the name, the modifiers, the parameters and the return type. The
+     * body, the annotations, the javadoc, the declared exceptions and the bridges are not, because the
+     * result describes a different method. In particular a method overriding one that declares bridges
+     * needs bridges for the erasure of the overridden method itself as well, so copying them would
+     * produce an incomplete set rather than a correct one.
+     *
      * @param methodDef The method definition
      * @return The method definition builder
      * @since 2.0
@@ -781,59 +787,68 @@ public final class MethodDef extends AbstractElement {
         }
 
         /**
-         * Add a bridge for an overridden method that only differs by its erased return type.
+         * Add a bridge for an overridden method that only differs by its return type.
          *
          * <p>The bridge takes the parameters of this method and delegates to it, which covers the common
          * covariant-return case, such as {@code B self()} overriding a {@code B self()} declared by a
          * super class whose type variable has a different bound.
          *
-         * <p>A bridge whose erased signature matches this method's own signature, or a signature that was
-         * already added, is discarded when the method is written.
+         * <p>Only writers that emit bytecode materialize bridges. Source generators ignore them because
+         * the Java, Kotlin and Groovy compilers synthesize bridges themselves.
          *
-         * @param erasedReturnType The erased return type of the overridden method
+         * @param returnType The return type of the overridden method
          * @return The builder
+         * @see BridgeDef
          * @since 2.2
          */
-        public MethodDefBuilder addBridge(TypeDef erasedReturnType) {
-            bridges.add(new PendingBridge(erasedReturnType, null));
+        public MethodDefBuilder addCovariantReturnBridge(TypeDef returnType) {
+            bridges.add(new PendingBridge(returnType, null));
             return this;
         }
 
         /**
-         * Add bridges for overridden methods that only differ by their erased return type.
+         * Add a bridge per overridden method that only differs by its return type.
          *
-         * @param erasedReturnTypes The erased return types of the overridden methods
+         * @param returnTypes The return types of the overridden methods
          * @return The builder
-         * @see #addBridge(TypeDef)
+         * @see #addCovariantReturnBridge(TypeDef)
          * @since 2.2
          */
-        public MethodDefBuilder addBridges(Collection<TypeDef> erasedReturnTypes) {
-            erasedReturnTypes.forEach(this::addBridge);
+        public MethodDefBuilder addCovariantReturnBridges(Collection<TypeDef> returnTypes) {
+            returnTypes.forEach(this::addCovariantReturnBridge);
             return this;
         }
 
         /**
-         * Add a bridge for an overridden method with the given erased signature.
+         * Add a bridge for an overridden method with the given signature.
          *
          * <p>Parameters that differ from this method's own parameters are cast before being passed on,
          * which covers erased parameter types, such as {@code compareTo(Object)} bridging to
          * {@code compareTo(Cat)}.
          *
-         * @param erasedReturnType     The erased return type of the overridden method
-         * @param erasedParameterTypes The erased parameter types of the overridden method
+         * <p>Only writers that emit bytecode materialize bridges. Source generators ignore them because
+         * the Java, Kotlin and Groovy compilers synthesize bridges themselves.
+         *
+         * @param returnType     The return type of the overridden method
+         * @param parameterTypes The parameter types of the overridden method
          * @return The builder
+         * @see BridgeDef
          * @since 2.2
          */
-        public MethodDefBuilder addBridge(TypeDef erasedReturnType, List<TypeDef> erasedParameterTypes) {
-            bridges.add(new PendingBridge(erasedReturnType, List.copyOf(erasedParameterTypes)));
+        public MethodDefBuilder addBridge(TypeDef returnType, List<TypeDef> parameterTypes) {
+            bridges.add(new PendingBridge(returnType, List.copyOf(parameterTypes)));
             return this;
         }
 
         /**
          * Add a bridge.
          *
+         * <p>Only writers that emit bytecode materialize bridges. Source generators ignore them because
+         * the Java, Kotlin and Groovy compilers synthesize bridges themselves.
+         *
          * @param bridge The bridge
          * @return The builder
+         * @see BridgeDef
          * @since 2.2
          */
         public MethodDefBuilder addBridge(BridgeDef bridge) {
@@ -841,17 +856,16 @@ public final class MethodDef extends AbstractElement {
         }
 
         /**
-         * Add a bridge for the given overridden method.
+         * Add bridges.
          *
-         * @param overriddenMethod The method being overridden
+         * @param bridgeDefs The bridges
          * @return The builder
+         * @see #addBridge(BridgeDef)
          * @since 2.2
          */
-        public MethodDefBuilder addBridge(MethodDef overriddenMethod) {
-            return addBridge(
-                overriddenMethod.getReturnType(),
-                overriddenMethod.getParameters().stream().map(ParameterDef::getType).toList()
-            );
+        public MethodDefBuilder addBridges(Collection<BridgeDef> bridgeDefs) {
+            bridgeDefs.forEach(this::addBridge);
+            return this;
         }
 
         /**
@@ -859,18 +873,35 @@ public final class MethodDef extends AbstractElement {
          *
          * @param overriddenMethod The method being overridden
          * @return The builder
+         * @see BridgeDef#of(MethodDef)
+         * @since 2.2
+         */
+        public MethodDefBuilder addBridge(MethodDef overriddenMethod) {
+            return addBridge(BridgeDef.of(overriddenMethod));
+        }
+
+        /**
+         * Add a bridge for the given overridden method.
+         *
+         * @param overriddenMethod The method being overridden
+         * @return The builder
+         * @see BridgeDef#of(MethodElement)
          * @since 2.2
          */
         public MethodDefBuilder addBridge(MethodElement overriddenMethod) {
-            return addBridge(
-                TypeDef.erasure(overriddenMethod.getReturnType()),
-                Arrays.stream(overriddenMethod.getParameters()).map(p -> TypeDef.erasure(p.getType())).toList()
-            );
+            return addBridge(BridgeDef.of(overriddenMethod));
         }
 
         private List<BridgeDef> buildBridges() {
             if (bridges.isEmpty()) {
                 return List.of();
+            }
+            // A bridge is dispatched on a receiver and only reconciles the erasures of an overridden method
+            if (CONSTRUCTOR.equals(name)) {
+                throw new IllegalStateException("A constructor cannot have bridges");
+            }
+            if (modifiers.contains(Modifier.STATIC)) {
+                throw new IllegalStateException("The static method: " + name + " cannot have bridges");
             }
             List<TypeDef> ownParameterTypes = parameters.stream().map(ParameterDef::getType).toList();
             List<BridgeDef> result = new ArrayList<>(bridges.size());

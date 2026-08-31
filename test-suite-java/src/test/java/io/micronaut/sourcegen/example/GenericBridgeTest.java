@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.example;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,6 +26,7 @@ import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -79,11 +81,27 @@ class GenericBridgeTest {
     }
 
     @Test
+    void bridgeRepeatsTheDeclaredExceptionAndTheAnnotations() throws Exception {
+        ThrowingHandler<String> handler = new StringHandler();
+        assertEquals("hello", handler.handle("hello"));
+
+        Method bridge = StringHandler.class.getDeclaredMethod("handle", Object.class);
+        assertTrue(bridge.isBridge());
+        // A caller that only sees the erased signature must still see what it may throw and what the
+        // method it reaches is annotated with, which is why javac repeats both on the bridge
+        assertEquals(List.of(IOException.class), List.of(bridge.getExceptionTypes()));
+        assertNotNull(bridge.getAnnotation(Deprecated.class));
+        assertEquals(1, bridge.getParameterAnnotations()[0].length);
+        assertEquals(Deprecated.class, bridge.getParameterAnnotations()[0][0].annotationType());
+    }
+
+    @Test
     void declaredBridges() {
         assertEquals(List.of("()Ljava/lang/Object;"), bridges(StringHolder.class, "get"));
         assertEquals(List.of("(Ljava/lang/Object;)V"), bridges(StringHolder.class, "set"));
         assertEquals(List.of("(Ljava/lang/Object;)Ljava/lang/Object;"), bridges(LengthFunction.class, "apply"));
         assertEquals(List.of("(Ljava/lang/Object;Ljava/lang/Object;)I"), bridges(LengthComparator.class, "compare"));
+        assertEquals(List.of("(Ljava/lang/Object;)Ljava/lang/Object;"), bridges(StringHandler.class, "handle"));
         // The generic super class declares the erasure the others bridge to
         assertEquals(List.of(), bridges(GenericHolder.class, "get"));
         assertEquals(List.of(), bridges(GenericHolder.class, "set"));

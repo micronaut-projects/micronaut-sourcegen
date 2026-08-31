@@ -17,6 +17,7 @@ import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -4866,7 +4867,7 @@ public class MyClass {
             .addMethod(MethodDef.builder("self")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(ClassTypeDef.of("example.Example"))
-                .addBridge(TypeDef.OBJECT)
+                .addCovariantReturnBridge(TypeDef.OBJECT)
                 .build((aThis, methodParameters) -> aThis.returning()))
             .build();
 
@@ -4961,9 +4962,9 @@ class example/Example {
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .returns(ClassTypeDef.of("example.Example"))
                 // The first bridge repeats the method's own signature and the third one is a duplicate
-                .addBridge(ClassTypeDef.of("example.Example"))
-                .addBridge(TypeDef.OBJECT)
-                .addBridge(TypeDef.OBJECT)
+                .addCovariantReturnBridge(ClassTypeDef.of("example.Example"))
+                .addCovariantReturnBridge(TypeDef.OBJECT)
+                .addCovariantReturnBridge(TypeDef.OBJECT)
                 .build())
             .build();
 
@@ -5003,8 +5004,8 @@ public abstract class example/Example {
                 .returns(ClassTypeDef.of(Number.class))
                 // The type variable erases to its bound, which is the method's own return type,
                 // so only the Object bridge survives
-                .addBridge(TypeDef.variable("T"))
-                .addBridge(TypeDef.OBJECT)
+                .addCovariantReturnBridge(TypeDef.variable("T"))
+                .addCovariantReturnBridge(TypeDef.OBJECT)
                 .build((aThis, methodParameters) -> ClassTypeDef.of(Integer.class)
                     .invokeStatic("valueOf", ClassTypeDef.of(Integer.class), ExpressionDef.primitiveConstant(1))
                     .returning()))
@@ -5050,7 +5051,7 @@ public abstract class example/Example {
                 .addModifiers(Modifier.PUBLIC)
                 .returns(TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.of(String.class)))
                 // The raw type is the erasure of the method's own return type, so no bridge is written
-                .addBridge(ClassTypeDef.of(List.class))
+                .addCovariantReturnBridge(ClassTypeDef.of(List.class))
                 .build((aThis, methodParameters) -> ClassTypeDef.of(ArrayList.class).instantiate().returning()))
             .build();
 
@@ -5144,7 +5145,7 @@ public class example/Example {
             .addMethod(MethodDef.builder("get")
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .returns(ClassTypeDef.of("example.Example"))
-                .addBridge(TypeDef.OBJECT)
+                .addCovariantReturnBridge(TypeDef.OBJECT)
                 .build())
             .build();
 
@@ -5164,6 +5165,68 @@ public abstract interface example/Example {
 
   // access flags 0x1441
   public abstract synthetic bridge get()Ljava/lang/Object;
+}
+""", bytecodeWriter.toString());
+    }
+
+    @Test
+    void testBridgeCarriesTheDeclaredExceptionsAndAnnotations() {
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("handle")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Deprecated.class)
+                .addThrows(TypeDef.of(IOException.class))
+                .addParameter(ParameterDef.builder("value", TypeDef.of(String.class))
+                    .addAnnotation(Deprecated.class)
+                    .build())
+                .returns(TypeDef.of(String.class))
+                .addBridge(TypeDef.OBJECT, List.of(TypeDef.OBJECT))
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(def, bytecodeWriter);
+
+        // The Java compiler repeats the Exceptions attribute and the annotations on the bridge
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x1
+// signature Ljava/lang/Object;
+// declaration: example/Example
+public class example/Example {
+
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public handle(Ljava/lang/String;)Ljava/lang/String; throws java/io/IOException
+  @Ljava/lang/Deprecated;()
+    // annotable parameter count: 1 (visible)
+    @Ljava/lang/Deprecated;() // parameter 0
+   L0
+    ALOAD 1
+    ARETURN
+   L1
+    LOCALVARIABLE value Ljava/lang/String; L0 L1 1
+
+  // access flags 0x1041
+  public synthetic bridge handle(Ljava/lang/Object;)Ljava/lang/Object; throws java/io/IOException
+  @Ljava/lang/Deprecated;()
+    // annotable parameter count: 1 (visible)
+    @Ljava/lang/Deprecated;() // parameter 0
+   L0
+    ALOAD 0
+    ALOAD 1
+    CHECKCAST java/lang/String
+    INVOKEVIRTUAL example/Example.handle (Ljava/lang/String;)Ljava/lang/String;
+    ARETURN
+   L1
+    LOCALVARIABLE value Ljava/lang/Object; L0 L1 1
 }
 """, bytecodeWriter.toString());
     }
