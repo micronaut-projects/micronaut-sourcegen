@@ -953,6 +953,20 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         }
 
         /**
+         * The type of an element of an array. `componentType` is always the innermost type, so for
+         * anything past one dimension the element is itself an array.
+         *
+         * @param type The array type
+         * @return The element type
+         */
+        private fun arrayElementType(type: TypeDef.Array): TypeDef =
+            if (type.dimensions > 1) {
+                TypeDef.Array(type.componentType, type.dimensions - 1, false)
+            } else {
+                type.componentType
+            }
+
+        /**
          * @param componentType The component of an array
          * @return The Kotlin type of an array of that component, or null if it is not a primitive
          */
@@ -1525,25 +1539,25 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is MathBinaryOperation) {
                 return CodeBlock.builder()
                     .add(renderMathOperand(objectDef, methodDef, scope, expressionDef, expressionDef.left, false))
-                    .add(getMathOp(expressionDef.opType))
+                    .add("%L", getMathOp(expressionDef.opType))
                     .add(renderMathOperand(objectDef, methodDef, scope, expressionDef, expressionDef.right, true))
                     .build()
             }
             if (expressionDef is MathUnaryOperation) {
                 return CodeBlock.builder()
-                    .add(getMathOp(expressionDef.opType))
+                    .add("%L", getMathOp(expressionDef.opType))
                     .add(renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.expression))
                     .build()
             }
             if (expressionDef is ComparisonOperation) {
                 return CodeBlock.builder()
                     .add(renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.left))
-                    .add(getOpType(expressionDef.opType))
+                    .add("%L", getOpType(expressionDef.opType))
                     .add(renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.right))
                     .build()
             }
             if (expressionDef is NewArrayOfSize) {
-                val componentType = expressionDef.type.componentType
+                val componentType = arrayElementType(expressionDef.type)
                 val primitiveArray = primitiveArrayType(componentType)
                 if (primitiveArray != null) {
                     // A primitive array is sized rather than filled with nulls
@@ -1556,7 +1570,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 )
             }
             if (expressionDef is NewArrayInitialized) {
-                val componentType = expressionDef.type.componentType
+                val componentType = arrayElementType(expressionDef.type)
                 val builder: CodeBlock.Builder = CodeBlock.builder()
                 if (componentType is TypeDef.Primitive) {
                     builder.add("%L(", arrayOfFunction(componentType))
