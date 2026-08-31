@@ -8,6 +8,7 @@ dependencies {
     implementation(libs.managed.kotlinpoet)
     implementation(libs.managed.kotlinpoet.javapoet)
 
+    testImplementation(projects.testSuiteCustomGenerators)
     testImplementation(mnTest.micronaut.test.junit5)
 
     testRuntimeOnly(mnTest.junit.jupiter.engine)

@@ -22,6 +22,7 @@ import io.micronaut.sourcegen.custom.example.GenerateIfsPredicate;
 import io.micronaut.sourcegen.custom.example.GenerateInnerTypes;
 import io.micronaut.sourcegen.custom.example.GenerateLambda;
 import io.micronaut.sourcegen.custom.example.GenerateMethodInvocation;
+import io.micronaut.sourcegen.custom.example.GenerateStatements;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean1;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean2;
 import io.micronaut.sourcegen.custom.example.GenerateMyBean3;
@@ -48,6 +49,7 @@ import io.micronaut.sourcegen.custom.example.GenerateSwitch;
 @GenerateMethodInvocation
 @GenerateInnerTypes
 @GenerateLambda
+@GenerateStatements
 @GenerateExpressions
 public class Trigger {
 }

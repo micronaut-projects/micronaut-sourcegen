@@ -20,6 +20,7 @@ io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInInterfaceVis
 io.micronaut.sourcegen.custom.visitor.GenerateAnnotatedTypeVisitor
 io.micronaut.sourcegen.custom.visitor.GenerateMyEnum2Visitor
 io.micronaut.sourcegen.custom.visitor.GenerateLambdaVisitor
+io.micronaut.sourcegen.custom.visitor.GenerateStatementsVisitor
 io.micronaut.sourcegen.custom.visitor.GenerateAnnotationClassVisitor
 io.micronaut.sourcegen.custom.visitor.GenerateAccessVisitor
 io.micronaut.sourcegen.custom.visitor.GenerateExpressionsVisitor
