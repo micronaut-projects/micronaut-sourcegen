@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.util.List;
-import java.util.Map;
 import java.util.function.BiFunction;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

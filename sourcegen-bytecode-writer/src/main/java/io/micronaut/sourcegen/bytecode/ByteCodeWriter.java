@@ -469,12 +469,9 @@ public final class ByteCodeWriter {
         if (methodDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
-        String[] exceptions = null;
-        if (!methodDef.getThrowTypes().isEmpty()) {
-            exceptions = methodDef.getThrowTypes().stream()
-                .map(t -> TypeUtils.getType(t, objectDef).getClassName().replace(".", "/"))
-                .toArray(String[]::new);
-        }
+        String[] exceptions = methodDef.getThrowTypes().isEmpty() ? null : methodDef.getThrowTypes().stream()
+            .map(t -> TypeUtils.getType(t, objectDef).getClassName().replace(".", "/"))
+            .toArray(String[]::new);
         MethodVisitor methodVisitor = classVisitor.visitMethod(
             modifiersFlag,
             name,
@@ -493,8 +490,45 @@ public final class ByteCodeWriter {
         }
 
         MethodContext context = new MethodContext(objectDef, methodDef, isLambda);
-        Label startMethod = null;
+        Label startMethod = writeParameters(generatorAdapter, objectDef, methodDef, context);
 
+        List<StatementDef> statements = methodDef.getStatements();
+        if (methodDef.isConstructor()) {
+            statements = adjustConstructorStatements(objectDef, statements);
+        }
+        if (!statements.isEmpty()) {
+            writeStatements(generatorAdapter, objectDef, methodDef, context, statements, startMethod);
+        }
+        writeLocalVariableTable(methodVisitor, generatorAdapter, context);
+        if (visitMaxs && !statements.isEmpty()) {
+            generatorAdapter.visitMaxs(20, 20);
+        }
+        generatorAdapter.visitEnd();
+
+        for (MethodDef lambdaDef: context.lambdaMethods()) {
+            writeMethod(classVisitor, objectDef, lambdaDef, true, 0, emittedBridges);
+        }
+
+        if (!isLambda && (extraModifiersFlag & ACC_BRIDGE) == 0) {
+            writeBridgeMethods(classVisitor, objectDef, methodDef, emittedBridges);
+        }
+    }
+
+    /**
+     * Register the parameters as locals and write their annotations.
+     *
+     * @param generatorAdapter The generator adapter
+     * @param objectDef        The object definition
+     * @param methodDef        The method definition
+     * @param context          The method context
+     * @return The label the parameters start at, or {@code null} when the method has none
+     */
+    @Nullable
+    private Label writeParameters(GeneratorAdapter generatorAdapter,
+                                  @Nullable ObjectDef objectDef,
+                                  MethodDef methodDef,
+                                  MethodContext context) {
+        Label startMethod = null;
         int parameterIndex = 0;
         // The slot of a parameter: `this` takes slot 0 of an instance method, and a long or double takes two
         int slot = methodDef.getModifiers().contains(Modifier.STATIC) ? 0 : 1;
@@ -519,28 +553,49 @@ public final class ByteCodeWriter {
             parameterIndex++;
             slot += parameterType.getSize();
         }
+        return startMethod;
+    }
 
-        List<StatementDef> statements = methodDef.getStatements();
-        if (methodDef.isConstructor()) {
-            statements = adjustConstructorStatements(objectDef, statements);
+    /**
+     * Write the body of a method, appending the implicit return of a void method.
+     *
+     * @param generatorAdapter The generator adapter
+     * @param objectDef        The object definition
+     * @param methodDef        The method definition
+     * @param context          The method context
+     * @param statements       The statements to write
+     * @param startMethod      The label the parameters start at
+     */
+    private void writeStatements(GeneratorAdapter generatorAdapter,
+                                 @Nullable ObjectDef objectDef,
+                                 MethodDef methodDef,
+                                 MethodContext context,
+                                 List<StatementDef> statements,
+                                 @Nullable Label startMethod) {
+        generatorAdapter.visitCode();
+        if (startMethod != null) {
+            generatorAdapter.visitLabel(startMethod);
         }
-        if (!statements.isEmpty()) {
-            generatorAdapter.visitCode();
-            if (startMethod != null) {
-                generatorAdapter.visitLabel(startMethod);
-            }
-            for (StatementDef statement : statements) {
-                StatementWriter.of(statement).write(generatorAdapter, context, null);
-            }
-            StatementDef statementDef = statements.getLast();
-            if (!hasReturnStatement(statementDef)) {
-                if (methodDef.getReturnType().equals(TypeDef.VOID)) {
-                    generatorAdapter.returnValue();
-                } else {
-                    throw new IllegalStateException("The method: " + (objectDef == null ? "" : objectDef.getName()) + " " + methodDef.getName() + " doesn't return the result!");
-                }
-            }
+        for (StatementDef statement : statements) {
+            StatementWriter.of(statement).write(generatorAdapter, context, null);
         }
+        if (hasReturnStatement(statements.getLast())) {
+            return;
+        }
+        if (!methodDef.getReturnType().equals(TypeDef.VOID)) {
+            throw new IllegalStateException("The method: " + (objectDef == null ? "" : objectDef.getName()) + " " + methodDef.getName() + " doesn't return the result!");
+        }
+        generatorAdapter.returnValue();
+    }
+
+    /**
+     * Write the local variable table of a method.
+     *
+     * @param methodVisitor    The method visitor
+     * @param generatorAdapter The generator adapter
+     * @param context          The method context
+     */
+    private void writeLocalVariableTable(MethodVisitor methodVisitor, GeneratorAdapter generatorAdapter, MethodContext context) {
         Label endMethod = new Label();
         if (!context.locals().isEmpty()) {
             generatorAdapter.visitLabel(endMethod);
@@ -554,18 +609,6 @@ public final class ByteCodeWriter {
                 endMethod,
                 localsDatum.index()
             );
-        }
-        if (visitMaxs && !statements.isEmpty()) {
-            generatorAdapter.visitMaxs(20, 20);
-        }
-        generatorAdapter.visitEnd();
-
-        for (MethodDef lambdaDef: context.lambdaMethods()) {
-            writeMethod(classVisitor, objectDef, lambdaDef, true, 0, emittedBridges);
-        }
-
-        if (!isLambda && (extraModifiersFlag & ACC_BRIDGE) == 0) {
-            writeBridgeMethods(classVisitor, objectDef, methodDef, emittedBridges);
         }
     }
 

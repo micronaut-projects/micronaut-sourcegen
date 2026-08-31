@@ -87,22 +87,18 @@ final class BridgeResolver {
         if (superTypes.isEmpty()) {
             return List.of();
         }
-
-        TypeInfo declaringInfo = new ObjectDefInfo(objectDef);
-        List<String> declaredParameterDescriptors = methodDef.getParameters().stream()
-            .map(p -> TypeUtils.getType(p.getType(), objectDef).getDescriptor())
-            .toList();
-        Set<String> takenDescriptors = new HashSet<>();
-        // The method's own descriptor and the descriptors of its overloads are already implemented
-        for (MethodDef declared : objectDef.getMethods()) {
-            if (declared.getName().equals(methodDef.getName())) {
-                takenDescriptors.add(TypeUtils.getMethodDescriptor(objectDef, declared));
-            }
-        }
-        takenDescriptors.add(TypeUtils.getMethodDescriptor(objectDef, methodDef));
-        String declaredReturnDescriptor = TypeUtils.getType(methodDef.getReturnType(), objectDef).getDescriptor();
+        Declared declared = new Declared(
+            objectDef,
+            new ObjectDefInfo(objectDef),
+            methodDef,
+            methodDef.getParameters().stream()
+                .map(p -> TypeUtils.getType(p.getType(), objectDef).getDescriptor())
+                .toList(),
+            TypeUtils.getType(methodDef.getReturnType(), objectDef).getDescriptor()
+        );
 
         List<BridgeMethod> bridges = new ArrayList<>();
+        Set<String> takenDescriptors = takenDescriptorsOf(objectDef, methodDef);
         Deque<Node> queue = new ArrayDeque<>();
         Set<String> visited = new HashSet<>();
         for (TypeDef superType : superTypes) {
@@ -111,41 +107,9 @@ final class BridgeResolver {
         while (!queue.isEmpty()) {
             Node node = queue.poll();
             for (MethodSignature inherited : node.info.methods()) {
-                if (!inherited.name().equals(methodDef.getName())
-                    || inherited.overrideParameterTypes().size() != declaredParameterDescriptors.size()) {
-                    continue;
-                }
-                // A final method cannot be overridden, and a package-private one only from its own package
-                if (inherited.finalMethod()
-                    || (inherited.packagePrivate() && !node.info.packageName().equals(objectDef.getPackageName()))) {
-                    continue;
-                }
-                // Override check happens before erasure: substitute the supertype's type arguments into
-                // the inherited parameters and compare with the declared parameters. A variable left
-                // after substitution belongs to the declaring type, whose bounds the ancestor cannot
-                // know, so its bounds are looked up there first
-                List<String> substituted = inherited.overrideParameterTypes().stream()
-                    .map(p -> descriptor(erase(substitute(p, node.substitution), declaringInfo, node.info)))
-                    .toList();
-                if (!substituted.equals(declaredParameterDescriptors)) {
-                    continue;
-                }
-                // The bridge carries the declaration-site erasure of the overridden method
-                List<TypeDef> bridgeParameters = inherited.bridgeParameterTypes().stream()
-                    .map(p -> erase(p, node.info))
-                    .toList();
-                TypeDef bridgeReturn = erase(inherited.bridgeReturnType(), node.info);
-                String bridgeReturnDescriptor = descriptor(bridgeReturn);
-                // A primitive return has no covariance a bridge could reconcile: unless the return
-                // types are identical, the methods do not override each other
-                if (!bridgeReturnDescriptor.equals(declaredReturnDescriptor)
-                    && (isPrimitive(bridgeReturnDescriptor) || isPrimitive(declaredReturnDescriptor))) {
-                    continue;
-                }
-                String bridgeDescriptor = bridgeParameters.stream().map(BridgeResolver::descriptor)
-                    .collect(Collectors.joining("", "(", ")")) + descriptor(bridgeReturn);
-                if (takenDescriptors.add(bridgeDescriptor)) {
-                    bridges.add(new BridgeMethod(bridgeParameters, bridgeReturn));
+                BridgeMethod bridge = bridgeFor(declared, node, inherited);
+                if (bridge != null && takenDescriptors.add(descriptorOf(bridge))) {
+                    bridges.add(bridge);
                 }
             }
             for (TypeDef superType : node.info.superTypes()) {
@@ -155,22 +119,98 @@ final class BridgeResolver {
         return bridges;
     }
 
+    /**
+     * The descriptors the declaring type already implements: the method's own and those of its
+     * same-name overloads.
+     *
+     * @param objectDef The declaring type
+     * @param methodDef The declared method
+     * @return The descriptors no bridge may be written for
+     */
+    private static Set<String> takenDescriptorsOf(ObjectDef objectDef, MethodDef methodDef) {
+        Set<String> taken = new HashSet<>();
+        for (MethodDef declared : objectDef.getMethods()) {
+            if (declared.getName().equals(methodDef.getName())) {
+                taken.add(TypeUtils.getMethodDescriptor(objectDef, declared));
+            }
+        }
+        taken.add(TypeUtils.getMethodDescriptor(objectDef, methodDef));
+        return taken;
+    }
+
+    /**
+     * The bridge the declared method needs for one inherited method, or {@code null} when the declared
+     * method does not override it or their erasures already agree.
+     *
+     * @param declared  The declaring type and method
+     * @param node      The supertype the inherited method was found in
+     * @param inherited The inherited method
+     * @return The bridge or {@code null}
+     */
+    @Nullable
+    private static BridgeMethod bridgeFor(Declared declared, Node node, MethodSignature inherited) {
+        if (!inherited.name().equals(declared.methodDef().getName())
+            || inherited.overrideParameterTypes().size() != declared.parameterDescriptors().size()) {
+            return null;
+        }
+        // A final method cannot be overridden, and a package-private one only from its own package
+        if (inherited.finalMethod()
+            || (inherited.packagePrivate() && !node.info.packageName().equals(declared.objectDef().getPackageName()))) {
+            return null;
+        }
+        // Override check happens before erasure: substitute the supertype's type arguments into the
+        // inherited parameters and compare with the declared parameters. A variable left after
+        // substitution belongs to the declaring type, whose bounds the ancestor cannot know, so its
+        // bounds are looked up there first
+        List<String> substituted = inherited.overrideParameterTypes().stream()
+            .map(p -> descriptor(erase(substitute(p, node.substitution), declared.declaringInfo(), node.info)))
+            .toList();
+        if (!substituted.equals(declared.parameterDescriptors())) {
+            return null;
+        }
+        // The bridge carries the declaration-site erasure of the overridden method
+        TypeDef bridgeReturn = erase(inherited.bridgeReturnType(), node.info);
+        String bridgeReturnDescriptor = descriptor(bridgeReturn);
+        // A primitive return has no covariance a bridge could reconcile: unless the return types are
+        // identical, the methods do not override each other
+        if (!bridgeReturnDescriptor.equals(declared.returnDescriptor())
+            && (isPrimitive(bridgeReturnDescriptor) || isPrimitive(declared.returnDescriptor()))) {
+            return null;
+        }
+        return new BridgeMethod(
+            inherited.bridgeParameterTypes().stream().map(p -> erase(p, node.info)).toList(),
+            bridgeReturn
+        );
+    }
+
+    private static String descriptorOf(BridgeMethod bridge) {
+        return bridge.parameterTypes().stream()
+            .map(BridgeResolver::descriptor)
+            .collect(Collectors.joining("", "(", ")")) + descriptor(bridge.returnType());
+    }
+
     private static void enqueue(Deque<Node> queue, Set<String> visited, TypeDef edge, Map<String, TypeDef> outerSubstitution) {
         TypeDef unwrapped = unwrap(edge);
         ClassTypeDef rawType;
-        List<TypeDef> typeArguments = List.of();
-        if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
-            rawType = parameterized.rawType();
-            // A generic ClassElement converts to a Parameterized over its own type variables; the raw
-            // declaration is inside and the outer arguments are the ones that matter
-            while (rawType instanceof ClassTypeDef.Parameterized nested) {
-                rawType = nested.rawType();
+        List<TypeDef> typeArguments;
+        switch (unwrapped) {
+            case ClassTypeDef.Parameterized(ClassTypeDef raw, List<TypeDef> arguments) -> {
+                // A generic ClassElement converts to a Parameterized over its own type variables; the
+                // raw declaration is inside and the outer arguments are the ones that matter
+                ClassTypeDef unnested = raw;
+                while (unnested instanceof ClassTypeDef.Parameterized(ClassTypeDef nested, List<TypeDef> ignored)) {
+                    unnested = nested;
+                }
+                rawType = unnested;
+                typeArguments = arguments.stream().map(t -> substitute(t, outerSubstitution)).toList();
             }
-            typeArguments = parameterized.typeArguments().stream().map(t -> substitute(t, outerSubstitution)).toList();
-        } else if (unwrapped instanceof ClassTypeDef classTypeDef) {
-            rawType = classTypeDef;
-        } else {
-            return;
+            case ClassTypeDef classTypeDef -> {
+                rawType = classTypeDef;
+                typeArguments = List.of();
+            }
+            default -> {
+                return;
+            }
         }
         TypeInfo info = typeInfoOf(rawType);
         if (info == null) {
@@ -225,19 +265,19 @@ final class BridgeResolver {
             TypeDef resolved = substitution.get(typeVariable.name());
             return resolved == null ? typeVariable : resolved;
         }
-        if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
+        if (unwrapped instanceof ClassTypeDef.Parameterized(ClassTypeDef rawType, List<TypeDef> typeArguments)) {
             return new ClassTypeDef.Parameterized(
-                parameterized.rawType(),
-                parameterized.typeArguments().stream().map(t -> substitute(t, substitution)).toList()
+                rawType,
+                typeArguments.stream().map(t -> substitute(t, substitution)).toList()
             );
         }
-        if (unwrapped instanceof TypeDef.Array array) {
-            return TypeDef.array(substitute(array.componentType(), substitution), array.dimensions());
+        if (unwrapped instanceof TypeDef.Array(TypeDef componentType, int dimensions, boolean ignored)) {
+            return TypeDef.array(substitute(componentType, substitution), dimensions);
         }
-        if (unwrapped instanceof TypeDef.Wildcard wildcard) {
+        if (unwrapped instanceof TypeDef.Wildcard(List<TypeDef> upperBounds, List<TypeDef> lowerBounds)) {
             return new TypeDef.Wildcard(
-                wildcard.upperBounds().stream().map(t -> substitute(t, substitution)).toList(),
-                wildcard.lowerBounds().stream().map(t -> substitute(t, substitution)).toList()
+                upperBounds.stream().map(t -> substitute(t, substitution)).toList(),
+                lowerBounds.stream().map(t -> substitute(t, substitution)).toList()
             );
         }
         return unwrapped;
@@ -253,25 +293,43 @@ final class BridgeResolver {
             return ClassTypeDef.of(owner.typeName());
         }
         if (unwrapped instanceof TypeDef.TypeVariable typeVariable) {
-            TypeDef bound = typeVariable.bounds().isEmpty() ? null : typeVariable.bounds().get(0);
-            if (bound == null && boundOwner != null) {
-                bound = boundOwner.variableBound(typeVariable.name());
-            }
-            if (bound == null) {
-                bound = owner.variableBound(typeVariable.name());
-            }
+            TypeDef bound = boundOf(typeVariable, boundOwner, owner);
             return bound == null ? TypeDef.OBJECT : erase(bound, boundOwner, owner);
         }
-        if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
-            return parameterized.rawType();
+        if (unwrapped instanceof ClassTypeDef.Parameterized(ClassTypeDef rawType, List<TypeDef> ignored)) {
+            return rawType;
         }
-        if (unwrapped instanceof TypeDef.Wildcard wildcard) {
-            return wildcard.upperBounds().isEmpty() ? TypeDef.OBJECT : erase(wildcard.upperBounds().get(0), boundOwner, owner);
+        if (unwrapped instanceof TypeDef.Wildcard(List<TypeDef> upperBounds, List<TypeDef> ignored)) {
+            return upperBounds.isEmpty() ? TypeDef.OBJECT : erase(upperBounds.get(0), boundOwner, owner);
         }
-        if (unwrapped instanceof TypeDef.Array array) {
-            return TypeDef.array(erase(array.componentType(), boundOwner, owner), array.dimensions());
+        if (unwrapped instanceof TypeDef.Array(TypeDef componentType, int dimensions, boolean ignored)) {
+            return TypeDef.array(erase(componentType, boundOwner, owner), dimensions);
         }
         return unwrapped;
+    }
+
+    /**
+     * The first bound of a type variable: its own, then the declaring type's, then the ancestor's. A
+     * variable left after substitution belongs to the declaring type, which the ancestor knows nothing
+     * about, so that lookup comes first.
+     *
+     * @param typeVariable The variable
+     * @param boundOwner   The declaring type, when the variable may be bound there
+     * @param owner        The type the variable was read from
+     * @return The bound or {@code null} when the variable is unbounded
+     */
+    @Nullable
+    private static TypeDef boundOf(TypeDef.TypeVariable typeVariable, @Nullable TypeInfo boundOwner, TypeInfo owner) {
+        if (!typeVariable.bounds().isEmpty()) {
+            return typeVariable.bounds().get(0);
+        }
+        if (boundOwner != null) {
+            TypeDef bound = boundOwner.variableBound(typeVariable.name());
+            if (bound != null) {
+                return bound;
+            }
+        }
+        return owner.variableBound(typeVariable.name());
     }
 
     private static TypeDef unwrap(TypeDef typeDef) {
@@ -304,6 +362,22 @@ final class BridgeResolver {
     }
 
     private record Node(TypeInfo info, Map<String, TypeDef> substitution) {
+    }
+
+    /**
+     * The declaring side of the comparison, resolved once per {@link #resolve}.
+     *
+     * @param objectDef            The declaring type
+     * @param declaringInfo        The declaring type as a {@link TypeInfo}, for its variable bounds
+     * @param methodDef            The declared method
+     * @param parameterDescriptors The erased parameter descriptors of the declared method
+     * @param returnDescriptor     The erased return descriptor of the declared method
+     */
+    private record Declared(ObjectDef objectDef,
+                            TypeInfo declaringInfo,
+                            MethodDef methodDef,
+                            List<String> parameterDescriptors,
+                            String returnDescriptor) {
     }
 
     /**
@@ -535,9 +609,9 @@ final class BridgeResolver {
         @Override
         public List<TypeDef> superTypes() {
             List<TypeDef> superTypes = new ArrayList<>();
-            classElement.getSuperType().ifPresent(s -> superTypes.add(TypeDef.of(s, Map.of(), false)));
+            classElement.getSuperType().ifPresent(s -> superTypes.add(TypeDef.of(s, ignore -> null, false)));
             for (ClassElement superinterface : classElement.getInterfaces()) {
-                superTypes.add(TypeDef.of(superinterface, Map.of(), false));
+                superTypes.add(TypeDef.of(superinterface, ignore -> null, false));
             }
             return superTypes;
         }
@@ -546,7 +620,7 @@ final class BridgeResolver {
             // The AST contextualizes placeholder bounds along the way, so the override check uses the
             // generic view while the bridge takes the declaration's raw view, which erases correctly
             List<TypeDef> overrideParameters = Arrays.stream(method.getParameters())
-                .map(p -> TypeDef.of(p.getGenericType(), Map.of(), false))
+                .map(p -> TypeDef.of(p.getGenericType(), ignore -> null, false))
                 .toList();
             List<TypeDef> bridgeParameters = Arrays.stream(method.getParameters())
                 .map(p -> TypeDef.erasure(p.getType()))
