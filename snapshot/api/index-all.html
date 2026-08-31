@@ -1182,6 +1182,14 @@ this <code>typeElement</code>.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/MethodSpec.html#constructorBuilder()" class="member-name-link">constructorBuilder()</a> - Static method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/MethodSpec.html" title="class in io.micronaut.sourcegen.javapoet">MethodSpec</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#constructorReference(io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">constructorReference(ClassTypeDef)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dd>
+<div class="block">Implement this interface with a reference to a constructor, e.g.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#constructorReference(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">constructorReference(ClassTypeDef, MethodDef)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dd>
+<div class="block">Implement this interface with a reference to a constructor, e.g.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/JavaIdioms.html#convertToStringIfNeeded(io.micronaut.sourcegen.model.ExpressionDef)" class="member-name-link">convertToStringIfNeeded(ExpressionDef)</a> - Static method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/JavaIdioms.html" title="class in io.micronaut.sourcegen.model">JavaIdioms</a></dt>
 <dd>
 <div class="block">Convert the expression to <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link"><code>String</code></a> if it's not one.</div>
@@ -2403,6 +2411,18 @@ target, variable arity included.</div>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/TypeUtils.html#getType(java.lang.String,org.objectweb.asm.Type...)" class="member-name-link">getType(String, Type...)</a> - Static method in class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/TypeUtils.html" title="class in io.micronaut.sourcegen.bytecode">TypeUtils</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassDefType.html#getTypeVariableNames()" class="member-name-link">getTypeVariableNames()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassDefType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassDefType</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassElementType.html#getTypeVariableNames()" class="member-name-link">getTypeVariableNames()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassElementType.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassElementType</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#getTypeVariableNames()" class="member-name-link">getTypeVariableNames()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dd>
+<div class="block">The names of the type variables this type declares, in declaration order.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.JavaClass.html#getTypeVariableNames()" class="member-name-link">getTypeVariableNames()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.JavaClass.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.JavaClass</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.Parameterized.html#getTypeVariableNames()" class="member-name-link">getTypeVariableNames()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.Parameterized</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/ClassDef.html#getTypeVariables()" class="member-name-link">getTypeVariables()</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/InterfaceDef.html#getTypeVariables()" class="member-name-link">getTypeVariables()</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/InterfaceDef.html" title="class in io.micronaut.sourcegen.model">InterfaceDef</a></dt>
@@ -2891,6 +2911,10 @@ target, variable arity included.</div>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/model/ExpressionDef.NotEqualsStructurally.html#param-instance"><code>instance</code></a> record component.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#instance()" class="member-name-link">instance()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">The receiver a reference bound to an instance captures.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/VariableDef.Field.html#instance()" class="member-name-link">instance()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/VariableDef.Field.html" title="class in io.micronaut.sourcegen.model">VariableDef.Field</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/model/VariableDef.Field.html#param-instance"><code>instance</code></a> record component.</div>
@@ -2947,6 +2971,10 @@ target, variable arity included.</div>
 <dd>
 <div class="block">The new instance expression.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#instantiated()" class="member-name-link">instantiated()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Returns the interface method with the type variables of the interface resolved.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/TypeName.html#INT" class="member-name-link">INT</a> - Static variable in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/TypeName.html" title="class in io.micronaut.sourcegen.javapoet">TypeName</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/TypeDef.Primitive.html#INT" class="member-name-link">INT</a> - Static variable in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.Primitive.html" title="class in io.micronaut.sourcegen.model">TypeDef.Primitive</a></dt>
@@ -2978,6 +3006,10 @@ target, variable arity included.</div>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.Lambda.html#invoke(io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invoke(ExpressionDef...)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.Lambda.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Lambda</a></dt>
 <dd>
 <div class="block">Invoke the lambda.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#invoke(io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invoke(ExpressionDef...)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Invoke the method reference.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.html#invoke(io.micronaut.sourcegen.model.ExpressionDef.Lambda,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invoke(ExpressionDef.Lambda, ExpressionDef...)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></dt>
 <dd>
@@ -3014,6 +3046,10 @@ target, variable arity included.</div>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.Lambda.html#invoke(java.util.List)" class="member-name-link">invoke(List)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.Lambda.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Lambda</a></dt>
 <dd>
 <div class="block">Invoke the lambda.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#invoke(java.util.List)" class="member-name-link">invoke(List)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Invoke the method reference.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.html#invokeConstructor(io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeConstructor(ExpressionDef...)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></dt>
 <dd>
@@ -3219,6 +3255,10 @@ target, variable arity included.</div>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/MethodDef.html#isConstructor()" class="member-name-link">isConstructor()</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#isConstructor()" class="member-name-link">isConstructor()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Whether the referenced method is a constructor.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.InvokeInstanceMethod.html#isDefault()" class="member-name-link">isDefault()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.InvokeInstanceMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeInstanceMethod</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/model/ExpressionDef.InvokeInstanceMethod.html#param-isDefault"><code>isDefault</code></a> record component.</div>
@@ -3321,6 +3361,10 @@ target, variable arity included.</div>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/TypeDef.Wildcard.html#isPrimitive()" class="member-name-link">isPrimitive()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.Wildcard.html" title="class in io.micronaut.sourcegen.model">TypeDef.Wildcard</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#isStatic()" class="member-name-link">isStatic()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Whether the referenced method is called statically.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/AnnotationObjectDef.html#isSynthetic()" class="member-name-link">isSynthetic()</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/AnnotationObjectDef.html" title="class in io.micronaut.sourcegen.model">AnnotationObjectDef</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/AnnotationObjectDef.AnnotationMemberDef.html#isSynthetic()" class="member-name-link">isSynthetic()</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/AnnotationObjectDef.AnnotationMemberDef.html" title="class in io.micronaut.sourcegen.model">AnnotationObjectDef.AnnotationMemberDef</a></dt>
@@ -3551,6 +3595,10 @@ separated by <code>separator</code>.</div>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/model/ExpressionDef.InvokeStaticMethod.html#param-method"><code>method</code></a> record component.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#method()" class="member-name-link">method()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Returns the method this reference points at.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.InvokeSuperConstructor.html#method()" class="member-name-link">method()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.InvokeSuperConstructor.html" title="class in io.micronaut.sourcegen.model">StatementDef.InvokeSuperConstructor</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/model/StatementDef.InvokeSuperConstructor.html#param-method"><code>method</code></a> record component.</div>
@@ -3592,6 +3640,25 @@ separated by <code>separator</code>.</div>
 <dt><a href="io/micronaut/sourcegen/model/VariableDef.MethodParameter.html#%3Cinit%3E(java.lang.String,io.micronaut.sourcegen.model.TypeDef)" class="member-name-link">MethodParameter(String, TypeDef)</a> - Constructor for record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/VariableDef.MethodParameter.html" title="class in io.micronaut.sourcegen.model">VariableDef.MethodParameter</a></dt>
 <dd>
 <div class="block">Creates an instance of a <code>MethodParameter</code> record class.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#methodReference(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">methodReference(ExpressionDef, MethodDef)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dd>
+<div class="block">Implement this interface with a reference to a method of the given receiver,
+e.g.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#methodReference(io.micronaut.sourcegen.model.ExpressionDef,java.lang.reflect.Method)" class="member-name-link">methodReference(ExpressionDef, Method)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dd>
+<div class="block">Implement this interface with a reference to a method of the given receiver,
+e.g.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#methodReference(io.micronaut.sourcegen.model.ExpressionDef,java.lang.String)" class="member-name-link">methodReference(ExpressionDef, String)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dd>
+<div class="block">Implement this interface with a reference to a method of the given receiver,
+e.g.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" class="type-name-link" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a> - Interface in <a href="io/micronaut/sourcegen/model/package-summary.html">io.micronaut.sourcegen.model</a></dt>
+<dd>
+<div class="block">A method reference used as an expression implementing a functional interface, e.g.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/ObjectDef.html#methods" class="member-name-link">methods</a> - Variable in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a></dt>
 <dd>&nbsp;</dd>
@@ -3861,6 +3928,8 @@ inside this class, with the specified <code>typeArguments</code>.</div>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.SwitchYieldCase.html#nestedExpressionsStream()" class="member-name-link">nestedExpressionsStream()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.SwitchYieldCase.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.SwitchYieldCase</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#nestedExpressionsStream()" class="member-name-link">nestedExpressionsStream()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.Assign.html#nestedExpressionsStream()" class="member-name-link">nestedExpressionsStream()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.Assign.html" title="class in io.micronaut.sourcegen.model">StatementDef.Assign</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.DefineAndAssign.html#nestedExpressionsStream()" class="member-name-link">nestedExpressionsStream()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.DefineAndAssign.html" title="class in io.micronaut.sourcegen.model">StatementDef.DefineAndAssign</a></dt>
@@ -4063,6 +4132,14 @@ annotation.</div>
 <dd>
 <div class="block">Returns an array type whose elements are all instances of <code>componentType</code>.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#of(io.micronaut.sourcegen.model.ClassTypeDef,java.lang.reflect.Constructor)" class="member-name-link">of(ClassTypeDef, Constructor)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Implement the interface with a reference to a constructor, e.g.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#of(io.micronaut.sourcegen.model.ClassTypeDef,java.lang.reflect.Method)" class="member-name-link">of(ClassTypeDef, Method)</a> - Static method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Implement the interface with a reference to a static method, e.g.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/expression/ExpressionWriter.html#of(io.micronaut.sourcegen.model.ExpressionDef)" class="member-name-link">of(ExpressionDef)</a> - Static method in interface io.micronaut.sourcegen.bytecode.expression.<a href="io/micronaut/sourcegen/bytecode/expression/ExpressionWriter.html" title="interface in io.micronaut.sourcegen.bytecode.expression">ExpressionWriter</a></dt>
 <dd>
 <div class="block">Create a writer from an expression.</div>
@@ -4207,6 +4284,10 @@ annotation.</div>
 <dd>
 <div class="block">Returns a new method spec builder that overrides <code>method</code> as a member of <code>
 enclosing</code>.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#owner()" class="member-name-link">owner()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Returns the type the referenced method is declared on.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/VariableDef.StaticField.html#ownerType()" class="member-name-link">ownerType()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/VariableDef.StaticField.html" title="class in io.micronaut.sourcegen.model">VariableDef.StaticField</a></dt>
 <dd>
@@ -4596,6 +4677,14 @@ a single element method for filling a collection.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/JavaFile.Builder.html#staticImports" class="member-name-link">staticImports</a> - Variable in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/JavaFile.Builder.html" title="class in io.micronaut.sourcegen.javapoet">JavaFile.Builder</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#staticMethodReference(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">staticMethodReference(ClassTypeDef, MethodDef)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dd>
+<div class="block">Implement this interface with a reference to a static method, e.g.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#staticMethodReference(io.micronaut.sourcegen.model.ClassTypeDef,java.lang.String)" class="member-name-link">staticMethodReference(ClassTypeDef, String)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
+<dd>
+<div class="block">Implement this interface with a reference to a static method, e.g.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/TypeDef.html#STRING" class="member-name-link">STRING</a> - Static variable in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.html#stringConcat(io.micronaut.sourcegen.model.ExpressionDef)" class="member-name-link">stringConcat(ExpressionDef)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></dt>
@@ -4724,6 +4813,10 @@ a single element method for filling a collection.</div>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.Lambda.html#target()" class="member-name-link">target()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.Lambda.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.Lambda</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/model/ExpressionDef.Lambda.html#param-target"><code>target</code></a> record component.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#target()" class="member-name-link">target()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Returns the method the interface declares, erased as the interface declares it.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/VariableDef.This.html#%3Cinit%3E()" class="member-name-link">This()</a> - Constructor for record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/VariableDef.This.html" title="class in io.micronaut.sourcegen.model">VariableDef.This</a></dt>
 <dd>
@@ -5166,6 +5259,10 @@ a single element method for filling a collection.</div>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.html#type()" class="member-name-link">type()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a></dt>
 <dd>
 <div class="block">The type of the expression.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html#type()" class="member-name-link">type()</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></dt>
+<dd>
+<div class="block">Returns the functional interface being implemented.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/StatementDef.Switch.html#type()" class="member-name-link">type()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/StatementDef.Switch.html" title="class in io.micronaut.sourcegen.model">StatementDef.Switch</a></dt>
 <dd>

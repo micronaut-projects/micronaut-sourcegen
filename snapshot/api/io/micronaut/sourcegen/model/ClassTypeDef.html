@@ -74,9 +74,17 @@ loadScripts(document, 'script');</script>
 <li><a href="#isInterface()" tabindex="0">isInterface()</a></li>
 <li><a href="#isInner()" tabindex="0">isInner()</a></li>
 <li><a href="#findDeclaredMethods(java.lang.String,int)" tabindex="0">findDeclaredMethods(String, int)</a></li>
+<li><a href="#getTypeVariableNames()" tabindex="0">getTypeVariableNames()</a></li>
 <li><a href="#getLambda(java.util.Map)" tabindex="0">getLambda(Map)</a></li>
 <li><a href="#getLambda(java.util.function.Function)" tabindex="0">getLambda(Function)</a></li>
 <li><a href="#getLambda()" tabindex="0">getLambda()</a></li>
+<li><a href="#methodReference(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">methodReference(ExpressionDef, MethodDef)</a></li>
+<li><a href="#methodReference(io.micronaut.sourcegen.model.ExpressionDef,java.lang.reflect.Method)" tabindex="0">methodReference(ExpressionDef, Method)</a></li>
+<li><a href="#methodReference(io.micronaut.sourcegen.model.ExpressionDef,java.lang.String)" tabindex="0">methodReference(ExpressionDef, String)</a></li>
+<li><a href="#staticMethodReference(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">staticMethodReference(ClassTypeDef, MethodDef)</a></li>
+<li><a href="#staticMethodReference(io.micronaut.sourcegen.model.ClassTypeDef,java.lang.String)" tabindex="0">staticMethodReference(ClassTypeDef, String)</a></li>
+<li><a href="#constructorReference(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">constructorReference(ClassTypeDef, MethodDef)</a></li>
+<li><a href="#constructorReference(io.micronaut.sourcegen.model.ClassTypeDef)" tabindex="0">constructorReference(ClassTypeDef)</a></li>
 <li><a href="#instantiate(io.micronaut.sourcegen.model.ExpressionDef...)" tabindex="0">instantiate(ExpressionDef...)</a></li>
 <li><a href="#instantiate(java.util.List)" tabindex="0">instantiate(List)</a></li>
 <li><a href="#instantiate(java.util.List,io.micronaut.sourcegen.model.ExpressionDef...)" tabindex="0">instantiate(List, ExpressionDef...)</a></li>
@@ -226,6 +234,17 @@ Not-null by default.</div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Define a ClassTypeDef with annotations.</div>
 </div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#constructorReference(io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">constructorReference</a><wbr>(<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;owner)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Implement this interface with a reference to a constructor, e.g.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#constructorReference(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">constructorReference</a><wbr>(<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;owner,
+ <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;constructor)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Implement this interface with a reference to a constructor, e.g.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static <a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#erasure(io.micronaut.inject.ast.ClassElement)" class="member-name-link">erasure</a><wbr>(io.micronaut.inject.ast.ClassElement&nbsp;classElement)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1">
@@ -281,124 +300,150 @@ target, variable arity included.</div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Get static field.</div>
 </div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#getTypeVariableNames()" class="member-name-link">getTypeVariableNames</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">The names of the type variables this type declares, in declaration order.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(io.micronaut.inject.ast.MethodElement,java.util.List)" class="member-name-link">instantiate</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">The new instance expression.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(io.micronaut.inject.ast.MethodElement,java.util.List)" class="member-name-link">instantiate</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">instantiate</a><wbr>(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">The new instance expression.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.lang.reflect.Constructor,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Constructor.html" title="class or interface in java.lang.reflect" class="external-link">Constructor</a>&lt;?&gt;&nbsp;constructor,
+ <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">The new instance expression.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.lang.reflect.Constructor,java.util.List)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Constructor.html" title="class or interface in java.lang.reflect" class="external-link">Constructor</a>&lt;?&gt;&nbsp;constructor,
  <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">The new instance expression.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">instantiate</a><wbr>(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.util.List)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">The new instance expression.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.lang.reflect.Constructor,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Constructor.html" title="class or interface in java.lang.reflect" class="external-link">Constructor</a>&lt;?&gt;&nbsp;constructor,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.util.List,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
  <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">The new instance expression.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.lang.reflect.Constructor,java.util.List)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Constructor.html" title="class or interface in java.lang.reflect" class="external-link">Constructor</a>&lt;?&gt;&nbsp;constructor,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.util.List,java.util.List)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
  <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">The new instance expression.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.util.List)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">The new instance expression.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.util.List,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(io.micronaut.inject.ast.MethodElement,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
  <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">The new instance expression.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.NewInstance.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.NewInstance</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#instantiate(java.util.List,java.util.List)" class="member-name-link">instantiate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
- <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">The new instance expression.</div>
+<div class="block">Invoke static method.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(io.micronaut.inject.ast.MethodElement,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
- <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(io.micronaut.inject.ast.MethodElement,java.util.List)" class="member-name-link">invokeStatic</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Invoke static method.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(io.micronaut.inject.ast.MethodElement,java.util.List)" class="member-name-link">invokeStatic</a><wbr>(io.micronaut.inject.ast.MethodElement&nbsp;methodElement,
- <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic</a><wbr>(<a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Invoke static method.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic</a><wbr>(<a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
- <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(io.micronaut.sourcegen.model.MethodDef,java.util.List)" class="member-name-link">invokeStatic</a><wbr>(<a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Invoke static method.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(io.micronaut.sourcegen.model.MethodDef,java.util.List)" class="member-name-link">invokeStatic</a><wbr>(<a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
- <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.reflect.Method,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link">Method</a>&nbsp;method,
+ <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Invoke static method.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.reflect.Method,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link">Method</a>&nbsp;method,
- <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.reflect.Method,java.util.List)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link">Method</a>&nbsp;method,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Invoke static method.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.reflect.Method,java.util.List)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link">Method</a>&nbsp;method,
- <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Invoke static method.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.String,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.String,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
  <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returningType,
  <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Invoke static method.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.String,io.micronaut.sourcegen.model.TypeDef,java.util.List)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
- <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returningType,
- <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Invoke static method.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.String,java.util.List,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.String,io.micronaut.sourcegen.model.TypeDef,java.util.List)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
+ <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returningType,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Invoke static method.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.String,java.util.List,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
  <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
  <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returningType,
  <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>...&nbsp;values)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Invoke static method.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.String,java.util.List,io.micronaut.sourcegen.model.TypeDef,java.util.List)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
- <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
- <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returningType,
- <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Invoke static method.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isEnum()" class="member-name-link">isEnum</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="ExpressionDef.InvokeStaticMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeStaticMethod</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#invokeStatic(java.lang.String,java.util.List,io.micronaut.sourcegen.model.TypeDef,java.util.List)" class="member-name-link">invokeStatic</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
+ <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returningType,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends <a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&gt;&nbsp;values)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Invoke static method.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isInner()" class="member-name-link">isInner</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isEnum()" class="member-name-link">isEnum</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isInterface()" class="member-name-link">isInterface</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isInner()" class="member-name-link">isInner</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#makeNullable()" class="member-name-link">makeNullable</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isInterface()" class="member-name-link">isInterface</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#makeNullable()" class="member-name-link">makeNullable</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#methodReference(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">methodReference</a><wbr>(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;instance,
+ <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Implement this interface with a reference to a method of the given receiver,
+e.g.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#methodReference(io.micronaut.sourcegen.model.ExpressionDef,java.lang.reflect.Method)" class="member-name-link">methodReference</a><wbr>(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;instance,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link">Method</a>&nbsp;method)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Implement this interface with a reference to a method of the given receiver,
+e.g.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#methodReference(io.micronaut.sourcegen.model.ExpressionDef,java.lang.String)" class="member-name-link">methodReference</a><wbr>(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;instance,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Implement this interface with a reference to a method of the given receiver,
+e.g.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1"><code>static <a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1"><code><a href="#of(io.micronaut.inject.ast.ClassElement)" class="member-name-link">of</a><wbr>(io.micronaut.inject.ast.ClassElement&nbsp;classElement)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1">
@@ -445,6 +490,18 @@ target, variable arity included.</div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#resolveTypeVariables(java.util.function.Function)" class="member-name-link">resolveTypeVariables</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, @Nullable <a href="TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;resolveVariableFn)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Resolve the type variables.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#staticMethodReference(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">staticMethodReference</a><wbr>(<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;owner,
+ <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Implement this interface with a reference to a static method, e.g.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#staticMethodReference(io.micronaut.sourcegen.model.ClassTypeDef,java.lang.String)" class="member-name-link">staticMethodReference</a><wbr>(<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;owner,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Implement this interface with a reference to a static method, e.g.</div>
 </div>
 </div>
 </div>
@@ -636,6 +693,24 @@ resolve against and returns an empty list, which leaves the signature inferred a
 </section>
 </li>
 <li>
+<section class="detail" id="getTypeVariableNames()">
+<h3>getTypeVariableNames</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;</span>&nbsp;<span class="element-name">getTypeVariableNames</span>()</div>
+<div class="block">The names of the type variables this type declares, in declaration order.
+
+<p>Used to line up the arguments of a <a href="ClassTypeDef.Parameterized.html" title="class in io.micronaut.sourcegen.model"><code>ClassTypeDef.Parameterized</code></a> type with the variables the raw type
+declares. Only implementations that carry member information return anything.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>The type variable names, or an empty list when they cannot be resolved</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
 <section class="detail" id="getLambda(java.util.Map)">
 <h3>getLambda</h3>
 <div class="horizontal-scroll">
@@ -680,6 +755,160 @@ resolve against and returns an empty list, which leaves the signature inferred a
 <dd>The lambda method</dd>
 <dt>Since:</dt>
 <dd>1.7</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="methodReference(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.MethodDef)">
+<h3>methodReference</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></span>&nbsp;<span class="element-name">methodReference</span><wbr><span class="parameters">(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;instance,
+ <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method)</span></div>
+<div class="block">Implement this interface with a reference to a method of the given receiver,
+e.g. <code>myInstance::instanceMethod</code>.
+
+<p>Here <code>this</code> is the functional interface being implemented, as it is for
+<a href="#getLambda()"><code>getLambda()</code></a>. The receiver is evaluated where the reference is created, not where the
+interface method is called.
+
+<p>Parameterize the interface - <code>TypeDef.parameterized(Function.class, String.class,
+String.class)</code> - so that its type variables resolve; a raw interface leaves them erased to
+<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link"><code>Object</code></a> and the reference fails to link.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>instance</code> - The receiver the reference is bound to</dd>
+<dd><code>method</code> - The referenced method</dd>
+<dt>Returns:</dt>
+<dd>The method reference</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="methodReference(io.micronaut.sourcegen.model.ExpressionDef,java.lang.reflect.Method)">
+<h3>methodReference</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></span>&nbsp;<span class="element-name">methodReference</span><wbr><span class="parameters">(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;instance,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Method.html" title="class or interface in java.lang.reflect" class="external-link">Method</a>&nbsp;method)</span></div>
+<div class="block">Implement this interface with a reference to a method of the given receiver,
+e.g. <code>myInstance::instanceMethod</code>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>instance</code> - The receiver the reference is bound to</dd>
+<dd><code>method</code> - The referenced method</dd>
+<dt>Returns:</dt>
+<dd>The method reference</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="methodReference(io.micronaut.sourcegen.model.ExpressionDef,java.lang.String)">
+<h3>methodReference</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></span>&nbsp;<span class="element-name">methodReference</span><wbr><span class="parameters">(<a href="ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;instance,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</span></div>
+<div class="block">Implement this interface with a reference to a method of the given receiver,
+e.g. <code>myInstance::instanceMethod</code>.
+
+<p>The method is resolved with <a href="#findDeclaredMethods(java.lang.String,int)"><code>findDeclaredMethods(String, int)</code></a> against the type of
+<code>instance</code>, which requires it to carry member information. Use
+<a href="#methodReference(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.MethodDef)"><code>methodReference(ExpressionDef, MethodDef)</code></a> when it does not.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>instance</code> - The receiver the reference is bound to</dd>
+<dd><code>name</code> - The name of the referenced method</dd>
+<dt>Returns:</dt>
+<dd>The method reference</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="staticMethodReference(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.MethodDef)">
+<h3>staticMethodReference</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></span>&nbsp;<span class="element-name">staticMethodReference</span><wbr><span class="parameters">(<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;owner,
+ <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method)</span></div>
+<div class="block">Implement this interface with a reference to a static method, e.g. <code>MyClass::staticMethod</code>.
+
+<p>Parameterize this interface - <code>TypeDef.parameterized(Function.class, String.class,
+String.class)</code> - so that its type variables resolve; a raw interface leaves them erased to
+<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link"><code>Object</code></a> and the reference fails to link.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>owner</code> - The type declaring the method</dd>
+<dd><code>method</code> - The referenced method</dd>
+<dt>Returns:</dt>
+<dd>The method reference</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="staticMethodReference(io.micronaut.sourcegen.model.ClassTypeDef,java.lang.String)">
+<h3>staticMethodReference</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></span>&nbsp;<span class="element-name">staticMethodReference</span><wbr><span class="parameters">(<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;owner,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</span></div>
+<div class="block">Implement this interface with a reference to a static method, e.g. <code>MyClass::staticMethod</code>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>owner</code> - The type declaring the method</dd>
+<dd><code>name</code> - The name of the referenced method</dd>
+<dt>Returns:</dt>
+<dd>The method reference</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="constructorReference(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.MethodDef)">
+<h3>constructorReference</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></span>&nbsp;<span class="element-name">constructorReference</span><wbr><span class="parameters">(<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;owner,
+ <a href="MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;constructor)</span></div>
+<div class="block">Implement this interface with a reference to a constructor, e.g. <code>MyClass::new</code>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>owner</code> - The type to construct</dd>
+<dd><code>constructor</code> - The referenced constructor</dd>
+<dt>Returns:</dt>
+<dd>The method reference</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="constructorReference(io.micronaut.sourcegen.model.ClassTypeDef)">
+<h3>constructorReference</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="MethodReferenceExpression.html" title="interface in io.micronaut.sourcegen.model">MethodReferenceExpression</a></span>&nbsp;<span class="element-name">constructorReference</span><wbr><span class="parameters">(<a href="ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;owner)</span></div>
+<div class="block">Implement this interface with a reference to a constructor, e.g. <code>MyClass::new</code>.
+
+<p>The constructor is resolved with <a href="#findDeclaredMethods(java.lang.String,int)"><code>findDeclaredMethods(String, int)</code></a>, which requires
+<code>owner</code> to carry member information. Use <a href="#constructorReference(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.MethodDef)"><code>constructorReference(ClassTypeDef, MethodDef)</code></a>
+when it does not, or when more than one constructor takes the arguments of the interface.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>owner</code> - The type to construct</dd>
+<dt>Returns:</dt>
+<dd>The method reference</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
 </dl>
 </div>
 </section>
