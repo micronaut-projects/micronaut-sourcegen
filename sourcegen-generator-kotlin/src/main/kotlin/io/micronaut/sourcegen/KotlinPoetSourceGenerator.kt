@@ -863,7 +863,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     "float" -> com.squareup.javapoet.TypeName.FLOAT.toKTypeName()
                     "double" -> com.squareup.javapoet.TypeName.DOUBLE.toKTypeName()
                     "boolean" -> com.squareup.javapoet.TypeName.BOOLEAN.toKTypeName()
-                    else -> throw IllegalStateException("Unrecognized primitive name: " + typeDef.name())
+                    else -> unrecognizedPrimitive(typeDef.name())
                 }
             } else if (typeDef is ClassTypeDef) {
                 asClassName(typeDef)
@@ -969,7 +969,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 "float" -> "kotlin.FloatArray"
                 "double" -> "kotlin.DoubleArray"
                 "boolean" -> "kotlin.BooleanArray"
-                else -> throw IllegalStateException("Unrecognized primitive name: " + componentType.name())
+                else -> unrecognizedPrimitive(componentType.name())
             }
         }
 
@@ -990,7 +990,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 "float" -> "floatArrayOf"
                 "double" -> "doubleArrayOf"
                 "boolean" -> "booleanArrayOf"
-                else -> throw IllegalStateException("Unrecognized primitive name: " + componentType.name())
+                else -> unrecognizedPrimitive(componentType.name())
             }
         }
 
@@ -1009,30 +1009,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return builder.build()
             }
             if (statementDef is StatementDef.Try) {
-                val builder: CodeBlock.Builder = CodeBlock.builder()
-                builder.add("try {\n")
-                builder.indent()
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement()))
-                builder.unindent()
-                for (aCatch in statementDef.catches()) {
-                    // Kotlin warns about shadowing, so a nested catch gets a name of its own
-                    val exceptionLocal = scope.allocate(EXCEPTION_NAME)
-                    builder.add("} catch (%L: %T) {\n", exceptionLocal, asType(aCatch.exception(), objectDef))
-                    builder.indent()
-                    val catchScope = scope.nested(null)
-                    catchScope.rename(EXCEPTION_NAME, exceptionLocal)
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, catchScope, aCatch.statement()))
-                    builder.unindent()
-                }
-                val finallyStatement = statementDef.finallyStatement()
-                if (finallyStatement != null) {
-                    builder.add("} finally {\n")
-                    builder.indent()
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, finallyStatement))
-                    builder.unindent()
-                }
-                builder.add("}\n")
-                return builder.build()
+                return renderTry(objectDef, methodDef, scope, statementDef)
             }
             if (statementDef is StatementDef.Synchronized) {
                 val builder: CodeBlock.Builder = CodeBlock.builder()
@@ -1073,30 +1050,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return builder.build()
             }
             if (statementDef is StatementDef.Switch) {
-                val builder: CodeBlock.Builder =
-                    CodeBlock.builder()
-                builder.add("when (")
-                builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.expression))
-                builder.add(") {\n")
-                builder.indent()
-                for ((key, statement) in statementDef.cases) {
-                    builder.add(renderConstantExpression(key, methodDef, scope))
-                    builder.add("-> {\n")
-                    builder.indent()
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement))
-                    builder.unindent()
-                    builder.add("}\n")
-                }
-                if (statementDef.defaultCase != null) {
-                    builder.add("else -> {\n")
-                    builder.indent()
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.defaultCase))
-                    builder.unindent()
-                    builder.add("}\n")
-                }
-                builder.unindent()
-                builder.add("}\n")
-                return builder.build()
+                return renderSwitchStatement(objectDef, methodDef, scope, statementDef)
             }
             if (statementDef is While) {
                 val builder: CodeBlock.Builder =
@@ -1113,6 +1067,69 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             return CodeBlock.builder()
                 .addStatement("%L", renderStatement(objectDef, methodDef, scope, statementDef))
                 .build()
+        }
+
+        private fun renderTry(
+            objectDef: @Nullable ObjectDef?,
+            methodDef: MethodDef,
+            scope: RenderScope,
+            statementDef: StatementDef.Try
+        ): CodeBlock {
+            val builder: CodeBlock.Builder = CodeBlock.builder()
+            builder.add("try {\n")
+            builder.indent()
+            builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement()))
+            builder.unindent()
+            for (aCatch in statementDef.catches()) {
+                // Kotlin warns about shadowing, so a nested catch gets a name of its own
+                val exceptionLocal = scope.allocate(EXCEPTION_NAME)
+                builder.add("} catch (%L: %T) {\n", exceptionLocal, asType(aCatch.exception(), objectDef))
+                builder.indent()
+                val catchScope = scope.nested(null)
+                catchScope.rename(EXCEPTION_NAME, exceptionLocal)
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, catchScope, aCatch.statement()))
+                builder.unindent()
+            }
+            val finallyStatement = statementDef.finallyStatement()
+            if (finallyStatement != null) {
+                builder.add("} finally {\n")
+                builder.indent()
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, finallyStatement))
+                builder.unindent()
+            }
+            builder.add("}\n")
+            return builder.build()
+        }
+
+        private fun renderSwitchStatement(
+            objectDef: @Nullable ObjectDef?,
+            methodDef: MethodDef,
+            scope: RenderScope,
+            statementDef: StatementDef.Switch
+        ): CodeBlock {
+            val builder: CodeBlock.Builder = CodeBlock.builder()
+            builder.add("when (")
+            builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.expression))
+            builder.add(") {\n")
+            builder.indent()
+            for ((key, statement) in statementDef.cases) {
+                builder.add(renderConstantExpression(key, methodDef, scope))
+                builder.add("-> {\n")
+                builder.indent()
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement))
+                builder.unindent()
+                builder.add("}\n")
+            }
+            if (statementDef.defaultCase != null) {
+                builder.add("else -> {\n")
+                builder.indent()
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.defaultCase))
+                builder.unindent()
+                builder.add("}\n")
+            }
+            builder.unindent()
+            builder.add("}\n")
+            return builder.build()
         }
 
         private fun renderStatement(
@@ -1910,6 +1927,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
         }
 
+        /**
+         * @param name The primitive name that no lookup recognized
+         * @return Never, the name is not a primitive
+         */
+        private fun unrecognizedPrimitive(name: String): Nothing =
+            error("Unrecognized primitive name: $name")
+
         private fun numberConversion(name: String): String {
             return when (name) {
                 "byte" -> ".toByte()"
@@ -1918,7 +1942,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 "long" -> ".toLong()"
                 "float" -> ".toFloat()"
                 "double" -> ".toDouble()"
-                else -> throw IllegalStateException("Unrecognized primitive name: $name")
+                else -> unrecognizedPrimitive(name)
             }
         }
 
@@ -2063,7 +2087,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             return when (value) {
                 is Char -> value
                 is Number -> value.toInt().toChar()
-                else -> throw IllegalStateException("Expected a character constant; got: $value")
+                else -> error("Expected a character constant; got: $value")
             }
         }
 
