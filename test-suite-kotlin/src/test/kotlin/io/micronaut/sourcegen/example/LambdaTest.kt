@@ -40,4 +40,17 @@ class LambdaTest {
         assertEquals("prefix_ello!", owner.callGenericLambda("Hello!"))
     }
 
+    @Test
+    fun testStaticMethodReference() {
+        val owner = MyClassWithLambda()
+        assertEquals("static_Hello!", owner.callStaticMethodReference("Hello!"))
+    }
+
+    @Test
+    fun testBoundMethodReference() {
+        val owner = MyClassWithLambda()
+        assertEquals("bound_Hello!", owner.callBoundMethodReference("Hello!"))
+    }
+
+
 }

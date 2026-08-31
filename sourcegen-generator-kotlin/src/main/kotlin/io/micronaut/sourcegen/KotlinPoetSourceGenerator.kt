@@ -1381,6 +1381,23 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 return builder.add("}").build()
             }
+            if (expressionDef is MethodReferenceExpression) {
+                // A callable reference is not a functional interface on its own, so it is wrapped
+                // in the SAM constructor of the interface being implemented
+                val builder = CodeBlock.builder().add("%T(", asType(expressionDef.type(), objectDef))
+                val instance = expressionDef.instance()
+                when {
+                    // Kotlin spells a constructor reference ::ClassName
+                    expressionDef.isConstructor ->
+                        builder.add("::%T", asType(expressionDef.owner(), objectDef))
+                    instance != null -> builder
+                        .add(renderExpressionCode(objectDef, methodDef, instance, true))
+                        .add("::%L", expressionDef.method().name)
+                    else ->
+                        builder.add("%T::%L", asType(expressionDef.owner(), objectDef), expressionDef.method().name)
+                }
+                return builder.add(")").build()
+            }
             if (expressionDef is StringConcatenation) {
                 var left: ExpressionDef = expressionDef.left()
                 if (left.type() != TypeDef.STRING && !(expressionDef.right().type().equals(TypeDef.STRING))) {

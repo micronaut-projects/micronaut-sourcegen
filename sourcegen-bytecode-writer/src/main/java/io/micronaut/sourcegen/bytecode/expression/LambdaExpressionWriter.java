@@ -41,13 +41,6 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
     public static final String THIS_VAR_NAME = "this";
     public static final String SUPER_VAR_NAME = "super";
 
-    private static final String METAFACTORY_OWNER = "java/lang/invoke/LambdaMetafactory";
-    private static final String METAFACTORY_METHOD = "metafactory";
-    private static final String METAFACTORY_DESCRIPTOR =
-        "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;" +
-            "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;" +
-            "Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;";
-
     private final Lambda lambda;
 
     public LambdaExpressionWriter(Lambda lambda) {
@@ -80,18 +73,10 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
             TypeUtils.getMethodDescriptor(objectDef, implementationMethodDef),
             false
         );
-        Handle bootstrapMethodHandle = new Handle(
-            Opcodes.H_INVOKESTATIC,
-            METAFACTORY_OWNER,
-            METAFACTORY_METHOD,
-            METAFACTORY_DESCRIPTOR,
-            false
-        );
-
         generatorAdapter.visitInvokeDynamicInsn(
             lambda.implementation().getName(),
             createDynamicInvocationDescriptor(capturedVariables, context),
-            bootstrapMethodHandle,
+            MetafactoryHandle.BOOTSTRAP,
             Type.getType(TypeUtils.getMethodDescriptor(objectDef, lambda.target())),
             lambdaMethodHandle,
             Type.getType(TypeUtils.getMethodDescriptor(objectDef, lambda.implementation()))

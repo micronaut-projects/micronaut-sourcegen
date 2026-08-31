@@ -19,6 +19,7 @@ import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
+import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -58,70 +59,47 @@ public sealed interface ExpressionWriter
      * @return the writer
      */
     static ExpressionWriter of(ExpressionDef expressionDef) {
-        if (expressionDef instanceof ExpressionDef.ArrayElement arrayElement) {
-            return new ArrayElementExpressionWriter(arrayElement);
-        }
-        if (expressionDef instanceof ExpressionDef.InstanceOf instanceOf) {
-            return new InstanceOfExpressionWriter(instanceOf);
-        }
-        if (expressionDef instanceof ExpressionDef.ConditionExpressionDef) {
-            return new ConditionExpressionWriter(expressionDef);
-        }
-        if (expressionDef instanceof ExpressionDef.MathBinaryOperation math) {
-            return new MathBinaryExpressionWriter(math);
-        }
-        if (expressionDef instanceof ExpressionDef.MathUnaryOperation math) {
-            return new MathUnaryExpressionWriter(math);
-        }
-        if (expressionDef instanceof ExpressionDef.InvokeInstanceMethod invokeInstanceMethod) {
-            return new InvokeInstanceMethodExpressionWriter(invokeInstanceMethod);
-        }
-        if (expressionDef instanceof ExpressionDef.NewInstance newInstance) {
-            return new NewInstanceExpressionWriter(newInstance);
-        }
-        if (expressionDef instanceof ExpressionDef.NewArrayOfSize newArray) {
-            return new NewArrayOfSizeExpressionWriter(newArray);
-        }
-        if (expressionDef instanceof ExpressionDef.NewArrayInitialized newArray) {
-            return new NewArrayInitializedExpressionWriter(newArray);
-        }
-        if (expressionDef instanceof ExpressionDef.Cast castExpressionDef) {
-            return new CastExpressionWriter(castExpressionDef);
-        }
-        if (expressionDef instanceof ExpressionDef.Constant constant) {
-            return new ConstantExpressionWriter(constant);
-        }
-        if (expressionDef instanceof ExpressionDef.InvokeStaticMethod invokeStaticMethod) {
-            return new InvokeStaticMethodExpressionWriter(invokeStaticMethod);
-        }
-        if (expressionDef instanceof ExpressionDef.GetPropertyValue getPropertyValue) {
-            return new GetPropertyExpressionWriter(getPropertyValue);
-        }
-        if (expressionDef instanceof ExpressionDef.IfElse conditionIfElse) {
-            return new IfElseExpressionWriter(conditionIfElse);
-        }
-        if (expressionDef instanceof ExpressionDef.Switch aSwitch) {
-            return new SwitchExpressionWriter(aSwitch);
-        }
-        if (expressionDef instanceof ExpressionDef.SwitchYieldCase switchYieldCase) {
-            return new SwitchYieldCaseExpressionWriter(switchYieldCase);
-        }
-        if (expressionDef instanceof VariableDef variableDef) {
-            return new VariableExpressionWriter(variableDef);
-        }
-        if (expressionDef instanceof ExpressionDef.InvokeGetClassMethod invokeGetClassMethod) {
-            return new InvokeGetClassExpressionWriter(invokeGetClassMethod);
-        }
-        if (expressionDef instanceof ExpressionDef.InvokeHashCodeMethod invokeHashCodeMethod) {
-            return new InvokeHashCodeMethodExpressionWriter(invokeHashCodeMethod);
-        }
-        if (expressionDef instanceof Lambda lambda) {
-            return new LambdaExpressionWriter(lambda);
-        }
-        if (expressionDef instanceof ExpressionDef.StringConcatenation concat) {
-            return new StringConcatenationExpressionWriter(concat);
-        }
-        throw new UnsupportedOperationException("Unrecognized expression: " + expressionDef);
+        return switch (expressionDef) {
+            case ExpressionDef.ArrayElement arrayElement ->
+                new ArrayElementExpressionWriter(arrayElement);
+            case ExpressionDef.InstanceOf instanceOf -> new InstanceOfExpressionWriter(instanceOf);
+            case ExpressionDef.ConditionExpressionDef _ ->
+                new ConditionExpressionWriter(expressionDef);
+            case ExpressionDef.MathBinaryOperation math -> new MathBinaryExpressionWriter(math);
+            case ExpressionDef.MathUnaryOperation math -> new MathUnaryExpressionWriter(math);
+            case ExpressionDef.InvokeInstanceMethod invokeInstanceMethod ->
+                new InvokeInstanceMethodExpressionWriter(invokeInstanceMethod);
+            case ExpressionDef.NewInstance newInstance ->
+                new NewInstanceExpressionWriter(newInstance);
+            case ExpressionDef.NewArrayOfSize newArray ->
+                new NewArrayOfSizeExpressionWriter(newArray);
+            case ExpressionDef.NewArrayInitialized newArray ->
+                new NewArrayInitializedExpressionWriter(newArray);
+            case ExpressionDef.Cast castExpressionDef ->
+                new CastExpressionWriter(castExpressionDef);
+            case ExpressionDef.Constant constant -> new ConstantExpressionWriter(constant);
+            case ExpressionDef.InvokeStaticMethod invokeStaticMethod ->
+                new InvokeStaticMethodExpressionWriter(invokeStaticMethod);
+            case ExpressionDef.GetPropertyValue getPropertyValue ->
+                new GetPropertyExpressionWriter(getPropertyValue);
+            case ExpressionDef.IfElse conditionIfElse ->
+                new IfElseExpressionWriter(conditionIfElse);
+            case ExpressionDef.Switch aSwitch -> new SwitchExpressionWriter(aSwitch);
+            case ExpressionDef.SwitchYieldCase switchYieldCase ->
+                new SwitchYieldCaseExpressionWriter(switchYieldCase);
+            case VariableDef variableDef -> new VariableExpressionWriter(variableDef);
+            case ExpressionDef.InvokeGetClassMethod invokeGetClassMethod ->
+                new InvokeGetClassExpressionWriter(invokeGetClassMethod);
+            case ExpressionDef.InvokeHashCodeMethod invokeHashCodeMethod ->
+                new InvokeHashCodeMethodExpressionWriter(invokeHashCodeMethod);
+            case Lambda lambda -> new LambdaExpressionWriter(lambda);
+            case MethodReferenceExpression methodReference ->
+                new MethodReferenceExpressionWriter(methodReference);
+            case ExpressionDef.StringConcatenation concat ->
+                new StringConcatenationExpressionWriter(concat);
+            case null ->
+                throw new UnsupportedOperationException("Unrecognized expression: " + expressionDef);
+        };
     }
 
     static void writeExpression(GeneratorAdapter generatorAdapter,

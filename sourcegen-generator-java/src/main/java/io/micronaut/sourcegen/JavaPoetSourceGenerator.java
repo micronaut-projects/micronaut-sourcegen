@@ -43,6 +43,7 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
+import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
@@ -1131,6 +1132,18 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     builder.unindent().add("}");
                 }
                 return builder.build();
+            }
+            case MethodReferenceExpression methodReference -> {
+                String name = methodReference.isConstructor() ? "new" : methodReference.method().getName();
+                ExpressionDef instance = methodReference.instance();
+                if (instance == null) {
+                    return CodeBlock.of("$T::" + name, asType(methodReference.owner(), objectDef));
+                }
+                CodeBlock receiver = renderExpression(objectDef, methodDef, scope, instance);
+                if (requiresMethodCallTargetParentheses(instance)) {
+                    receiver = addParentheses(receiver);
+                }
+                return CodeBlock.concat(receiver, CodeBlock.of("::" + name));
             }
             case ExpressionDef.StringConcatenation concat -> {
                 ExpressionDef left = concat.left();

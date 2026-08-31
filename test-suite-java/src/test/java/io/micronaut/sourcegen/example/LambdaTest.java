@@ -61,4 +61,17 @@ class LambdaTest {
         assertEquals(1, owner.compareAst("b", "a"));
     }
 
+    @Test
+    public void testStaticMethodReference() {
+        MyClassWithLambda owner = new MyClassWithLambda();
+        assertEquals("static_Hello!", owner.callStaticMethodReference("Hello!"));
+    }
+
+    @Test
+    public void testBoundMethodReference() {
+        MyClassWithLambda owner = new MyClassWithLambda();
+        assertEquals("bound_Hello!", owner.callBoundMethodReference("Hello!"));
+    }
+
+
 }
