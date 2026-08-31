@@ -46,9 +46,7 @@ import org.objectweb.asm.util.CheckClassAdapter;
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.WeakHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -86,13 +84,6 @@ public final class ByteCodeWriter {
 
     private final boolean checkClass;
     private final boolean visitMaxs;
-    /**
-     * The bridges already emitted, per class emission. Every emission uses a fresh
-     * {@link ClassVisitor}, so keying on it scopes the de-duplication to one class file and lets a
-     * reused writer regenerate the same definition; the weak keys keep a long-lived writer from
-     * retaining the visitors.
-     */
-    private final Map<ClassVisitor, Set<String>> writtenBridges = Collections.synchronizedMap(new WeakHashMap<>());
 
     public ByteCodeWriter() {
         this(false, true);
@@ -190,6 +181,7 @@ public final class ByteCodeWriter {
      * @param outerType The outer type
      */
     public void writeInterface(ClassVisitor classVisitor, InterfaceDef interfaceDef, @Nullable ClassTypeDef outerType) {
+        Set<String> emittedBridges = new HashSet<>();
         int modifiersFlag = ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(interfaceDef.getModifiers());
         if (interfaceDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
@@ -207,10 +199,10 @@ public final class ByteCodeWriter {
             visitAnnotation(annotation, annotationVisitor);
         }
         for (MethodDef method : interfaceDef.getMethods()) {
-            writeMethod(classVisitor, interfaceDef, method);
+            writeMethod(classVisitor, interfaceDef, method, emittedBridges);
         }
         for (PropertyDef property : interfaceDef.getProperties()) {
-            writeProperty(classVisitor, interfaceDef, property);
+            writeProperty(classVisitor, interfaceDef, property, emittedBridges);
         }
     }
 
@@ -265,6 +257,9 @@ public final class ByteCodeWriter {
      * @param outerType     The outer type
      */
     public void writeClass(ClassVisitor classVisitor, ClassDef classDef, @Nullable ClassTypeDef outerType) {
+        // The bridges emitted for this class, so the same erasure inherited by two overloads is
+        // written once; local to one emission, a reused writer starts fresh
+        Set<String> emittedBridges = new HashSet<>();
         ClassTypeDef typeDef = classDef.asTypeDef();
 
         int modifiersFlag = getModifiersFlag(classDef.getModifiers());
@@ -307,7 +302,7 @@ public final class ByteCodeWriter {
             staticInitStatements.add(staticInitializer);
         }
         if (!staticInitStatements.isEmpty()) {
-            writeMethod(classVisitor, classDef, createStaticInitializer(StatementDef.multi(staticInitStatements)));
+            writeMethod(classVisitor, classDef, createStaticInitializer(StatementDef.multi(staticInitStatements)), emittedBridges);
         }
 
         if (classDef.getMethods().stream().noneMatch(MethodDef::isConstructor)) {
@@ -317,14 +312,14 @@ public final class ByteCodeWriter {
                 defaultConstructor.addModifiers(Modifier.PUBLIC);
             }
             writeMethod(classVisitor, classDef, defaultConstructor
-                .build((aThis, methodParameters) -> aThis.superRef().invokeSuperConstructor(methodParameters)));
+                .build((aThis, methodParameters) -> aThis.superRef().invokeSuperConstructor(methodParameters)), emittedBridges);
         }
 
         for (PropertyDef property : classDef.getProperties()) {
-            writeProperty(classVisitor, classDef, property);
+            writeProperty(classVisitor, classDef, property, emittedBridges);
         }
         for (MethodDef method : classDef.getMethods()) {
-            writeMethod(classVisitor, classDef, method);
+            writeMethod(classVisitor, classDef, method, emittedBridges);
         }
     }
 
@@ -419,7 +414,7 @@ public final class ByteCodeWriter {
         }
     }
 
-    private void writeProperty(ClassVisitor classWriter, ObjectDef objectDef, PropertyDef property) {
+    private void writeProperty(ClassVisitor classWriter, ObjectDef objectDef, PropertyDef property, Set<String> emittedBridges) {
         FieldDef propertyField = FieldDef.builder(property.getName(), property.getType())
             .addModifiers(Modifier.PRIVATE)
             .addAnnotations(property.getAnnotations())
@@ -438,7 +433,7 @@ public final class ByteCodeWriter {
             getterBuilder.addStatement((aThis, methodParameters) -> aThis.field(propertyField).returning());
         }
 
-        writeMethod(classWriter, objectDef, getterBuilder.build());
+        writeMethod(classWriter, objectDef, getterBuilder.build(), emittedBridges);
 
         MethodDef.MethodDefBuilder setterBuilder = MethodDef.builder("set" + capitalizedPropertyName)
             .addParameter(ParameterDef.of(property.getName(), property.getType()))
@@ -448,7 +443,7 @@ public final class ByteCodeWriter {
             setterBuilder.addStatement((aThis, methodParameters) -> aThis.field(propertyField).assign(methodParameters.get(0)));
         }
 
-        writeMethod(classWriter, objectDef, setterBuilder.build());
+        writeMethod(classWriter, objectDef, setterBuilder.build(), emittedBridges);
     }
 
     /**
@@ -458,19 +453,16 @@ public final class ByteCodeWriter {
      * @param objectDef    The object definition
      * @param methodDef    The method definition
      */
-    private void writeMethod(ClassVisitor classVisitor, @Nullable ObjectDef objectDef, MethodDef methodDef) {
-        writeMethod(classVisitor, objectDef, methodDef, false);
-    }
-
-    private void writeMethod(ClassVisitor classVisitor, @Nullable ObjectDef objectDef, MethodDef methodDef, boolean isLambda) {
-        writeMethod(classVisitor, objectDef, methodDef, isLambda, 0);
+    private void writeMethod(ClassVisitor classVisitor, @Nullable ObjectDef objectDef, MethodDef methodDef, Set<String> emittedBridges) {
+        writeMethod(classVisitor, objectDef, methodDef, false, 0, emittedBridges);
     }
 
     private void writeMethod(ClassVisitor classVisitor,
                              @Nullable ObjectDef objectDef,
                              MethodDef methodDef,
                              boolean isLambda,
-                             int extraModifiersFlag) {
+                             int extraModifiersFlag,
+                             Set<String> emittedBridges) {
         String name = methodDef.getName();
         String methodDescriptor = TypeUtils.getMethodDescriptor(objectDef, methodDef);
         int modifiersFlag = getModifiersFlag(methodDef.getModifiers()) | extraModifiersFlag;
@@ -569,11 +561,11 @@ public final class ByteCodeWriter {
         generatorAdapter.visitEnd();
 
         for (MethodDef lambdaDef: context.lambdaMethods()) {
-            writeMethod(classVisitor, objectDef, lambdaDef, true);
+            writeMethod(classVisitor, objectDef, lambdaDef, true, 0, emittedBridges);
         }
 
         if (!isLambda && (extraModifiersFlag & ACC_BRIDGE) == 0) {
-            writeBridgeMethods(classVisitor, objectDef, methodDef);
+            writeBridgeMethods(classVisitor, objectDef, methodDef, emittedBridges);
         }
     }
 
@@ -592,12 +584,12 @@ public final class ByteCodeWriter {
      */
     private void writeBridgeMethods(ClassVisitor classVisitor,
                                     @Nullable ObjectDef objectDef,
-                                    MethodDef methodDef) {
+                                    MethodDef methodDef,
+                                    Set<String> emittedBridges) {
         List<BridgeResolver.BridgeMethod> resolved = BridgeResolver.resolve(objectDef, methodDef);
         if (resolved.isEmpty()) {
             return;
         }
-        Set<String> written = writtenBridges.computeIfAbsent(classVisitor, k -> new HashSet<>());
         boolean isAbstract = methodDef.getModifiers().contains(Modifier.ABSTRACT);
         List<ParameterDef> parameters = methodDef.getParameters();
         for (BridgeResolver.BridgeMethod bridge : resolved) {
@@ -622,8 +614,8 @@ public final class ByteCodeWriter {
             MethodDef bridgeDef = builder.build();
             // Same-name overloads of the class can each resolve the same bridge; two methods with
             // different names never collide, so the name is part of the key
-            if (written.add(bridgeDef.getName() + TypeUtils.getMethodDescriptor(objectDef, bridgeDef))) {
-                writeMethod(classVisitor, objectDef, bridgeDef, false, ACC_BRIDGE | ACC_SYNTHETIC);
+            if (emittedBridges.add(bridgeDef.getName() + TypeUtils.getMethodDescriptor(objectDef, bridgeDef))) {
+                writeMethod(classVisitor, objectDef, bridgeDef, false, ACC_BRIDGE | ACC_SYNTHETIC, emittedBridges);
             }
         }
     }
