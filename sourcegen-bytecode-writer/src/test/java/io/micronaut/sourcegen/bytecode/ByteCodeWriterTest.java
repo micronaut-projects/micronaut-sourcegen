@@ -3097,6 +3097,484 @@ class MyClass {
     }
 
     @Test
+    void testFinallyOfABodyCompletingNormally() {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(
+                MethodDef.builder("run")
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(TypeDef.VOID)
+                    .build((aThis, methodParameters) -> StatementDef.doTry(
+                        ClassTypeDef.of(System.class)
+                            .getStaticField("out", TypeDef.of(PrintStream.class))
+                            .invoke("println", TypeDef.VOID, ExpressionDef.constant("Hello"))
+                    ).doFinally(ClassTypeDef.of(System.class)
+                        .getStaticField("out", TypeDef.of(PrintStream.class))
+                        .invoke("println", TypeDef.VOID, ExpressionDef.constant("World"))))
+            ).build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;
+// declaration: test/MyClass
+class test/MyClass {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public run()V
+    TRYCATCHBLOCK L0 L1 L2 null
+   L0
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "Hello"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+   L1
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    GOTO L3
+   L2
+    ASTORE 1
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    ALOAD 1
+    ATHROW
+    GOTO L3
+   L3
+    RETURN
+}
+""", bytecode);
+
+        assertEquals("""
+package test;
+
+class MyClass {
+   public void run() {
+      try {
+         System.out.println("Hello");
+      } finally {
+         System.out.println("World");
+      }
+
+   }
+}
+""", decompileToJava(bytes));
+    }
+
+    @Test
+    void testFinallyOfABodyEndingWithAThrow() {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(
+                MethodDef.builder("run")
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(TypeDef.VOID)
+                    .build((aThis, methodParameters) -> StatementDef.doTry(
+                        ClassTypeDef.of(IllegalStateException.class)
+                            .instantiate(ExpressionDef.constant("Boom"))
+                            .doThrow()
+                    ).doFinally(ClassTypeDef.of(System.class)
+                        .getStaticField("out", TypeDef.of(PrintStream.class))
+                        .invoke("println", TypeDef.VOID, ExpressionDef.constant("World"))))
+            ).build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        // The body cannot complete normally, the finally is only on the exception path
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;
+// declaration: test/MyClass
+class test/MyClass {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public run()V
+    TRYCATCHBLOCK L0 L1 L2 null
+   L0
+    NEW java/lang/IllegalStateException
+    DUP
+    LDC "Boom"
+    INVOKESPECIAL java/lang/IllegalStateException.<init> (Ljava/lang/String;)V
+    ATHROW
+   L1
+    GOTO L3
+   L2
+    ASTORE 1
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    ALOAD 1
+    ATHROW
+    GOTO L3
+   L3
+}
+""", bytecode);
+
+        assertEquals("""
+package test;
+
+class MyClass {
+   public void run() {
+      try {
+         throw new IllegalStateException("Boom");
+      } finally {
+         System.out.println("World");
+      }
+   }
+}
+""", decompileToJava(bytes));
+    }
+
+    @Test
+    void testFinallyOfABodyEndingWithAnIfElse() {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(
+                MethodDef.builder("bothReturn")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter("flag", TypeDef.Primitive.BOOLEAN)
+                    .returns(TypeDef.STRING)
+                    .build((aThis, methodParameters) -> StatementDef.doTry(
+                        new StatementDef.IfElse(
+                            methodParameters.get(0),
+                            ExpressionDef.constant("a").returning(),
+                            ExpressionDef.constant("b").returning())
+                    ).doFinally(ClassTypeDef.of(System.class)
+                        .getStaticField("out", TypeDef.of(PrintStream.class))
+                        .invoke("println", TypeDef.VOID, ExpressionDef.constant("World"))))
+            )
+            .addMethod(
+                MethodDef.builder("elseFallsThrough")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter("flag", TypeDef.Primitive.BOOLEAN)
+                    .returns(TypeDef.VOID)
+                    .build((aThis, methodParameters) -> StatementDef.doTry(
+                        new StatementDef.IfElse(
+                            methodParameters.get(0),
+                            new StatementDef.Return(null),
+                            ClassTypeDef.of(System.class)
+                                .getStaticField("out", TypeDef.of(PrintStream.class))
+                                .invoke("println", TypeDef.VOID, ExpressionDef.constant("Else")))
+                    ).doFinally(ClassTypeDef.of(System.class)
+                        .getStaticField("out", TypeDef.of(PrintStream.class))
+                        .invoke("println", TypeDef.VOID, ExpressionDef.constant("World"))))
+            )
+            .addMethod(
+                MethodDef.builder("thenFallsThrough")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter("flag", TypeDef.Primitive.BOOLEAN)
+                    .returns(TypeDef.VOID)
+                    .build((aThis, methodParameters) -> StatementDef.doTry(
+                        new StatementDef.IfElse(
+                            methodParameters.get(0),
+                            ClassTypeDef.of(System.class)
+                                .getStaticField("out", TypeDef.of(PrintStream.class))
+                                .invoke("println", TypeDef.VOID, ExpressionDef.constant("Then")),
+                            new StatementDef.Return(null))
+                    ).doFinally(ClassTypeDef.of(System.class)
+                        .getStaticField("out", TypeDef.of(PrintStream.class))
+                        .invoke("println", TypeDef.VOID, ExpressionDef.constant("World"))))
+            ).build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        // Both branches return, the finally is written by each of them and not after the body
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;
+// declaration: test/MyClass
+class test/MyClass {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public bothReturn(Z)Ljava/lang/String;
+   L0
+    TRYCATCHBLOCK L1 L2 L3 null
+   L1
+    ILOAD 1
+    ICONST_1
+    IF_ICMPNE L4
+    LDC "a"
+    ASTORE 2
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    ALOAD 2
+    ARETURN
+   L5
+   L4
+    LDC "b"
+    ASTORE 3
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    ALOAD 3
+    ARETURN
+   L2
+    GOTO L6
+   L3
+    ASTORE 4
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    ALOAD 4
+    ATHROW
+    GOTO L6
+   L6
+   L7
+    LOCALVARIABLE flag Z L0 L7 1
+
+  // access flags 0x1
+  public elseFallsThrough(Z)V
+   L0
+    TRYCATCHBLOCK L1 L2 L3 null
+   L1
+    ILOAD 1
+    ICONST_1
+    IF_ICMPNE L4
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    RETURN
+   L5
+   L4
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "Else"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+   L2
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    GOTO L6
+   L3
+    ASTORE 2
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    ALOAD 2
+    ATHROW
+    GOTO L6
+   L6
+    RETURN
+   L7
+    LOCALVARIABLE flag Z L0 L7 1
+
+  // access flags 0x1
+  public thenFallsThrough(Z)V
+   L0
+    TRYCATCHBLOCK L1 L2 L3 null
+   L1
+    ILOAD 1
+    ICONST_1
+    IF_ICMPNE L4
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "Then"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+   L5
+   L4
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    RETURN
+   L2
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    GOTO L6
+   L3
+    ASTORE 2
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    ALOAD 2
+    ATHROW
+    GOTO L6
+   L6
+    RETURN
+   L7
+    LOCALVARIABLE flag Z L0 L7 1
+}
+""", bytecode);
+
+        assertEquals("""
+package test;
+
+class MyClass {
+   public String bothReturn(boolean flag) {
+      try {
+         if (flag) {
+            String var2 = "a";
+            System.out.println("World");
+            return var2;
+         } else {
+            String var3 = "b";
+            System.out.println("World");
+            return var3;
+         }
+      } finally {
+         System.out.println("World");
+      }
+   }
+
+   public void elseFallsThrough(boolean flag) {
+      try {
+         if (flag) {
+            System.out.println("World");
+            return;
+         }
+
+         System.out.println("Else");
+      } finally {
+         System.out.println("World");
+      }
+
+   }
+
+   public void thenFallsThrough(boolean flag) {
+      try {
+         if (flag) {
+            System.out.println("Then");
+         }
+
+         System.out.println("World");
+      } finally {
+         System.out.println("World");
+      }
+   }
+}
+""", decompileToJava(bytes));
+    }
+
+    @Test
+    void testFinallyOfABodyEndingWithASynchronizedBlock() {
+        ClassDef classDef = ClassDef.builder("test.MyClass")
+            .addMethod(
+                MethodDef.builder("run")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter("monitor", TypeDef.OBJECT)
+                    .returns(TypeDef.VOID)
+                    .build((aThis, methodParameters) -> StatementDef.doTry(
+                        new StatementDef.Synchronized(
+                            methodParameters.get(0),
+                            ClassTypeDef.of(System.class)
+                                .getStaticField("out", TypeDef.of(PrintStream.class))
+                                .invoke("println", TypeDef.VOID, ExpressionDef.constant("Hello")))
+                    ).doFinally(ClassTypeDef.of(System.class)
+                        .getStaticField("out", TypeDef.of(PrintStream.class))
+                        .invoke("println", TypeDef.VOID, ExpressionDef.constant("World"))))
+            ).build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x0
+// signature Ljava/lang/Object;
+// declaration: test/MyClass
+class test/MyClass {
+
+
+  // access flags 0x0
+  <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public run(Ljava/lang/Object;)V
+   L0
+    TRYCATCHBLOCK L1 L2 L3 null
+   L1
+    TRYCATCHBLOCK L4 L5 L6 null
+    TRYCATCHBLOCK L6 L7 L6 null
+    ALOAD 1
+    DUP
+    ASTORE 2
+    MONITORENTER
+   L4
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "Hello"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    ALOAD 2
+    MONITOREXIT
+   L5
+    GOTO L8
+   L6
+    ASTORE 3
+    ALOAD 2
+    MONITOREXIT
+   L7
+    ALOAD 3
+    ATHROW
+   L8
+   L2
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    GOTO L9
+   L3
+    ASTORE 4
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    ALOAD 4
+    ATHROW
+    GOTO L9
+   L9
+    RETURN
+   L10
+    LOCALVARIABLE monitor Ljava/lang/Object; L0 L10 1
+}
+""", bytecode);
+
+        assertEquals("""
+package test;
+
+class MyClass {
+   public void run(Object monitor) {
+      try {
+         synchronized(monitor) {
+            System.out.println("Hello");
+         }
+      } finally {
+         System.out.println("World");
+      }
+
+   }
+}
+""", decompileToJava(bytes));
+    }
+
+    @Test
     void testTableSwitchWithDuplicateStatements() {
         StatementDef sameStatement = TypeDef.Primitive.INT.constant(123).returning();
         ClassDef classDef = ClassDef.builder("test.MyClass")

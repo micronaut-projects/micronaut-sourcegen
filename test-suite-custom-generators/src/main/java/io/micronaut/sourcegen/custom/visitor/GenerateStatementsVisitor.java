@@ -119,19 +119,19 @@ public final class GenerateStatementsVisitor implements TypeElementVisitor<Gener
                     e -> e.invoke("toString", TypeDef.STRING).returning()));
     }
 
-    // tryFinally(StringBuilder builder) { try { return builder.append("t").toString(); } finally { builder.append("f"); } }
+    // tryFinally(StringBuilder builder) { try { builder.append("t"); } finally { builder.append("f"); } return builder.toString(); }
     private static MethodDef tryFinally() {
         return MethodDef.builder("tryFinally")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addParameter("builder", StringBuilder.class)
             .returns(TypeDef.STRING)
-            .buildStatic(params -> params.get(0)
-                .invoke("append", TypeDef.of(StringBuilder.class), ExpressionDef.constant("t"))
-                .invoke("toString", TypeDef.STRING)
-                .returning()
-                .doTry()
-                .doFinally(
-                    params.get(0).invoke("append", TypeDef.of(StringBuilder.class), ExpressionDef.constant("f"))));
+            .buildStatic(params -> StatementDef.multi(
+                StatementDef.doTry(
+                        params.get(0).invoke("append", TypeDef.of(StringBuilder.class), ExpressionDef.constant("t")))
+                    .doFinally(
+                        params.get(0).invoke("append", TypeDef.of(StringBuilder.class), ExpressionDef.constant("f"))),
+                params.get(0).invoke("toString", TypeDef.STRING).returning()
+            ));
     }
 
     // synchronizedAssign(Object monitor) { String result = "before"; synchronized (monitor) { result = "locked"; } return result; }

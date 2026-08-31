@@ -37,7 +37,7 @@ internal class StatementsTest {
     @Test
     fun finallyRunsAfterTheBody() {
         val builder = StringBuilder()
-        assertEquals("t", MyStatements.tryFinally(builder))
+        assertEquals("tf", MyStatements.tryFinally(builder))
         assertEquals("tf", builder.toString())
     }
 
