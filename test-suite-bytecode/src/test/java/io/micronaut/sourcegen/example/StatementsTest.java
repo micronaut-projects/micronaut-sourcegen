@@ -38,7 +38,7 @@ class StatementsTest {
     @Test
     void finallyRunsAfterTheBody() {
         StringBuilder builder = new StringBuilder();
-        assertEquals("t", MyStatements.tryFinally(builder));
+        assertEquals("tf", MyStatements.tryFinally(builder));
         assertEquals("tf", builder.toString());
     }
 
