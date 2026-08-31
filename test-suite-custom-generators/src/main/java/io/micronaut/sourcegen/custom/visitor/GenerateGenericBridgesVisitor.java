@@ -65,6 +65,7 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
         ClassDef genericHolder = genericHolder(ClassTypeDef.of(packageName + ".GenericHolder"));
         sourceGenerator.write(genericHolder, context, element);
         sourceGenerator.write(stringHolder(packageName, genericHolder), context, element);
+        sourceGenerator.write(numberHolder(packageName, genericHolder), context, element);
         sourceGenerator.write(lengthFunction(packageName), context, element);
         sourceGenerator.write(lengthComparator(packageName), context, element);
 
@@ -199,6 +200,39 @@ public final class GenerateGenericBridgesVisitor implements TypeElementVisitor<G
                 .addModifiers(Modifier.PUBLIC)
                 .overrides()
                 .addParameter("value", stringType)
+                .returns(TypeDef.VOID)
+                .build((aThis, methodParameters) -> aThis.field(valueField).put(methodParameters.get(0))))
+            .build();
+    }
+
+    /**
+     * {@code class NumberHolder<T extends Number> extends GenericHolder<T>}: the declaring type binds
+     * the parent's variable with its own bounded variable, so the methods erase to {@code Number} while
+     * their bridges erase to the parent's {@code Object}.
+     *
+     * @param packageName The package
+     * @param holderDef   The generic super class
+     * @return The definition
+     */
+    private ClassDef numberHolder(String packageName, ClassDef holderDef) {
+        TypeDef.TypeVariable variable = TypeDef.variable("T");
+        FieldDef valueField = FieldDef.builder("value", variable)
+            .addModifiers(Modifier.PRIVATE)
+            .build();
+        return ClassDef.builder(packageName + ".NumberHolder")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T", TypeDef.of(Number.class)))
+            .superclass(TypeDef.parameterized(ClassTypeDef.of(holderDef), variable))
+            .addField(valueField)
+            .addMethod(MethodDef.builder("get")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .returns(variable)
+                .build((aThis, methodParameters) -> aThis.field(valueField).returning()))
+            .addMethod(MethodDef.builder("set")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addParameter("value", variable)
                 .returns(TypeDef.VOID)
                 .build((aThis, methodParameters) -> aThis.field(valueField).put(methodParameters.get(0))))
             .build();

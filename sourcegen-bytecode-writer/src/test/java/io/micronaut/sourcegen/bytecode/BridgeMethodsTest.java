@@ -23,7 +23,10 @@ import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.junit.jupiter.api.Test;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.util.CheckClassAdapter;
 import org.objectweb.asm.util.TraceClassVisitor;
 
@@ -733,6 +736,82 @@ public class example/Example extends example/UnknownParent {
     ARETURN
 }
 """, generate(def));
+    }
+
+    @Test
+    void testTwoMethodsSharingOneBridgeDescriptorBothGetTheirBridge() {
+        InterfaceDef left = InterfaceDef.builder("example.Left")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("left").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("T")).returns(TypeDef.variable("T")).build())
+            .build();
+        InterfaceDef right = InterfaceDef.builder("example.Right")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("right").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("T")).returns(TypeDef.variable("T")).build())
+            .build();
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(left), TypeDef.of(String.class)))
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(right), TypeDef.of(String.class)))
+            .addMethod(MethodDef.builder("left")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addParameter("value", TypeDef.of(String.class))
+                .returns(TypeDef.of(String.class))
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .addMethod(MethodDef.builder("right")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .addParameter("value", TypeDef.of(String.class))
+                .returns(TypeDef.of(String.class))
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+
+        // The bridges share the descriptor but not the name, so both must be emitted
+        assertEquals(
+            List.of("left(Ljava/lang/Object;)Ljava/lang/Object;", "right(Ljava/lang/Object;)Ljava/lang/Object;"),
+            bridgeMethodsOf(new ByteCodeWriter(false, false).write(def))
+        );
+    }
+
+    @Test
+    void testAReusedWriterEmitsTheBridgesEveryTime() {
+        ClassDef parent = ClassDef.builder("example.Parent")
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addMethod(MethodDef.builder("self").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(TypeDef.OBJECT).build())
+            .build();
+        ClassDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(parent))
+            .addMethod(MethodDef.builder("self")
+                .addModifiers(Modifier.PUBLIC)
+                .overrides()
+                .returns(ClassTypeDef.of("example.Example"))
+                .build((aThis, methodParameters) -> aThis.returning()))
+            .build();
+
+        // The writer is reusable and must not remember the bridges of a previous emission
+        ByteCodeWriter writer = new ByteCodeWriter(false, false);
+        List<String> expected = List.of("self()Ljava/lang/Object;");
+        assertEquals(expected, bridgeMethodsOf(writer.write(def)));
+        assertEquals(expected, bridgeMethodsOf(writer.write(def)));
+    }
+
+    private static List<String> bridgeMethodsOf(byte[] bytecode) {
+        List<String> bridges = new ArrayList<>();
+        new ClassReader(bytecode).accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                if ((access & Opcodes.ACC_BRIDGE) != 0) {
+                    bridges.add(name + descriptor);
+                }
+                return null;
+            }
+        }, ClassReader.SKIP_CODE);
+        return bridges.stream().sorted().toList();
     }
 
     private String generate(ObjectDef objectDef) {

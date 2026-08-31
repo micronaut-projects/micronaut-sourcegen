@@ -96,6 +96,19 @@ class GenericBridgeTest {
     }
 
     @Test
+    void boundedChildBridgesThroughTheErasedParent() {
+        // NumberHolder<T extends Number> binds the parent's variable with its own bounded variable, so
+        // its methods erase to Number and every call through the parent goes through a bridge
+        GenericHolder<Integer> holder = new NumberHolder<>();
+        holder.set(42);
+        assertEquals(42, holder.get());
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        GenericHolder<Object> raw = (GenericHolder) holder;
+        assertThrows(ClassCastException.class, () -> raw.set("not a number"));
+    }
+
+    @Test
     void sourceParentIsResolvedThroughTheAst() {
         // The generated child extends a hand-written generic class, so its hierarchy is only visible
         // through the annotation-processing AST
@@ -111,6 +124,8 @@ class GenericBridgeTest {
         assertEquals(List.of("(Ljava/lang/Object;Ljava/lang/Object;)I"), bridges(LengthComparator.class, "compare"));
         assertEquals(List.of("(Ljava/lang/Object;)Ljava/lang/Object;"), bridges(StringHandler.class, "handle"));
         assertEquals(List.of("(Ljava/lang/Object;)Ljava/lang/Object;"), bridges(StringSourceHolder.class, "value"));
+        assertEquals(List.of("()Ljava/lang/Object;"), bridges(NumberHolder.class, "get"));
+        assertEquals(List.of("(Ljava/lang/Object;)V"), bridges(NumberHolder.class, "set"));
         // The generic super class declares the erasure the others bridge to
         assertEquals(List.of(), bridges(GenericHolder.class, "get"));
         assertEquals(List.of(), bridges(GenericHolder.class, "set"));

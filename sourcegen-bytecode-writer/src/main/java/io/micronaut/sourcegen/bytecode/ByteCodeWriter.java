@@ -46,8 +46,9 @@ import org.objectweb.asm.util.CheckClassAdapter;
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
+import java.util.WeakHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -70,6 +71,14 @@ import static org.objectweb.asm.Opcodes.V17;
 /**
  * Generates the classes directly by writing the bytecode.
  *
+ * <p>Unlike a compiler, the writer synthesizes the bridge methods a class requires itself, derived
+ * from the declared supertypes. That derivation needs the supertype's method and generic metadata, so
+ * a supertype should be referenced through its definition — {@link ClassTypeDef#of(ObjectDef)} for
+ * another generated type, {@link ClassTypeDef#of(Class)} for a compiled class, or
+ * {@code ClassTypeDef.of(ClassElement)} for a source type. A generic supertype referenced only by its
+ * name, via {@link ClassTypeDef#of(String)}, carries no such metadata: no bridges can be derived from
+ * it, and calls through its erased signatures may fail with an {@link AbstractMethodError} at runtime.
+ *
  * @author Denis Stepanov
  * @since 1.5
  */
@@ -77,7 +86,13 @@ public final class ByteCodeWriter {
 
     private final boolean checkClass;
     private final boolean visitMaxs;
-    private final IdentityHashMap<ObjectDef, Set<String>> writtenBridges = new IdentityHashMap<>();
+    /**
+     * The bridges already emitted, per class emission. Every emission uses a fresh
+     * {@link ClassVisitor}, so keying on it scopes the de-duplication to one class file and lets a
+     * reused writer regenerate the same definition; the weak keys keep a long-lived writer from
+     * retaining the visitors.
+     */
+    private final Map<ClassVisitor, Set<String>> writtenBridges = Collections.synchronizedMap(new WeakHashMap<>());
 
     public ByteCodeWriter() {
         this(false, true);
@@ -582,7 +597,7 @@ public final class ByteCodeWriter {
         if (resolved.isEmpty()) {
             return;
         }
-        Set<String> written = writtenBridges.computeIfAbsent(objectDef, k -> new HashSet<>());
+        Set<String> written = writtenBridges.computeIfAbsent(classVisitor, k -> new HashSet<>());
         boolean isAbstract = methodDef.getModifiers().contains(Modifier.ABSTRACT);
         List<ParameterDef> parameters = methodDef.getParameters();
         for (BridgeResolver.BridgeMethod bridge : resolved) {
@@ -605,8 +620,9 @@ public final class ByteCodeWriter {
                 });
             }
             MethodDef bridgeDef = builder.build();
-            // The same erasure can be inherited through more than one path
-            if (written.add(TypeUtils.getMethodDescriptor(objectDef, bridgeDef))) {
+            // Same-name overloads of the class can each resolve the same bridge; two methods with
+            // different names never collide, so the name is part of the key
+            if (written.add(bridgeDef.getName() + TypeUtils.getMethodDescriptor(objectDef, bridgeDef))) {
                 writeMethod(classVisitor, objectDef, bridgeDef, false, ACC_BRIDGE | ACC_SYNTHETIC);
             }
         }

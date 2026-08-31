@@ -62,7 +62,7 @@ import java.util.stream.Collectors;
  * @since 2.2
  */
 @Internal
-public final class BridgeResolver {
+final class BridgeResolver {
 
     private static final Set<String> TERMINAL_TYPES = Set.of("java.lang.Object", "java.lang.Record", "java.lang.Enum");
 
@@ -76,7 +76,7 @@ public final class BridgeResolver {
      * @param methodDef The declared method
      * @return The bridges, without one for the method's own descriptor or a duplicate
      */
-    public static List<BridgeMethod> resolve(@Nullable ObjectDef objectDef, MethodDef methodDef) {
+    static List<BridgeMethod> resolve(@Nullable ObjectDef objectDef, MethodDef methodDef) {
         if (objectDef == null
             || methodDef.isConstructor()
             || methodDef.getModifiers().contains(Modifier.STATIC)
@@ -88,6 +88,7 @@ public final class BridgeResolver {
             return List.of();
         }
 
+        TypeInfo declaringInfo = new ObjectDefInfo(objectDef);
         List<String> declaredParameterDescriptors = methodDef.getParameters().stream()
             .map(p -> TypeUtils.getType(p.getType(), objectDef).getDescriptor())
             .toList();
@@ -114,10 +115,17 @@ public final class BridgeResolver {
                     || inherited.overrideParameterTypes().size() != declaredParameterDescriptors.size()) {
                     continue;
                 }
+                // A final method cannot be overridden, and a package-private one only from its own package
+                if (inherited.finalMethod()
+                    || (inherited.packagePrivate() && !node.info.packageName().equals(objectDef.getPackageName()))) {
+                    continue;
+                }
                 // Override check happens before erasure: substitute the supertype's type arguments into
-                // the inherited parameters and compare with the declared parameters
+                // the inherited parameters and compare with the declared parameters. A variable left
+                // after substitution belongs to the declaring type, whose bounds the ancestor cannot
+                // know, so its bounds are looked up there first
                 List<String> substituted = inherited.overrideParameterTypes().stream()
-                    .map(p -> descriptor(erase(substitute(p, node.substitution), node.info)))
+                    .map(p -> descriptor(erase(substitute(p, node.substitution), declaringInfo, node.info)))
                     .toList();
                 if (!substituted.equals(declaredParameterDescriptors)) {
                     continue;
@@ -236,22 +244,32 @@ public final class BridgeResolver {
     }
 
     private static TypeDef erase(TypeDef typeDef, TypeInfo owner) {
+        return erase(typeDef, null, owner);
+    }
+
+    private static TypeDef erase(TypeDef typeDef, @Nullable TypeInfo boundOwner, TypeInfo owner) {
         TypeDef unwrapped = unwrap(typeDef);
         if (TypeDef.THIS.equals(unwrapped)) {
             return ClassTypeDef.of(owner.typeName());
         }
         if (unwrapped instanceof TypeDef.TypeVariable typeVariable) {
-            TypeDef bound = typeVariable.bounds().isEmpty() ? owner.variableBound(typeVariable.name()) : typeVariable.bounds().get(0);
-            return bound == null ? TypeDef.OBJECT : erase(bound, owner);
+            TypeDef bound = typeVariable.bounds().isEmpty() ? null : typeVariable.bounds().get(0);
+            if (bound == null && boundOwner != null) {
+                bound = boundOwner.variableBound(typeVariable.name());
+            }
+            if (bound == null) {
+                bound = owner.variableBound(typeVariable.name());
+            }
+            return bound == null ? TypeDef.OBJECT : erase(bound, boundOwner, owner);
         }
         if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
             return parameterized.rawType();
         }
         if (unwrapped instanceof TypeDef.Wildcard wildcard) {
-            return wildcard.upperBounds().isEmpty() ? TypeDef.OBJECT : erase(wildcard.upperBounds().get(0), owner);
+            return wildcard.upperBounds().isEmpty() ? TypeDef.OBJECT : erase(wildcard.upperBounds().get(0), boundOwner, owner);
         }
         if (unwrapped instanceof TypeDef.Array array) {
-            return TypeDef.array(erase(array.componentType(), owner), array.dimensions());
+            return TypeDef.array(erase(array.componentType(), boundOwner, owner), array.dimensions());
         }
         return unwrapped;
     }
@@ -282,8 +300,7 @@ public final class BridgeResolver {
      * @param parameterTypes The erased parameter types of the overridden method
      * @param returnType     The erased return type of the overridden method
      */
-    @Internal
-    public record BridgeMethod(List<TypeDef> parameterTypes, TypeDef returnType) {
+    record BridgeMethod(List<TypeDef> parameterTypes, TypeDef returnType) {
     }
 
     private record Node(TypeInfo info, Map<String, TypeDef> substitution) {
@@ -297,11 +314,15 @@ public final class BridgeResolver {
      * @param overrideParameterTypes The parameter types to substitute for the override check
      * @param bridgeParameterTypes   The parameter types to erase for the bridge
      * @param bridgeReturnType       The return type to erase for the bridge
+     * @param finalMethod            Whether the method is final and so cannot be overridden
+     * @param packagePrivate         Whether the method is only overridable from its own package
      */
     private record MethodSignature(String name,
                                    List<TypeDef> overrideParameterTypes,
                                    List<TypeDef> bridgeParameterTypes,
-                                   TypeDef bridgeReturnType) {
+                                   TypeDef bridgeReturnType,
+                                   boolean finalMethod,
+                                   boolean packagePrivate) {
     }
 
     /**
@@ -310,6 +331,15 @@ public final class BridgeResolver {
     private interface TypeInfo {
 
         String typeName();
+
+        /**
+         * @return The package, deciding whether a package-private method can be overridden
+         */
+        default String packageName() {
+            String name = typeName();
+            int index = name.lastIndexOf('.');
+            return index == -1 ? "" : name.substring(0, index);
+        }
 
         List<String> typeParameters();
 
@@ -349,13 +379,18 @@ public final class BridgeResolver {
 
         @Override
         public List<MethodSignature> methods() {
+            boolean isInterface = objectDef instanceof InterfaceDef;
             return objectDef.getMethods().stream()
                 .filter(m -> !m.isConstructor()
                     && !m.getModifiers().contains(Modifier.STATIC)
                     && !m.getModifiers().contains(Modifier.PRIVATE))
                 .map(m -> {
                     List<TypeDef> parameters = m.getParameters().stream().map(ParameterDef::getType).toList();
-                    return new MethodSignature(m.getName(), parameters, parameters, m.getReturnType());
+                    boolean packagePrivate = !isInterface
+                        && !m.getModifiers().contains(Modifier.PUBLIC)
+                        && !m.getModifiers().contains(Modifier.PROTECTED);
+                    return new MethodSignature(m.getName(), parameters, parameters, m.getReturnType(),
+                        m.getModifiers().contains(Modifier.FINAL), packagePrivate);
                 })
                 .toList();
         }
@@ -409,7 +444,11 @@ public final class BridgeResolver {
                     && !m.isSynthetic())
                 .map(m -> {
                     List<TypeDef> parameters = Arrays.stream(m.getGenericParameterTypes()).map(ReflectionInfo::convert).toList();
-                    return new MethodSignature(m.getName(), parameters, parameters, convert(m.getGenericReturnType()));
+                    int modifiers = m.getModifiers();
+                    boolean packagePrivate = !java.lang.reflect.Modifier.isPublic(modifiers)
+                        && !java.lang.reflect.Modifier.isProtected(modifiers);
+                    return new MethodSignature(m.getName(), parameters, parameters, convert(m.getGenericReturnType()),
+                        java.lang.reflect.Modifier.isFinal(modifiers), packagePrivate);
                 })
                 .toList();
         }
@@ -512,7 +551,8 @@ public final class BridgeResolver {
             List<TypeDef> bridgeParameters = Arrays.stream(method.getParameters())
                 .map(p -> TypeDef.erasure(p.getType()))
                 .toList();
-            return new MethodSignature(method.getName(), overrideParameters, bridgeParameters, TypeDef.erasure(method.getReturnType()));
+            return new MethodSignature(method.getName(), overrideParameters, bridgeParameters, TypeDef.erasure(method.getReturnType()),
+                method.isFinal(), !method.isPublic() && !method.isProtected());
         }
     }
 }

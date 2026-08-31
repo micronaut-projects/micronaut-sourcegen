@@ -251,6 +251,101 @@ class BridgeResolverTest {
         assertEquals(List.of(), descriptors(def, method));
     }
 
+    @Test
+    void declaringTypeBoundSurvivesAnIntermediateSupertype() {
+        InterfaceDef top = InterfaceDef.builder("example.Top")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("A"))
+            .addMethod(MethodDef.builder("set")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("value", TypeDef.variable("A"))
+                .returns(TypeDef.VOID)
+                .build())
+            .addMethod(MethodDef.builder("get")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(TypeDef.variable("A"))
+                .build())
+            .build();
+        InterfaceDef middle = InterfaceDef.builder("example.Middle")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("B"))
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(top), TypeDef.variable("B")))
+            .build();
+        // The declaring type binds its own variable, which the ancestors know nothing about
+        MethodDef setter = MethodDef.builder("set")
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.variable("T"))
+            .returns(TypeDef.VOID)
+            .build();
+        MethodDef getter = MethodDef.builder("get")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(TypeDef.variable("T"))
+            .build((aThis, methodParameters) -> ExpressionDefs.constant().cast(TypeDef.variable("T")).returning());
+        ObjectDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T", TypeDef.of(Number.class)))
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(middle), TypeDef.variable("T")))
+            .addMethod(setter)
+            .addMethod(getter)
+            .build();
+
+        // T erases to Number where the method is declared, the bridge to Top's Object
+        assertEquals(List.of("(Ljava/lang/Object;)V"), descriptors(def, setter));
+        assertEquals(List.of("()Ljava/lang/Object;"), descriptors(def, getter));
+    }
+
+    @Test
+    void finalParentMethodIsNotOverridable() {
+        ClassDef parent = ClassDef.builder("example.Parent")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("self").addModifiers(Modifier.PUBLIC, Modifier.FINAL).returns(TypeDef.OBJECT)
+                .build((aThis, methodParameters) -> aThis.returning()))
+            .build();
+        MethodDef method = MethodDef.builder("self")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(ClassTypeDef.of("example.Example"))
+            .build((aThis, methodParameters) -> aThis.returning());
+        ObjectDef def = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(parent))
+            .addMethod(method)
+            .build();
+
+        assertEquals(List.of(), descriptors(def, method));
+    }
+
+    @Test
+    void packagePrivateParentMethodIsOnlyOverridableFromItsOwnPackage() {
+        ClassDef samePackageParent = ClassDef.builder("example.Parent")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("self").returns(TypeDef.OBJECT)
+                .build((aThis, methodParameters) -> aThis.returning()))
+            .build();
+        ClassDef otherPackageParent = ClassDef.builder("other.Parent")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("self").returns(TypeDef.OBJECT)
+                .build((aThis, methodParameters) -> aThis.returning()))
+            .build();
+        MethodDef method = MethodDef.builder("self")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(ClassTypeDef.of("example.Example"))
+            .build((aThis, methodParameters) -> aThis.returning());
+
+        ObjectDef samePackage = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(samePackageParent))
+            .addMethod(method)
+            .build();
+        assertEquals(List.of("()Ljava/lang/Object;"), descriptors(samePackage, method));
+
+        ObjectDef otherPackage = ClassDef.builder("example.Example")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(otherPackageParent))
+            .addMethod(method)
+            .build();
+        assertEquals(List.of(), descriptors(otherPackage, method));
+    }
+
     private static List<String> descriptors(ObjectDef objectDef, MethodDef methodDef) {
         return BridgeResolver.resolve(objectDef, methodDef).stream()
             .map(bridge -> bridge.parameterTypes().stream()

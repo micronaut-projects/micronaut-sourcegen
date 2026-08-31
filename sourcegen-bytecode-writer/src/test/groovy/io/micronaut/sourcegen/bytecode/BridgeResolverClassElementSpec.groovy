@@ -45,7 +45,7 @@ abstract class SourceValueHolder<T> {
         TypeUtils.getType(bridges[0].returnType(), null).descriptor == 'Ljava/lang/Object;'
     }
 
-    void "a source parent hierarchy is flattened by the AST"() {
+    void "a source parent hierarchy is walked level by level"() {
         given:
         ClassElement parent = buildClassElement('''
 package test;
@@ -75,6 +75,40 @@ abstract class Top<A> {
 
         then:
         // Top.id(A) erases to Object at its declaration site
+        bridges.size() == 1
+        TypeUtils.getType(bridges[0].parameterTypes()[0], null).descriptor == 'Ljava/lang/Object;'
+    }
+
+    void "a declaring type bound survives an intermediate source supertype"() {
+        given:
+        ClassElement parent = buildClassElement('''
+package test;
+
+interface Middle<B> extends Top<B> {
+}
+
+interface Top<A> {
+    void set(A value);
+}
+''')
+        def method = MethodDef.builder("set")
+            .addModifiers(Modifier.PUBLIC)
+            .overrides()
+            .addParameter("value", TypeDef.variable("T"))
+            .returns(TypeDef.VOID)
+            .build()
+        def child = ClassDef.builder("test.NumberExample")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T", TypeDef.of(Number)))
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(parent), TypeDef.variable("T")))
+            .addMethod(method)
+            .build()
+
+        when:
+        def bridges = BridgeResolver.resolve(child, method)
+
+        then:
+        // The declared method erases to set(Number), the bridge to Top's set(Object)
         bridges.size() == 1
         TypeUtils.getType(bridges[0].parameterTypes()[0], null).descriptor == 'Ljava/lang/Object;'
     }
