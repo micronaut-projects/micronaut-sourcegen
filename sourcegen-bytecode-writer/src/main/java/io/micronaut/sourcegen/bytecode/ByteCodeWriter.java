@@ -47,6 +47,8 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.util.CheckClassAdapter;
 
 import javax.lang.model.element.Modifier;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -86,6 +88,8 @@ import static org.objectweb.asm.Opcodes.V17;
  * @since 1.5
  */
 public final class ByteCodeWriter {
+
+    private static final List<Modifier> ACCESS_MODIFIERS = List.of(Modifier.PUBLIC, Modifier.PROTECTED, Modifier.PRIVATE);
 
     private final boolean checkClass;
     private final boolean visitMaxs;
@@ -269,7 +273,7 @@ public final class ByteCodeWriter {
         }
         List<TypeDef> componentTypes = components.stream().map(PropertyDef::getType).toList();
         if (!isDeclared(recordDef, MethodDef.CONSTRUCTOR, componentTypes)) {
-            writeMethod(classVisitor, recordDef, canonicalConstructor(components, componentFields), emittedBridges);
+            writeMethod(classVisitor, recordDef, canonicalConstructor(recordDef, components, componentFields), emittedBridges);
         }
         writeObjectMethods(classVisitor, recordDef, componentFields);
         for (int i = 0; i < components.size(); i++) {
@@ -281,7 +285,7 @@ public final class ByteCodeWriter {
             writeMethod(classVisitor, recordDef, MethodDef.builder(component.getName())
                 .addModifiers(Modifier.PUBLIC)
                 .returns(component.getType())
-                .addAnnotations(component.getAnnotations())
+                .addAnnotations(annotationsFor(component, ElementType.METHOD))
                 .build((aThis, methodParameters) -> aThis.field(componentField).returning()), emittedBridges);
         }
         for (MethodDef method : recordDef.getMethods()) {
@@ -292,8 +296,50 @@ public final class ByteCodeWriter {
     private static FieldDef toComponentField(PropertyDef component) {
         return FieldDef.builder(component.getName(), component.getType())
             .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
-            .addAnnotations(component.getAnnotations())
+            .addAnnotations(annotationsFor(component, ElementType.FIELD))
             .build();
+    }
+
+    /**
+     * The annotations of a record component that belong on one of the members it expands to. A compiler
+     * spreads a component's annotations over the component itself, the field backing it, its accessor and
+     * the canonical constructor's parameter, keeping each only where the annotation's {@link Target} allows
+     * it. An annotation that declares no target is applicable in every one of those contexts, and so is one
+     * whose type cannot be resolved here - it is written everywhere rather than dropped.
+     *
+     * @param component   The record component
+     * @param elementType The context the annotations are written in
+     * @return The annotations that belong there
+     */
+    private static List<AnnotationDef> annotationsFor(PropertyDef component, ElementType elementType) {
+        return component.getAnnotations().stream().filter(annotation -> {
+            Class<?> annotationType = resolveAnnotationType(annotation.getType());
+            if (annotationType == null) {
+                return true;
+            }
+            Target target = annotationType.getAnnotation(Target.class);
+            return target == null || Arrays.asList(target.value()).contains(elementType);
+        }).toList();
+    }
+
+    /**
+     * @param typeDef The annotation type
+     * @return The annotation class, or {@code null} when the definition carries no class for it and none
+     * can be loaded - a type generated in this same round, for one
+     */
+    @Nullable
+    private static Class<?> resolveAnnotationType(ClassTypeDef typeDef) {
+        if (typeDef instanceof ClassTypeDef.JavaClass javaClass) {
+            return javaClass.type();
+        }
+        if (typeDef instanceof ClassTypeDef.ClassDefType) {
+            return null;
+        }
+        try {
+            return Class.forName(typeDef.getName(), false, ByteCodeWriter.class.getClassLoader());
+        } catch (ClassNotFoundException | LinkageError e) {
+            return null;
+        }
     }
 
     private void writeRecordComponent(ClassVisitor classVisitor, RecordDef recordDef, PropertyDef component, FieldDef componentField) {
@@ -302,7 +348,7 @@ public final class ByteCodeWriter {
             TypeUtils.getType(component.getType(), recordDef).getDescriptor(),
             SignatureWriterUtils.getFieldSignature(recordDef, componentField)
         );
-        for (AnnotationDef annotation : component.getAnnotations()) {
+        for (AnnotationDef annotation : annotationsFor(component, ElementType.RECORD_COMPONENT)) {
             AnnotationVisitor annotationVisitor = recordComponentVisitor.visitAnnotation(
                 TypeUtils.getType(annotation.getType(), null).getDescriptor(),
                 true);
@@ -311,11 +357,17 @@ public final class ByteCodeWriter {
         recordComponentVisitor.visitEnd();
     }
 
-    private MethodDef canonicalConstructor(List<PropertyDef> components, List<FieldDef> componentFields) {
-        MethodDef.MethodDefBuilder builder = MethodDef.constructor().addModifiers(Modifier.PUBLIC);
+    private MethodDef canonicalConstructor(RecordDef recordDef, List<PropertyDef> components, List<FieldDef> componentFields) {
+        MethodDef.MethodDefBuilder builder = MethodDef.constructor();
+        // An implicitly declared canonical constructor has the access of the record itself (JLS 8.10.4.1)
+        for (Modifier accessModifier : ACCESS_MODIFIERS) {
+            if (recordDef.getModifiers().contains(accessModifier)) {
+                builder.addModifiers(accessModifier);
+            }
+        }
         for (PropertyDef component : components) {
             builder.addParameter(ParameterDef.builder(component.getName(), component.getType())
-                .addAnnotations(component.getAnnotations())
+                .addAnnotations(annotationsFor(component, ElementType.PARAMETER))
                 .build());
         }
         return builder.build((aThis, methodParameters) -> {

@@ -30,6 +30,10 @@ import org.objectweb.asm.util.TraceClassVisitor;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -37,6 +41,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.lang.reflect.Method;
 import java.util.AbstractList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,6 +73,9 @@ import static io.micronaut.sourcegen.model.ExpressionDef.MathUnaryOperation.OpTy
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ByteCodeWriterTest {
+
+    private static final int ACCESS_MODIFIERS_MASK =
+        java.lang.reflect.Modifier.PUBLIC | java.lang.reflect.Modifier.PROTECTED | java.lang.reflect.Modifier.PRIVATE;
 
     @Test
     void testSuperCall() throws Exception {
@@ -5592,6 +5600,26 @@ public final class example/MyRecord extends java/lang/Record {
     }
 
     @Test
+    void testCanonicalConstructorHasTheAccessOfTheRecord() throws Exception {
+        // Only the access a top level class can carry: protected and private belong to a nested one
+        for (Modifier[] modifiers : List.of(new Modifier[]{Modifier.PUBLIC}, new Modifier[]{})) {
+            RecordDef recordDef = RecordDef.builder("example.MyRecord")
+                .addModifiers(modifiers)
+                .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING).build())
+                .build();
+
+            Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+            var constructor = recordClass.getDeclaredConstructors()[0];
+
+            assertEquals(
+                java.lang.reflect.Modifier.toString(recordClass.getModifiers() & ACCESS_MODIFIERS_MASK),
+                java.lang.reflect.Modifier.toString(constructor.getModifiers() & ACCESS_MODIFIERS_MASK),
+                "The canonical constructor of a " + Arrays.toString(modifiers) + " record"
+            );
+        }
+    }
+
+    @Test
     void testRecordWithoutComponents() throws Exception {
         RecordDef recordDef = RecordDef.builder("example.MyRecord")
             .addModifiers(Modifier.PUBLIC)
@@ -6134,24 +6162,66 @@ public final class example/Outer$Inner extends java/lang/Record {
     }
 
     @Test
-    void testRecordComponentAnnotationsReachEveryMember() throws Exception {
+    void testRecordComponentAnnotationsGoWhereTheyAreTargeted() throws Exception {
         RecordDef recordDef = RecordDef.builder("example.MyRecord")
             .addModifiers(Modifier.PUBLIC)
             .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
+                .addAnnotation(ComponentOnly.class)
+                .addAnnotation(FieldOnly.class)
+                .addAnnotation(Untargeted.class)
                 .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(Deprecated.class))
                     .addMember("since", "1.0")
                     .build())
                 .build())
             .build();
 
-        StringWriter bytecodeWriter = new StringWriter();
-        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, bytecodeWriter));
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+        var component = recordClass.getRecordComponents()[0];
+        var field = recordClass.getDeclaredField("name");
+        var accessor = recordClass.getMethod("name");
+        var parameterAnnotations = recordClass.getConstructors()[0].getParameterAnnotations()[0];
 
-        // A compiler spreads a component's annotation over every member it produces
-        assertEquals("1.0", recordClass.getRecordComponents()[0].getAnnotation(Deprecated.class).since());
-        assertEquals("1.0", recordClass.getDeclaredField("name").getAnnotation(Deprecated.class).since());
-        assertEquals("1.0", recordClass.getMethod("name").getAnnotation(Deprecated.class).since());
-        assertEquals("1.0", ((Deprecated) recordClass.getConstructors()[0].getParameterAnnotations()[0][0]).since());
+        // A component's annotation is spread over the members it expands to, but only where it is targeted
+        Assertions.assertNotNull(component.getAnnotation(ComponentOnly.class));
+        Assertions.assertNull(field.getAnnotation(ComponentOnly.class));
+        Assertions.assertNull(accessor.getAnnotation(ComponentOnly.class));
+        Assertions.assertFalse(Stream.of(parameterAnnotations).anyMatch(ComponentOnly.class::isInstance));
+
+        Assertions.assertNull(component.getAnnotation(FieldOnly.class));
+        Assertions.assertNotNull(field.getAnnotation(FieldOnly.class));
+        Assertions.assertNull(accessor.getAnnotation(FieldOnly.class));
+        Assertions.assertFalse(Stream.of(parameterAnnotations).anyMatch(FieldOnly.class::isInstance));
+
+        // An annotation declaring no target is applicable in all of them
+        Assertions.assertNotNull(component.getAnnotation(Untargeted.class));
+        Assertions.assertNotNull(field.getAnnotation(Untargeted.class));
+        Assertions.assertNotNull(accessor.getAnnotation(Untargeted.class));
+        Assertions.assertTrue(Stream.of(parameterAnnotations).anyMatch(Untargeted.class::isInstance));
+
+        // Deprecated targets everything a component expands to except the component itself
+        Assertions.assertNull(component.getAnnotation(Deprecated.class));
+        assertEquals("1.0", field.getAnnotation(Deprecated.class).since());
+        assertEquals("1.0", accessor.getAnnotation(Deprecated.class).since());
+        assertEquals("1.0", Stream.of(parameterAnnotations)
+            .filter(Deprecated.class::isInstance).map(Deprecated.class::cast).findFirst().orElseThrow().since());
+    }
+
+    @Test
+    void testRecordComponentAnnotationOfAnUnresolvableTypeGoesEverywhere() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            // Nothing here can say where an annotation type that is only named belongs, so rather than
+            // dropping it the annotation is written wherever a component expands to
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
+                .addAnnotation("example.NotOnTheClasspath")
+                .build())
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(recordDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        assertEquals(4, bytecode.split("@Lexample/NotOnTheClasspath;", -1).length - 1);
     }
 
     @Test
@@ -6275,6 +6345,20 @@ public final class example/MyRecord extends java/lang/Record {
                 return defineClass(name, bytes, 0, bytes.length);
             }
         }.define();
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.RECORD_COMPONENT)
+    @interface ComponentOnly {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    @interface FieldOnly {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface Untargeted {
     }
 
     static class MyAbstractClass {
