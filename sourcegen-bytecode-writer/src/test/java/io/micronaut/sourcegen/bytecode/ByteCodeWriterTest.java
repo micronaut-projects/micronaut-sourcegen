@@ -38,6 +38,8 @@ import java.lang.annotation.Target;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.AnnotatedArrayType;
+import java.lang.reflect.AnnotatedParameterizedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.lang.reflect.Method;
@@ -6225,6 +6227,45 @@ public final class example/Outer$Inner extends java/lang/Record {
         Assertions.assertNull(field.getAnnotation(TypeUseOnly.class));
         Assertions.assertNull(accessor.getAnnotation(TypeUseOnly.class));
         Assertions.assertEquals(0, constructor.getParameterAnnotations()[0].length);
+    }
+
+    @Test
+    void testTypeUseAnnotationsAreWrittenAgainstThePathThatReachesThem() throws Exception {
+        AnnotationDef annotation = AnnotationDef.builder(ClassTypeDef.of(TypeUseOnly.class)).build();
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            // What the array holds, not the array
+            .addProperty(PropertyDef.builder("elementAnnotated")
+                .ofType(new TypeDef.Array(TypeDef.STRING.annotated(annotation), 1, false)).build())
+            // The array itself
+            .addProperty(PropertyDef.builder("arrayAnnotated")
+                .ofType(TypeDef.STRING.array().annotated(annotation)).build())
+            .addProperty(PropertyDef.builder("argumentAnnotated")
+                .ofType(TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.STRING.annotated(annotation))).build())
+            .addProperty(PropertyDef.builder("nestedArgumentAnnotated")
+                .ofType(TypeDef.parameterized(ClassTypeDef.of(Map.class), TypeDef.STRING,
+                    TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.STRING.annotated(annotation)))).build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+
+        // The paths a compiler writes: ARRAY, none, TYPE_ARGUMENT(0), and TYPE_ARGUMENT(1) TYPE_ARGUMENT(0)
+        var elementAnnotated = (AnnotatedArrayType) recordClass.getDeclaredField("elementAnnotated").getAnnotatedType();
+        Assertions.assertNull(elementAnnotated.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(elementAnnotated.getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+
+        var arrayAnnotated = (AnnotatedArrayType) recordClass.getDeclaredField("arrayAnnotated").getAnnotatedType();
+        Assertions.assertNotNull(arrayAnnotated.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(arrayAnnotated.getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+
+        var argumentAnnotated = (AnnotatedParameterizedType) recordClass.getDeclaredField("argumentAnnotated").getAnnotatedType();
+        Assertions.assertNull(argumentAnnotated.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(argumentAnnotated.getAnnotatedActualTypeArguments()[0].getAnnotation(TypeUseOnly.class));
+
+        var nested = (AnnotatedParameterizedType) recordClass.getDeclaredField("nestedArgumentAnnotated").getAnnotatedType();
+        var innerList = (AnnotatedParameterizedType) nested.getAnnotatedActualTypeArguments()[1];
+        Assertions.assertNull(nested.getAnnotatedActualTypeArguments()[0].getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(innerList.getAnnotatedActualTypeArguments()[0].getAnnotation(TypeUseOnly.class));
     }
 
     @Test

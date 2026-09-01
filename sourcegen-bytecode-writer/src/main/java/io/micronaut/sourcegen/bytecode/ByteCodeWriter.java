@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.bytecode;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.naming.NameUtils;
+import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.sourcegen.bytecode.statement.StatementWriter;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
@@ -49,6 +50,7 @@ import org.objectweb.asm.TypeReference;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.util.CheckClassAdapter;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
@@ -158,24 +160,50 @@ public final class ByteCodeWriter {
      * @param member   The member the annotations are written on
      */
     private void writeTypeAnnotations(TypeDef typeDef, int typeRef, TypeAnnotatable member) {
-        for (AnnotationDef annotation : typeAnnotationsOf(typeDef)) {
+        writeTypeAnnotations(typeDef, typeRef, "", member);
+    }
+
+    /**
+     * Walk a type, writing the annotations each part of it carries against the path that reaches that part.
+     * An annotation on the type itself has no path, one on what an array holds is reached through the array,
+     * and one on a type argument through the argument it annotates - the way {@code List<@Nullable String>}
+     * annotates the argument and not the list.
+     *
+     * @param typeDef  The type to walk
+     * @param typeRef  The reference of the type within the member, from {@link TypeReference}
+     * @param typePath The path reaching this part of the type, encoded as {@link TypePath#fromString} reads it
+     * @param member   The member the annotations are written on
+     */
+    private void writeTypeAnnotations(TypeDef typeDef, int typeRef, String typePath, TypeAnnotatable member) {
+        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
+            writeTypeAnnotations(annotated.annotations(), typeRef, typePath, member);
+            writeTypeAnnotations(annotated.typeDef(), typeRef, typePath, member);
+        } else if (typeDef instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
+            writeTypeAnnotations(annotated.annotations(), typeRef, typePath, member);
+            writeTypeAnnotations(annotated.typeDef(), typeRef, typePath, member);
+        } else if (typeDef instanceof TypeDef.Array array) {
+            writeTypeAnnotations(array.componentType(), typeRef, typePath + "[".repeat(array.dimensions()), member);
+        } else if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
+            List<TypeDef> typeArguments = parameterized.typeArguments();
+            for (int i = 0; i < typeArguments.size(); i++) {
+                writeTypeAnnotations(typeArguments.get(i), typeRef, typePath + i + ";", member);
+            }
+        } else if (typeDef instanceof TypeDef.Wildcard wildcard) {
+            for (TypeDef bound : CollectionUtils.concat(wildcard.upperBounds(), wildcard.lowerBounds())) {
+                writeTypeAnnotations(bound, typeRef, typePath + "*", member);
+            }
+        }
+    }
+
+    private void writeTypeAnnotations(List<AnnotationDef> annotations, int typeRef, String typePath, TypeAnnotatable member) {
+        for (AnnotationDef annotation : annotations) {
             visitAnnotation(annotation, member.visitTypeAnnotation(
                 typeRef,
-                null,
+                TypePath.fromString(typePath),
                 TypeUtils.getType(annotation.getType(), null).getDescriptor(),
                 true
             ));
         }
-    }
-
-    private static List<AnnotationDef> typeAnnotationsOf(TypeDef typeDef) {
-        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
-            return annotated.annotations();
-        }
-        if (typeDef instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
-            return annotated.annotations();
-        }
-        return List.of();
     }
 
     private MethodDef createStaticInitializer(StatementDef statement) {
@@ -383,12 +411,48 @@ public final class ByteCodeWriter {
         if (typeDef instanceof ClassTypeDef.ClassDefType classDefType) {
             return declaredTargetsOf(classDefType.objectDef());
         }
+        if (typeDef instanceof ClassTypeDef.ClassElementType classElementType) {
+            Target target = sourceTargetOf(classElementType.classElement());
+            if (target != null) {
+                return Optional.of(Set.of(target.value()));
+            }
+        }
         Class<?> annotationType = resolveAnnotationType(typeDef);
         if (annotationType == null) {
             return Optional.empty();
         }
         Target target = annotationType.getAnnotation(Target.class);
         return target == null ? Optional.empty() : Optional.of(Set.of(target.value()));
+    }
+
+    /**
+     * The {@link Target} of an annotation type that is being compiled, read from the compiler's own element.
+     * Its class cannot be loaded, and the annotation metadata of a {@link io.micronaut.inject.ast.ClassElement}
+     * cannot answer either: {@code Target} is one of the annotations
+     * {@code io.micronaut.core.annotation.AnnotationUtil#INTERNAL_ANNOTATION_NAMES} strips while the metadata
+     * is built. The compiler's element is reached through the native type, which only a Java element carries.
+     *
+     * @param classElement The annotation type
+     * @return Its target, or {@code null} when the element is not one of a Java compilation or declares none
+     */
+    @Nullable
+    private static Target sourceTargetOf(io.micronaut.inject.ast.ClassElement classElement) {
+        Object nativeType = classElement.getNativeType();
+        Element element = null;
+        if (nativeType instanceof Element nativeElement) {
+            element = nativeElement;
+        } else if (nativeType != null) {
+            try {
+                // A JavaNativeElement wraps the compiler's element, and lives in a module this one cannot see
+                Object unwrapped = nativeType.getClass().getMethod("element").invoke(nativeType);
+                if (unwrapped instanceof Element unwrappedElement) {
+                    element = unwrappedElement;
+                }
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                return null;
+            }
+        }
+        return element == null ? null : element.getAnnotation(Target.class);
     }
 
     /**
@@ -402,14 +466,36 @@ public final class ByteCodeWriter {
         return objectDef.getAnnotations().stream()
             .filter(a -> a.getType().getName().equals(Target.class.getName()))
             .findFirst()
-            .map(a -> {
-                Object value = a.getValues().get(AnnotationMetadata.VALUE_MEMBER);
-                Collection<?> values = value instanceof Collection<?> collection ? collection : List.of(value);
-                return values.stream()
-                    .filter(VariableDef.StaticField.class::isInstance)
-                    .map(v -> ElementType.valueOf(((VariableDef.StaticField) v).name()))
-                    .collect(Collectors.toSet());
-            });
+            .map(a -> toElementTypes(a.getValues().get(AnnotationMetadata.VALUE_MEMBER)))
+            // Nothing recognisable in the member leaves the annotation untargeted rather than targeting
+            // nothing at all, which would drop it from every member the component expands to
+            .filter(targets -> !targets.isEmpty());
+    }
+
+    /**
+     * @param value A member of a {@link Target}, however a definition happens to hold an enum constant: the
+     *              constant itself, a static field reference to it, its name, or several of those
+     * @return The element types it names
+     */
+    private static Set<ElementType> toElementTypes(@Nullable Object value) {
+        if (value == null) {
+            return Set.of();
+        }
+        if (value instanceof Collection<?> collection) {
+            return collection.stream().flatMap(v -> toElementTypes(v).stream()).collect(Collectors.toSet());
+        }
+        if (value instanceof Object[] array) {
+            return Arrays.stream(array).flatMap(v -> toElementTypes(v).stream()).collect(Collectors.toSet());
+        }
+        if (value instanceof ElementType elementType) {
+            return Set.of(elementType);
+        }
+        String name = value instanceof VariableDef.StaticField staticField ? staticField.name() : value.toString();
+        try {
+            return Set.of(ElementType.valueOf(name));
+        } catch (IllegalArgumentException e) {
+            return Set.of();
+        }
     }
 
     /**
