@@ -391,6 +391,14 @@ public final class ByteCodeWriter {
      * @return The annotated type
      */
     private static TypeDef annotateComponentType(TypeDef typeDef, List<AnnotationDef> annotations) {
+        // An annotation already on the type wraps it, and only this wrapper can be hiding an array - the one
+        // for a class type cannot. Descend through it and put it back, so what it annotates stays the same
+        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
+            return new TypeDef.AnnotatedTypeDef(
+                annotateComponentType(annotated.typeDef(), annotations),
+                annotated.annotations()
+            );
+        }
         if (typeDef instanceof TypeDef.Array array) {
             return new TypeDef.Array(
                 annotateComponentType(array.componentType(), annotations),

@@ -6263,6 +6263,27 @@ public final class example/Outer$Inner extends java/lang/Record {
     }
 
     @Test
+    void testATypeUseAnnotationReachesTheElementOfAnAlreadyAnnotatedArray() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            // The array itself is annotated by the type it was given, the component by its declaration:
+            // `@TypeUseOnly String @TypeUseAndField []`
+            .addProperty(PropertyDef.builder("names")
+                .ofType(TypeDef.STRING.array().annotated(AnnotationDef.builder(ClassTypeDef.of(TypeUseAndField.class)).build()))
+                .addAnnotation(TypeUseOnly.class)
+                .build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+        var names = (AnnotatedArrayType) recordClass.getDeclaredField("names").getAnnotatedType();
+
+        Assertions.assertNotNull(names.getAnnotation(TypeUseAndField.class));
+        Assertions.assertNull(names.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(names.getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(names.getAnnotatedGenericComponentType().getAnnotation(TypeUseAndField.class));
+    }
+
+    @Test
     void testTypeUseAnnotationsAreWrittenAgainstThePathThatReachesThem() throws Exception {
         AnnotationDef annotation = AnnotationDef.builder(ClassTypeDef.of(TypeUseOnly.class)).build();
         RecordDef recordDef = RecordDef.builder("example.MyRecord")
