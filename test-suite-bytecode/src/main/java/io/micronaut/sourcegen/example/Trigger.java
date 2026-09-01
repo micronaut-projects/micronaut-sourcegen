@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.example;
 
 import io.micronaut.sourcegen.custom.example.GenerateArray;
 import io.micronaut.sourcegen.custom.example.GenerateExpressions;
+import io.micronaut.sourcegen.custom.example.GenerateGenericBridges;
 import io.micronaut.sourcegen.custom.example.GenerateIfsPredicate;
 import io.micronaut.sourcegen.custom.example.GenerateInnerTypes;
 import io.micronaut.sourcegen.custom.example.GenerateLambda;
@@ -51,5 +52,6 @@ import io.micronaut.sourcegen.custom.example.GenerateSwitch;
 @GenerateLambda
 @GenerateStatements
 @GenerateExpressions
+@GenerateGenericBridges
 public class Trigger {
 }

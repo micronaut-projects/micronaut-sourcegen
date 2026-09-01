@@ -2,6 +2,7 @@ package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.PropertyDef;
@@ -183,6 +184,29 @@ public class SignatureWriterUtilsTest {
         Assertions.assertEquals(
             "<C:Lexample/MyBean;B:Lexample/AbstractMyBeanSuperBuilder<TC;TB;>;>Ljava/lang/Object;",
             SignatureWriterUtils.getClassSignature(abstractBuilder)
+        );
+    }
+
+    @Test
+    public void fieldSignature() {
+        TypeDef.TypeVariable variable = new TypeDef.TypeVariable("T");
+        ClassDef holder = ClassDef.builder("example.Holder")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(new TypeDef.TypeVariable("T", List.of(TypeDef.of(Number.class))))
+            .build();
+
+        // A field signature references its type, it never defines a type parameter
+        Assertions.assertEquals(
+            "TT;",
+            SignatureWriterUtils.getFieldSignature(holder, FieldDef.builder("value", variable).build())
+        );
+        Assertions.assertEquals(
+            "Ljava/util/List<TT;>;",
+            SignatureWriterUtils.getFieldSignature(holder, FieldDef.builder("values",
+                new ClassTypeDef.Parameterized(ClassTypeDef.of(List.class), List.of(variable))).build())
+        );
+        Assertions.assertNull(
+            SignatureWriterUtils.getFieldSignature(holder, FieldDef.builder("name", TypeDef.of(String.class)).build())
         );
     }
 

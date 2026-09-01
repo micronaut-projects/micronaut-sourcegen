@@ -46,6 +46,7 @@ import org.objectweb.asm.util.CheckClassAdapter;
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -53,6 +54,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.objectweb.asm.Opcodes.ACC_ABSTRACT;
+import static org.objectweb.asm.Opcodes.ACC_BRIDGE;
 import static org.objectweb.asm.Opcodes.ACC_ENUM;
 import static org.objectweb.asm.Opcodes.ACC_FINAL;
 import static org.objectweb.asm.Opcodes.ACC_INTERFACE;
@@ -66,6 +68,14 @@ import static org.objectweb.asm.Opcodes.V17;
 
 /**
  * Generates the classes directly by writing the bytecode.
+ *
+ * <p>Unlike a compiler, the writer synthesizes the bridge methods a class requires itself, derived
+ * from the declared supertypes. That derivation needs the supertype's method and generic metadata, so
+ * a supertype should be referenced through its definition — {@link ClassTypeDef#of(ObjectDef)} for
+ * another generated type, {@link ClassTypeDef#of(Class)} for a compiled class, or
+ * {@code ClassTypeDef.of(ClassElement)} for a source type. A generic supertype referenced only by its
+ * name, via {@link ClassTypeDef#of(String)}, carries no such metadata: no bridges can be derived from
+ * it, and calls through its erased signatures may fail with an {@link AbstractMethodError} at runtime.
  *
  * @author Denis Stepanov
  * @since 1.5
@@ -171,6 +181,7 @@ public final class ByteCodeWriter {
      * @param outerType The outer type
      */
     public void writeInterface(ClassVisitor classVisitor, InterfaceDef interfaceDef, @Nullable ClassTypeDef outerType) {
+        Set<String> emittedBridges = new HashSet<>();
         int modifiersFlag = ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(interfaceDef.getModifiers());
         if (interfaceDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
@@ -188,10 +199,10 @@ public final class ByteCodeWriter {
             visitAnnotation(annotation, annotationVisitor);
         }
         for (MethodDef method : interfaceDef.getMethods()) {
-            writeMethod(classVisitor, interfaceDef, method);
+            writeMethod(classVisitor, interfaceDef, method, emittedBridges);
         }
         for (PropertyDef property : interfaceDef.getProperties()) {
-            writeProperty(classVisitor, interfaceDef, property);
+            writeProperty(classVisitor, interfaceDef, property, emittedBridges);
         }
     }
 
@@ -246,6 +257,9 @@ public final class ByteCodeWriter {
      * @param outerType     The outer type
      */
     public void writeClass(ClassVisitor classVisitor, ClassDef classDef, @Nullable ClassTypeDef outerType) {
+        // The bridges emitted for this class, so the same erasure inherited by two overloads is
+        // written once; local to one emission, a reused writer starts fresh
+        Set<String> emittedBridges = new HashSet<>();
         ClassTypeDef typeDef = classDef.asTypeDef();
 
         int modifiersFlag = getModifiersFlag(classDef.getModifiers());
@@ -288,7 +302,7 @@ public final class ByteCodeWriter {
             staticInitStatements.add(staticInitializer);
         }
         if (!staticInitStatements.isEmpty()) {
-            writeMethod(classVisitor, classDef, createStaticInitializer(StatementDef.multi(staticInitStatements)));
+            writeMethod(classVisitor, classDef, createStaticInitializer(StatementDef.multi(staticInitStatements)), emittedBridges);
         }
 
         if (classDef.getMethods().stream().noneMatch(MethodDef::isConstructor)) {
@@ -298,14 +312,14 @@ public final class ByteCodeWriter {
                 defaultConstructor.addModifiers(Modifier.PUBLIC);
             }
             writeMethod(classVisitor, classDef, defaultConstructor
-                .build((aThis, methodParameters) -> aThis.superRef().invokeSuperConstructor(methodParameters)));
+                .build((aThis, methodParameters) -> aThis.superRef().invokeSuperConstructor(methodParameters)), emittedBridges);
         }
 
         for (PropertyDef property : classDef.getProperties()) {
-            writeProperty(classVisitor, classDef, property);
+            writeProperty(classVisitor, classDef, property, emittedBridges);
         }
         for (MethodDef method : classDef.getMethods()) {
-            writeMethod(classVisitor, classDef, method);
+            writeMethod(classVisitor, classDef, method, emittedBridges);
         }
     }
 
@@ -400,7 +414,7 @@ public final class ByteCodeWriter {
         }
     }
 
-    private void writeProperty(ClassVisitor classWriter, ObjectDef objectDef, PropertyDef property) {
+    private void writeProperty(ClassVisitor classWriter, ObjectDef objectDef, PropertyDef property, Set<String> emittedBridges) {
         FieldDef propertyField = FieldDef.builder(property.getName(), property.getType())
             .addModifiers(Modifier.PRIVATE)
             .addAnnotations(property.getAnnotations())
@@ -419,7 +433,7 @@ public final class ByteCodeWriter {
             getterBuilder.addStatement((aThis, methodParameters) -> aThis.field(propertyField).returning());
         }
 
-        writeMethod(classWriter, objectDef, getterBuilder.build());
+        writeMethod(classWriter, objectDef, getterBuilder.build(), emittedBridges);
 
         MethodDef.MethodDefBuilder setterBuilder = MethodDef.builder("set" + capitalizedPropertyName)
             .addParameter(ParameterDef.of(property.getName(), property.getType()))
@@ -429,7 +443,7 @@ public final class ByteCodeWriter {
             setterBuilder.addStatement((aThis, methodParameters) -> aThis.field(propertyField).assign(methodParameters.get(0)));
         }
 
-        writeMethod(classWriter, objectDef, setterBuilder.build());
+        writeMethod(classWriter, objectDef, setterBuilder.build(), emittedBridges);
     }
 
     /**
@@ -439,28 +453,31 @@ public final class ByteCodeWriter {
      * @param objectDef    The object definition
      * @param methodDef    The method definition
      */
-    private void writeMethod(ClassVisitor classVisitor, @Nullable ObjectDef objectDef, MethodDef methodDef) {
-        writeMethod(classVisitor, objectDef, methodDef, false);
+    private void writeMethod(ClassVisitor classVisitor, @Nullable ObjectDef objectDef, MethodDef methodDef, Set<String> emittedBridges) {
+        writeMethod(classVisitor, objectDef, methodDef, false, 0, emittedBridges);
     }
 
-    private void writeMethod(ClassVisitor classVisitor, @Nullable ObjectDef objectDef, MethodDef methodDef, boolean isLambda) {
+    private void writeMethod(ClassVisitor classVisitor,
+                             @Nullable ObjectDef objectDef,
+                             MethodDef methodDef,
+                             boolean isLambda,
+                             int extraModifiersFlag,
+                             Set<String> emittedBridges) {
         String name = methodDef.getName();
         String methodDescriptor = TypeUtils.getMethodDescriptor(objectDef, methodDef);
-        int modifiersFlag = getModifiersFlag(methodDef.getModifiers());
+        int modifiersFlag = getModifiersFlag(methodDef.getModifiers()) | extraModifiersFlag;
         if (methodDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
-        String[] exceptions = null;
-        if (!methodDef.getThrowTypes().isEmpty()) {
-            exceptions = methodDef.getThrowTypes().stream()
-                .map(t -> TypeUtils.getType(t, objectDef).getClassName().replace(".", "/"))
-                .toArray(String[]::new);
-        }
+        String[] exceptions = methodDef.getThrowTypes().isEmpty() ? null : methodDef.getThrowTypes().stream()
+            .map(t -> TypeUtils.getType(t, objectDef).getClassName().replace(".", "/"))
+            .toArray(String[]::new);
         MethodVisitor methodVisitor = classVisitor.visitMethod(
             modifiersFlag,
             name,
             methodDescriptor,
-            SignatureWriterUtils.getMethodSignature(objectDef, methodDef),
+            // A bridge carries an erased signature, it never gets a Signature attribute
+            (modifiersFlag & ACC_BRIDGE) == 0 ? SignatureWriterUtils.getMethodSignature(objectDef, methodDef) : null,
             exceptions
         );
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, methodDescriptor);
@@ -473,8 +490,45 @@ public final class ByteCodeWriter {
         }
 
         MethodContext context = new MethodContext(objectDef, methodDef, isLambda);
-        Label startMethod = null;
+        Label startMethod = writeParameters(generatorAdapter, objectDef, methodDef, context);
 
+        List<StatementDef> statements = methodDef.getStatements();
+        if (methodDef.isConstructor()) {
+            statements = adjustConstructorStatements(objectDef, statements);
+        }
+        if (!statements.isEmpty()) {
+            writeStatements(generatorAdapter, objectDef, methodDef, context, statements, startMethod);
+        }
+        writeLocalVariableTable(methodVisitor, generatorAdapter, context);
+        if (visitMaxs && !statements.isEmpty()) {
+            generatorAdapter.visitMaxs(20, 20);
+        }
+        generatorAdapter.visitEnd();
+
+        for (MethodDef lambdaDef: context.lambdaMethods()) {
+            writeMethod(classVisitor, objectDef, lambdaDef, true, 0, emittedBridges);
+        }
+
+        if (!isLambda && (extraModifiersFlag & ACC_BRIDGE) == 0) {
+            writeBridgeMethods(classVisitor, objectDef, methodDef, emittedBridges);
+        }
+    }
+
+    /**
+     * Register the parameters as locals and write their annotations.
+     *
+     * @param generatorAdapter The generator adapter
+     * @param objectDef        The object definition
+     * @param methodDef        The method definition
+     * @param context          The method context
+     * @return The label the parameters start at, or {@code null} when the method has none
+     */
+    @Nullable
+    private Label writeParameters(GeneratorAdapter generatorAdapter,
+                                  @Nullable ObjectDef objectDef,
+                                  MethodDef methodDef,
+                                  MethodContext context) {
+        Label startMethod = null;
         int parameterIndex = 0;
         // The slot of a parameter: `this` takes slot 0 of an instance method, and a long or double takes two
         int slot = methodDef.getModifiers().contains(Modifier.STATIC) ? 0 : 1;
@@ -499,28 +553,49 @@ public final class ByteCodeWriter {
             parameterIndex++;
             slot += parameterType.getSize();
         }
+        return startMethod;
+    }
 
-        List<StatementDef> statements = methodDef.getStatements();
-        if (methodDef.isConstructor()) {
-            statements = adjustConstructorStatements(objectDef, statements);
+    /**
+     * Write the body of a method, appending the implicit return of a void method.
+     *
+     * @param generatorAdapter The generator adapter
+     * @param objectDef        The object definition
+     * @param methodDef        The method definition
+     * @param context          The method context
+     * @param statements       The statements to write
+     * @param startMethod      The label the parameters start at
+     */
+    private void writeStatements(GeneratorAdapter generatorAdapter,
+                                 @Nullable ObjectDef objectDef,
+                                 MethodDef methodDef,
+                                 MethodContext context,
+                                 List<StatementDef> statements,
+                                 @Nullable Label startMethod) {
+        generatorAdapter.visitCode();
+        if (startMethod != null) {
+            generatorAdapter.visitLabel(startMethod);
         }
-        if (!statements.isEmpty()) {
-            generatorAdapter.visitCode();
-            if (startMethod != null) {
-                generatorAdapter.visitLabel(startMethod);
-            }
-            for (StatementDef statement : statements) {
-                StatementWriter.of(statement).write(generatorAdapter, context, null);
-            }
-            StatementDef statementDef = statements.getLast();
-            if (!hasReturnStatement(statementDef)) {
-                if (methodDef.getReturnType().equals(TypeDef.VOID)) {
-                    generatorAdapter.returnValue();
-                } else {
-                    throw new IllegalStateException("The method: " + (objectDef == null ? "" : objectDef.getName()) + " " + methodDef.getName() + " doesn't return the result!");
-                }
-            }
+        for (StatementDef statement : statements) {
+            StatementWriter.of(statement).write(generatorAdapter, context, null);
         }
+        if (hasReturnStatement(statements.getLast())) {
+            return;
+        }
+        if (!methodDef.getReturnType().equals(TypeDef.VOID)) {
+            throw new IllegalStateException("The method: " + (objectDef == null ? "" : objectDef.getName()) + " " + methodDef.getName() + " doesn't return the result!");
+        }
+        generatorAdapter.returnValue();
+    }
+
+    /**
+     * Write the local variable table of a method.
+     *
+     * @param methodVisitor    The method visitor
+     * @param generatorAdapter The generator adapter
+     * @param context          The method context
+     */
+    private void writeLocalVariableTable(MethodVisitor methodVisitor, GeneratorAdapter generatorAdapter, MethodContext context) {
         Label endMethod = new Label();
         if (!context.locals().isEmpty()) {
             generatorAdapter.visitLabel(endMethod);
@@ -535,14 +610,67 @@ public final class ByteCodeWriter {
                 localsDatum.index()
             );
         }
-        if (visitMaxs && !statements.isEmpty()) {
-            generatorAdapter.visitMaxs(20, 20);
-        }
-        generatorAdapter.visitEnd();
+    }
 
-        for (MethodDef lambdaDef: context.lambdaMethods()) {
-            writeMethod(classVisitor, objectDef, lambdaDef, true);
+    /**
+     * Write the bridge methods a method requires.
+     *
+     * <p>The bridges are resolved from the declared supertypes: one per inherited method that this
+     * method overrides with a different erasure. A bridge delegates to the method, casting any
+     * parameter whose type was erased. Bridges of an abstract method are abstract too, and the declared
+     * exceptions and the annotations of the delegate are repeated on the bridge, matching what the Java
+     * compiler emits.
+     *
+     * @param classVisitor The class visitor
+     * @param objectDef    The object definition
+     * @param methodDef    The method the bridges delegate to
+     */
+    private void writeBridgeMethods(ClassVisitor classVisitor,
+                                    @Nullable ObjectDef objectDef,
+                                    MethodDef methodDef,
+                                    Set<String> emittedBridges) {
+        List<BridgeResolver.BridgeMethod> resolved = BridgeResolver.resolve(objectDef, methodDef);
+        if (resolved.isEmpty()) {
+            return;
         }
+        // An interface bridge is always a concrete default method delegating through the interface,
+        // even when the method it bridges is abstract; that is what the Java compiler emits, because
+        // interface dispatch reaches the implementation either way
+        boolean isInterface = objectDef instanceof InterfaceDef;
+        boolean isAbstract = !isInterface && methodDef.getModifiers().contains(Modifier.ABSTRACT);
+        List<ParameterDef> parameters = methodDef.getParameters();
+        for (BridgeResolver.BridgeMethod bridge : resolved) {
+            MethodDef.MethodDefBuilder builder = MethodDef.builder(methodDef.getName())
+                .addModifiers(bridgeModifiers(methodDef, isAbstract))
+                .returns(bridge.returnType())
+                .addAnnotations(methodDef.getAnnotations())
+                .addThrows(methodDef.getThrowTypes());
+            for (int i = 0; i < parameters.size(); i++) {
+                ParameterDef parameter = parameters.get(i);
+                builder.addParameter(ParameterDef.builder(parameter.getName(), bridge.parameterTypes().get(i))
+                    .addAnnotations(parameter.getAnnotations())
+                    .build());
+            }
+            if (!isAbstract) {
+                builder.addStatement((aThis, bridgeParameters) -> {
+                    // The invocation casts every parameter to the type of the delegate
+                    ExpressionDef.InvokeInstanceMethod invocation = aThis.invoke(methodDef, bridgeParameters);
+                    return bridge.returnType().equals(TypeDef.VOID) ? invocation : invocation.returning();
+                });
+            }
+            MethodDef bridgeDef = builder.build();
+            // Same-name overloads of the class can each resolve the same bridge; two methods with
+            // different names never collide, so the name is part of the key
+            if (emittedBridges.add(bridgeDef.getName() + TypeUtils.getMethodDescriptor(objectDef, bridgeDef))) {
+                writeMethod(classVisitor, objectDef, bridgeDef, false, ACC_BRIDGE | ACC_SYNTHETIC, emittedBridges);
+            }
+        }
+    }
+
+    private static Collection<Modifier> bridgeModifiers(MethodDef methodDef, boolean isAbstract) {
+        return methodDef.getModifiers().stream()
+            .filter(m -> m == Modifier.PUBLIC || m == Modifier.PROTECTED || m == Modifier.PRIVATE || (isAbstract && m == Modifier.ABSTRACT))
+            .toList();
     }
 
     private List<StatementDef> adjustConstructorStatements(@Nullable ObjectDef objectDef, List<StatementDef> statements) {

@@ -48,7 +48,8 @@ final class SignatureWriterUtils {
             return null;
         }
         SignatureWriter writer = new SignatureWriter();
-        writeSignature(writer, objectDef, fieldDef.getType(), true);
+        // A field signature references its type, it never defines a type parameter
+        writeSignature(writer, objectDef, fieldDef.getType(), false);
         return writer.toString();
     }
 

@@ -84,9 +84,11 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
                 if (!superType.hasStereotype(SuperBuilder.class)) {
                     throw new ProcessingException(element, "Super type [" + superType.getName() + "] must be annotated with @" + SuperBuilder.class.getSimpleName());
                 }
-                String abstractSuperBuilderName = getAbstractSuperBuilderName(superType);
+                // The superclass carries the definition of the parent abstract builder, not only its
+                // name, so that writers can resolve the generic hierarchy: the bytecode writer derives
+                // the required bridge methods from it
                 abstractBuilder.superclass(TypeDef.parameterized(
-                    ClassTypeDef.of(abstractSuperBuilderName),
+                    ClassTypeDef.of(abstractSuperBuilderSignature(superType)),
                     List.of(
                         new TypeDef.TypeVariable("C"),
                         new TypeDef.TypeVariable("B")
@@ -182,6 +184,40 @@ public final class SuperBuilderAnnotationVisitor implements TypeElementVisitor<S
 
     private String getAbstractSuperBuilderName(ClassElement element) {
         return element.getPackageName() + "." + "Abstract" + element.getSimpleName() + "SuperBuilder";
+    }
+
+    /**
+     * Recreates the shape of the abstract builder generated for an ancestor: its type variables and its
+     * {@code self} and {@code build} declarations, chained up the hierarchy. The ancestor's builder is
+     * written when the ancestor itself is visited, possibly in a different compilation, so its
+     * definition is not available here; this signature carries the hierarchy metadata the writers need
+     * to resolve the generated builder's supertypes.
+     *
+     * @param element The ancestor annotated with {@link SuperBuilder}
+     * @return The signature of the ancestor's abstract builder
+     */
+    private ClassDef abstractSuperBuilderSignature(ClassElement element) {
+        String name = getAbstractSuperBuilderName(element);
+        ClassTypeDef type = ClassTypeDef.of(name);
+        TypeDef.TypeVariable producingType = TypeDef.variable("C");
+        TypeDef.TypeVariable selfType = TypeDef.variable("B");
+        ClassDef.ClassDefBuilder signature = ClassDef.builder(name)
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addTypeVariable(TypeDef.variable("C", TypeDef.of(element)))
+            .addTypeVariable(TypeDef.variable("B", TypeDef.parameterized(type, producingType, selfType)))
+            .addMethod(MethodDef.builder("self").addModifiers(Modifier.ABSTRACT).returns(selfType).build())
+            .addMethod(MethodDef.builder("build").addModifiers(Modifier.ABSTRACT).returns(producingType).build());
+        ClassElement superType = element.getSuperType().orElse(null);
+        if (superType != null && !superType.getName().equals("java.lang.Record") && superType.hasStereotype(SuperBuilder.class)) {
+            signature.superclass(TypeDef.parameterized(
+                ClassTypeDef.of(abstractSuperBuilderSignature(superType)),
+                List.of(
+                    new TypeDef.TypeVariable("C"),
+                    new TypeDef.TypeVariable("B")
+                )
+            ));
+        }
+        return signature.build();
     }
 
 }

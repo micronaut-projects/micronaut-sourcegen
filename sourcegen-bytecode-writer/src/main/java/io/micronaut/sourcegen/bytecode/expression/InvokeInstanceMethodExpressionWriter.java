@@ -23,6 +23,7 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -50,7 +51,9 @@ final class InvokeInstanceMethodExpressionWriter extends AbstractStatementAwareE
         for (ExpressionDef parameter : invokeInstanceMethod.values()) {
             ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, parameter, iterator.next().getType());
         }
-        TypeDef instanceType = instance.type();
+        // Resolve `this` to the current type, so an invocation on it inside an interface default
+        // method is dispatched with invokeinterface
+        TypeDef instanceType = ObjectDef.getContextualType(context.objectDef(), instance.type());
         Type methodOwnerType = TypeUtils.getType(instanceType, context.objectDef());
         MethodDef methodDef = invokeInstanceMethod.method();
         Method method = new Method(methodDef.getName(), TypeUtils.getMethodDescriptor(context.objectDef(), methodDef));

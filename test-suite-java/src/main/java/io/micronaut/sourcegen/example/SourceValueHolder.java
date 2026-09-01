@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 original authors
+ * Copyright 2017-2024 original authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,30 +15,19 @@
  */
 package io.micronaut.sourcegen.example;
 
+/**
+ * A hand-written generic class extended by a generated one, so the generated child can only see this
+ * hierarchy through the annotation-processing AST.
+ *
+ * @param <T> The value type
+ */
+public abstract class SourceValueHolder<T> {
 
-import io.micronaut.sourcegen.custom.example.*;
-
-import java.util.List;
-
-@GenerateMyBean1
-@GenerateMyBean2
-@GenerateMyBean3
-@GenerateMyRecord1
-@GenerateMyRecord3
-@GenerateInterface
-@GenerateMyRepository1
-@GenerateMyEnum1
-@GenerateIfsPredicate
-@GenerateSwitch
-@GenerateArray
-@GenerateAnnotatedType
-@GenerateInnerTypes
-@GenerateMyEnum2
-@GenerateMethodInvocation
-@GenerateLambda
-@GenerateStatements
-@GenerateAnnotationClass
-@GenerateGenericBridges
-public class Trigger {
-    public List<String> copyAddresses;
+    /**
+     * Store and return the value.
+     *
+     * @param value The value
+     * @return The value
+     */
+    public abstract T value(T value);
 }
