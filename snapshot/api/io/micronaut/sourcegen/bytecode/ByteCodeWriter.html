@@ -192,14 +192,14 @@ it, and calls through its erased signatures may fail with an <a href="https://do
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeRecord(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.RecordDef)" class="member-name-link">writeRecord</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Write an interface.</div>
+<div class="block">Write a record.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeRecord(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.RecordDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeRecord</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef,
  @Nullable <a href="../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Write an interface.</div>
+<div class="block">Write a record.</div>
 </div>
 </div>
 </div>
@@ -315,7 +315,7 @@ it, and calls through its erased signatures may fail with an <a href="https://do
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writeRecord</span><wbr><span class="parameters">(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef)</span></div>
-<div class="block">Write an interface.</div>
+<div class="block">Write a record.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>classVisitor</code> - The class visitor</dd>
@@ -331,7 +331,13 @@ it, and calls through its erased signatures may fail with an <a href="https://do
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writeRecord</span><wbr><span class="parameters">(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef,
  @Nullable <a href="../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</span></div>
-<div class="block">Write an interface.</div>
+<div class="block">Write a record.
+
+<p>The components of the record are expanded the way a compiler expands them: a record component,
+a private final field, the canonical constructor, an accessor per component, and <code>equals</code>,
+<code>hashCode</code> and <code>toString</code> linked through
+<code>java.lang.runtime.ObjectMethods#bootstrap</code>. A member the definition declares itself is kept,
+replacing the one that would have been generated.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>classVisitor</code> - The class visitor</dd>
