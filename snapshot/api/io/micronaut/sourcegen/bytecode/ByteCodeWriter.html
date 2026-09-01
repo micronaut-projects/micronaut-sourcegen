@@ -91,7 +91,15 @@ loadScripts(document, 'script');</script>
 <div class="horizontal-scroll">
 <div class="type-signature"><span class="modifiers">public final class </span><span class="element-name type-name-label">ByteCodeWriter</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
-<div class="block">Generates the classes directly by writing the bytecode.</div>
+<div class="block">Generates the classes directly by writing the bytecode.
+
+<p>Unlike a compiler, the writer synthesizes the bridge methods a class requires itself, derived
+from the declared supertypes. That derivation needs the supertype's method and generic metadata, so
+a supertype should be referenced through its definition — <a href="../model/ClassTypeDef.html#of(io.micronaut.sourcegen.model.ObjectDef)"><code>ClassTypeDef.of(ObjectDef)</code></a> for
+another generated type, <a href="../model/ClassTypeDef.html#of(java.lang.Class)"><code>ClassTypeDef.of(Class)</code></a> for a compiled class, or
+<code>ClassTypeDef.of(ClassElement)</code> for a source type. A generic supertype referenced only by its
+name, via <a href="../model/ClassTypeDef.html#of(java.lang.String)"><code>ClassTypeDef.of(String)</code></a>, carries no such metadata: no bridges can be derived from
+it, and calls through its erased signatures may fail with an <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/AbstractMethodError.html" title="class or interface in java.lang" class="external-link"><code>AbstractMethodError</code></a> at runtime.</div>
 <dl class="notes">
 <dt>Since:</dt>
 <dd>1.5</dd>
