@@ -138,7 +138,22 @@ final class SignatureWriterUtils {
     }
 
     private static boolean needsSignature(TypeDef typeDef) {
+        typeDef = unwrapAnnotated(typeDef);
         return typeDef instanceof ClassTypeDef.Parameterized || typeDef instanceof TypeDef.TypeVariable;
+    }
+
+    /**
+     * @param typeDef The type
+     * @return The type without the annotations it carries, which have no place in a signature
+     */
+    private static TypeDef unwrapAnnotated(TypeDef typeDef) {
+        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
+            return unwrapAnnotated(annotated.typeDef());
+        }
+        if (typeDef instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
+            return unwrapAnnotated(annotated.typeDef());
+        }
+        return typeDef;
     }
 
     private static void writeSignature(SignatureVisitor signatureWriter,
@@ -152,6 +167,7 @@ final class SignatureWriterUtils {
                                        @Nullable MethodDef methodDef,
                                        TypeDef typeDef, boolean isDefinition) {
         typeDef = ObjectDef.getContextualType(objectDef, typeDef);
+        typeDef = unwrapAnnotated(typeDef);
         if (typeDef instanceof TypeDef.Primitive primitive) {
             Type type = Type.getType(JavaModelUtils.NAME_TO_TYPE_MAP.get(primitive.name()));
             signatureWriter.visitBaseType(type.getDescriptor().charAt(0));

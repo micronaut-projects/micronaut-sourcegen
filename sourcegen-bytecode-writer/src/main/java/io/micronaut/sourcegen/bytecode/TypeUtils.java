@@ -58,6 +58,13 @@ public final class TypeUtils {
 
     public static Type getType(TypeDef typeDef, @Nullable ObjectDef objectDef) {
         typeDef = ObjectDef.getContextualType(objectDef, typeDef);
+        // The annotations a type carries are written separately, they play no part in its erasure
+        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
+            return getType(annotated.typeDef(), objectDef);
+        }
+        if (typeDef instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
+            return getType(annotated.typeDef(), objectDef);
+        }
         if (typeDef instanceof TypeDef.Array array) {
             return Type.getType("[".repeat(array.dimensions()) + getType(array.componentType(), objectDef).getDescriptor());
         }

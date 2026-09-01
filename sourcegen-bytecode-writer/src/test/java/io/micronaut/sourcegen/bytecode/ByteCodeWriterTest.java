@@ -9,6 +9,7 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.visitor.GenerateLambdaVisitor;
 import io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInEnumVisitor;
 import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -3804,8 +3805,8 @@ class MyClass {
 // declaration: test/MyClass
 class test/MyClass {
 
-  // access flags 0x9
-  public static INNERCLASS test/MyClass$Inner test/MyClass Inner
+  // access flags 0x8
+  static INNERCLASS test/MyClass$Inner test/MyClass Inner
   NESTMEMBER test/MyClass$Inner
 
   // access flags 0x0
@@ -3847,8 +3848,8 @@ class MyClass {
 // declaration: example/MyEnumWithInnerTypes extends java.lang.Enum<example.MyEnumWithInnerTypes>
 public final enum example/MyEnumWithInnerTypes extends java/lang/Enum {
 
-  // access flags 0x4019
-  public final static enum INNERCLASS example/MyEnumWithInnerTypes$InnerEnum example/MyEnumWithInnerTypes InnerEnum
+  // access flags 0x4018
+  final static enum INNERCLASS example/MyEnumWithInnerTypes$InnerEnum example/MyEnumWithInnerTypes InnerEnum
   NESTMEMBER example/MyEnumWithInnerTypes$InnerEnum
   // access flags 0x19
   public final static INNERCLASS example/MyEnumWithInnerTypes$InnerRecord example/MyEnumWithInnerTypes InnerRecord
@@ -6200,7 +6201,7 @@ public final class example/Outer$Inner extends java/lang/Record {
     }
 
     @Test
-    void testTypeUseComponentAnnotationsAreNotDropped() throws Exception {
+    void testTypeUseComponentAnnotationsAreWrittenOnTheType() throws Exception {
         RecordDef recordDef = RecordDef.builder("example.MyRecord")
             .addModifiers(Modifier.PUBLIC)
             .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
@@ -6209,14 +6210,21 @@ public final class example/Outer$Inner extends java/lang/Record {
             .build();
 
         Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+        var field = recordClass.getDeclaredField("name");
+        var accessor = recordClass.getMethod("name");
+        var constructor = recordClass.getConstructors()[0];
 
-        // This writer has no type annotations of its own, so a type use annotation is kept as a declaration
-        // annotation on everything the component expands to rather than being lost
-        Assertions.assertNotNull(recordClass.getRecordComponents()[0].getAnnotation(TypeUseOnly.class));
-        Assertions.assertNotNull(recordClass.getDeclaredField("name").getAnnotation(TypeUseOnly.class));
-        Assertions.assertNotNull(recordClass.getMethod("name").getAnnotation(TypeUseOnly.class));
-        Assertions.assertTrue(Stream.of(recordClass.getConstructors()[0].getParameterAnnotations()[0])
-            .anyMatch(TypeUseOnly.class::isInstance));
+        // A type use annotation belongs to the type of each member the component expands to
+        Assertions.assertNotNull(recordClass.getRecordComponents()[0].getAnnotatedType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(field.getAnnotatedType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(accessor.getAnnotatedReturnType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(constructor.getAnnotatedParameterTypes()[0].getAnnotation(TypeUseOnly.class));
+
+        // and to none of the declarations themselves
+        Assertions.assertNull(recordClass.getRecordComponents()[0].getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(field.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(accessor.getAnnotation(TypeUseOnly.class));
+        Assertions.assertEquals(0, constructor.getParameterAnnotations()[0].length);
     }
 
     @Test
@@ -6230,12 +6238,17 @@ public final class example/Outer$Inner extends java/lang/Record {
 
         Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
 
-        // It does target a declaration context, so it goes there and nowhere else
+        // The declaration context it targets is the field, so that is the only declaration it goes on
         Assertions.assertNotNull(recordClass.getDeclaredField("name").getAnnotation(TypeUseAndField.class));
         Assertions.assertNull(recordClass.getRecordComponents()[0].getAnnotation(TypeUseAndField.class));
         Assertions.assertNull(recordClass.getMethod("name").getAnnotation(TypeUseAndField.class));
         Assertions.assertFalse(Stream.of(recordClass.getConstructors()[0].getParameterAnnotations()[0])
             .anyMatch(TypeUseAndField.class::isInstance));
+
+        // Targeting a type use as well, it goes on every type too
+        Assertions.assertNotNull(recordClass.getDeclaredField("name").getAnnotatedType().getAnnotation(TypeUseAndField.class));
+        Assertions.assertNotNull(recordClass.getMethod("name").getAnnotatedReturnType().getAnnotation(TypeUseAndField.class));
+        Assertions.assertNotNull(recordClass.getConstructors()[0].getAnnotatedParameterTypes()[0].getAnnotation(TypeUseAndField.class));
     }
 
     @Test
@@ -6281,6 +6294,31 @@ public final class example/Outer$Inner extends java/lang/Record {
         assertEquals("1.0", accessor.getAnnotation(Deprecated.class).since());
         assertEquals("1.0", Stream.of(parameterAnnotations)
             .filter(Deprecated.class::isInstance).map(Deprecated.class::cast).findFirst().orElseThrow().since());
+    }
+
+    @Test
+    void testTargetsOfAnAnnotationTypeGeneratedAlongsideAreRead() throws Exception {
+        // The annotation type is written in this same round, so its class cannot be loaded to be asked
+        AnnotationObjectDef annotationDef = AnnotationObjectDef.builder("example.FieldOnly")
+            .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(Target.class))
+                .addMember("value", new VariableDef.StaticField(
+                    ClassTypeDef.of(ElementType.class), ElementType.FIELD.name(), ClassTypeDef.of(ElementType.class)
+                ))
+                .build())
+            .build();
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
+                .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(annotationDef)).build())
+                .build())
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(recordDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        // Its definition says it targets a field, so the field is the only place it is written
+        assertEquals(1, bytecode.split("@Lexample/FieldOnly;", -1).length - 1, bytecode);
     }
 
     @Test
