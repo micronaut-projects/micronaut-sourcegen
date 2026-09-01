@@ -65,6 +65,42 @@ class Holder {
         bytecode.count('@Ltest/Holder$TypeUseOnly;()\n') == 0
     }
 
+    void "targets survive the conversion of an annotation the visitor copied"() {
+        given:
+        ClassElement holder = buildClassElement('''
+package test;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+class Holder {
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    @interface FieldOnly {
+    }
+
+    @FieldOnly
+    String annotated;
+}
+''')
+        def field = holder.getEnclosedElements(ElementQuery.ALL_FIELDS).first()
+
+        when:
+        // The route a visitor takes to copy an annotation off an element it is looking at
+        AnnotationDef copied = AnnotationDef.of(field.annotationMetadata.getAnnotation('test.Holder$FieldOnly'), holder.visitorContext)
+        RecordDef recordDef = RecordDef.builder("test.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING).addAnnotation(copied).build())
+            .build()
+        String bytecode = write(recordDef)
+
+        then:
+        // Targeting a field, and known to, it is written on the field alone
+        bytecode.count('@Ltest/Holder$FieldOnly;()\n') == 1
+    }
+
     private static String write(RecordDef recordDef) {
         StringWriter stringWriter = new StringWriter()
         def classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES)

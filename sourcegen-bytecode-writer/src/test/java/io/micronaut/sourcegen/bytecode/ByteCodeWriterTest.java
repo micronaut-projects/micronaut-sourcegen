@@ -6230,6 +6230,39 @@ public final class example/Outer$Inner extends java/lang/Record {
     }
 
     @Test
+    void testATypeUseAnnotationOnAnArrayComponentAnnotatesWhatItHolds() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            // Declared on the component, the way a generator writes `@Nullable String[] names`
+            .addProperty(PropertyDef.builder("names").ofType(TypeDef.STRING.array())
+                .addAnnotation(TypeUseOnly.class)
+                .build())
+            .addProperty(PropertyDef.builder("grid").ofType(new TypeDef.Array(TypeDef.STRING, 2, false))
+                .addAnnotation(TypeUseOnly.class)
+                .build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+
+        // A compiler puts it on what the array holds, not on the array
+        var names = (AnnotatedArrayType) recordClass.getDeclaredField("names").getAnnotatedType();
+        Assertions.assertNull(names.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(names.getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+
+        var grid = (AnnotatedArrayType) recordClass.getDeclaredField("grid").getAnnotatedType();
+        var row = (AnnotatedArrayType) grid.getAnnotatedGenericComponentType();
+        Assertions.assertNull(grid.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(row.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(row.getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+
+        // The accessor and the constructor parameter say the same
+        Assertions.assertNotNull(((AnnotatedArrayType) recordClass.getMethod("names").getAnnotatedReturnType())
+            .getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(((AnnotatedArrayType) recordClass.getConstructors()[0].getAnnotatedParameterTypes()[0])
+            .getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+    }
+
+    @Test
     void testTypeUseAnnotationsAreWrittenAgainstThePathThatReachesThem() throws Exception {
         AnnotationDef annotation = AnnotationDef.builder(ClassTypeDef.of(TypeUseOnly.class)).build();
         RecordDef recordDef = RecordDef.builder("example.MyRecord")

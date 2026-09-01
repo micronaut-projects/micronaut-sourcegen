@@ -95,8 +95,9 @@ public final class AnnotationDef {
                 .collect(Collectors.toMap(FieldElement::getName, FieldElement::getType));
         }
 
-        // The other way to determine if the annotation is inner would be use the context to get the class element
-        ClassTypeDef annotationType = ClassTypeDef.of(annotation.getAnnotationName(), annotation.getAnnotationName().contains("$"));
+        // The element is kept rather than reduced to a name: it is the only thing that can answer for an
+        // annotation type being compiled alongside, whose class cannot be loaded
+        ClassTypeDef annotationType = ClassTypeDef.of(annotationElement);
         AnnotationDefBuilder builder = AnnotationDef.builder(annotationType);
         Map<String, ClassElement> finalFieldTypes = fieldTypes;
         annotation.getConvertibleValues().asMap().forEach((key, value) -> {

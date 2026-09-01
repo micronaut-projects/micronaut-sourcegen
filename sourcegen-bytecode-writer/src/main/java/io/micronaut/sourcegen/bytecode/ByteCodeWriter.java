@@ -378,7 +378,27 @@ public final class ByteCodeWriter {
         List<AnnotationDef> typeAnnotations = component.getAnnotations().stream()
             .filter(annotation -> targetsOf(annotation).map(t -> t.contains(ElementType.TYPE_USE)).orElse(false))
             .toList();
-        return typeAnnotations.isEmpty() ? component.getType() : component.getType().annotated(typeAnnotations);
+        return typeAnnotations.isEmpty() ? component.getType() : annotateComponentType(component.getType(), typeAnnotations);
+    }
+
+    /**
+     * An annotation written before the type of a component annotates what an array holds and not the array
+     * itself - {@code @Nullable String[]} is an array of annotated strings, which is how a compiler reads it
+     * and how the source generators render it. Any other type is annotated as it stands.
+     *
+     * @param typeDef     The type of the component
+     * @param annotations The type use annotations of the component
+     * @return The annotated type
+     */
+    private static TypeDef annotateComponentType(TypeDef typeDef, List<AnnotationDef> annotations) {
+        if (typeDef instanceof TypeDef.Array array) {
+            return new TypeDef.Array(
+                annotateComponentType(array.componentType(), annotations),
+                array.dimensions(),
+                array.nullable()
+            );
+        }
+        return typeDef.annotated(annotations);
     }
 
     /**
