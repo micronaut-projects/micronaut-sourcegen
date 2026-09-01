@@ -219,7 +219,7 @@ final class BridgeResolver {
                 // A generic ClassElement converts to a Parameterized over its own type variables; the
                 // raw declaration is inside and the outer arguments are the ones that matter
                 ClassTypeDef unnested = raw;
-                while (unnested instanceof ClassTypeDef.Parameterized(ClassTypeDef nested, List<TypeDef> _)) {
+                while (unnested instanceof ClassTypeDef.Parameterized(ClassTypeDef nested, _)) {
                     unnested = nested;
                 }
                 rawType = unnested;
@@ -292,7 +292,7 @@ final class BridgeResolver {
                 typeArguments.stream().map(t -> substitute(t, substitution)).toList()
             );
         }
-        if (unwrapped instanceof TypeDef.Array(TypeDef componentType, int dimensions, boolean _)) {
+        if (unwrapped instanceof TypeDef.Array(TypeDef componentType, int dimensions, _)) {
             return TypeDef.array(substitute(componentType, substitution), dimensions);
         }
         if (unwrapped instanceof TypeDef.Wildcard(List<TypeDef> upperBounds, List<TypeDef> lowerBounds)) {
@@ -317,13 +317,13 @@ final class BridgeResolver {
             TypeDef bound = boundOf(typeVariable, boundOwner, owner);
             return bound == null ? TypeDef.OBJECT : erase(bound, boundOwner, owner);
         }
-        if (unwrapped instanceof ClassTypeDef.Parameterized(ClassTypeDef rawType, List<TypeDef> _)) {
+        if (unwrapped instanceof ClassTypeDef.Parameterized(ClassTypeDef rawType, _)) {
             return rawType;
         }
-        if (unwrapped instanceof TypeDef.Wildcard(List<TypeDef> upperBounds, List<TypeDef> _)) {
+        if (unwrapped instanceof TypeDef.Wildcard(List<TypeDef> upperBounds, _)) {
             return upperBounds.isEmpty() ? TypeDef.OBJECT : erase(upperBounds.get(0), boundOwner, owner);
         }
-        if (unwrapped instanceof TypeDef.Array(TypeDef componentType, int dimensions, boolean _)) {
+        if (unwrapped instanceof TypeDef.Array(TypeDef componentType, int dimensions, _)) {
             return TypeDef.array(erase(componentType, boundOwner, owner), dimensions);
         }
         return unwrapped;
