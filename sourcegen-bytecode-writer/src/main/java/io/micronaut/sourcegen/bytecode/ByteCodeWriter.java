@@ -91,6 +91,14 @@ public final class ByteCodeWriter {
 
     private static final List<Modifier> ACCESS_MODIFIERS = List.of(Modifier.PUBLIC, Modifier.PROTECTED, Modifier.PRIVATE);
 
+    /**
+     * The declaration contexts a record component expands to: the component, the field backing it, its
+     * accessor and the canonical constructor's parameter.
+     */
+    private static final Set<ElementType> COMPONENT_DECLARATION_TARGETS = Set.of(
+        ElementType.RECORD_COMPONENT, ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER
+    );
+
     private final boolean checkClass;
     private final boolean visitMaxs;
 
@@ -191,7 +199,7 @@ public final class ByteCodeWriter {
      */
     public void writeInterface(ClassVisitor classVisitor, InterfaceDef interfaceDef, @Nullable ClassTypeDef outerType) {
         Set<String> emittedBridges = new HashSet<>();
-        int modifiersFlag = ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(interfaceDef.getModifiers());
+        int modifiersFlag = ACC_INTERFACE | ACC_ABSTRACT | getClassModifiersFlag(interfaceDef.getModifiers());
         if (interfaceDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
@@ -241,7 +249,7 @@ public final class ByteCodeWriter {
     public void writeRecord(ClassVisitor classVisitor, RecordDef recordDef, @Nullable ClassTypeDef outerType) {
         Set<String> emittedBridges = new HashSet<>();
         // A record is always final
-        int modifiersFlag = ACC_RECORD | ACC_FINAL | getModifiersFlag(recordDef.getModifiers());
+        int modifiersFlag = ACC_RECORD | ACC_FINAL | getClassModifiersFlag(recordDef.getModifiers());
         if (recordDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
@@ -312,14 +320,32 @@ public final class ByteCodeWriter {
      * @return The annotations that belong there
      */
     private static List<AnnotationDef> annotationsFor(PropertyDef component, ElementType elementType) {
-        return component.getAnnotations().stream().filter(annotation -> {
-            Class<?> annotationType = resolveAnnotationType(annotation.getType());
-            if (annotationType == null) {
-                return true;
-            }
-            Target target = annotationType.getAnnotation(Target.class);
-            return target == null || Arrays.asList(target.value()).contains(elementType);
-        }).toList();
+        return component.getAnnotations().stream()
+            .filter(annotation -> declarationTargetsOf(annotation).map(t -> t.contains(elementType)).orElse(true))
+            .toList();
+    }
+
+    /**
+     * @param annotation The annotation
+     * @return The contexts a record component expands to that the annotation targets, or empty when it
+     * targets all of them - because it declares no {@link Target}, because its type cannot be resolved here,
+     * or because it targets none of them at all and would otherwise be lost
+     */
+    private static Optional<Set<ElementType>> declarationTargetsOf(AnnotationDef annotation) {
+        Class<?> annotationType = resolveAnnotationType(annotation.getType());
+        if (annotationType == null) {
+            return Optional.empty();
+        }
+        Target target = annotationType.getAnnotation(Target.class);
+        if (target == null) {
+            return Optional.empty();
+        }
+        Set<ElementType> targets = Arrays.stream(target.value())
+            .filter(COMPONENT_DECLARATION_TARGETS::contains)
+            .collect(Collectors.toSet());
+        // A type use annotation targets none of them. This writer has no RuntimeVisibleTypeAnnotations of its
+        // own, so writing it as a declaration annotation keeps it readable rather than dropping it outright
+        return targets.isEmpty() ? Optional.empty() : Optional.of(targets);
     }
 
     /**
@@ -470,7 +496,7 @@ public final class ByteCodeWriter {
         Set<String> emittedBridges = new HashSet<>();
         ClassTypeDef typeDef = classDef.asTypeDef();
 
-        int modifiersFlag = getModifiersFlag(classDef.getModifiers());
+        int modifiersFlag = getClassModifiersFlag(classDef.getModifiers());
 
         if (classDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
@@ -539,9 +565,7 @@ public final class ByteCodeWriter {
                 TypeUtils.getType(thisType).getInternalName(),
                 outerInternalName,
                 thisType.getSimpleName(),
-                // The same flags the outer type writes for this member, so the two entries agree - without
-                // ACC_STATIC the class reads back as an inner class needing an enclosing instance
-                getModifiersFlag(thisDef) | ACC_PUBLIC | ACC_STATIC
+                getInnerClassModifiersFlag(thisDef)
             );
         }
         writeInnerTypes(classVisitor, thisType, thisDef.getInnerTypes());
@@ -552,16 +576,35 @@ public final class ByteCodeWriter {
             String outerClassInternalName = TypeUtils.getType(outerType).getInternalName();
 
             ClassTypeDef interType = innerDef.asTypeDef();
-            int access =  getModifiersFlag(innerDef);
-            access |= ACC_PUBLIC | ACC_STATIC; // Javac always adds public and static
             outerClassVisitor.visitInnerClass(
                 TypeUtils.getType(innerDef.asTypeDef()).getInternalName(),
                 outerClassInternalName,
                 interType.getSimpleName(),
-                access
+                getInnerClassModifiersFlag(innerDef)
             );
             outerClassVisitor.visitNestMember(TypeUtils.getType(innerDef.asTypeDef()).getInternalName());
         }
+    }
+
+    /**
+     * The access flags of the {@code InnerClasses} entry of a member type. This is where its declared access
+     * lives - the class file itself cannot carry private or protected - and a member type is always static
+     * here, without which it reads back as an inner class needing an enclosing instance. The outer type and
+     * the member itself both write this entry, and the two have to agree.
+     *
+     * <p>A member that declares no access is written public: a member type of an interface is implicitly
+     * public (JLS 9.5), which is what the source generators emit for one, and the definitions nested by the
+     * generators rely on being reachable.
+     *
+     * @param objectDef The member type
+     * @return The access flags of its inner class entry
+     */
+    private int getInnerClassModifiersFlag(ObjectDef objectDef) {
+        int access = getModifiersFlag(objectDef) | ACC_STATIC;
+        if ((access & (ACC_PUBLIC | ACC_PROTECTED | ACC_PRIVATE)) == 0) {
+            access |= ACC_PUBLIC;
+        }
+        return access;
     }
 
     private int getModifiersFlag(ObjectDef objectDef) {
@@ -947,6 +990,23 @@ public final class ByteCodeWriter {
     private boolean isConstructorInvocation(StatementDef statement) {
         boolean deprecatedCall = statement instanceof ExpressionDef.InvokeInstanceMethod call && call.method().isConstructor();
         return deprecatedCall || statement instanceof StatementDef.InvokeSuperConstructor;
+    }
+
+    /**
+     * The access flags of a class file. Unlike a member, a class cannot be declared private, protected or
+     * static there - those belong to the {@code InnerClasses} entry of a member type. A member type declared
+     * protected is reachable from a subclass in another package, so its class file is public, the way a
+     * compiler writes it.
+     *
+     * @param modifiers The declared modifiers
+     * @return The access flags of the class file
+     */
+    private int getClassModifiersFlag(Set<Modifier> modifiers) {
+        int access = getModifiersFlag(modifiers) & ~(ACC_PRIVATE | ACC_PROTECTED | ACC_STATIC);
+        if (modifiers.contains(Modifier.PROTECTED)) {
+            access |= ACC_PUBLIC;
+        }
+        return access;
     }
 
     private int getModifiersFlag(Set<Modifier> modifiers) {

@@ -6162,6 +6162,83 @@ public final class example/Outer$Inner extends java/lang/Record {
     }
 
     @Test
+    void testMemberRecordAccessIsWrittenWhereItBelongs() throws Exception {
+        // A class file cannot carry private or protected: the access of a member type lives in its
+        // InnerClasses entry, and its class file is public only when it is reachable from another package
+        for (var expected : List.of(
+            Map.entry(Modifier.PRIVATE, "  // access flags 0x1A\n  private final static INNERCLASS example/Outer$Inner example/Outer Inner"),
+            Map.entry(Modifier.PROTECTED, "  // access flags 0x1C\n  protected final static INNERCLASS example/Outer$Inner example/Outer Inner"),
+            Map.entry(Modifier.PUBLIC, "  // access flags 0x19\n  public final static INNERCLASS example/Outer$Inner example/Outer Inner")
+        )) {
+            RecordDef innerRecordDef = RecordDef.builder("Inner")
+                .addModifiers(expected.getKey())
+                .addProperty(PropertyDef.builder("id").ofType(TypeDef.Primitive.INT).build())
+                .build();
+            ClassDef outerClassDef = ClassDef.builder("example.Outer")
+                .addModifiers(Modifier.PUBLIC)
+                .addInnerType(innerRecordDef)
+                .build();
+
+            StringWriter bytecodeWriter = new StringWriter();
+            byte[] bytes = generateFile(outerClassDef.getInnerTypes().get(0), outerClassDef.asTypeDef(), bytecodeWriter);
+            String bytecode = bytecodeWriter.toString();
+
+            Assertions.assertTrue(bytecode.contains(expected.getValue()), bytecode);
+            // Only protected reaches beyond the package, so only it makes the class file itself public
+            assertEquals(
+                expected.getKey() == Modifier.PUBLIC || expected.getKey() == Modifier.PROTECTED,
+                bytecode.contains("public final class example/Outer$Inner"),
+                bytecode
+            );
+
+            Class<?> innerRecordClass = defineClass("example.Outer$Inner", bytes);
+            // The canonical constructor took the access of the record, so it is private here too
+            var constructor = innerRecordClass.getDeclaredConstructors()[0];
+            constructor.setAccessible(true);
+            assertEquals(3, constructor.newInstance(3).hashCode());
+        }
+    }
+
+    @Test
+    void testTypeUseComponentAnnotationsAreNotDropped() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
+                .addAnnotation(TypeUseOnly.class)
+                .build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+
+        // This writer has no type annotations of its own, so a type use annotation is kept as a declaration
+        // annotation on everything the component expands to rather than being lost
+        Assertions.assertNotNull(recordClass.getRecordComponents()[0].getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(recordClass.getDeclaredField("name").getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(recordClass.getMethod("name").getAnnotation(TypeUseOnly.class));
+        Assertions.assertTrue(Stream.of(recordClass.getConstructors()[0].getParameterAnnotations()[0])
+            .anyMatch(TypeUseOnly.class::isInstance));
+    }
+
+    @Test
+    void testAnAnnotationTargetingBothATypeUseAndADeclarationIsStillFiltered() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
+                .addAnnotation(TypeUseAndField.class)
+                .build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+
+        // It does target a declaration context, so it goes there and nowhere else
+        Assertions.assertNotNull(recordClass.getDeclaredField("name").getAnnotation(TypeUseAndField.class));
+        Assertions.assertNull(recordClass.getRecordComponents()[0].getAnnotation(TypeUseAndField.class));
+        Assertions.assertNull(recordClass.getMethod("name").getAnnotation(TypeUseAndField.class));
+        Assertions.assertFalse(Stream.of(recordClass.getConstructors()[0].getParameterAnnotations()[0])
+            .anyMatch(TypeUseAndField.class::isInstance));
+    }
+
+    @Test
     void testRecordComponentAnnotationsGoWhereTheyAreTargeted() throws Exception {
         RecordDef recordDef = RecordDef.builder("example.MyRecord")
             .addModifiers(Modifier.PUBLIC)
@@ -6359,6 +6436,16 @@ public final class example/MyRecord extends java/lang/Record {
 
     @Retention(RetentionPolicy.RUNTIME)
     @interface Untargeted {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE_USE)
+    @interface TypeUseOnly {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE_USE, ElementType.FIELD})
+    @interface TypeUseAndField {
     }
 
     static class MyAbstractClass {
