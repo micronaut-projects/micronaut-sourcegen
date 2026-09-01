@@ -77,17 +77,14 @@ final class BridgeResolver {
      * @return The bridges, without one for the method's own descriptor or a duplicate
      */
     static List<BridgeMethod> resolve(@Nullable ObjectDef objectDef, MethodDef methodDef) {
-        if (objectDef == null
-            || methodDef.isConstructor()
-            || methodDef.getModifiers().contains(Modifier.STATIC)
-            || methodDef.getModifiers().contains(Modifier.PRIVATE)) {
+        if (objectDef == null || !canBeOverridden(methodDef)) {
             return List.of();
         }
         List<TypeDef> superTypes = superTypesOf(objectDef);
         if (superTypes.isEmpty()) {
             return List.of();
         }
-        Declared declared = new Declared(
+        return collectBridges(new Declared(
             objectDef,
             new ObjectDefInfo(objectDef),
             methodDef,
@@ -95,10 +92,33 @@ final class BridgeResolver {
                 .map(p -> TypeUtils.getType(p.getType(), objectDef).getDescriptor())
                 .toList(),
             TypeUtils.getType(methodDef.getReturnType(), objectDef).getDescriptor()
-        );
+        ), superTypes);
+    }
 
+    /**
+     * Whether a method can override an inherited one at all. A constructor and a static method are
+     * dispatched without a receiver, and a private method is not inherited.
+     *
+     * @param methodDef The declared method
+     * @return Whether the method can override
+     */
+    private static boolean canBeOverridden(MethodDef methodDef) {
+        return !methodDef.isConstructor()
+            && !methodDef.getModifiers().contains(Modifier.STATIC)
+            && !methodDef.getModifiers().contains(Modifier.PRIVATE);
+    }
+
+    /**
+     * Walk the supertypes breadth-first, carrying a type-variable substitution per edge, and collect
+     * one bridge per distinct erasure the declared method has to implement.
+     *
+     * @param declared   The declaring type and method
+     * @param superTypes The declared supertypes to start from
+     * @return The bridges
+     */
+    private static List<BridgeMethod> collectBridges(Declared declared, List<TypeDef> superTypes) {
         List<BridgeMethod> bridges = new ArrayList<>();
-        Set<String> takenDescriptors = takenDescriptorsOf(objectDef, methodDef);
+        Set<String> takenDescriptors = takenDescriptorsOf(declared.objectDef(), declared.methodDef());
         Deque<Node> queue = new ArrayDeque<>();
         Set<String> visited = new HashSet<>();
         for (TypeDef superType : superTypes) {
@@ -112,8 +132,9 @@ final class BridgeResolver {
                     bridges.add(bridge);
                 }
             }
+            Map<String, TypeDef> substitution = node.substitution.isEmpty() ? Map.of() : node.substitution;
             for (TypeDef superType : node.info.superTypes()) {
-                enqueue(queue, visited, substitute(superType, node.substitution), node.substitution.isEmpty() ? Map.of() : node.substitution);
+                enqueue(queue, visited, substitute(superType, node.substitution), substitution);
             }
         }
         return bridges;
@@ -198,7 +219,7 @@ final class BridgeResolver {
                 // A generic ClassElement converts to a Parameterized over its own type variables; the
                 // raw declaration is inside and the outer arguments are the ones that matter
                 ClassTypeDef unnested = raw;
-                while (unnested instanceof ClassTypeDef.Parameterized(ClassTypeDef nested, List<TypeDef> ignored)) {
+                while (unnested instanceof ClassTypeDef.Parameterized(ClassTypeDef nested, List<TypeDef> _)) {
                     unnested = nested;
                 }
                 rawType = unnested;
@@ -271,7 +292,7 @@ final class BridgeResolver {
                 typeArguments.stream().map(t -> substitute(t, substitution)).toList()
             );
         }
-        if (unwrapped instanceof TypeDef.Array(TypeDef componentType, int dimensions, boolean ignored)) {
+        if (unwrapped instanceof TypeDef.Array(TypeDef componentType, int dimensions, boolean _)) {
             return TypeDef.array(substitute(componentType, substitution), dimensions);
         }
         if (unwrapped instanceof TypeDef.Wildcard(List<TypeDef> upperBounds, List<TypeDef> lowerBounds)) {
@@ -296,13 +317,13 @@ final class BridgeResolver {
             TypeDef bound = boundOf(typeVariable, boundOwner, owner);
             return bound == null ? TypeDef.OBJECT : erase(bound, boundOwner, owner);
         }
-        if (unwrapped instanceof ClassTypeDef.Parameterized(ClassTypeDef rawType, List<TypeDef> ignored)) {
+        if (unwrapped instanceof ClassTypeDef.Parameterized(ClassTypeDef rawType, List<TypeDef> _)) {
             return rawType;
         }
-        if (unwrapped instanceof TypeDef.Wildcard(List<TypeDef> upperBounds, List<TypeDef> ignored)) {
+        if (unwrapped instanceof TypeDef.Wildcard(List<TypeDef> upperBounds, List<TypeDef> _)) {
             return upperBounds.isEmpty() ? TypeDef.OBJECT : erase(upperBounds.get(0), boundOwner, owner);
         }
-        if (unwrapped instanceof TypeDef.Array(TypeDef componentType, int dimensions, boolean ignored)) {
+        if (unwrapped instanceof TypeDef.Array(TypeDef componentType, int dimensions, boolean _)) {
             return TypeDef.array(erase(componentType, boundOwner, owner), dimensions);
         }
         return unwrapped;
