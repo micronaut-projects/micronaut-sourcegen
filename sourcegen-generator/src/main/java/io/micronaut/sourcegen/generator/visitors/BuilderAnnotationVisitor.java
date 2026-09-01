@@ -257,7 +257,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             builder.addParameter(ParameterDef.of(parameter.getName(), TypeDef.of(parameter.getType())));
             builder.addStatement((aThis, methodParameters) -> {
                 VariableDef.MethodParameter methodParameter = methodParameters.get(parameterIndex);
-                VariableDef.Field propertyField = aThis.field(methodParameter.name(), methodParameter.type());
+                VariableDef.Field propertyField = aThis.field(methodParameter.name(), builderFieldType(parameter));
                 if (parameter.hasAnnotation(Singular.class)) {
                     if (parameter.getType().getName().equals(Iterable.class.getName())) {
                         return iterableToArrayListStatement(propertyField, methodParameter);
@@ -368,6 +368,48 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             )));
     }
 
+    /**
+     * The type of the field the builder keeps a property in. It is nullable, so a property that was never set
+     * can be told apart from one set to the type's default, and an {@link ArrayList} for a singular property,
+     * which the builder accumulates into. A field has to be referred to by this type: a field access carries
+     * its descriptor, so referring to the field by the property's own type writes one that cannot be resolved.
+     *
+     * @param beanProperty The property
+     * @return The type of the field backing it
+     */
+    static TypeDef builderFieldType(PropertyElement beanProperty) {
+        if (beanProperty.hasAnnotation(Singular.class)) {
+            ClassElement propertyType = beanProperty.getType();
+            if (propertyType.isAssignable(Iterable.class)) {
+                return singularIterableFieldType(propertyType).makeNullable();
+            }
+            if (propertyType.isAssignable(Map.class)) {
+                return singularMapFieldType(propertyType).makeNullable();
+            }
+        }
+        return TypeDef.of(beanProperty.getType()).makeNullable();
+    }
+
+    private static ClassTypeDef singularIterableFieldType(ClassElement propertyType) {
+        return TypeDef.parameterized(ArrayList.class, singularElementType(propertyType));
+    }
+
+    private static ClassTypeDef singularMapFieldType(ClassElement propertyType) {
+        return TypeDef.parameterized(ArrayList.class, singularMapEntryType(propertyType));
+    }
+
+    private static TypeDef singularElementType(ClassElement propertyType) {
+        return propertyType.getFirstTypeArgument().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
+    }
+
+    private static ClassTypeDef singularMapEntryType(ClassElement propertyType) {
+        return TypeDef.parameterized(
+            Map.Entry.class,
+            singularElementType(propertyType),
+            propertyType.getTypeArguments().values().stream().skip(1).findFirst().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT)
+        );
+    }
+
     private static FieldDef createField(PropertyElement beanProperty, TypeDef type) {
         TypeDef fieldType = type.makeNullable();
         if (!fieldType.isNullable()) {
@@ -398,9 +440,8 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             }
         }
         if (beanProperty.getType().isAssignable(Iterable.class)) {
-            TypeDef singularTypeDef = beanProperty.getType().getFirstTypeArgument().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
-            TypeDef fieldType = TypeDef.parameterized(ArrayList.class, singularTypeDef);
-            FieldDef field = createField(beanProperty, fieldType);
+            TypeDef singularTypeDef = singularElementType(beanProperty.getType());
+            FieldDef field = createField(beanProperty, singularIterableFieldType(beanProperty.getType()));
             classBuilder.addField(field);
             classBuilder.addMethod(MethodDef.builder(propertyName)
                 .addModifiers(Modifier.PUBLIC)
@@ -436,14 +477,9 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
         } else if (beanProperty.getType().isAssignable(Map.class)) {
-            TypeDef keyType = beanProperty.getType().getFirstTypeArgument().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
+            TypeDef keyType = singularElementType(beanProperty.getType());
             TypeDef valueType = beanProperty.getType().getTypeArguments().values().stream().skip(1).findFirst().<TypeDef>map(ClassTypeDef::of).orElse(TypeDef.OBJECT);
-            ClassTypeDef mapEntryType = TypeDef.parameterized(
-                Map.Entry.class,
-                keyType,
-                valueType
-            );
-            ClassTypeDef fieldType = TypeDef.parameterized(ArrayList.class, mapEntryType);
+            ClassTypeDef fieldType = singularMapFieldType(beanProperty.getType());
             FieldDef field = createField(beanProperty, fieldType);
             classBuilder.addField(field);
             classBuilder.addMethod(MethodDef.builder(propertyName)
@@ -512,7 +548,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     }
                     // We need to convert it for the correct type in Kotlin
                     TypeDef fieldType = TypeDef.of(parameter.getType());
-                    TypeDef nullableFieldType = fieldType.makeNullable();
+                    TypeDef nullableFieldType = propertyElement == null ? fieldType.makeNullable() : builderFieldType(propertyElement);
                     VariableDef.Field field = self.field(parameter.getName(), nullableFieldType);
                     values.add(!fieldType.isPrimitive() ?
                         valueExpression(propertyElement, field).cast(TypeDef.of(parameter.getType())) :

@@ -58,6 +58,14 @@ public final class RecordDef extends ObjectDef {
     }
 
     @Override
+    public ClassTypeDef asTypeDef() {
+        if (typeVariables.isEmpty()) {
+            return super.asTypeDef();
+        }
+        return TypeDef.parameterized(super.asTypeDef(), typeVariables.toArray(new TypeDef.TypeVariable[0]));
+    }
+
+    @Override
     public RecordDef withClassName(ClassTypeDef.ClassName className) {
         return new RecordDef(className, modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
     }

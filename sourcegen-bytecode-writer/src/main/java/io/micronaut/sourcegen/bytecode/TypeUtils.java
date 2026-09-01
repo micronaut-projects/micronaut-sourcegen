@@ -24,6 +24,7 @@ import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Type;
 
@@ -57,6 +58,13 @@ public final class TypeUtils {
 
     public static Type getType(TypeDef typeDef, @Nullable ObjectDef objectDef) {
         typeDef = ObjectDef.getContextualType(objectDef, typeDef);
+        // The annotations a type carries are written separately, they play no part in its erasure
+        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
+            return getType(annotated.typeDef(), objectDef);
+        }
+        if (typeDef instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
+            return getType(annotated.typeDef(), objectDef);
+        }
         if (typeDef instanceof TypeDef.Array array) {
             return Type.getType("[".repeat(array.dimensions()) + getType(array.componentType(), objectDef).getDescriptor());
         }
@@ -93,6 +101,14 @@ public final class TypeUtils {
                 }
                 if (objectDef instanceof InterfaceDef interfaceDef) {
                     TypeDef.TypeVariable tvDef = interfaceDef.getTypeVariables().stream()
+                        .filter(tv -> tv.name().equals(name)).findFirst()
+                        .orElse(null);
+                    if (tvDef != null) {
+                        return getBoundsType(tvDef.bounds(), objectDef);
+                    }
+                }
+                if (objectDef instanceof RecordDef recordDef) {
+                    TypeDef.TypeVariable tvDef = recordDef.getTypeVariables().stream()
                         .filter(tv -> tv.name().equals(name)).findFirst()
                         .orElse(null);
                     if (tvDef != null) {

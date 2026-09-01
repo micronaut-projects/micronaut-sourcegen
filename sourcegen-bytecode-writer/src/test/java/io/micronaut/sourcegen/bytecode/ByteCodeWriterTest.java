@@ -8,6 +8,8 @@ import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.custom.visitor.GenerateLambdaVisitor;
 import io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInEnumVisitor;
+import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -16,6 +18,8 @@ import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.PropertyDef;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -27,19 +31,27 @@ import org.objectweb.asm.util.TraceClassVisitor;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.AnnotatedArrayType;
+import java.lang.reflect.AnnotatedParameterizedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.lang.reflect.Method;
 import java.util.AbstractList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static io.micronaut.sourcegen.bytecode.DecompilerUtils.decompileToJava;
@@ -64,6 +76,9 @@ import static io.micronaut.sourcegen.model.ExpressionDef.MathUnaryOperation.OpTy
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ByteCodeWriterTest {
+
+    private static final int ACCESS_MODIFIERS_MASK =
+        java.lang.reflect.Modifier.PUBLIC | java.lang.reflect.Modifier.PROTECTED | java.lang.reflect.Modifier.PRIVATE;
 
     @Test
     void testSuperCall() throws Exception {
@@ -3792,8 +3807,8 @@ class MyClass {
 // declaration: test/MyClass
 class test/MyClass {
 
-  // access flags 0x9
-  public static INNERCLASS test/MyClass$Inner test/MyClass Inner
+  // access flags 0x8
+  static INNERCLASS test/MyClass$Inner test/MyClass Inner
   NESTMEMBER test/MyClass$Inner
 
   // access flags 0x0
@@ -3835,11 +3850,11 @@ class MyClass {
 // declaration: example/MyEnumWithInnerTypes extends java.lang.Enum<example.MyEnumWithInnerTypes>
 public final enum example/MyEnumWithInnerTypes extends java/lang/Enum {
 
-  // access flags 0x4019
-  public final static enum INNERCLASS example/MyEnumWithInnerTypes$InnerEnum example/MyEnumWithInnerTypes InnerEnum
+  // access flags 0x4018
+  final static enum INNERCLASS example/MyEnumWithInnerTypes$InnerEnum example/MyEnumWithInnerTypes InnerEnum
   NESTMEMBER example/MyEnumWithInnerTypes$InnerEnum
-  // access flags 0x9
-  public static INNERCLASS example/MyEnumWithInnerTypes$InnerRecord example/MyEnumWithInnerTypes InnerRecord
+  // access flags 0x19
+  public final static INNERCLASS example/MyEnumWithInnerTypes$InnerRecord example/MyEnumWithInnerTypes InnerRecord
   NESTMEMBER example/MyEnumWithInnerTypes$InnerRecord
   // access flags 0x9
   public static INNERCLASS example/MyEnumWithInnerTypes$InnerClass example/MyEnumWithInnerTypes InnerClass
@@ -4859,11 +4874,15 @@ public class MyClass {
     }
 
     private byte[] generateFile(ObjectDef objectDef, StringWriter stringWriter) {
+        return generateFile(objectDef, null, stringWriter);
+    }
+
+    private byte[] generateFile(ObjectDef objectDef, ClassTypeDef outerType, StringWriter stringWriter) {
         var classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         var checkClassAdapter = new CheckClassAdapter(classWriter);
         var tcv = new TraceClassVisitor(checkClassAdapter, new PrintWriter(stringWriter));
 
-        new ByteCodeWriter(false, false).writeObject(tcv, objectDef);
+        new ByteCodeWriter(false, false).writeObject(tcv, objectDef, outerType);
 
         tcv.visitEnd();
 
@@ -4978,6 +4997,1588 @@ class Test implements Function {
    }
 }
 """, decompileToJava(bytes));
+    }
+
+    @Test
+    void testRecord() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING).build())
+            .addProperty(PropertyDef.builder("age").ofType(TypeDef.Primitive.INT).build())
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(recordDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature Ljava/lang/Record;
+// declaration: example/MyRecord extends java.lang.Record
+public final class example/MyRecord extends java/lang/Record {
+
+  RECORDCOMPONENT   Ljava/lang/String; name
+  RECORDCOMPONENT   I age
+
+  // access flags 0x12
+  private final Ljava/lang/String; name
+
+  // access flags 0x12
+  private final I age
+
+  // access flags 0x1
+  public <init>(Ljava/lang/String;I)V
+   L0
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD example/MyRecord.name : Ljava/lang/String;
+    ALOAD 0
+    ILOAD 2
+    PUTFIELD example/MyRecord.age : I
+    RETURN
+   L1
+    LOCALVARIABLE name Ljava/lang/String; L0 L1 1
+    LOCALVARIABLE age I L0 L1 2
+
+  // access flags 0x11
+  public final toString()Ljava/lang/String;
+    ALOAD 0
+    INVOKEDYNAMIC toString(Lexample/MyRecord;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name;age",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.age(I)
+    ]
+    ARETURN
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/MyRecord;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name;age",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.age(I)
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/MyRecord;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name;age",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.age(I)
+    ]
+    IRETURN
+
+  // access flags 0x1
+  public name()Ljava/lang/String;
+    ALOAD 0
+    GETFIELD example/MyRecord.name : Ljava/lang/String;
+    ARETURN
+
+  // access flags 0x1
+  public age()I
+    ALOAD 0
+    GETFIELD example/MyRecord.age : I
+    IRETURN
+}
+""", bytecodeWriter.toString());
+
+        assertEquals("""
+package example;
+
+public record MyRecord(String name, int age) {
+   public MyRecord(String name, int age) {
+      this.name = name;
+      this.age = age;
+   }
+}
+""", decompileToJava(bytes));
+
+        Class<?> recordClass = defineClass("example.MyRecord", bytes);
+        Object record = recordClass.getConstructors()[0].newInstance("Denis", 30);
+
+        Assertions.assertTrue(recordClass.isRecord());
+        assertEquals(2, recordClass.getRecordComponents().length);
+        assertEquals("MyRecord[name=Denis, age=30]", record.toString());
+        assertEquals("Denis", recordClass.getMethod("name").invoke(record));
+        assertEquals(30, recordClass.getMethod("age").invoke(record));
+        assertEquals(record, recordClass.getConstructors()[0].newInstance("Denis", 30));
+        assertEquals(record.hashCode(), recordClass.getConstructors()[0].newInstance("Denis", 30).hashCode());
+        Assertions.assertNotEquals(record, recordClass.getConstructors()[0].newInstance("Denis", 31));
+    }
+
+    @Test
+    void testGenericRecord() {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addSuperinterface(TypeDef.parameterized(Supplier.class, TypeDef.variable("T")))
+            .addProperty(PropertyDef.builder("value").ofType(TypeDef.variable("T")).build())
+            .addMethod(MethodDef.builder("get")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.variable("T"))
+                .build((aThis, methodParameters) -> aThis.invoke("value", TypeDef.variable("T")).returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(recordDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature <T:Ljava/lang/Object;>Ljava/lang/Record;Ljava/util/function/Supplier<TT;>;
+// declaration: example/MyRecord<T> extends java.lang.Record implements java.util.function.Supplier<T>
+public final class example/MyRecord extends java/lang/Record implements java/util/function/Supplier {
+
+  RECORDCOMPONENT   // signature TT;
+  // declaration: value extends T
+  Ljava/lang/Object; value
+
+  // access flags 0x12
+  // signature TT;
+  // declaration: value extends T
+  private final Ljava/lang/Object; value
+
+  // access flags 0x1
+  // signature (TT;)V
+  // declaration: void <init>(T)
+  public <init>(Ljava/lang/Object;)V
+   L0
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD example/MyRecord.value : Ljava/lang/Object;
+    RETURN
+   L1
+    LOCALVARIABLE value Ljava/lang/Object; L0 L1 1
+
+  // access flags 0x11
+  public final toString()Ljava/lang/String;
+    ALOAD 0
+    INVOKEDYNAMIC toString(Lexample/MyRecord;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "value",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.value(Ljava/lang/Object;)
+    ]
+    ARETURN
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/MyRecord;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "value",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.value(Ljava/lang/Object;)
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/MyRecord;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "value",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.value(Ljava/lang/Object;)
+    ]
+    IRETURN
+
+  // access flags 0x1
+  // signature ()TT;
+  // declaration: T value()
+  public value()Ljava/lang/Object;
+    ALOAD 0
+    GETFIELD example/MyRecord.value : Ljava/lang/Object;
+    ARETURN
+
+  // access flags 0x1
+  // signature ()TT;
+  // declaration: T get()
+  public get()Ljava/lang/Object;
+    ALOAD 0
+    INVOKEVIRTUAL example/MyRecord.value ()Ljava/lang/Object;
+    ARETURN
+}
+""", bytecodeWriter.toString());
+    }
+
+    @Test
+    void testGenericRecordSelfTypeIsParameterized() {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addProperty(PropertyDef.builder("value").ofType(TypeDef.variable("T")).build())
+            // TypeDef.THIS has to resolve to the record parameterized by its own variables, so the
+            // signature of a method returning it keeps them
+            .addMethod(MethodDef.builder("withValue")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.THIS)
+                .addParameter("value", TypeDef.variable("T"))
+                .build((aThis, methodParameters) -> TypeDef.THIS.instantiate(methodParameters.get(0)).returning()))
+            .build();
+
+        assertEquals(
+            TypeDef.parameterized(ClassTypeDef.of("example.MyRecord"), TypeDef.variable("T")),
+            recordDef.asTypeDef()
+        );
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(recordDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature <T:Ljava/lang/Object;>Ljava/lang/Record;
+// declaration: example/MyRecord<T> extends java.lang.Record
+public final class example/MyRecord extends java/lang/Record {
+
+  RECORDCOMPONENT   // signature TT;
+  // declaration: value extends T
+  Ljava/lang/Object; value
+
+  // access flags 0x12
+  // signature TT;
+  // declaration: value extends T
+  private final Ljava/lang/Object; value
+
+  // access flags 0x1
+  // signature (TT;)V
+  // declaration: void <init>(T)
+  public <init>(Ljava/lang/Object;)V
+   L0
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD example/MyRecord.value : Ljava/lang/Object;
+    RETURN
+   L1
+    LOCALVARIABLE value Ljava/lang/Object; L0 L1 1
+
+  // access flags 0x11
+  public final toString()Ljava/lang/String;
+    ALOAD 0
+    INVOKEDYNAMIC toString(Lexample/MyRecord;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "value",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.value(Ljava/lang/Object;)
+    ]
+    ARETURN
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/MyRecord;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "value",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.value(Ljava/lang/Object;)
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/MyRecord;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "value",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.value(Ljava/lang/Object;)
+    ]
+    IRETURN
+
+  // access flags 0x1
+  // signature ()TT;
+  // declaration: T value()
+  public value()Ljava/lang/Object;
+    ALOAD 0
+    GETFIELD example/MyRecord.value : Ljava/lang/Object;
+    ARETURN
+
+  // access flags 0x1
+  // signature (TT;)Lexample/MyRecord<TT;>;
+  // declaration: example.MyRecord<T> withValue(T)
+  public withValue(Ljava/lang/Object;)Lexample/MyRecord;
+   L0
+    NEW example/MyRecord
+    DUP
+    ALOAD 1
+    INVOKESPECIAL example/MyRecord.<init> (Ljava/lang/Object;)V
+    ARETURN
+   L1
+    LOCALVARIABLE value Ljava/lang/Object; L0 L1 1
+}
+""", bytecodeWriter.toString());
+    }
+
+    @Test
+    void testGenericRecordErasesToTheVariableBound() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T", TypeDef.of(Number.class)))
+            // The component refers to the variable by name only, so its bound has to be looked up on the
+            // record: a bounded variable erases to its bound, making the component a Number, not an Object
+            .addProperty(PropertyDef.builder("value").ofType(TypeDef.variable("T")).build())
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(recordDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature <T:Ljava/lang/Number;>Ljava/lang/Record;
+// declaration: example/MyRecord<T extends java.lang.Number> extends java.lang.Record
+public final class example/MyRecord extends java/lang/Record {
+
+  RECORDCOMPONENT   // signature TT;
+  // declaration: value extends T
+  Ljava/lang/Number; value
+
+  // access flags 0x12
+  // signature TT;
+  // declaration: value extends T
+  private final Ljava/lang/Number; value
+
+  // access flags 0x1
+  // signature (TT;)V
+  // declaration: void <init>(T)
+  public <init>(Ljava/lang/Number;)V
+   L0
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD example/MyRecord.value : Ljava/lang/Number;
+    RETURN
+   L1
+    LOCALVARIABLE value Ljava/lang/Number; L0 L1 1
+
+  // access flags 0x11
+  public final toString()Ljava/lang/String;
+    ALOAD 0
+    INVOKEDYNAMIC toString(Lexample/MyRecord;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "value",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.value(Ljava/lang/Number;)
+    ]
+    ARETURN
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/MyRecord;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "value",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.value(Ljava/lang/Number;)
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/MyRecord;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "value",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.value(Ljava/lang/Number;)
+    ]
+    IRETURN
+
+  // access flags 0x1
+  // signature ()TT;
+  // declaration: T value()
+  public value()Ljava/lang/Number;
+    ALOAD 0
+    GETFIELD example/MyRecord.value : Ljava/lang/Number;
+    ARETURN
+}
+""", bytecodeWriter.toString());
+
+        Class<?> recordClass = defineClass("example.MyRecord", bytes);
+
+        assertEquals(Number.class, recordClass.getDeclaredField("value").getType());
+        assertEquals(Number.class, recordClass.getMethod("value").getReturnType());
+        assertEquals(Number.class, recordClass.getRecordComponents()[0].getType());
+        assertEquals(1, recordClass.getConstructors()[0].newInstance(1).hashCode());
+    }
+
+    @Test
+    void testRecordWithAnAdditionalConstructor() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING).build())
+            .addProperty(PropertyDef.builder("age").ofType(TypeDef.Primitive.INT).build())
+            // A convenience constructor delegating to the canonical one, which is still generated
+            .addMethod(MethodDef.constructor()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("name", TypeDef.STRING)
+                .build((aThis, methodParameters) -> aThis.invokeConstructor(
+                    List.of(TypeDef.STRING, TypeDef.Primitive.INT),
+                    methodParameters.get(0),
+                    TypeDef.Primitive.INT.constant(0)
+                )))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(recordDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature Ljava/lang/Record;
+// declaration: example/MyRecord extends java.lang.Record
+public final class example/MyRecord extends java/lang/Record {
+
+  RECORDCOMPONENT   Ljava/lang/String; name
+  RECORDCOMPONENT   I age
+
+  // access flags 0x12
+  private final Ljava/lang/String; name
+
+  // access flags 0x12
+  private final I age
+
+  // access flags 0x1
+  public <init>(Ljava/lang/String;I)V
+   L0
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD example/MyRecord.name : Ljava/lang/String;
+    ALOAD 0
+    ILOAD 2
+    PUTFIELD example/MyRecord.age : I
+    RETURN
+   L1
+    LOCALVARIABLE name Ljava/lang/String; L0 L1 1
+    LOCALVARIABLE age I L0 L1 2
+
+  // access flags 0x11
+  public final toString()Ljava/lang/String;
+    ALOAD 0
+    INVOKEDYNAMIC toString(Lexample/MyRecord;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name;age",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.age(I)
+    ]
+    ARETURN
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/MyRecord;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name;age",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.age(I)
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/MyRecord;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name;age",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.age(I)
+    ]
+    IRETURN
+
+  // access flags 0x1
+  public name()Ljava/lang/String;
+    ALOAD 0
+    GETFIELD example/MyRecord.name : Ljava/lang/String;
+    ARETURN
+
+  // access flags 0x1
+  public age()I
+    ALOAD 0
+    GETFIELD example/MyRecord.age : I
+    IRETURN
+
+  // access flags 0x1
+  public <init>(Ljava/lang/String;)V
+   L0
+    ALOAD 0
+    ALOAD 1
+    ICONST_0
+    INVOKESPECIAL example/MyRecord.<init> (Ljava/lang/String;I)V
+    RETURN
+   L1
+    LOCALVARIABLE name Ljava/lang/String; L0 L1 1
+}
+""", bytecodeWriter.toString());
+
+        Class<?> recordClass = defineClass("example.MyRecord", bytes);
+
+        assertEquals(2, recordClass.getConstructors().length);
+        assertEquals("MyRecord[name=Denis, age=0]", recordClass.getConstructor(String.class).newInstance("Denis").toString());
+        assertEquals(
+            recordClass.getConstructor(String.class).newInstance("Denis"),
+            recordClass.getConstructor(String.class, int.class).newInstance("Denis", 0)
+        );
+    }
+
+    @Test
+    void testCanonicalConstructorHasTheAccessOfTheRecord() throws Exception {
+        // Only the access a top level class can carry: protected and private belong to a nested one
+        for (Modifier[] modifiers : List.of(new Modifier[]{Modifier.PUBLIC}, new Modifier[]{})) {
+            RecordDef recordDef = RecordDef.builder("example.MyRecord")
+                .addModifiers(modifiers)
+                .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING).build())
+                .build();
+
+            Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+            var constructor = recordClass.getDeclaredConstructors()[0];
+
+            assertEquals(
+                java.lang.reflect.Modifier.toString(recordClass.getModifiers() & ACCESS_MODIFIERS_MASK),
+                java.lang.reflect.Modifier.toString(constructor.getModifiers() & ACCESS_MODIFIERS_MASK),
+                "The canonical constructor of a " + Arrays.toString(modifiers) + " record"
+            );
+        }
+    }
+
+    @Test
+    void testRecordWithoutComponents() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(recordDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature Ljava/lang/Record;
+// declaration: example/MyRecord extends java.lang.Record
+public final class example/MyRecord extends java/lang/Record {
+
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    RETURN
+
+  // access flags 0x11
+  public final toString()Ljava/lang/String;
+    ALOAD 0
+    INVOKEDYNAMIC toString(Lexample/MyRecord;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      ""
+    ]
+    ARETURN
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/MyRecord;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      ""
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/MyRecord;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      ""
+    ]
+    IRETURN
+}
+""", bytecodeWriter.toString());
+
+        Class<?> recordClass = defineClass("example.MyRecord", bytes);
+        Object record = recordClass.getConstructor().newInstance();
+
+        assertEquals(0, recordClass.getRecordComponents().length);
+        assertEquals("MyRecord[]", record.toString());
+        assertEquals(record, recordClass.getConstructor().newInstance());
+        assertEquals(0, record.hashCode());
+    }
+
+    @Test
+    void testRecordWithWideAndArrayComponents() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            // A long and a double take two slots each, so the canonical constructor has to skip a slot for them
+            .addProperty(PropertyDef.builder("id").ofType(TypeDef.Primitive.LONG).build())
+            .addProperty(PropertyDef.builder("weight").ofType(TypeDef.Primitive.DOUBLE).build())
+            .addProperty(PropertyDef.builder("tags").ofType(TypeDef.STRING.array()).build())
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(recordDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature Ljava/lang/Record;
+// declaration: example/MyRecord extends java.lang.Record
+public final class example/MyRecord extends java/lang/Record {
+
+  RECORDCOMPONENT   J id
+  RECORDCOMPONENT   D weight
+  RECORDCOMPONENT   [Ljava/lang/String; tags
+
+  // access flags 0x12
+  private final J id
+
+  // access flags 0x12
+  private final D weight
+
+  // access flags 0x12
+  private final [Ljava/lang/String; tags
+
+  // access flags 0x1
+  public <init>(JD[Ljava/lang/String;)V
+   L0
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    ALOAD 0
+    LLOAD 1
+    PUTFIELD example/MyRecord.id : J
+    ALOAD 0
+    DLOAD 3
+    PUTFIELD example/MyRecord.weight : D
+    ALOAD 0
+    ALOAD 5
+    PUTFIELD example/MyRecord.tags : [Ljava/lang/String;
+    RETURN
+   L1
+    LOCALVARIABLE id J L0 L1 1
+    LOCALVARIABLE weight D L0 L1 3
+    LOCALVARIABLE tags [Ljava/lang/String; L0 L1 5
+
+  // access flags 0x11
+  public final toString()Ljava/lang/String;
+    ALOAD 0
+    INVOKEDYNAMIC toString(Lexample/MyRecord;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "id;weight;tags",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.id(J),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.weight(D),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.tags([Ljava/lang/String;)
+    ]
+    ARETURN
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/MyRecord;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "id;weight;tags",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.id(J),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.weight(D),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.tags([Ljava/lang/String;)
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/MyRecord;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "id;weight;tags",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.id(J),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.weight(D),\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.tags([Ljava/lang/String;)
+    ]
+    IRETURN
+
+  // access flags 0x1
+  public id()J
+    ALOAD 0
+    GETFIELD example/MyRecord.id : J
+    LRETURN
+
+  // access flags 0x1
+  public weight()D
+    ALOAD 0
+    GETFIELD example/MyRecord.weight : D
+    DRETURN
+
+  // access flags 0x1
+  public tags()[Ljava/lang/String;
+    ALOAD 0
+    GETFIELD example/MyRecord.tags : [Ljava/lang/String;
+    ARETURN
+}
+""", bytecodeWriter.toString());
+
+        Class<?> recordClass = defineClass("example.MyRecord", bytes);
+        String[] tags = {"a", "b"};
+        Object record = recordClass.getConstructor(long.class, double.class, String[].class).newInstance(7L, 1.5d, tags);
+
+        assertEquals(7L, recordClass.getMethod("id").invoke(record));
+        assertEquals(1.5d, recordClass.getMethod("weight").invoke(record));
+        Assertions.assertArrayEquals(tags, (String[]) recordClass.getMethod("tags").invoke(record));
+    }
+
+    @Test
+    void testRecordWithAStaticFactory() throws Exception {
+        ClassTypeDef recordType = ClassTypeDef.of("example.MyRecord");
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING).build())
+            .addMethod(MethodDef.builder("of")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(recordType)
+                .addParameter("name", TypeDef.STRING)
+                .build((aThis, methodParameters) -> recordType.instantiate(methodParameters.get(0)).returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(recordDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature Ljava/lang/Record;
+// declaration: example/MyRecord extends java.lang.Record
+public final class example/MyRecord extends java/lang/Record {
+
+  RECORDCOMPONENT   Ljava/lang/String; name
+
+  // access flags 0x12
+  private final Ljava/lang/String; name
+
+  // access flags 0x1
+  public <init>(Ljava/lang/String;)V
+   L0
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD example/MyRecord.name : Ljava/lang/String;
+    RETURN
+   L1
+    LOCALVARIABLE name Ljava/lang/String; L0 L1 1
+
+  // access flags 0x11
+  public final toString()Ljava/lang/String;
+    ALOAD 0
+    INVOKEDYNAMIC toString(Lexample/MyRecord;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;)
+    ]
+    ARETURN
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/MyRecord;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;)
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/MyRecord;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;)
+    ]
+    IRETURN
+
+  // access flags 0x1
+  public name()Ljava/lang/String;
+    ALOAD 0
+    GETFIELD example/MyRecord.name : Ljava/lang/String;
+    ARETURN
+
+  // access flags 0x9
+  public static of(Ljava/lang/String;)Lexample/MyRecord;
+   L0
+    NEW example/MyRecord
+    DUP
+    ALOAD 0
+    INVOKESPECIAL example/MyRecord.<init> (Ljava/lang/String;)V
+    ARETURN
+   L1
+    LOCALVARIABLE name Ljava/lang/String; L0 L1 0
+}
+""", bytecodeWriter.toString());
+
+        Class<?> recordClass = defineClass("example.MyRecord", bytes);
+
+        assertEquals("MyRecord[name=Denis]", recordClass.getMethod("of", String.class).invoke(null, "Denis").toString());
+    }
+
+    @Test
+    void testRecordBridgesAnAccessorInheritedAsGeneric() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(Supplier.class, TypeDef.STRING))
+            // The accessor implements Supplier.get(), whose erasure returns Object, so it needs a bridge
+            .addProperty(PropertyDef.builder("get").ofType(TypeDef.STRING).build())
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(recordDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature Ljava/lang/Record;Ljava/util/function/Supplier<Ljava/lang/String;>;
+// declaration: example/MyRecord extends java.lang.Record implements java.util.function.Supplier<java.lang.String>
+public final class example/MyRecord extends java/lang/Record implements java/util/function/Supplier {
+
+  RECORDCOMPONENT   Ljava/lang/String; get
+
+  // access flags 0x12
+  private final Ljava/lang/String; get
+
+  // access flags 0x1
+  public <init>(Ljava/lang/String;)V
+   L0
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD example/MyRecord.get : Ljava/lang/String;
+    RETURN
+   L1
+    LOCALVARIABLE get Ljava/lang/String; L0 L1 1
+
+  // access flags 0x11
+  public final toString()Ljava/lang/String;
+    ALOAD 0
+    INVOKEDYNAMIC toString(Lexample/MyRecord;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "get",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.get(Ljava/lang/String;)
+    ]
+    ARETURN
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/MyRecord;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "get",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.get(Ljava/lang/String;)
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/MyRecord;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "get",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.get(Ljava/lang/String;)
+    ]
+    IRETURN
+
+  // access flags 0x1
+  public get()Ljava/lang/String;
+    ALOAD 0
+    GETFIELD example/MyRecord.get : Ljava/lang/String;
+    ARETURN
+
+  // access flags 0x1041
+  public synthetic bridge get()Ljava/lang/Object;
+    ALOAD 0
+    INVOKEVIRTUAL example/MyRecord.get ()Ljava/lang/String;
+    ARETURN
+}
+""", bytecodeWriter.toString());
+
+        Class<?> recordClass = defineClass("example.MyRecord", bytes);
+        Supplier<?> record = (Supplier<?>) recordClass.getConstructor(String.class).newInstance("Denis");
+
+        assertEquals("Denis", record.get());
+    }
+
+    @Test
+    void testInnerRecord() throws Exception {
+        RecordDef innerRecordDef = RecordDef.builder("Inner")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("id").ofType(TypeDef.Primitive.INT).build())
+            .build();
+        ClassDef outerClassDef = ClassDef.builder("example.Outer")
+            .addModifiers(Modifier.PUBLIC)
+            .addInnerType(innerRecordDef)
+            .build();
+
+        StringWriter outerBytecodeWriter = new StringWriter();
+        generateFile(outerClassDef, outerBytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x1
+// signature Ljava/lang/Object;
+// declaration: example/Outer
+public class example/Outer {
+
+  // access flags 0x19
+  public final static INNERCLASS example/Outer$Inner example/Outer Inner
+  NESTMEMBER example/Outer$Inner
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+}
+""", outerBytecodeWriter.toString());
+
+        StringWriter innerBytecodeWriter = new StringWriter();
+        byte[] innerBytes = generateFile(outerClassDef.getInnerTypes().get(0), outerClassDef.asTypeDef(), innerBytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature Ljava/lang/Record;
+// declaration: example/Outer$Inner extends java.lang.Record
+public final class example/Outer$Inner extends java/lang/Record {
+
+  NESTHOST example/Outer
+  // access flags 0x19
+  public final static INNERCLASS example/Outer$Inner example/Outer Inner
+  RECORDCOMPONENT   I id
+
+  // access flags 0x12
+  private final I id
+
+  // access flags 0x1
+  public <init>(I)V
+   L0
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    ALOAD 0
+    ILOAD 1
+    PUTFIELD example/Outer$Inner.id : I
+    RETURN
+   L1
+    LOCALVARIABLE id I L0 L1 1
+
+  // access flags 0x11
+  public final toString()Ljava/lang/String;
+    ALOAD 0
+    INVOKEDYNAMIC toString(Lexample/Outer$Inner;)Ljava/lang/String; [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.Outer$Inner.class,\s
+      "id",\s
+      // handle kind 0x1 : GETFIELD
+      example/Outer$Inner.id(I)
+    ]
+    ARETURN
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/Outer$Inner;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.Outer$Inner.class,\s
+      "id",\s
+      // handle kind 0x1 : GETFIELD
+      example/Outer$Inner.id(I)
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/Outer$Inner;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.Outer$Inner.class,\s
+      "id",\s
+      // handle kind 0x1 : GETFIELD
+      example/Outer$Inner.id(I)
+    ]
+    IRETURN
+
+  // access flags 0x1
+  public id()I
+    ALOAD 0
+    GETFIELD example/Outer$Inner.id : I
+    IRETURN
+}
+""", innerBytecodeWriter.toString());
+
+        Class<?> innerRecordClass = defineClass("example.Outer$Inner", innerBytes);
+
+        Assertions.assertTrue(innerRecordClass.isRecord());
+        // A nested record is static: without that it reads back as an inner class needing an enclosing instance
+        Assertions.assertTrue(java.lang.reflect.Modifier.isStatic(innerRecordClass.getModifiers()));
+        Assertions.assertTrue(java.lang.reflect.Modifier.isFinal(innerRecordClass.getModifiers()));
+        assertEquals(3, innerRecordClass.getConstructors()[0].newInstance(3).hashCode());
+    }
+
+    @Test
+    void testMemberRecordAccessIsWrittenWhereItBelongs() throws Exception {
+        // A class file cannot carry private or protected: the access of a member type lives in its
+        // InnerClasses entry, and its class file is public only when it is reachable from another package
+        for (var expected : List.of(
+            Map.entry(Modifier.PRIVATE, "  // access flags 0x1A\n  private final static INNERCLASS example/Outer$Inner example/Outer Inner"),
+            Map.entry(Modifier.PROTECTED, "  // access flags 0x1C\n  protected final static INNERCLASS example/Outer$Inner example/Outer Inner"),
+            Map.entry(Modifier.PUBLIC, "  // access flags 0x19\n  public final static INNERCLASS example/Outer$Inner example/Outer Inner")
+        )) {
+            RecordDef innerRecordDef = RecordDef.builder("Inner")
+                .addModifiers(expected.getKey())
+                .addProperty(PropertyDef.builder("id").ofType(TypeDef.Primitive.INT).build())
+                .build();
+            ClassDef outerClassDef = ClassDef.builder("example.Outer")
+                .addModifiers(Modifier.PUBLIC)
+                .addInnerType(innerRecordDef)
+                .build();
+
+            StringWriter bytecodeWriter = new StringWriter();
+            byte[] bytes = generateFile(outerClassDef.getInnerTypes().get(0), outerClassDef.asTypeDef(), bytecodeWriter);
+            String bytecode = bytecodeWriter.toString();
+
+            Assertions.assertTrue(bytecode.contains(expected.getValue()), bytecode);
+            // Only protected reaches beyond the package, so only it makes the class file itself public
+            assertEquals(
+                expected.getKey() == Modifier.PUBLIC || expected.getKey() == Modifier.PROTECTED,
+                bytecode.contains("public final class example/Outer$Inner"),
+                bytecode
+            );
+
+            Class<?> innerRecordClass = defineClass("example.Outer$Inner", bytes);
+            // The canonical constructor took the access of the record, so it is private here too
+            var constructor = innerRecordClass.getDeclaredConstructors()[0];
+            constructor.setAccessible(true);
+            assertEquals(3, constructor.newInstance(3).hashCode());
+        }
+    }
+
+    @Test
+    void testTypeUseComponentAnnotationsAreWrittenOnTheType() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
+                .addAnnotation(TypeUseOnly.class)
+                .build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+        var field = recordClass.getDeclaredField("name");
+        var accessor = recordClass.getMethod("name");
+        var constructor = recordClass.getConstructors()[0];
+
+        // A type use annotation belongs to the type of each member the component expands to
+        Assertions.assertNotNull(recordClass.getRecordComponents()[0].getAnnotatedType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(field.getAnnotatedType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(accessor.getAnnotatedReturnType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(constructor.getAnnotatedParameterTypes()[0].getAnnotation(TypeUseOnly.class));
+
+        // and to none of the declarations themselves
+        Assertions.assertNull(recordClass.getRecordComponents()[0].getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(field.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(accessor.getAnnotation(TypeUseOnly.class));
+        Assertions.assertEquals(0, constructor.getParameterAnnotations()[0].length);
+    }
+
+    @Test
+    void testATypeUseAnnotationOnAnArrayComponentAnnotatesWhatItHolds() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            // Declared on the component, the way a generator writes `@Nullable String[] names`
+            .addProperty(PropertyDef.builder("names").ofType(TypeDef.STRING.array())
+                .addAnnotation(TypeUseOnly.class)
+                .build())
+            .addProperty(PropertyDef.builder("grid").ofType(new TypeDef.Array(TypeDef.STRING, 2, false))
+                .addAnnotation(TypeUseOnly.class)
+                .build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+
+        // A compiler puts it on what the array holds, not on the array
+        var names = (AnnotatedArrayType) recordClass.getDeclaredField("names").getAnnotatedType();
+        Assertions.assertNull(names.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(names.getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+
+        var grid = (AnnotatedArrayType) recordClass.getDeclaredField("grid").getAnnotatedType();
+        var row = (AnnotatedArrayType) grid.getAnnotatedGenericComponentType();
+        Assertions.assertNull(grid.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(row.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(row.getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+
+        // The accessor and the constructor parameter say the same
+        Assertions.assertNotNull(((AnnotatedArrayType) recordClass.getMethod("names").getAnnotatedReturnType())
+            .getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(((AnnotatedArrayType) recordClass.getConstructors()[0].getAnnotatedParameterTypes()[0])
+            .getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+    }
+
+    @Test
+    void testATypeUseAnnotationReachesTheElementOfAnAlreadyAnnotatedArray() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            // The array itself is annotated by the type it was given, the component by its declaration:
+            // `@TypeUseOnly String @TypeUseAndField []`
+            .addProperty(PropertyDef.builder("names")
+                .ofType(TypeDef.STRING.array().annotated(AnnotationDef.builder(ClassTypeDef.of(TypeUseAndField.class)).build()))
+                .addAnnotation(TypeUseOnly.class)
+                .build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+        var names = (AnnotatedArrayType) recordClass.getDeclaredField("names").getAnnotatedType();
+
+        Assertions.assertNotNull(names.getAnnotation(TypeUseAndField.class));
+        Assertions.assertNull(names.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(names.getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(names.getAnnotatedGenericComponentType().getAnnotation(TypeUseAndField.class));
+    }
+
+    @Test
+    void testTypeUseAnnotationsAreWrittenAgainstThePathThatReachesThem() throws Exception {
+        AnnotationDef annotation = AnnotationDef.builder(ClassTypeDef.of(TypeUseOnly.class)).build();
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            // What the array holds, not the array
+            .addProperty(PropertyDef.builder("elementAnnotated")
+                .ofType(new TypeDef.Array(TypeDef.STRING.annotated(annotation), 1, false)).build())
+            // The array itself
+            .addProperty(PropertyDef.builder("arrayAnnotated")
+                .ofType(TypeDef.STRING.array().annotated(annotation)).build())
+            .addProperty(PropertyDef.builder("argumentAnnotated")
+                .ofType(TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.STRING.annotated(annotation))).build())
+            .addProperty(PropertyDef.builder("nestedArgumentAnnotated")
+                .ofType(TypeDef.parameterized(ClassTypeDef.of(Map.class), TypeDef.STRING,
+                    TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.STRING.annotated(annotation)))).build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+
+        // The paths a compiler writes: ARRAY, none, TYPE_ARGUMENT(0), and TYPE_ARGUMENT(1) TYPE_ARGUMENT(0)
+        var elementAnnotated = (AnnotatedArrayType) recordClass.getDeclaredField("elementAnnotated").getAnnotatedType();
+        Assertions.assertNull(elementAnnotated.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(elementAnnotated.getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+
+        var arrayAnnotated = (AnnotatedArrayType) recordClass.getDeclaredField("arrayAnnotated").getAnnotatedType();
+        Assertions.assertNotNull(arrayAnnotated.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(arrayAnnotated.getAnnotatedGenericComponentType().getAnnotation(TypeUseOnly.class));
+
+        var argumentAnnotated = (AnnotatedParameterizedType) recordClass.getDeclaredField("argumentAnnotated").getAnnotatedType();
+        Assertions.assertNull(argumentAnnotated.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(argumentAnnotated.getAnnotatedActualTypeArguments()[0].getAnnotation(TypeUseOnly.class));
+
+        var nested = (AnnotatedParameterizedType) recordClass.getDeclaredField("nestedArgumentAnnotated").getAnnotatedType();
+        var innerList = (AnnotatedParameterizedType) nested.getAnnotatedActualTypeArguments()[1];
+        Assertions.assertNull(nested.getAnnotatedActualTypeArguments()[0].getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(innerList.getAnnotatedActualTypeArguments()[0].getAnnotation(TypeUseOnly.class));
+    }
+
+    @Test
+    void testAnAnnotationTargetingBothATypeUseAndADeclarationIsStillFiltered() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
+                .addAnnotation(TypeUseAndField.class)
+                .build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+
+        // The declaration context it targets is the field, so that is the only declaration it goes on
+        Assertions.assertNotNull(recordClass.getDeclaredField("name").getAnnotation(TypeUseAndField.class));
+        Assertions.assertNull(recordClass.getRecordComponents()[0].getAnnotation(TypeUseAndField.class));
+        Assertions.assertNull(recordClass.getMethod("name").getAnnotation(TypeUseAndField.class));
+        Assertions.assertFalse(Stream.of(recordClass.getConstructors()[0].getParameterAnnotations()[0])
+            .anyMatch(TypeUseAndField.class::isInstance));
+
+        // Targeting a type use as well, it goes on every type too
+        Assertions.assertNotNull(recordClass.getDeclaredField("name").getAnnotatedType().getAnnotation(TypeUseAndField.class));
+        Assertions.assertNotNull(recordClass.getMethod("name").getAnnotatedReturnType().getAnnotation(TypeUseAndField.class));
+        Assertions.assertNotNull(recordClass.getConstructors()[0].getAnnotatedParameterTypes()[0].getAnnotation(TypeUseAndField.class));
+    }
+
+    @Test
+    void testRecordComponentAnnotationsGoWhereTheyAreTargeted() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
+                .addAnnotation(ComponentOnly.class)
+                .addAnnotation(FieldOnly.class)
+                .addAnnotation(Untargeted.class)
+                .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(Deprecated.class))
+                    .addMember("since", "1.0")
+                    .build())
+                .build())
+            .build();
+
+        Class<?> recordClass = defineClass("example.MyRecord", generateFile(recordDef, new StringWriter()));
+        var component = recordClass.getRecordComponents()[0];
+        var field = recordClass.getDeclaredField("name");
+        var accessor = recordClass.getMethod("name");
+        var parameterAnnotations = recordClass.getConstructors()[0].getParameterAnnotations()[0];
+
+        // A component's annotation is spread over the members it expands to, but only where it is targeted
+        Assertions.assertNotNull(component.getAnnotation(ComponentOnly.class));
+        Assertions.assertNull(field.getAnnotation(ComponentOnly.class));
+        Assertions.assertNull(accessor.getAnnotation(ComponentOnly.class));
+        Assertions.assertFalse(Stream.of(parameterAnnotations).anyMatch(ComponentOnly.class::isInstance));
+
+        Assertions.assertNull(component.getAnnotation(FieldOnly.class));
+        Assertions.assertNotNull(field.getAnnotation(FieldOnly.class));
+        Assertions.assertNull(accessor.getAnnotation(FieldOnly.class));
+        Assertions.assertFalse(Stream.of(parameterAnnotations).anyMatch(FieldOnly.class::isInstance));
+
+        // An annotation declaring no target is applicable in all of them
+        Assertions.assertNotNull(component.getAnnotation(Untargeted.class));
+        Assertions.assertNotNull(field.getAnnotation(Untargeted.class));
+        Assertions.assertNotNull(accessor.getAnnotation(Untargeted.class));
+        Assertions.assertTrue(Stream.of(parameterAnnotations).anyMatch(Untargeted.class::isInstance));
+
+        // Deprecated targets everything a component expands to except the component itself
+        Assertions.assertNull(component.getAnnotation(Deprecated.class));
+        assertEquals("1.0", field.getAnnotation(Deprecated.class).since());
+        assertEquals("1.0", accessor.getAnnotation(Deprecated.class).since());
+        assertEquals("1.0", Stream.of(parameterAnnotations)
+            .filter(Deprecated.class::isInstance).map(Deprecated.class::cast).findFirst().orElseThrow().since());
+    }
+
+    @Test
+    void testTargetsOfAnAnnotationTypeGeneratedAlongsideAreRead() throws Exception {
+        // The annotation type is written in this same round, so its class cannot be loaded to be asked
+        AnnotationObjectDef annotationDef = AnnotationObjectDef.builder("example.FieldOnly")
+            .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(Target.class))
+                .addMember("value", new VariableDef.StaticField(
+                    ClassTypeDef.of(ElementType.class), ElementType.FIELD.name(), ClassTypeDef.of(ElementType.class)
+                ))
+                .build())
+            .build();
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
+                .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(annotationDef)).build())
+                .build())
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(recordDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        // Its definition says it targets a field, so the field is the only place it is written
+        assertEquals(1, bytecode.split("@Lexample/FieldOnly;", -1).length - 1, bytecode);
+    }
+
+    @Test
+    void testRecordComponentAnnotationOfAnUnresolvableTypeGoesEverywhere() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            // Nothing here can say where an annotation type that is only named belongs, so rather than
+            // dropping it the annotation is written wherever a component expands to
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING)
+                .addAnnotation("example.NotOnTheClasspath")
+                .build())
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        generateFile(recordDef, bytecodeWriter);
+        String bytecode = bytecodeWriter.toString();
+
+        assertEquals(4, bytecode.split("@Lexample/NotOnTheClasspath;", -1).length - 1);
+    }
+
+    @Test
+    void testRecordKeepsItsDeclaredMembers() throws Exception {
+        RecordDef recordDef = RecordDef.builder("example.MyRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(TypeDef.STRING).build())
+            // The canonical constructor, validating its argument
+            .addMethod(MethodDef.constructor()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("name", TypeDef.STRING)
+                .build((aThis, methodParameters) -> StatementDef.multi(
+                    aThis.superRef().invokeSuperConstructor(),
+                    aThis.field("name", TypeDef.STRING).put(
+                        methodParameters.get(0).isNull().doIfElse(
+                            ExpressionDef.constant("unnamed"),
+                            methodParameters.get(0)
+                        )
+                    )
+                )))
+            // An accessor and a toString of its own
+            .addMethod(MethodDef.builder("name")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.STRING)
+                .build((aThis, methodParameters) -> aThis.field("name", TypeDef.STRING).invoke("toUpperCase", TypeDef.STRING).returning()))
+            .addMethod(MethodDef.builder("toString")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.STRING)
+                .build((aThis, methodParameters) -> ExpressionDef.constant("my record").returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(recordDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// RECORD
+// access flags 0x10011
+// signature Ljava/lang/Record;
+// declaration: example/MyRecord extends java.lang.Record
+public final class example/MyRecord extends java/lang/Record {
+
+  RECORDCOMPONENT   Ljava/lang/String; name
+
+  // access flags 0x12
+  private final Ljava/lang/String; name
+
+  // access flags 0x11
+  public final hashCode()I
+    ALOAD 0
+    INVOKEDYNAMIC hashCode(Lexample/MyRecord;)I [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;)
+    ]
+    IRETURN
+
+  // access flags 0x11
+  public final equals(Ljava/lang/Object;)Z
+    ALOAD 0
+    ALOAD 1
+    INVOKEDYNAMIC equals(Lexample/MyRecord;Ljava/lang/Object;)Z [
+      // handle kind 0x6 : INVOKESTATIC
+      java/lang/runtime/ObjectMethods.bootstrap(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;
+      // arguments:
+      example.MyRecord.class,\s
+      "name",\s
+      // handle kind 0x1 : GETFIELD
+      example/MyRecord.name(Ljava/lang/String;)
+    ]
+    IRETURN
+
+  // access flags 0x1
+  public <init>(Ljava/lang/String;)V
+   L0
+    ALOAD 0
+    INVOKESPECIAL java/lang/Record.<init> ()V
+    ALOAD 0
+    ALOAD 1
+    IFNONNULL L1
+    LDC "unnamed"
+    GOTO L2
+   L1
+    ALOAD 1
+   L2
+    PUTFIELD example/MyRecord.name : Ljava/lang/String;
+    RETURN
+   L3
+    LOCALVARIABLE name Ljava/lang/String; L0 L3 1
+
+  // access flags 0x1
+  public name()Ljava/lang/String;
+    ALOAD 0
+    GETFIELD example/MyRecord.name : Ljava/lang/String;
+    INVOKEVIRTUAL java/lang/String.toUpperCase ()Ljava/lang/String;
+    ARETURN
+
+  // access flags 0x1
+  public toString()Ljava/lang/String;
+    LDC "my record"
+    ARETURN
+}
+""", bytecodeWriter.toString());
+
+        Class<?> recordClass = defineClass("example.MyRecord", bytes);
+        Object record = recordClass.getConstructors()[0].newInstance((Object) null);
+
+        assertEquals("UNNAMED", recordClass.getMethod("name").invoke(record));
+        assertEquals("my record", record.toString());
+        // equals and hashCode are still the ones derived from the components
+        assertEquals(record, recordClass.getConstructors()[0].newInstance("unnamed"));
+    }
+
+    private Class<?> defineClass(String name, byte[] bytes) {
+        return new ClassLoader(getClass().getClassLoader()) {
+            Class<?> define() {
+                return defineClass(name, bytes, 0, bytes.length);
+            }
+        }.define();
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.RECORD_COMPONENT)
+    @interface ComponentOnly {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    @interface FieldOnly {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface Untargeted {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE_USE)
+    @interface TypeUseOnly {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE_USE, ElementType.FIELD})
+    @interface TypeUseAndField {
     }
 
     static class MyAbstractClass {

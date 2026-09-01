@@ -35,32 +35,32 @@ public class InnerTypesTest {
 
         innerInterfaceTest();
 
-//        MyEnumWithInnerTypes.InnerRecord innerRecord = MyEnumWithInnerTypes$InnerRecordBuilder.builder().id(3).build();
-//        assertEquals(3, innerRecord.id());
+        MyEnumWithInnerTypes.InnerRecord innerRecord = MyEnumWithInnerTypesInnerRecordBuilder.builder().id(3).build();
+        assertEquals(3, innerRecord.id());
 
         MyEnumWithInnerTypes.InnerClass innerClass = new MyEnumWithInnerTypes.InnerClass("name");
         assertEquals("name", innerClass.getName());
     }
 
-//    @Test
-//    public void recordTest() {
-//        RecordWithInnerTypes myRecord = new RecordWithInnerTypes(0, "name");
-//        assertEquals(0, myRecord.id());
-//        assertEquals("name", myRecord.name());
-//
-//        innerEnumTest(
-//            RecordWithInnerTypes.InnerEnum.values().length,
-//            RecordWithInnerTypes.InnerEnum.SINGLE.myName(),
-//            RecordWithInnerTypes.InnerEnum.MARRIED.myName());
-//
-//        innerInterfaceTest();
-//
-//        RecordWithInnerTypes.InnerRecord innerRecord = RecordWithInnerTypes$InnerRecordBuilder.builder().id(3).build();
-//        assertEquals(3, innerRecord.id());
-//
-//        RecordWithInnerTypes.InnerClass innerClass = new RecordWithInnerTypes.InnerClass("name");
-//        assertEquals("name", innerClass.getName());
-//    }
+    @Test
+    public void recordTest() {
+        RecordWithInnerTypes myRecord = new RecordWithInnerTypes(0, "name");
+        assertEquals(0, myRecord.id());
+        assertEquals("name", myRecord.name());
+
+        innerEnumTest(
+            RecordWithInnerTypes.InnerEnum.values().length,
+            RecordWithInnerTypes.InnerEnum.SINGLE.myName(),
+            RecordWithInnerTypes.InnerEnum.MARRIED.myName());
+
+        innerInterfaceTest();
+
+        RecordWithInnerTypes.InnerRecord innerRecord = RecordWithInnerTypesInnerRecordBuilder.builder().id(3).build();
+        assertEquals(3, innerRecord.id());
+
+        RecordWithInnerTypes.InnerClass innerClass = new RecordWithInnerTypes.InnerClass("name");
+        assertEquals("name", innerClass.getName());
+    }
 
     @Test
     public void classTest() {
@@ -77,8 +77,8 @@ public class InnerTypesTest {
 
         innerInterfaceTest();
 
-//        ClassWithInnerTypes.InnerRecord innerRecord = ClassWithInnerTypes$InnerRecordBuilder.builder().id(3).build();
-//        assertEquals(3, innerRecord.id());
+        ClassWithInnerTypes.InnerRecord innerRecord = ClassWithInnerTypesInnerRecordBuilder.builder().id(3).build();
+        assertEquals(3, innerRecord.id());
 
         ClassWithInnerTypes.InnerClass innerClass = new ClassWithInnerTypes.InnerClass("name");
         assertEquals("name", innerClass.getName());
@@ -95,8 +95,8 @@ public class InnerTypesTest {
 
         innerInterfaceTest();
 
-//        InterfaceWithInnerTypes.InnerRecord innerRecord = InterfaceWithInnerTypes$InnerRecordBuilder.builder().id(3).build();
-//        assertEquals(3, innerRecord.id());
+        InterfaceWithInnerTypes.InnerRecord innerRecord = InterfaceWithInnerTypesInnerRecordBuilder.builder().id(3).build();
+        assertEquals(3, innerRecord.id());
 
         InterfaceWithInnerTypes.InnerClass innerClass = new InterfaceWithInnerTypes.InnerClass("name");
         assertEquals("name", innerClass.getName());

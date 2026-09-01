@@ -16,7 +16,9 @@
 package io.micronaut.sourcegen.bytecode;
 
 import org.jspecify.annotations.Nullable;
+import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.naming.NameUtils;
+import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.sourcegen.bytecode.statement.StatementWriter;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
@@ -37,14 +39,23 @@ import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.RecordComponentVisitor;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.TypePath;
+import org.objectweb.asm.TypeReference;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.util.CheckClassAdapter;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -52,6 +63,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.objectweb.asm.Opcodes.ACC_ABSTRACT;
 import static org.objectweb.asm.Opcodes.ACC_BRIDGE;
@@ -81,6 +93,8 @@ import static org.objectweb.asm.Opcodes.V17;
  * @since 1.5
  */
 public final class ByteCodeWriter {
+
+    private static final List<Modifier> ACCESS_MODIFIERS = List.of(Modifier.PUBLIC, Modifier.PROTECTED, Modifier.PRIVATE);
 
     private final boolean checkClass;
     private final boolean visitMaxs;
@@ -136,6 +150,62 @@ public final class ByteCodeWriter {
         }
     }
 
+    /**
+     * Write the annotations a type carries as type annotations of the member it belongs to. A type use
+     * annotation belongs there and not among the member's declaration annotations, which is where a
+     * consumer would otherwise read it as saying something about the declaration itself.
+     *
+     * @param typeDef  The type, annotated or not
+     * @param typeRef  The reference of the type within the member, from {@link TypeReference}
+     * @param member   The member the annotations are written on
+     */
+    private void writeTypeAnnotations(TypeDef typeDef, int typeRef, TypeAnnotatable member) {
+        writeTypeAnnotations(typeDef, typeRef, "", member);
+    }
+
+    /**
+     * Walk a type, writing the annotations each part of it carries against the path that reaches that part.
+     * An annotation on the type itself has no path, one on what an array holds is reached through the array,
+     * and one on a type argument through the argument it annotates - the way {@code List<@Nullable String>}
+     * annotates the argument and not the list.
+     *
+     * @param typeDef  The type to walk
+     * @param typeRef  The reference of the type within the member, from {@link TypeReference}
+     * @param typePath The path reaching this part of the type, encoded as {@link TypePath#fromString} reads it
+     * @param member   The member the annotations are written on
+     */
+    private void writeTypeAnnotations(TypeDef typeDef, int typeRef, String typePath, TypeAnnotatable member) {
+        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
+            writeTypeAnnotations(annotated.annotations(), typeRef, typePath, member);
+            writeTypeAnnotations(annotated.typeDef(), typeRef, typePath, member);
+        } else if (typeDef instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
+            writeTypeAnnotations(annotated.annotations(), typeRef, typePath, member);
+            writeTypeAnnotations(annotated.typeDef(), typeRef, typePath, member);
+        } else if (typeDef instanceof TypeDef.Array array) {
+            writeTypeAnnotations(array.componentType(), typeRef, typePath + "[".repeat(array.dimensions()), member);
+        } else if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
+            List<TypeDef> typeArguments = parameterized.typeArguments();
+            for (int i = 0; i < typeArguments.size(); i++) {
+                writeTypeAnnotations(typeArguments.get(i), typeRef, typePath + i + ";", member);
+            }
+        } else if (typeDef instanceof TypeDef.Wildcard wildcard) {
+            for (TypeDef bound : CollectionUtils.concat(wildcard.upperBounds(), wildcard.lowerBounds())) {
+                writeTypeAnnotations(bound, typeRef, typePath + "*", member);
+            }
+        }
+    }
+
+    private void writeTypeAnnotations(List<AnnotationDef> annotations, int typeRef, String typePath, TypeAnnotatable member) {
+        for (AnnotationDef annotation : annotations) {
+            visitAnnotation(annotation, member.visitTypeAnnotation(
+                typeRef,
+                TypePath.fromString(typePath),
+                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
+                true
+            ));
+        }
+    }
+
     private MethodDef createStaticInitializer(StatementDef statement) {
         return MethodDef.builder("<clinit>")
             .returns(TypeDef.VOID)
@@ -170,6 +240,11 @@ public final class ByteCodeWriter {
             AnnotationVisitor annotationVisitor = fieldVisitor.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
             visitAnnotation(annotation, annotationVisitor);
         }
+        writeTypeAnnotations(
+            fieldDef.getType(),
+            TypeReference.newTypeReference(TypeReference.FIELD).getValue(),
+            fieldVisitor::visitTypeAnnotation
+        );
         fieldVisitor.visitEnd();
     }
 
@@ -182,7 +257,7 @@ public final class ByteCodeWriter {
      */
     public void writeInterface(ClassVisitor classVisitor, InterfaceDef interfaceDef, @Nullable ClassTypeDef outerType) {
         Set<String> emittedBridges = new HashSet<>();
-        int modifiersFlag = ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(interfaceDef.getModifiers());
+        int modifiersFlag = ACC_INTERFACE | ACC_ABSTRACT | getClassModifiersFlag(interfaceDef.getModifiers(), outerType);
         if (interfaceDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
@@ -207,7 +282,7 @@ public final class ByteCodeWriter {
     }
 
     /**
-     * Write an interface.
+     * Write a record.
      *
      * @param classVisitor The class visitor
      * @param recordDef    The record definition
@@ -217,14 +292,22 @@ public final class ByteCodeWriter {
     }
 
     /**
-     * Write an interface.
+     * Write a record.
+     *
+     * <p>The components of the record are expanded the way a compiler expands them: a record component,
+     * a private final field, the canonical constructor, an accessor per component, and {@code equals},
+     * {@code hashCode} and {@code toString} linked through
+     * {@code java.lang.runtime.ObjectMethods#bootstrap}. A member the definition declares itself is kept,
+     * replacing the one that would have been generated.
      *
      * @param classVisitor The class visitor
      * @param recordDef    The record definition
      * @param outerType     The outer type
      */
     public void writeRecord(ClassVisitor classVisitor, RecordDef recordDef, @Nullable ClassTypeDef outerType) {
-        int modifiersFlag = ACC_RECORD | getModifiersFlag(recordDef.getModifiers());
+        Set<String> emittedBridges = new HashSet<>();
+        // A record is always final
+        int modifiersFlag = ACC_RECORD | ACC_FINAL | getClassModifiersFlag(recordDef.getModifiers(), outerType);
         if (recordDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
@@ -237,6 +320,338 @@ public final class ByteCodeWriter {
             recordDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, recordDef)).map(Type::getInternalName).toArray(String[]::new)
         );
         writeOuterInner(classVisitor, recordDef.asTypeDef(), recordDef, outerType);
+
+        for (AnnotationDef annotation : recordDef.getAnnotations()) {
+            AnnotationVisitor annotationVisitor = classVisitor.visitAnnotation(
+                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
+                true);
+            visitAnnotation(annotation, annotationVisitor);
+        }
+
+        List<PropertyDef> components = recordDef.getProperties();
+        List<FieldDef> componentFields = components.stream().map(ByteCodeWriter::toComponentField).toList();
+
+        for (int i = 0; i < components.size(); i++) {
+            writeRecordComponent(classVisitor, recordDef, components.get(i), componentFields.get(i));
+        }
+        for (FieldDef componentField : componentFields) {
+            writeField(classVisitor, recordDef, componentField);
+        }
+        List<TypeDef> componentTypes = components.stream().map(PropertyDef::getType).toList();
+        if (!isDeclared(recordDef, MethodDef.CONSTRUCTOR, componentTypes)) {
+            writeMethod(classVisitor, recordDef, canonicalConstructor(recordDef, components, componentFields), emittedBridges);
+        }
+        writeObjectMethods(classVisitor, recordDef, componentFields);
+        for (int i = 0; i < components.size(); i++) {
+            PropertyDef component = components.get(i);
+            if (isDeclared(recordDef, component.getName(), List.of())) {
+                continue;
+            }
+            FieldDef componentField = componentFields.get(i);
+            writeMethod(classVisitor, recordDef, MethodDef.builder(component.getName())
+                .addModifiers(Modifier.PUBLIC)
+                .returns(componentField.getType())
+                .addAnnotations(annotationsFor(component, ElementType.METHOD))
+                .build((aThis, methodParameters) -> aThis.field(componentField).returning()), emittedBridges);
+        }
+        for (MethodDef method : recordDef.getMethods()) {
+            writeMethod(classVisitor, recordDef, method, emittedBridges);
+        }
+    }
+
+    private static FieldDef toComponentField(PropertyDef component) {
+        return FieldDef.builder(component.getName(), componentType(component))
+            .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
+            .addAnnotations(annotationsFor(component, ElementType.FIELD))
+            .build();
+    }
+
+    /**
+     * The type of a record component, carrying the annotations of the component that are type use ones. A
+     * compiler writes those on the type of every member the component expands to, not on the members
+     * themselves.
+     *
+     * @param component The record component
+     * @return Its type
+     */
+    private static TypeDef componentType(PropertyDef component) {
+        List<AnnotationDef> typeAnnotations = component.getAnnotations().stream()
+            .filter(annotation -> targetsOf(annotation).map(t -> t.contains(ElementType.TYPE_USE)).orElse(false))
+            .toList();
+        return typeAnnotations.isEmpty() ? component.getType() : annotateComponentType(component.getType(), typeAnnotations);
+    }
+
+    /**
+     * An annotation written before the type of a component annotates what an array holds and not the array
+     * itself - {@code @Nullable String[]} is an array of annotated strings, which is how a compiler reads it
+     * and how the source generators render it. Any other type is annotated as it stands.
+     *
+     * @param typeDef     The type of the component
+     * @param annotations The type use annotations of the component
+     * @return The annotated type
+     */
+    private static TypeDef annotateComponentType(TypeDef typeDef, List<AnnotationDef> annotations) {
+        // An annotation already on the type wraps it, and only this wrapper can be hiding an array - the one
+        // for a class type cannot. Descend through it and put it back, so what it annotates stays the same
+        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
+            return new TypeDef.AnnotatedTypeDef(
+                annotateComponentType(annotated.typeDef(), annotations),
+                annotated.annotations()
+            );
+        }
+        if (typeDef instanceof TypeDef.Array array) {
+            return new TypeDef.Array(
+                annotateComponentType(array.componentType(), annotations),
+                array.dimensions(),
+                array.nullable()
+            );
+        }
+        return typeDef.annotated(annotations);
+    }
+
+    /**
+     * The annotations of a record component that belong on one of the members it expands to. A compiler
+     * spreads a component's annotations over the component itself, the field backing it, its accessor and
+     * the canonical constructor's parameter, keeping each only where the annotation's {@link Target} allows
+     * it. An annotation that declares no target is applicable in every one of those contexts, and so is one
+     * whose type cannot be resolved here - it is written everywhere rather than dropped.
+     *
+     * @param component   The record component
+     * @param elementType The context the annotations are written in
+     * @return The annotations that belong there
+     */
+    private static List<AnnotationDef> annotationsFor(PropertyDef component, ElementType elementType) {
+        return component.getAnnotations().stream()
+            .filter(annotation -> targetsOf(annotation).map(t -> t.contains(elementType)).orElse(true))
+            .toList();
+    }
+
+    /**
+     * The contexts an annotation declares as its targets, or empty when it declares none and is therefore
+     * applicable in all of them. The targets are read from the class the definition carries, from the
+     * definition of an annotation type being generated alongside, or from the class loaded by name.
+     *
+     * @param annotation The annotation
+     * @return Its targets, or empty when it declares none or its type cannot be resolved here
+     */
+    private static Optional<Set<ElementType>> targetsOf(AnnotationDef annotation) {
+        ClassTypeDef typeDef = annotation.getType();
+        if (typeDef instanceof ClassTypeDef.ClassDefType classDefType) {
+            return declaredTargetsOf(classDefType.objectDef());
+        }
+        if (typeDef instanceof ClassTypeDef.ClassElementType classElementType) {
+            Target target = sourceTargetOf(classElementType.classElement());
+            if (target != null) {
+                return Optional.of(Set.of(target.value()));
+            }
+        }
+        Class<?> annotationType = resolveAnnotationType(typeDef);
+        if (annotationType == null) {
+            return Optional.empty();
+        }
+        Target target = annotationType.getAnnotation(Target.class);
+        return target == null ? Optional.empty() : Optional.of(Set.of(target.value()));
+    }
+
+    /**
+     * The {@link Target} of an annotation type that is being compiled, read from the compiler's own element.
+     * Its class cannot be loaded, and the annotation metadata of a {@link io.micronaut.inject.ast.ClassElement}
+     * cannot answer either: {@code Target} is one of the annotations
+     * {@code io.micronaut.core.annotation.AnnotationUtil#INTERNAL_ANNOTATION_NAMES} strips while the metadata
+     * is built. The compiler's element is reached through the native type, which only a Java element carries.
+     *
+     * @param classElement The annotation type
+     * @return Its target, or {@code null} when the element is not one of a Java compilation or declares none
+     */
+    @Nullable
+    private static Target sourceTargetOf(io.micronaut.inject.ast.ClassElement classElement) {
+        Object nativeType = classElement.getNativeType();
+        Element element = null;
+        if (nativeType instanceof Element nativeElement) {
+            element = nativeElement;
+        } else if (nativeType != null) {
+            try {
+                // A JavaNativeElement wraps the compiler's element, and lives in a module this one cannot see
+                Object unwrapped = nativeType.getClass().getMethod("element").invoke(nativeType);
+                if (unwrapped instanceof Element unwrappedElement) {
+                    element = unwrappedElement;
+                }
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                return null;
+            }
+        }
+        return element == null ? null : element.getAnnotation(Target.class);
+    }
+
+    /**
+     * The targets of an annotation type that is itself being generated, read off its {@link Target}
+     * definition - the class is not loadable, so nothing else can answer for it.
+     *
+     * @param objectDef The definition of the annotation type
+     * @return Its targets, or empty when it declares none
+     */
+    private static Optional<Set<ElementType>> declaredTargetsOf(ObjectDef objectDef) {
+        return objectDef.getAnnotations().stream()
+            .filter(a -> a.getType().getName().equals(Target.class.getName()))
+            .findFirst()
+            .map(a -> toElementTypes(a.getValues().get(AnnotationMetadata.VALUE_MEMBER)))
+            // Nothing recognisable in the member leaves the annotation untargeted rather than targeting
+            // nothing at all, which would drop it from every member the component expands to
+            .filter(targets -> !targets.isEmpty());
+    }
+
+    /**
+     * @param value A member of a {@link Target}, however a definition happens to hold an enum constant: the
+     *              constant itself, a static field reference to it, its name, or several of those
+     * @return The element types it names
+     */
+    private static Set<ElementType> toElementTypes(@Nullable Object value) {
+        if (value == null) {
+            return Set.of();
+        }
+        if (value instanceof Collection<?> collection) {
+            return collection.stream().flatMap(v -> toElementTypes(v).stream()).collect(Collectors.toSet());
+        }
+        if (value instanceof Object[] array) {
+            return Arrays.stream(array).flatMap(v -> toElementTypes(v).stream()).collect(Collectors.toSet());
+        }
+        if (value instanceof ElementType elementType) {
+            return Set.of(elementType);
+        }
+        String name = value instanceof VariableDef.StaticField staticField ? staticField.name() : value.toString();
+        try {
+            return Set.of(ElementType.valueOf(name));
+        } catch (IllegalArgumentException e) {
+            return Set.of();
+        }
+    }
+
+    /**
+     * @param typeDef The annotation type
+     * @return The annotation class, or {@code null} when the definition carries no class for it and none
+     * can be loaded by name
+     */
+    @Nullable
+    private static Class<?> resolveAnnotationType(ClassTypeDef typeDef) {
+        if (typeDef instanceof ClassTypeDef.JavaClass javaClass) {
+            return javaClass.type();
+        }
+        try {
+            return Class.forName(typeDef.getName(), false, ByteCodeWriter.class.getClassLoader());
+        } catch (ClassNotFoundException | LinkageError e) {
+            return null;
+        }
+    }
+
+    private void writeRecordComponent(ClassVisitor classVisitor, RecordDef recordDef, PropertyDef component, FieldDef componentField) {
+        RecordComponentVisitor recordComponentVisitor = classVisitor.visitRecordComponent(
+            component.getName(),
+            TypeUtils.getType(component.getType(), recordDef).getDescriptor(),
+            SignatureWriterUtils.getFieldSignature(recordDef, componentField)
+        );
+        for (AnnotationDef annotation : annotationsFor(component, ElementType.RECORD_COMPONENT)) {
+            AnnotationVisitor annotationVisitor = recordComponentVisitor.visitAnnotation(
+                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
+                true);
+            visitAnnotation(annotation, annotationVisitor);
+        }
+        writeTypeAnnotations(
+            componentField.getType(),
+            TypeReference.newTypeReference(TypeReference.FIELD).getValue(),
+            recordComponentVisitor::visitTypeAnnotation
+        );
+        recordComponentVisitor.visitEnd();
+    }
+
+    private MethodDef canonicalConstructor(RecordDef recordDef, List<PropertyDef> components, List<FieldDef> componentFields) {
+        MethodDef.MethodDefBuilder builder = MethodDef.constructor();
+        // An implicitly declared canonical constructor has the access of the record itself (JLS 8.10.4.1)
+        for (Modifier accessModifier : ACCESS_MODIFIERS) {
+            if (recordDef.getModifiers().contains(accessModifier)) {
+                builder.addModifiers(accessModifier);
+            }
+        }
+        for (int i = 0; i < components.size(); i++) {
+            PropertyDef component = components.get(i);
+            builder.addParameter(ParameterDef.builder(component.getName(), componentFields.get(i).getType())
+                .addAnnotations(annotationsFor(component, ElementType.PARAMETER))
+                .build());
+        }
+        return builder.build((aThis, methodParameters) -> {
+            List<StatementDef> statements = new ArrayList<>(componentFields.size() + 1);
+            statements.add(aThis.superRef().invokeSuperConstructor());
+            for (int i = 0; i < componentFields.size(); i++) {
+                statements.add(aThis.field(componentFields.get(i)).assign(methodParameters.get(i)));
+            }
+            return StatementDef.multi(statements);
+        });
+    }
+
+    /**
+     * Write the {@code equals}, {@code hashCode} and {@code toString} of a record, each of them an
+     * {@code invokedynamic} linked through {@code java.lang.runtime.ObjectMethods#bootstrap}, which
+     * derives the implementation from the components handed to it as the bootstrap arguments.
+     *
+     * @param classVisitor    The class visitor
+     * @param recordDef       The record definition
+     * @param componentFields The fields backing the record components
+     */
+    private void writeObjectMethods(ClassVisitor classVisitor, RecordDef recordDef, List<FieldDef> componentFields) {
+        Type recordType = TypeUtils.getType(recordDef.asTypeDef());
+        String internalName = recordType.getInternalName();
+        Object[] bootstrapArguments = new Object[componentFields.size() + 2];
+        bootstrapArguments[0] = recordType;
+        bootstrapArguments[1] = componentFields.stream().map(FieldDef::getName).collect(Collectors.joining(";"));
+        for (int i = 0; i < componentFields.size(); i++) {
+            FieldDef componentField = componentFields.get(i);
+            bootstrapArguments[i + 2] = new Handle(
+                Opcodes.H_GETFIELD,
+                internalName,
+                componentField.getName(),
+                TypeUtils.getType(componentField.getType(), recordDef).getDescriptor(),
+                false
+            );
+        }
+        writeObjectMethod(classVisitor, recordDef, "toString", Type.getMethodDescriptor(Type.getType(String.class)),
+            Type.getMethodDescriptor(Type.getType(String.class), recordType), bootstrapArguments);
+        writeObjectMethod(classVisitor, recordDef, "hashCode", Type.getMethodDescriptor(Type.INT_TYPE),
+            Type.getMethodDescriptor(Type.INT_TYPE, recordType), bootstrapArguments);
+        writeObjectMethod(classVisitor, recordDef, "equals", Type.getMethodDescriptor(Type.BOOLEAN_TYPE, TypeUtils.OBJECT_TYPE),
+            Type.getMethodDescriptor(Type.BOOLEAN_TYPE, recordType, TypeUtils.OBJECT_TYPE), bootstrapArguments);
+    }
+
+    private void writeObjectMethod(ClassVisitor classVisitor,
+                                   RecordDef recordDef,
+                                   String name,
+                                   String descriptor,
+                                   String callSiteDescriptor,
+                                   Object[] bootstrapArguments) {
+        if (isDeclared(recordDef, name, Type.getArgumentTypes(descriptor))) {
+            return;
+        }
+        int modifiersFlag = ACC_PUBLIC | ACC_FINAL;
+        MethodVisitor methodVisitor = classVisitor.visitMethod(modifiersFlag, name, descriptor, null, null);
+        GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, descriptor);
+        generatorAdapter.visitCode();
+        generatorAdapter.loadThis();
+        generatorAdapter.loadArgs();
+        generatorAdapter.visitInvokeDynamicInsn(name, callSiteDescriptor, ObjectMethodsHandle.BOOTSTRAP, bootstrapArguments);
+        generatorAdapter.returnValue();
+        if (visitMaxs) {
+            generatorAdapter.visitMaxs(20, 20);
+        }
+        generatorAdapter.visitEnd();
+    }
+
+    private boolean isDeclared(RecordDef recordDef, String name, List<TypeDef> parameterTypes) {
+        return isDeclared(recordDef, name, parameterTypes.stream().map(t -> TypeUtils.getType(t, recordDef)).toArray(Type[]::new));
+    }
+
+    private boolean isDeclared(RecordDef recordDef, String name, Type[] parameterTypes) {
+        return recordDef.getMethods().stream().anyMatch(methodDef -> methodDef.getName().equals(name)
+            && Arrays.equals(
+                methodDef.getParameters().stream().map(p -> TypeUtils.getType(p.getType(), recordDef)).toArray(Type[]::new),
+                parameterTypes));
     }
 
     /**
@@ -262,7 +677,7 @@ public final class ByteCodeWriter {
         Set<String> emittedBridges = new HashSet<>();
         ClassTypeDef typeDef = classDef.asTypeDef();
 
-        int modifiersFlag = getModifiersFlag(classDef.getModifiers());
+        int modifiersFlag = getClassModifiersFlag(classDef.getModifiers(), outerType);
 
         if (classDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
@@ -331,27 +746,46 @@ public final class ByteCodeWriter {
                 TypeUtils.getType(thisType).getInternalName(),
                 outerInternalName,
                 thisType.getSimpleName(),
-                getModifiersFlag(thisDef)
+                getInnerClassModifiersFlag(thisDef, outerType.isInterface())
             );
         }
-        writeInnerTypes(classVisitor, thisType, thisDef.getInnerTypes());
+        writeInnerTypes(classVisitor, thisType, thisDef);
     }
 
-    private void writeInnerTypes(ClassVisitor outerClassVisitor, ClassTypeDef outerType, List<ObjectDef> innerTypes) {
-        for (ObjectDef innerDef : innerTypes) {
+    private void writeInnerTypes(ClassVisitor outerClassVisitor, ClassTypeDef outerType, ObjectDef outerDef) {
+        for (ObjectDef innerDef : outerDef.getInnerTypes()) {
             String outerClassInternalName = TypeUtils.getType(outerType).getInternalName();
 
             ClassTypeDef interType = innerDef.asTypeDef();
-            int access =  getModifiersFlag(innerDef);
-            access |= ACC_PUBLIC | ACC_STATIC; // Javac always adds public and static
             outerClassVisitor.visitInnerClass(
                 TypeUtils.getType(innerDef.asTypeDef()).getInternalName(),
                 outerClassInternalName,
                 interType.getSimpleName(),
-                access
+                getInnerClassModifiersFlag(innerDef, outerDef instanceof InterfaceDef)
             );
             outerClassVisitor.visitNestMember(TypeUtils.getType(innerDef.asTypeDef()).getInternalName());
         }
+    }
+
+    /**
+     * The access flags of the {@code InnerClasses} entry of a member type. This is where its declared access
+     * lives - the class file itself cannot carry private or protected - and a member type is always static
+     * here, without which it reads back as an inner class needing an enclosing instance. The outer type and
+     * the member itself both write this entry, and the two have to agree.
+     *
+     * <p>A member of an interface that declares no access is written public, being implicitly so (JLS 9.5).
+     * A member of a class is not: it keeps the package private access it was declared with.
+     *
+     * @param objectDef          The member type
+     * @param declaredInterface  Whether the type enclosing it is an interface
+     * @return The access flags of its inner class entry
+     */
+    private int getInnerClassModifiersFlag(ObjectDef objectDef, boolean declaredInterface) {
+        int access = getModifiersFlag(objectDef) | ACC_STATIC;
+        if (declaredInterface && (access & (ACC_PUBLIC | ACC_PROTECTED | ACC_PRIVATE)) == 0) {
+            access |= ACC_PUBLIC;
+        }
+        return access;
     }
 
     private int getModifiersFlag(ObjectDef objectDef) {
@@ -362,7 +796,8 @@ public final class ByteCodeWriter {
             return ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(interfaceDef.getModifiers());
         }
         if (objectDef instanceof RecordDef recordDef) {
-            return getModifiersFlag(recordDef.getModifiers());
+            // A record is always final; ACC_RECORD is not among the flags an inner class entry may carry
+            return ACC_FINAL | getModifiersFlag(recordDef.getModifiers());
         }
         return getModifiersFlag(objectDef.getModifiers());
     }
@@ -482,7 +917,15 @@ public final class ByteCodeWriter {
         );
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, methodDescriptor);
         for (AnnotationDef annotation : methodDef.getAnnotations()) {
-            generatorAdapter.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
+            visitAnnotation(annotation, generatorAdapter.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true));
+        }
+
+        if (!methodDef.isConstructor()) {
+            writeTypeAnnotations(
+                methodDef.getReturnType(),
+                TypeReference.newTypeReference(TypeReference.METHOD_RETURN).getValue(),
+                generatorAdapter::visitTypeAnnotation
+            );
         }
 
         if (methodDef.getParameters().stream().anyMatch(p -> !p.getAnnotations().isEmpty())) {
@@ -540,6 +983,11 @@ public final class ByteCodeWriter {
                 AnnotationVisitor annotationVisitor = generatorAdapter.visitParameterAnnotation(parameterIndex, TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
                 visitAnnotation(annotation, annotationVisitor);
             }
+            writeTypeAnnotations(
+                parameter.getType(),
+                TypeReference.newFormalParameterReference(parameterIndex).getValue(),
+                generatorAdapter::visitTypeAnnotation
+            );
             Type parameterType = TypeUtils.getType(parameter.getType(), objectDef);
             MethodContext.LocalData prevParam = context.locals().put(parameter.getName(), new MethodContext.LocalData(
                 parameter.getName(),
@@ -674,12 +1122,15 @@ public final class ByteCodeWriter {
     }
 
     private List<StatementDef> adjustConstructorStatements(@Nullable ObjectDef objectDef, List<StatementDef> statements) {
-        if (!(objectDef instanceof ClassDef classDef)) {
+        if (!(objectDef instanceof ClassDef || objectDef instanceof RecordDef)) {
             return statements;
         }
-        List<StatementDef> fieldInitializers = classDef.getFields().stream().filter(fieldDef -> !fieldDef.getModifiers().contains(Modifier.STATIC))
+        // A record has no fields of its own, only the ones backing its components, which the canonical constructor assigns
+        List<StatementDef> fieldInitializers = objectDef instanceof ClassDef classDef
+            ? classDef.getFields().stream().filter(fieldDef -> !fieldDef.getModifiers().contains(Modifier.STATIC))
             .flatMap(fieldDef -> fieldDef.getInitializer().<StatementDef>map(initializer -> new VariableDef.This().field(fieldDef).assign(initializer)).stream())
-            .toList();
+            .toList()
+            : List.of();
         Optional<StatementDef> constructorInvocation = statements.stream().filter(this::isConstructorInvocation).findFirst();
         if (constructorInvocation.isEmpty() || !fieldInitializers.isEmpty()) {
             // Add the constructor or reshuffle the statements to have the field initializers right after the constructor call
@@ -735,6 +1186,26 @@ public final class ByteCodeWriter {
         return deprecatedCall || statement instanceof StatementDef.InvokeSuperConstructor;
     }
 
+    /**
+     * The access flags of a class file. Unlike a member, a class cannot be declared private, protected or
+     * static there - those belong to the {@code InnerClasses} entry of a member type. A member type declared
+     * protected is reachable from a subclass in another package, so its class file is public, the way a
+     * compiler writes it.
+     *
+     * @param modifiers The declared modifiers
+     * @return The access flags of the class file
+     */
+    private int getClassModifiersFlag(Set<Modifier> modifiers, @Nullable ClassTypeDef outerType) {
+        int access = getModifiersFlag(modifiers) & ~(ACC_PRIVATE | ACC_PROTECTED | ACC_STATIC);
+        boolean implicitlyPublic = outerType != null
+            && outerType.isInterface()
+            && (access & (ACC_PUBLIC | ACC_PROTECTED | ACC_PRIVATE)) == 0;
+        if (modifiers.contains(Modifier.PROTECTED) || implicitlyPublic) {
+            access |= ACC_PUBLIC;
+        }
+        return access;
+    }
+
     private int getModifiersFlag(Set<Modifier> modifiers) {
         int access = 0;
         if (modifiers.contains(Modifier.PUBLIC)) {
@@ -777,6 +1248,16 @@ public final class ByteCodeWriter {
      */
     public byte[] write(ObjectDef objectDef, @Nullable ClassTypeDef outerType) {
         return createClassWriterAndWriteObject(objectDef, outerType).toByteArray();
+    }
+
+    /**
+     * A visitor of a member that a type annotation can be written on - a field, a record component or a
+     * method all take one the same way.
+     */
+    @FunctionalInterface
+    private interface TypeAnnotatable {
+
+        AnnotationVisitor visitTypeAnnotation(int typeRef, @Nullable TypePath typePath, String descriptor, boolean visible);
     }
 
 }
