@@ -62,4 +62,91 @@ class WitherAnnotationVisitorSpec extends AbstractTypeElementSpec {
         withConsumer != null
         withConsumer.parameterTypes[0].typeName.contains("java.util.function.Consumer")
     }
+
+    void "component level @Wither only generates with methods for the annotated components"() {
+        given:
+        var classLoader = buildClassLoader("demo.test.Cat", """
+        package demo.test;
+        import io.micronaut.sourcegen.annotations.Wither;
+        public record Cat(
+            @Wither String name,
+            int age,
+            @Wither String color
+        ) implements CatWither {
+        }
+        """)
+
+        when:
+        def witherInterface = classLoader.loadClass('demo.test.CatWither')
+        def recordClass = classLoader.loadClass('demo.test.Cat')
+
+        then: "only the annotated components have a with method"
+        witherInterface.methods*.name.toSorted() == ['age', 'color', 'name', 'withColor', 'withName']
+
+        and: "accessors are declared for every component so the copy can be created"
+        witherInterface.getMethod("age").returnType == int.class
+
+        when:
+        def instance = recordClass.getConstructor(String, int, String).newInstance("Tom", 3, "grey")
+        def mutated = witherInterface.getMethod("withColor", String).invoke(instance, "black")
+
+        then:
+        mutated.name() == "Tom"
+        mutated.age() == 3
+        mutated.color() == "black"
+    }
+
+    void "component level @Wither restricts a type level @Wither"() {
+        given:
+        var classLoader = buildClassLoader("demo.test.Dog", """
+        package demo.test;
+        import io.micronaut.sourcegen.annotations.Wither;
+        @Wither
+        public record Dog(
+            @Wither String name,
+            int age
+        ) implements DogWither {
+        }
+        """)
+
+        when:
+        def witherInterface = classLoader.loadClass('demo.test.DogWither')
+
+        then:
+        witherInterface.methods*.name.toSorted() == ['age', 'name', 'withName']
+    }
+
+    void "type level @Wither still generates with methods for all the components"() {
+        given:
+        var classLoader = buildClassLoader("demo.test.Fish", """
+        package demo.test;
+        import io.micronaut.sourcegen.annotations.Wither;
+        @Wither
+        public record Fish(String name, int age) implements FishWither {
+        }
+        """)
+
+        when:
+        def witherInterface = classLoader.loadClass('demo.test.FishWither')
+
+        then:
+        witherInterface.methods*.name.toSorted() == ['age', 'name', 'withAge', 'withName']
+    }
+
+    void "records without any @Wither annotation do not generate a wither"() {
+        given:
+        var classLoader = buildClassLoader("demo.test.Bird", """
+        package demo.test;
+        import io.micronaut.sourcegen.annotations.Builder;
+        @Builder
+        public record Bird(String name, int age) {
+        }
+        """)
+
+        when:
+        classLoader.loadClass('demo.test.BirdWither')
+
+        then:
+        thrown(ClassNotFoundException)
+    }
 }

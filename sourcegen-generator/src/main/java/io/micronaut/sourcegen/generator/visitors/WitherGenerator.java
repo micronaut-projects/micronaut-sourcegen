@@ -44,6 +44,26 @@ public class WitherGenerator {
         ClassTypeDef recordType,
         List<PropertyElement> properties,
         List<ParameterElement> parameters, boolean hasBuilder) {
+        return createWither(packageName, recordType, properties, properties, parameters, hasBuilder);
+    }
+
+    /**
+     * Builds a wither interface for the given arguments.
+     * @param packageName The package name
+     * @param recordType The record type
+     * @param properties The properties
+     * @param witherProperties The subset of the properties that should get a `with` method
+     * @param parameters The parameters
+     * @param hasBuilder Is there a builder
+     * @return The interface
+     * @since 2.2
+     */
+    public static InterfaceDef.InterfaceDefBuilder createWither(
+        String packageName,
+        ClassTypeDef recordType,
+        List<PropertyElement> properties,
+        List<PropertyElement> witherProperties,
+        List<ParameterElement> parameters, boolean hasBuilder) {
         String localBinaryName = recordType.getName().startsWith(packageName + ".")
             ? recordType.getName().substring(packageName.isEmpty() ? 0 : packageName.length() + 1)
             : recordType.getName();
@@ -53,7 +73,7 @@ public class WitherGenerator {
         InterfaceDef.InterfaceDefBuilder wither = InterfaceDef.builder(witherClassName)
             .addModifiers(Modifier.PUBLIC);
 
-        WitherAnnotationVisitor.weaveWithMethodsInternal(recordType, properties, parameters, hasBuilder, wither);
+        WitherAnnotationVisitor.weaveWithMethodsInternal(recordType, properties, witherProperties, parameters, hasBuilder, wither);
         return wither;
     }
 
@@ -72,9 +92,31 @@ public class WitherGenerator {
         List<PropertyElement> properties,
         List<ParameterElement> parameters,
         boolean hasBuilder) {
+        weaveWithMethods(recordType, recordBuilder, properties, properties, parameters, hasBuilder);
+    }
+
+    /**
+     * Add with methods to an existing record type being generated.
+     *
+     * @param recordType       The record type
+     * @param recordBuilder    The record builder
+     * @param properties       The properties
+     * @param witherProperties The subset of the properties that should get a `with` method
+     * @param parameters       The parameters
+     * @param hasBuilder       Whether a builder is present
+     * @since 2.2
+     */
+    public static void weaveWithMethods(
+        ClassTypeDef recordType,
+        RecordDef.RecordDefBuilder recordBuilder,
+        List<PropertyElement> properties,
+        List<PropertyElement> witherProperties,
+        List<ParameterElement> parameters,
+        boolean hasBuilder) {
         WitherAnnotationVisitor.weaveWithMethodsInternal(
             recordType,
             properties,
+            witherProperties,
             parameters,
             hasBuilder,
             recordBuilder

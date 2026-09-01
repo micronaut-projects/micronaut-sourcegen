@@ -20,6 +20,9 @@ import org.jspecify.annotations.NonNull;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.Element;
+import io.micronaut.inject.ast.ElementQuery;
+import io.micronaut.inject.ast.FieldElement;
 import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
@@ -39,6 +42,7 @@ import io.micronaut.sourcegen.model.TypeDef;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
@@ -54,7 +58,7 @@ import java.util.function.Consumer;
  * @since 1.0
  */
 @Internal
-public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither, Object> {
+public final class WitherAnnotationVisitor implements TypeElementVisitor<Object, Object> {
 
     private final Set<String> processed = new HashSet<>();
 
@@ -69,7 +73,21 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
     }
 
     @Override
+    public Set<String> getSupportedAnnotationNames() {
+        return Set.of(Wither.class.getName());
+    }
+
+    @Override
     public void visitClass(ClassElement recordElement, VisitorContext context) {
+        boolean annotatedType = recordElement.hasStereotype(Wither.class);
+        if (!annotatedType && !recordElement.isRecord()) {
+            // A component level @Wither is only supported on records
+            return;
+        }
+        Set<String> annotatedComponents = findAnnotatedComponents(recordElement);
+        if (!annotatedType && annotatedComponents.isEmpty()) {
+            return;
+        }
         if (processed.contains(recordElement.getName())) {
             return;
         }
@@ -78,11 +96,17 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                 throw new ProcessingException(recordElement, "Only records can be annotated with @Wither");
             }
             List<PropertyElement> properties = recordElement.getBeanProperties();
+            List<PropertyElement> witherProperties = annotatedComponents.isEmpty()
+                ? properties
+                : properties.stream().filter(property -> annotatedComponents.contains(property.getName())).toList();
+            if (witherProperties.isEmpty()) {
+                throw new ProcessingException(recordElement, "@Wither can only be placed on a record component, none found for: " + annotatedComponents);
+            }
             List<ParameterElement> parameters = Arrays.asList(recordElement.getPrimaryConstructor().orElseThrow().getParameters());
             boolean hasBuilder = recordElement.hasStereotype(Builder.class);
             ClassTypeDef recordType = ClassTypeDef.of(recordElement);
 
-            InterfaceDef.InterfaceDefBuilder wither = createWither(recordElement.getPackageName(), recordType, properties, parameters, hasBuilder);
+            InterfaceDef.InterfaceDefBuilder wither = createWither(recordElement.getPackageName(), recordType, properties, witherProperties, parameters, hasBuilder);
 
             SourceGenerator sourceGenerator = SourceGenerators.findByLanguage(context.getLanguage()).orElse(null);
             if (sourceGenerator == null) {
@@ -109,6 +133,42 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
     }
 
     /**
+     * Finds the names of the record components that are directly annotated with {@link Wither}.
+     * A record component annotation is visible on the backing field and/or on the canonical
+     * constructor parameter, depending on the targets of the annotation.
+     *
+     * @param recordElement The record element
+     * @return The annotated component names, empty if none of them is annotated
+     */
+    private static Set<String> findAnnotatedComponents(ClassElement recordElement) {
+        Set<String> annotatedNames = new LinkedHashSet<>();
+        for (ParameterElement parameter : recordElement.getPrimaryConstructor()
+            .map(constructor -> Arrays.asList(constructor.getParameters()))
+            .orElse(List.of())) {
+            if (isAnnotated(parameter)) {
+                annotatedNames.add(parameter.getName());
+            }
+        }
+        for (FieldElement field : recordElement.getEnclosedElements(ElementQuery.ALL_FIELDS)) {
+            if (isAnnotated(field)) {
+                annotatedNames.add(field.getName());
+            }
+        }
+        return annotatedNames;
+    }
+
+    /**
+     * The declared metadata is checked to avoid matching a type level {@link Wither},
+     * which is included in the annotation metadata of the record components.
+     *
+     * @param element The element
+     * @return true if the element itself is annotated with {@link Wither}
+     */
+    private static boolean isAnnotated(Element element) {
+        return element.hasDeclaredStereotype(Wither.class);
+    }
+
+    /**
      * Builds a wither interface for the given arguments.
      * @param packageName The package name
      * @param recordType The record type
@@ -121,6 +181,25 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
         String packageName,
         ClassTypeDef recordType,
         List<PropertyElement> properties,
+        List<ParameterElement> parameters, boolean hasBuilder) {
+        return createWither(packageName, recordType, properties, properties, parameters, hasBuilder);
+    }
+
+    /**
+     * Builds a wither interface for the given arguments.
+     * @param packageName The package name
+     * @param recordType The record type
+     * @param properties The properties
+     * @param witherProperties The properties that should get a `with` method
+     * @param parameters The parameters
+     * @param hasBuilder Is there a builder
+     * @return The interface
+     */
+    static InterfaceDef.InterfaceDefBuilder createWither(
+        String packageName,
+        ClassTypeDef recordType,
+        List<PropertyElement> properties,
+        List<PropertyElement> witherProperties,
         List<ParameterElement> parameters, boolean hasBuilder) {
         String localBinaryName = recordType.getName().startsWith(packageName + ".")
             ? recordType.getName().substring(packageName.isEmpty() ? 0 : packageName.length() + 1)
@@ -140,13 +219,23 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
                 }
             }
         }
-        weaveWithMethodsInternal(recordType, properties, parameters, hasBuilder, wither);
+        weaveWithMethodsInternal(recordType, properties, witherProperties, parameters, hasBuilder, wither);
         return wither;
     }
 
     static void weaveWithMethodsInternal(
         ClassTypeDef recordType,
         List<PropertyElement> properties,
+        List<ParameterElement> parameters,
+        boolean hasBuilder,
+        ObjectDefBuilder<?> wither) {
+        weaveWithMethodsInternal(recordType, properties, properties, parameters, hasBuilder, wither);
+    }
+
+    static void weaveWithMethodsInternal(
+        ClassTypeDef recordType,
+        List<PropertyElement> properties,
+        List<PropertyElement> witherProperties,
         List<ParameterElement> parameters,
         boolean hasBuilder,
         ObjectDefBuilder<?> wither) {
@@ -169,7 +258,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Wither,
             }
             propertyAccessMethods.put(beanProperty.getName(), methodDef);
         }
-        for (PropertyElement beanProperty : properties) {
+        for (PropertyElement beanProperty : witherProperties) {
             wither.addMethod(
                 withMethod(wither, parameters, beanProperty, recordType, propertyAccessMethods)
             );
