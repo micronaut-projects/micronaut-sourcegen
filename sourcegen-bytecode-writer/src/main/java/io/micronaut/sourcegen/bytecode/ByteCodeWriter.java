@@ -37,14 +37,18 @@ import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.RecordComponentVisitor;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.util.CheckClassAdapter;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -52,6 +56,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.objectweb.asm.Opcodes.ACC_ABSTRACT;
 import static org.objectweb.asm.Opcodes.ACC_BRIDGE;
@@ -207,7 +212,7 @@ public final class ByteCodeWriter {
     }
 
     /**
-     * Write an interface.
+     * Write a record.
      *
      * @param classVisitor The class visitor
      * @param recordDef    The record definition
@@ -217,14 +222,22 @@ public final class ByteCodeWriter {
     }
 
     /**
-     * Write an interface.
+     * Write a record.
+     *
+     * <p>The components of the record are expanded the way a compiler expands them: a record component,
+     * a private final field, the canonical constructor, an accessor per component, and {@code equals},
+     * {@code hashCode} and {@code toString} linked through
+     * {@code java.lang.runtime.ObjectMethods#bootstrap}. A member the definition declares itself is kept,
+     * replacing the one that would have been generated.
      *
      * @param classVisitor The class visitor
      * @param recordDef    The record definition
      * @param outerType     The outer type
      */
     public void writeRecord(ClassVisitor classVisitor, RecordDef recordDef, @Nullable ClassTypeDef outerType) {
-        int modifiersFlag = ACC_RECORD | getModifiersFlag(recordDef.getModifiers());
+        Set<String> emittedBridges = new HashSet<>();
+        // A record is always final
+        int modifiersFlag = ACC_RECORD | ACC_FINAL | getModifiersFlag(recordDef.getModifiers());
         if (recordDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
@@ -237,6 +250,149 @@ public final class ByteCodeWriter {
             recordDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, recordDef)).map(Type::getInternalName).toArray(String[]::new)
         );
         writeOuterInner(classVisitor, recordDef.asTypeDef(), recordDef, outerType);
+
+        for (AnnotationDef annotation : recordDef.getAnnotations()) {
+            AnnotationVisitor annotationVisitor = classVisitor.visitAnnotation(
+                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
+                true);
+            visitAnnotation(annotation, annotationVisitor);
+        }
+
+        List<PropertyDef> components = recordDef.getProperties();
+        List<FieldDef> componentFields = components.stream().map(ByteCodeWriter::toComponentField).toList();
+
+        for (int i = 0; i < components.size(); i++) {
+            writeRecordComponent(classVisitor, recordDef, components.get(i), componentFields.get(i));
+        }
+        for (FieldDef componentField : componentFields) {
+            writeField(classVisitor, recordDef, componentField);
+        }
+        List<TypeDef> componentTypes = components.stream().map(PropertyDef::getType).toList();
+        if (!isDeclared(recordDef, MethodDef.CONSTRUCTOR, componentTypes)) {
+            writeMethod(classVisitor, recordDef, canonicalConstructor(components, componentFields), emittedBridges);
+        }
+        writeObjectMethods(classVisitor, recordDef, componentFields);
+        for (int i = 0; i < components.size(); i++) {
+            PropertyDef component = components.get(i);
+            if (isDeclared(recordDef, component.getName(), List.of())) {
+                continue;
+            }
+            FieldDef componentField = componentFields.get(i);
+            writeMethod(classVisitor, recordDef, MethodDef.builder(component.getName())
+                .addModifiers(Modifier.PUBLIC)
+                .returns(component.getType())
+                .addAnnotations(component.getAnnotations())
+                .build((aThis, methodParameters) -> aThis.field(componentField).returning()), emittedBridges);
+        }
+        for (MethodDef method : recordDef.getMethods()) {
+            writeMethod(classVisitor, recordDef, method, emittedBridges);
+        }
+    }
+
+    private static FieldDef toComponentField(PropertyDef component) {
+        return FieldDef.builder(component.getName(), component.getType())
+            .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
+            .addAnnotations(component.getAnnotations())
+            .build();
+    }
+
+    private void writeRecordComponent(ClassVisitor classVisitor, RecordDef recordDef, PropertyDef component, FieldDef componentField) {
+        RecordComponentVisitor recordComponentVisitor = classVisitor.visitRecordComponent(
+            component.getName(),
+            TypeUtils.getType(component.getType(), recordDef).getDescriptor(),
+            SignatureWriterUtils.getFieldSignature(recordDef, componentField)
+        );
+        for (AnnotationDef annotation : component.getAnnotations()) {
+            AnnotationVisitor annotationVisitor = recordComponentVisitor.visitAnnotation(
+                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
+                true);
+            visitAnnotation(annotation, annotationVisitor);
+        }
+        recordComponentVisitor.visitEnd();
+    }
+
+    private MethodDef canonicalConstructor(List<PropertyDef> components, List<FieldDef> componentFields) {
+        MethodDef.MethodDefBuilder builder = MethodDef.constructor().addModifiers(Modifier.PUBLIC);
+        for (PropertyDef component : components) {
+            builder.addParameter(ParameterDef.builder(component.getName(), component.getType())
+                .addAnnotations(component.getAnnotations())
+                .build());
+        }
+        return builder.build((aThis, methodParameters) -> {
+            List<StatementDef> statements = new ArrayList<>(componentFields.size() + 1);
+            statements.add(aThis.superRef().invokeSuperConstructor());
+            for (int i = 0; i < componentFields.size(); i++) {
+                statements.add(aThis.field(componentFields.get(i)).assign(methodParameters.get(i)));
+            }
+            return StatementDef.multi(statements);
+        });
+    }
+
+    /**
+     * Write the {@code equals}, {@code hashCode} and {@code toString} of a record, each of them an
+     * {@code invokedynamic} linked through {@code java.lang.runtime.ObjectMethods#bootstrap}, which
+     * derives the implementation from the components handed to it as the bootstrap arguments.
+     *
+     * @param classVisitor    The class visitor
+     * @param recordDef       The record definition
+     * @param componentFields The fields backing the record components
+     */
+    private void writeObjectMethods(ClassVisitor classVisitor, RecordDef recordDef, List<FieldDef> componentFields) {
+        Type recordType = TypeUtils.getType(recordDef.asTypeDef());
+        String internalName = recordType.getInternalName();
+        Object[] bootstrapArguments = new Object[componentFields.size() + 2];
+        bootstrapArguments[0] = recordType;
+        bootstrapArguments[1] = componentFields.stream().map(FieldDef::getName).collect(Collectors.joining(";"));
+        for (int i = 0; i < componentFields.size(); i++) {
+            FieldDef componentField = componentFields.get(i);
+            bootstrapArguments[i + 2] = new Handle(
+                Opcodes.H_GETFIELD,
+                internalName,
+                componentField.getName(),
+                TypeUtils.getType(componentField.getType(), recordDef).getDescriptor(),
+                false
+            );
+        }
+        writeObjectMethod(classVisitor, recordDef, "toString", Type.getMethodDescriptor(Type.getType(String.class)),
+            Type.getMethodDescriptor(Type.getType(String.class), recordType), bootstrapArguments);
+        writeObjectMethod(classVisitor, recordDef, "hashCode", Type.getMethodDescriptor(Type.INT_TYPE),
+            Type.getMethodDescriptor(Type.INT_TYPE, recordType), bootstrapArguments);
+        writeObjectMethod(classVisitor, recordDef, "equals", Type.getMethodDescriptor(Type.BOOLEAN_TYPE, TypeUtils.OBJECT_TYPE),
+            Type.getMethodDescriptor(Type.BOOLEAN_TYPE, recordType, TypeUtils.OBJECT_TYPE), bootstrapArguments);
+    }
+
+    private void writeObjectMethod(ClassVisitor classVisitor,
+                                   RecordDef recordDef,
+                                   String name,
+                                   String descriptor,
+                                   String callSiteDescriptor,
+                                   Object[] bootstrapArguments) {
+        if (isDeclared(recordDef, name, Type.getArgumentTypes(descriptor))) {
+            return;
+        }
+        int modifiersFlag = ACC_PUBLIC | ACC_FINAL;
+        MethodVisitor methodVisitor = classVisitor.visitMethod(modifiersFlag, name, descriptor, null, null);
+        GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, descriptor);
+        generatorAdapter.visitCode();
+        generatorAdapter.loadThis();
+        generatorAdapter.loadArgs();
+        generatorAdapter.visitInvokeDynamicInsn(name, callSiteDescriptor, ObjectMethodsHandle.BOOTSTRAP, bootstrapArguments);
+        generatorAdapter.returnValue();
+        if (visitMaxs) {
+            generatorAdapter.visitMaxs(20, 20);
+        }
+        generatorAdapter.visitEnd();
+    }
+
+    private boolean isDeclared(RecordDef recordDef, String name, List<TypeDef> parameterTypes) {
+        return isDeclared(recordDef, name, parameterTypes.stream().map(t -> TypeUtils.getType(t, recordDef)).toArray(Type[]::new));
+    }
+
+    private boolean isDeclared(RecordDef recordDef, String name, Type[] parameterTypes) {
+        return recordDef.getMethods().stream().anyMatch(methodDef -> methodDef.getName().equals(name)
+            && Arrays.equals(
+                methodDef.getParameters().stream().map(p -> TypeUtils.getType(p.getType(), recordDef)).toArray(Type[]::new),
+                parameterTypes));
     }
 
     /**
@@ -331,7 +487,9 @@ public final class ByteCodeWriter {
                 TypeUtils.getType(thisType).getInternalName(),
                 outerInternalName,
                 thisType.getSimpleName(),
-                getModifiersFlag(thisDef)
+                // The same flags the outer type writes for this member, so the two entries agree - without
+                // ACC_STATIC the class reads back as an inner class needing an enclosing instance
+                getModifiersFlag(thisDef) | ACC_PUBLIC | ACC_STATIC
             );
         }
         writeInnerTypes(classVisitor, thisType, thisDef.getInnerTypes());
@@ -362,7 +520,8 @@ public final class ByteCodeWriter {
             return ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(interfaceDef.getModifiers());
         }
         if (objectDef instanceof RecordDef recordDef) {
-            return getModifiersFlag(recordDef.getModifiers());
+            // A record is always final; ACC_RECORD is not among the flags an inner class entry may carry
+            return ACC_FINAL | getModifiersFlag(recordDef.getModifiers());
         }
         return getModifiersFlag(objectDef.getModifiers());
     }
@@ -482,7 +641,7 @@ public final class ByteCodeWriter {
         );
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, methodDescriptor);
         for (AnnotationDef annotation : methodDef.getAnnotations()) {
-            generatorAdapter.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
+            visitAnnotation(annotation, generatorAdapter.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true));
         }
 
         if (methodDef.getParameters().stream().anyMatch(p -> !p.getAnnotations().isEmpty())) {
@@ -674,12 +833,15 @@ public final class ByteCodeWriter {
     }
 
     private List<StatementDef> adjustConstructorStatements(@Nullable ObjectDef objectDef, List<StatementDef> statements) {
-        if (!(objectDef instanceof ClassDef classDef)) {
+        if (!(objectDef instanceof ClassDef || objectDef instanceof RecordDef)) {
             return statements;
         }
-        List<StatementDef> fieldInitializers = classDef.getFields().stream().filter(fieldDef -> !fieldDef.getModifiers().contains(Modifier.STATIC))
+        // A record has no fields of its own, only the ones backing its components, which the canonical constructor assigns
+        List<StatementDef> fieldInitializers = objectDef instanceof ClassDef classDef
+            ? classDef.getFields().stream().filter(fieldDef -> !fieldDef.getModifiers().contains(Modifier.STATIC))
             .flatMap(fieldDef -> fieldDef.getInitializer().<StatementDef>map(initializer -> new VariableDef.This().field(fieldDef).assign(initializer)).stream())
-            .toList();
+            .toList()
+            : List.of();
         Optional<StatementDef> constructorInvocation = statements.stream().filter(this::isConstructorInvocation).findFirst();
         if (constructorInvocation.isEmpty() || !fieldInitializers.isEmpty()) {
             // Add the constructor or reshuffle the statements to have the field initializers right after the constructor call

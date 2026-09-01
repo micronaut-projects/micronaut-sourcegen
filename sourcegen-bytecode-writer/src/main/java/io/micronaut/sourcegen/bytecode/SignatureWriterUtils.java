@@ -231,6 +231,10 @@ final class SignatureWriterUtils {
             return interfaceDef.getTypeVariables().stream()
                 .anyMatch(tv -> tv.name().equals(variableName));
         }
+        if (objectDef instanceof RecordDef recordDef) {
+            return recordDef.getTypeVariables().stream()
+                .anyMatch(tv -> tv.name().equals(variableName));
+        }
         return false;
     }
 

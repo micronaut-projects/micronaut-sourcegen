@@ -31,4 +31,37 @@ class RecordDefTest {
         Assertions.assertEquals(String.class.getName(), properties.get(0).getType().getName());
     }
 
+    @Test
+    public void testSelfTypeOfARecordWithoutVariables() {
+        RecordDef recordDef = RecordDef.builder("com.example.Test").build();
+
+        Assertions.assertEquals(ClassTypeDef.of("com.example.Test"), recordDef.asTypeDef());
+    }
+
+    @Test
+    public void testSelfTypeOfAGenericRecordIsParameterized() {
+        RecordDef recordDef = RecordDef.builder("com.example.Test")
+            .addTypeVariable(TypeDef.variable("K"))
+            .addTypeVariable(TypeDef.variable("V", TypeDef.of(Number.class)))
+            .build();
+
+        Assertions.assertEquals(
+            TypeDef.parameterized(
+                ClassTypeDef.of("com.example.Test"),
+                TypeDef.variable("K"),
+                TypeDef.variable("V", TypeDef.of(Number.class))
+            ),
+            recordDef.asTypeDef()
+        );
+    }
+
+    @Test
+    public void testTheSelfTypeIsWhatTypeDefThisResolvesTo() {
+        RecordDef recordDef = RecordDef.builder("com.example.Test")
+            .addTypeVariable(TypeDef.variable("T"))
+            .build();
+
+        Assertions.assertEquals(recordDef.asTypeDef(), recordDef.getContextualType(TypeDef.THIS));
+    }
+
 }

@@ -845,7 +845,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 if (objectDef == null) {
                     throw java.lang.IllegalStateException("This type is used outside of the instance scope!")
                 }
-                asType(objectDef.asTypeDef(), null)
+                // The scope is kept: the self type of a generic definition carries the variables it declares
+                asType(objectDef.asTypeDef(), objectDef, methodDef)
             } else if (typeDef is TypeDef.Array) {
                 asArray(typeDef, objectDef)
             } else if (typeDef is ClassTypeDef.Parameterized) {
@@ -926,6 +927,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         .anyMatch { tv: TypeDef.TypeVariable -> tv.name == variableName }
                 }
                 if (objectDef is InterfaceDef) {
+                    return objectDef.typeVariables.stream()
+                        .anyMatch { tv: TypeDef.TypeVariable -> tv.name == variableName }
+                }
+                if (objectDef is RecordDef) {
                     return objectDef.typeVariables.stream()
                         .anyMatch { tv: TypeDef.TypeVariable -> tv.name == variableName }
                 }

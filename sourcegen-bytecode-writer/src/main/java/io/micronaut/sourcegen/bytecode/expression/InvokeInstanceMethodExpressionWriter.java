@@ -25,6 +25,7 @@ import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.objectweb.asm.Type;
@@ -95,6 +96,8 @@ final class InvokeInstanceMethodExpressionWriter extends AbstractStatementAwareE
         if (aSuper.type() == TypeDef.SUPER) {
             if (context.objectDef() instanceof EnumDef) {
                 superClass = ClassTypeDef.of(Enum.class);
+            } else if (context.objectDef() instanceof RecordDef) {
+                superClass = ClassTypeDef.of(Record.class);
             } else if (context.objectDef() instanceof ClassDef classDef) {
                 superClass = Objects.requireNonNullElse(classDef.getSuperclass(), TypeDef.OBJECT);
             } else {

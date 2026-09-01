@@ -24,6 +24,7 @@ import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ParameterDef;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -62,6 +63,8 @@ final class InvokeSuperConstructorStatementWriter implements StatementWriter {
         if (aSuper.type() == TypeDef.SUPER) {
             if (context.objectDef() instanceof EnumDef) {
                 superClass = ClassTypeDef.of(Enum.class);
+            } else if (context.objectDef() instanceof RecordDef) {
+                superClass = ClassTypeDef.of(Record.class);
             } else if (context.objectDef() instanceof ClassDef classDef) {
                 superClass = Objects.requireNonNullElse(classDef.getSuperclass(), TypeDef.OBJECT);
             } else {

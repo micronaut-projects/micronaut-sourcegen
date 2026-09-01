@@ -30,7 +30,6 @@ import io.micronaut.sourcegen.custom.example.GenerateMyBean3;
 import io.micronaut.sourcegen.custom.example.GenerateMyEnum1;
 import io.micronaut.sourcegen.custom.example.GenerateInterface;
 import io.micronaut.sourcegen.custom.example.GenerateMyEnum2;
-import io.micronaut.sourcegen.custom.example.GenerateMyRecord1;
 import io.micronaut.sourcegen.custom.example.GenerateMyRecord3;
 import io.micronaut.sourcegen.custom.example.GenerateMyRepository1;
 import io.micronaut.sourcegen.custom.example.GenerateSwitch;
@@ -38,8 +37,10 @@ import io.micronaut.sourcegen.custom.example.GenerateSwitch;
 @GenerateMyBean1
 @GenerateMyBean2
 @GenerateMyBean3
-//@GenerateMyRecord1
-//@GenerateMyRecord3
+// @GenerateMyRecord1 is left out: the record it generates declares a static `builder()` returning its own
+// generated builder, and that cycle cannot be resolved while the builder's introspection is written. It is
+// unrelated to records - a class definition with the same cycle fails the same way.
+@GenerateMyRecord3
 @GenerateInterface
 @GenerateMyRepository1
 @GenerateMyEnum1

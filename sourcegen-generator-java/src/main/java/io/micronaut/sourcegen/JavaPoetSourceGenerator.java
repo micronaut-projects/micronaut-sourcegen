@@ -498,7 +498,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             if (objectDef == null) {
                 throw new IllegalStateException("This type is used outside of the instance scope!");
             }
-            return asType(objectDef.asTypeDef(), null);
+            // The scope is kept: the self type of a generic definition carries the variables it declares
+            return asType(objectDef.asTypeDef(), objectDef, methodDef);
         }
         if (typeDef.equals(TypeDef.SUPER)) {
             if (objectDef == null) {
@@ -590,6 +591,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             case ClassDef classDef -> classDef.getTypeVariables().stream()
                 .anyMatch(tv -> tv.name().equals(variableName));
             case InterfaceDef interfaceDef -> interfaceDef.getTypeVariables().stream()
+                .anyMatch(tv -> tv.name().equals(variableName));
+            case RecordDef recordDef -> recordDef.getTypeVariables().stream()
                 .anyMatch(tv -> tv.name().equals(variableName));
             case null, default -> false;
         };

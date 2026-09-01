@@ -24,6 +24,7 @@ import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Type;
 
@@ -93,6 +94,14 @@ public final class TypeUtils {
                 }
                 if (objectDef instanceof InterfaceDef interfaceDef) {
                     TypeDef.TypeVariable tvDef = interfaceDef.getTypeVariables().stream()
+                        .filter(tv -> tv.name().equals(name)).findFirst()
+                        .orElse(null);
+                    if (tvDef != null) {
+                        return getBoundsType(tvDef.bounds(), objectDef);
+                    }
+                }
+                if (objectDef instanceof RecordDef recordDef) {
+                    TypeDef.TypeVariable tvDef = recordDef.getTypeVariables().stream()
                         .filter(tv -> tv.name().equals(name)).findFirst()
                         .orElse(null);
                     if (tvDef != null) {

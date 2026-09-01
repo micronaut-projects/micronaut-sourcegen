@@ -4,11 +4,15 @@ import io.micronaut.sourcegen.JavaPoetSourceGenerator;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.PropertyDef;
+import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.RecordDef;
+import io.micronaut.sourcegen.model.TypeDef;
 import org.junit.jupiter.api.Test;
 
+import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -142,6 +146,42 @@ public class RecordWriteTest {
         return matcher.group(1);
     }
 
+
+    @Test
+    public void writeGenericRecord() throws IOException {
+        RecordDef recordDef = RecordDef.builder("test.TestRecord")
+            .addTypeVariable(TypeDef.variable("K"))
+            .addTypeVariable(TypeDef.variable("V", TypeDef.of(Number.class)))
+            .addSuperinterface(TypeDef.parameterized(
+                ClassTypeDef.of("java.util.function.Supplier"),
+                TypeDef.variable("V")
+            ))
+            .addProperty(PropertyDef.builder("key").ofType(TypeDef.variable("K")).build())
+            .addProperty(PropertyDef.builder("value").ofType(TypeDef.variable("V")).build())
+            .addProperty(PropertyDef.builder("values").ofType(
+                TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.variable("V"))
+            ).build())
+            // TypeDef.THIS renders as the record parameterized by its own variables
+            .addMethod(MethodDef.builder("self")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.THIS)
+                .build((aThis, methodParameters) -> aThis.returning()))
+            .build();
+        var result = writeRecord(recordDef);
+
+        var expected = """
+        record TestRecord<K, V extends Number>(
+            K key,
+            V value,
+            List<V> values
+        ) implements Supplier<V> {
+          public TestRecord<K, V> self() {
+            return this;
+          }
+        }
+        """;
+        assertEquals(expected.strip(), result.strip());
+    }
 
     @Test
     public void annotationClassValue() throws IOException {
