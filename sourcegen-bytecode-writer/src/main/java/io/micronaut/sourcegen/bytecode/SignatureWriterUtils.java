@@ -183,7 +183,7 @@ final class SignatureWriterUtils {
                 } else {
                     TypeDef bound = typeVariable.bounds().get(0);
                     signatureWriter.visitClassBound();
-                    writeSignature(signatureWriter, objectDef, bound, false);
+                    writeSignature(signatureWriter, objectDef, methodDef, bound, false);
                 }
             } else {
                 if (isVariablePartOfTheDefinition(name, objectDef, methodDef)) {
@@ -203,7 +203,7 @@ final class SignatureWriterUtils {
             if (!parameterized.typeArguments().isEmpty()) {
                 for (TypeDef typeArgument : parameterized.typeArguments()) {
                     SignatureVisitor signatureVisitor = signatureWriter.visitTypeArgument(SignatureVisitor.INSTANCEOF);
-                    writeSignature(signatureVisitor, objectDef, typeArgument, false);
+                    writeSignature(signatureVisitor, objectDef, methodDef, typeArgument, false);
                 }
                 signatureWriter.visitEnd();
             }
@@ -221,9 +221,9 @@ final class SignatureWriterUtils {
         }
         if (typeDef instanceof TypeDef.Array array) {
             if (array.dimensions() == 1) {
-                writeSignature(signatureWriter.visitArrayType(), objectDef, array.componentType(), false);
+                writeSignature(signatureWriter.visitArrayType(), objectDef, methodDef, array.componentType(), false);
             } else {
-                writeSignature(signatureWriter.visitArrayType(), objectDef, new TypeDef.Array(
+                writeSignature(signatureWriter.visitArrayType(), objectDef, methodDef, new TypeDef.Array(
                     array.componentType(),
                     array.dimensions() - 1,
                     false

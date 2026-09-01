@@ -6,6 +6,7 @@ generators: Writing a Source Generator
 annotations:
   title: Annotations
   builder: Builder
+  stagedBuilder: Staged Builder
   wither: Wither
   superBuilder: Super Builder
   singular: Singular

@@ -1,0 +1,51 @@
+The `@StagedBuilder` annotation generates a https://immutables.github.io/immutable.html#staged-builder[staged builder]: a builder that assigns the required properties in stages, so that forgetting one of them is a compilation error instead of a missing value at runtime.
+
+If you annotate a Java Record with `@StagedBuilder`, an `EmployeeStagedBuilder` class is generated at compilation-time.
+
+[source,java]
+----
+include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Employee.java[tags=clazz,indent=0]
+----
+
+Every required property gets its own stage interface, which declares the single method that assigns that property and returns the next stage. The last of them returns `BuildFinal`, the only stage that declares the `build` method:
+
+[source,java]
+----
+public final class EmployeeStagedBuilder {
+    public static NameBuildStage builder() { ... }
+
+    public interface NameBuildStage {
+        AgeBuildStage name(String name);
+    }
+    public interface AgeBuildStage {
+        EmployedBuildStage age(int age);
+    }
+    public interface EmployedBuildStage {
+        BuildFinal employed(boolean employed);
+    }
+    public interface BuildFinal {
+        BuildFinal nickname(String nickname);
+
+        Employee build();
+    }
+
+    public static final class Builder implements NameBuildStage, AgeBuildStage, EmployedBuildStage, BuildFinal { ... }
+}
+----
+
+You can use the builder to create an `Employee` instance, assigning the required properties in the order they are declared in:
+
+[source,java]
+----
+include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/EmployeeStagedBuilderTest.java[tags=test,indent=0]
+----
+
+A property is required unless the builder can leave it unassigned, which is the case for:
+
+- a nullable property, which keeps its `null`
+- a property with a `@Bindable(defaultValue = "...")` default value, which keeps that value
+- a property annotated with api:sourcegen.annotations.Singular[], which accumulates into an empty collection
+
+Those properties are declared on the `BuildFinal` stage instead and can be assigned in any order, or not at all.
+
+NOTE: The stages add generated interfaces to the compilation output, which affects the class-loading time of an application using them extensively. Use `@Builder` when the compile-time safety is not worth that.

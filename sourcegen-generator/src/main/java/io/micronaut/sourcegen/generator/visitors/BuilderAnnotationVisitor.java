@@ -338,34 +338,64 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             .build();
     }
 
-    static void createModifyPropertyMethod(ClassDefBuilder classDefBuilder,
-                                           ClassTypeDef builderType, PropertyElement beanProperty,
-                                           Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
-        if (beanProperty.hasAnnotation(Singular.class)) {
-            createSingularPropertyMethods(classDefBuilder, beanProperty, returningExpressionProvider);
-        } else {
-            createDefaultModifyPropertyMethod(classDefBuilder, builderType, beanProperty, returningExpressionProvider);
-        }
+    static List<MethodDef> createModifyPropertyMethod(ClassDefBuilder classDefBuilder,
+                                                      ClassTypeDef builderType, PropertyElement beanProperty,
+                                                      Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
+        return createModifyPropertyMethod(classDefBuilder, builderType, null, false, beanProperty, returningExpressionProvider);
     }
 
-    private static void createDefaultModifyPropertyMethod(ClassDefBuilder classDefBuilder,
-                                                          ClassTypeDef builderType, PropertyElement beanProperty,
-                                                          Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
+    /**
+     * Add the methods that assign the given property to the builder being created.
+     *
+     * @param classDefBuilder             The builder being created
+     * @param builderType                 The type of the builder being created
+     * @param returnType                  The type the methods should declare as their return type, or
+     *                                    null to keep the default of returning the builder itself
+     * @param overrides                   True if the methods override the declarations of a supertype
+     * @param beanProperty                The property to assign
+     * @param returningExpressionProvider The return statement of the methods
+     * @return The methods that were added
+     */
+    static List<MethodDef> createModifyPropertyMethod(ClassDefBuilder classDefBuilder,
+                                                      ClassTypeDef builderType,
+                                                      @Nullable TypeDef returnType,
+                                                      boolean overrides,
+                                                      PropertyElement beanProperty,
+                                                      Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
+        List<MethodDef> methods;
+        if (beanProperty.hasAnnotation(Singular.class)) {
+            methods = createSingularPropertyMethods(classDefBuilder, returnType, overrides, beanProperty, returningExpressionProvider);
+        } else {
+            methods = List.of(createDefaultModifyPropertyMethod(classDefBuilder, builderType, returnType, overrides, beanProperty, returningExpressionProvider));
+        }
+        methods.forEach(classDefBuilder::addMethod);
+        return methods;
+    }
+
+    private static MethodDef createDefaultModifyPropertyMethod(ClassDefBuilder classDefBuilder,
+                                                               ClassTypeDef builderType,
+                                                               @Nullable TypeDef returnType,
+                                                               boolean overrides,
+                                                               PropertyElement beanProperty,
+                                                               Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
         TypeDef propertyTypeDef = TypeDef.of(beanProperty.getType());
         FieldDef field = createField(beanProperty, propertyTypeDef);
         classDefBuilder.addField(field);
         String propertyName = beanProperty.getSimpleName();
         MethodDef.MethodDefBuilder methodDef = MethodDef.builder(propertyName)
             .addModifiers(Modifier.PUBLIC)
+            .overrides(overrides)
             .addParameter(propertyName, propertyTypeDef);
-        if (builderType instanceof ClassTypeDef.Parameterized) {
+        if (returnType != null) {
+            methodDef.returns(returnType);
+        } else if (builderType instanceof ClassTypeDef.Parameterized) {
             methodDef.returns(builderType);
         }
-        classDefBuilder.addMethod(methodDef
+        return methodDef
             .build((self, parameterDefs) -> StatementDef.multi(
                 self.field(field).assign(parameterDefs.get(0)),
                 returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
-            )));
+            ));
     }
 
     /**
@@ -428,9 +458,11 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         return fieldDef.build();
     }
 
-    private static void createSingularPropertyMethods(ClassDef.ClassDefBuilder classBuilder,
-                                                      PropertyElement beanProperty,
-                                                      Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
+    private static List<MethodDef> createSingularPropertyMethods(ClassDef.ClassDefBuilder classBuilder,
+                                                                 @Nullable TypeDef returnType,
+                                                                 boolean overrides,
+                                                                 PropertyElement beanProperty,
+                                                                 Function<BuilderGenerator.BuildContext, StatementDef> returningExpressionProvider) {
         String propertyName = beanProperty.getSimpleName();
         String singularName = beanProperty.stringValue(Singular.class).orElse(null);
         if (singularName == null) {
@@ -439,12 +471,12 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 throw new IllegalStateException("Cannot determine singular name for property: " + beanProperty.getName() + ". Please specify a singular name: @Singular(\"singularName\")");
             }
         }
+        List<MethodDef> methods = new ArrayList<>(3);
         if (beanProperty.getType().isAssignable(Iterable.class)) {
             TypeDef singularTypeDef = singularElementType(beanProperty.getType());
             FieldDef field = createField(beanProperty, singularIterableFieldType(beanProperty.getType()));
             classBuilder.addField(field);
-            classBuilder.addMethod(MethodDef.builder(propertyName)
-                .addModifiers(Modifier.PUBLIC)
+            methods.add(singularMethod(propertyName, returnType, overrides)
                 .addParameter(propertyName, TypeDef.parameterized(Collection.class, singularTypeDef))
                 .build((self, parameterDefs) -> StatementDef.multi(
                     parameterDefs.get(0).isNull().doIf(
@@ -458,8 +490,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     self.field(field).invoke("addAll", TypeDef.primitive(boolean.class), parameterDefs.get(0)),
                     returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
-            classBuilder.addMethod(MethodDef.builder(singularName)
-                .addModifiers(Modifier.PUBLIC)
+            methods.add(singularMethod(singularName, returnType, overrides)
                 .addParameter(singularName, singularTypeDef)
                 .build((self, parameterDefs) -> StatementDef.multi(
                     self.field(field).isNull().doIf(
@@ -468,8 +499,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     self.field(field).invoke("add", TypeDef.of(boolean.class), parameterDefs.get(0)),
                     returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
-            classBuilder.addMethod(MethodDef.builder("clear" + StringUtils.capitalize(propertyName))
-                .addModifiers(Modifier.PUBLIC)
+            methods.add(singularMethod("clear" + StringUtils.capitalize(propertyName), returnType, overrides)
                 .build((self, parameterDefs) -> StatementDef.multi(
                     self.field(field).isNonNull().doIf(
                         self.field(field).invoke("clear", TypeDef.VOID)
@@ -482,8 +512,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
             ClassTypeDef fieldType = singularMapFieldType(beanProperty.getType());
             FieldDef field = createField(beanProperty, fieldType);
             classBuilder.addField(field);
-            classBuilder.addMethod(MethodDef.builder(propertyName)
-                .addModifiers(Modifier.PUBLIC)
+            methods.add(singularMethod(propertyName, returnType, overrides)
                 .addParameter(propertyName, TypeDef.parameterized(Map.class, keyType, valueType))
                 .build((self, parameterDefs) -> StatementDef.multi(
                     parameterDefs.get(0).isNull().doIf(
@@ -501,8 +530,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     ),
                     returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
-            classBuilder.addMethod(MethodDef.builder(singularName)
-                .addModifiers(Modifier.PUBLIC)
+            methods.add(singularMethod(singularName, returnType, overrides)
                 .addParameter("key", keyType)
                 .addParameter("value", valueType)
                 .build((self, parameterDefs) -> StatementDef.multi(
@@ -521,8 +549,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     ),
                     returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
                 )));
-            classBuilder.addMethod(MethodDef.builder("clear" + StringUtils.capitalize(propertyName))
-                .addModifiers(Modifier.PUBLIC)
+            methods.add(singularMethod("clear" + StringUtils.capitalize(propertyName), returnType, overrides)
                 .build((self, parameterDefs) -> StatementDef.multi(
                     self.field(field).isNonNull().doIf(
                         self.field(field).invoke("clear", TypeDef.VOID)
@@ -532,11 +559,37 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         } else {
             throw new IllegalStateException("Unsupported singular collection type [" + beanProperty.getType().getName() + "] for property: " + beanProperty.getName());
         }
+        return methods;
+    }
+
+    private static MethodDef.MethodDefBuilder singularMethod(String name, @Nullable TypeDef returnType, boolean overrides) {
+        MethodDef.MethodDefBuilder methodBuilder = MethodDef.builder(name).addModifiers(Modifier.PUBLIC).overrides(overrides);
+        if (returnType != null) {
+            methodBuilder.returns(returnType);
+        }
+        return methodBuilder;
     }
 
     static MethodDef createBuildMethod(ClassTypeDef buildType, List<PropertyElement> properties, List<ParameterElement> constructorParameters) {
+        return createBuildMethod(buildType, properties, constructorParameters, false);
+    }
+
+    /**
+     * Create the build method of a builder.
+     *
+     * @param buildType             The type being built
+     * @param properties            The properties
+     * @param constructorParameters The constructor parameters
+     * @param overrides             True if the method overrides the declaration of a supertype
+     * @return The build method
+     */
+    static MethodDef createBuildMethod(ClassTypeDef buildType,
+                                       List<PropertyElement> properties,
+                                       List<ParameterElement> constructorParameters,
+                                       boolean overrides) {
         return MethodDef.builder("build")
             .addModifiers(Modifier.PUBLIC)
+            .overrides(overrides)
             .returns(buildType)
             .build((self, parameterDefs) -> {
                 List<PropertyElement> beanProperties = new ArrayList<>(properties);
