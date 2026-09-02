@@ -519,13 +519,42 @@ public final class ByteCodeWriter {
      * definition - the class is not loadable, so nothing else can answer for it.
      *
      * @param objectDef The definition of the annotation type
-     * @return Its targets, or empty when it declares none
+     * @return Its targets, empty when it declares no {@link Target} or nothing in the member is
+     * recognisable, and an empty set when it explicitly targets nothing
      */
     private static Optional<Set<ElementType>> declaredTargetsOf(ObjectDef objectDef) {
         return objectDef.getAnnotations().stream()
             .filter(a -> a.getType().getName().equals(Target.class.getName()))
             .findFirst()
-            .map(a -> toElementTypes(a.getValues().get(AnnotationMetadata.VALUE_MEMBER)));
+            .flatMap(a -> declaredTargets(a.getValues().get(AnnotationMetadata.VALUE_MEMBER)));
+    }
+
+    /**
+     * The targets a {@link Target} member names. An explicitly empty member targets nothing and drops the
+     * annotation from every context, but nothing recognisable in a member that is not empty leaves the
+     * annotation untargeted rather than targeting nothing at all, which would drop it from every member a
+     * record component expands to.
+     *
+     * @param value The member of the {@link Target}
+     * @return The targets it names, or empty when it names none that can be recognised
+     */
+    private static Optional<Set<ElementType>> declaredTargets(@Nullable Object value) {
+        if (isEmptyMember(value)) {
+            return Optional.of(Set.of());
+        }
+        Set<ElementType> targets = toElementTypes(value);
+        return targets.isEmpty() ? Optional.empty() : Optional.of(targets);
+    }
+
+    /**
+     * @param value An annotation member
+     * @return True when the member is an array that holds nothing
+     */
+    private static boolean isEmptyMember(@Nullable Object value) {
+        if (value instanceof Collection<?> collection) {
+            return collection.isEmpty();
+        }
+        return value instanceof Object[] array && array.length == 0;
     }
 
     private static Optional<RetentionPolicy> declaredRetentionOf(ObjectDef objectDef) {
@@ -793,6 +822,19 @@ public final class ByteCodeWriter {
         writeInnerTypes(classVisitor, thisType, thisDef, outerType == null);
     }
 
+    /**
+     * The {@code InnerClasses} entries of the member types of a definition, and, when the definition hosts
+     * the nest, the {@code NestMembers} entry of every one of them. The nest is flat - a member of a member
+     * belongs to the same host - while the entries are not: each one names the type it is declared in, so
+     * both are written by descending through the levels rather than only over the direct members. A class
+     * file has to carry an entry for every nested class it names, which the deeper members it lists as nest
+     * members are.
+     *
+     * @param outerClassVisitor The visitor of the class being written
+     * @param outerType         The type the members are declared in
+     * @param outerDef          Its definition
+     * @param nestHost          Whether the class being written hosts the nest
+     */
     private void writeInnerTypes(ClassVisitor outerClassVisitor,
                                  ClassTypeDef outerType,
                                  ObjectDef outerDef,
@@ -801,22 +843,17 @@ public final class ByteCodeWriter {
             String outerClassInternalName = TypeUtils.getType(outerType).getInternalName();
 
             ClassTypeDef interType = innerDef.asTypeDef();
+            String innerClassInternalName = TypeUtils.getType(interType).getInternalName();
             outerClassVisitor.visitInnerClass(
-                TypeUtils.getType(innerDef.asTypeDef()).getInternalName(),
+                innerClassInternalName,
                 outerClassInternalName,
                 interType.getSimpleName(),
                 getInnerClassModifiersFlag(innerDef, outerDef instanceof InterfaceDef)
             );
             if (nestHost) {
-                writeNestMember(outerClassVisitor, innerDef);
+                outerClassVisitor.visitNestMember(innerClassInternalName);
+                writeInnerTypes(outerClassVisitor, interType, innerDef, true);
             }
-        }
-    }
-
-    private void writeNestMember(ClassVisitor nestHostVisitor, ObjectDef member) {
-        nestHostVisitor.visitNestMember(TypeUtils.getType(member.asTypeDef()).getInternalName());
-        for (ObjectDef innerType : member.getInnerTypes()) {
-            writeNestMember(nestHostVisitor, innerType);
         }
     }
 

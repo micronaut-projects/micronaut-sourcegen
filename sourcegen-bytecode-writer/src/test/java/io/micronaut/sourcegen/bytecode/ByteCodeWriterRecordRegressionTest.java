@@ -204,6 +204,53 @@ class ByteCodeWriterRecordRegressionTest {
     }
 
     @Test
+    void keepsAnAnnotationWhoseGeneratedTargetIsNotRecognisable() {
+        AnnotationObjectDef unrecognisable = AnnotationObjectDef.builder("example.Unrecognisable")
+            .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(Target.class))
+                // Nothing here names an ElementType, which leaves the annotation untargeted
+                .addMember(AnnotationMetadata.VALUE_MEMBER, "java.lang.annotation.ElementType.FIELD")
+                .build())
+            .build();
+        RecordDef recordDef = RecordDef.builder("example.UntargetedRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("value").ofType(TypeDef.STRING)
+                .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(unrecognisable)).build())
+                .build())
+            .build();
+
+        assertTrue(trace(new ByteCodeWriter().write(recordDef)).contains("Lexample/Unrecognisable;"));
+    }
+
+    @Test
+    void writesAnInterfaceBoundNamedByStringInTheInterfacePosition() {
+        RecordDef recordDef = RecordDef.builder("example.NamedBoundRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T", ClassTypeDef.of(Serializable.class.getName())))
+            .addProperty(PropertyDef.builder("value").ofType(TypeDef.variable("T")).build())
+            .build();
+
+        assertTrue(
+            trace(new ByteCodeWriter().write(recordDef)).contains("<T::Ljava/io/Serializable;>"),
+            trace(new ByteCodeWriter().write(recordDef))
+        );
+    }
+
+    @Test
+    void writesAnInnerClassEntryForEveryNestMember() {
+        RecordDef deep = RecordDef.builder("Deep").build();
+        RecordDef inner = RecordDef.builder("Inner").addInnerType(deep).build();
+        ClassDef outer = ClassDef.builder("example.Outer")
+            .addModifiers(Modifier.PUBLIC)
+            .addInnerType(inner)
+            .build();
+
+        String trace = trace(new ByteCodeWriter().write(outer));
+
+        assertTrue(trace.contains("NESTMEMBER example/Outer$Inner$Deep"), trace);
+        assertTrue(trace.contains("INNERCLASS example/Outer$Inner$Deep example/Outer$Inner Deep"), trace);
+    }
+
+    @Test
     void usesOneNestHostForEveryNestingLevel() throws Exception {
         RecordDef deep = RecordDef.builder("Deep").build();
         RecordDef inner = RecordDef.builder("Inner").addInnerType(deep).build();

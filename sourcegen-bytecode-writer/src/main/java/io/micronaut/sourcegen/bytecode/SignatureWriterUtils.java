@@ -275,12 +275,34 @@ final class SignatureWriterUtils {
         );
     }
 
+    /**
+     * Whether a bound is an interface, which decides the position it is written in: the first bound goes
+     * into the class bound only when it is a class. A {@link ClassTypeDef.ClassName} is only a name and
+     * carries no answer, so the class it names is the last place left to ask.
+     *
+     * @param typeDef The bound
+     * @return True when the bound is known to be an interface
+     */
     private static boolean isInterface(TypeDef typeDef) {
         typeDef = unwrapAnnotated(typeDef);
         if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
             typeDef = parameterized.rawType();
         }
-        return typeDef instanceof ClassTypeDef classTypeDef && classTypeDef.isInterface();
+        if (!(typeDef instanceof ClassTypeDef classTypeDef)) {
+            return false;
+        }
+        if (classTypeDef.isInterface()) {
+            return true;
+        }
+        if (classTypeDef instanceof ClassTypeDef.ClassName) {
+            try {
+                return Class.forName(classTypeDef.getName(), false, SignatureWriterUtils.class.getClassLoader())
+                    .isInterface();
+            } catch (ClassNotFoundException | LinkageError e) {
+                return false;
+            }
+        }
+        return false;
     }
 
     private static boolean isVariablePartOfTheDefinition(String variableName, @Nullable ObjectDef objectDef, @Nullable MethodDef methodDef) {
