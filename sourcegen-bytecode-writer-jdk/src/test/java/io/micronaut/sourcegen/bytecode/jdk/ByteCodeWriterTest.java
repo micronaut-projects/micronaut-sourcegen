@@ -404,7 +404,7 @@ class ByteCodeWriterTest {
         generated.put(contract, ClassFile.of().build(java.lang.constant.ClassDesc.of(contract), builder ->
             builder.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT)));
 
-        var resolver = new SourcegenClassHierarchyResolver(generated, List.of(), List.of(), getClass().getClassLoader());
+        var resolver = new SourcegenClassHierarchyResolver(generated, List.of(), List.of(), getClass().getClassLoader(), null);
 
         assertEquals(ClassHierarchyInfo.ofClass(java.lang.constant.ClassDesc.of(parent.getName())),
             resolver.getClassInfo(java.lang.constant.ClassDesc.of(child.getName())));

@@ -78,7 +78,9 @@ public final class ByteCodeGenerator extends AbstractByteCodeGenerator {
                                  Element[] originatingElements) throws Exception {
         Map<String, byte[]> produced;
         try {
-            ByteCodeWriter byteCodeWriter = new ByteCodeWriter(sourcePath(context), classPath(context));
+            // The compilation's own type lookup resolves peers that have no class file yet
+            ByteCodeWriter byteCodeWriter = new ByteCodeWriter(
+                sourcePath(context), classPath(context), true, context::getClassElement);
             produced = byteCodeWriter.writeAll(objectDef, outerType);
             if (!produced.containsKey(objectDef.getName())) {
                 throw new IllegalStateException("The JDK compiler did not produce '" + objectDef.getName() + "'");

@@ -53,6 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -528,14 +529,306 @@ class JdkByteCodeWriterParityTest {
     }
 
     @Test
+    void directlyWritesSuperCallsAndSuperConstructorDelegation() throws Exception {
+        FieldDef marker = FieldDef.builder("marker", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC)
+            .initializer(ExpressionDef.constant("initialized"))
+            .build();
+        ClassDef definition = ClassDef.builder("example.JdkSuperParity")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(java.util.concurrent.atomic.AtomicInteger.class))
+            .addField(marker)
+            .addMethod(MethodDef.constructor()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("initial", TypeDef.Primitive.INT)
+                // The deprecated form of a super constructor call: a super receiver invocation
+                .build((aThis, parameters) -> aThis.superRef().invokeConstructor(
+                    MethodDef.constructor(List.of(ParameterDef.of("initialValue", TypeDef.Primitive.INT)), Modifier.PUBLIC),
+                    parameters.get(0))))
+            .addMethod(MethodDef.builder("toString")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.STRING)
+                // super.toString() must dispatch with invokespecial, not virtually, or it recurses
+                .build((aThis, parameters) -> aThis.superRef()
+                    .invoke("toString", TypeDef.STRING, List.of()).returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+        Object instance = generated.getConstructor(int.class).newInstance(7);
+
+        assertEquals(7, ((java.util.concurrent.atomic.AtomicInteger) instance).get());
+        assertEquals("7", instance.toString());
+        // A super call written in the deprecated instance-invocation form is not a this(...)
+        // delegation, so the field initializers still run
+        assertEquals("initialized", generated.getField("marker").get(instance));
+    }
+
+    @Test
+    void directlyWritesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface() throws Exception {
+        MethodDef greet = MethodDef.builder("greet")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(TypeDef.STRING)
+            .build((aThis, parameters) -> ExpressionDef.constant("hi").returning());
+        InterfaceDef contract = InterfaceDef.builder("example.JdkDefaultCallContract")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(greet)
+            .build();
+        ClassDef implementation = ClassDef.builder("example.JdkDefaultCallImpl")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(contract.asTypeDef())
+            .build();
+        ClassDef caller = ClassDef.builder("example.JdkDefaultCaller")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("call")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("target", contract.asTypeDef())
+                .returns(TypeDef.STRING)
+                // The model flags the target as a default method; the call is still virtual
+                .build((ignored, parameters) -> new ExpressionDef.InvokeInstanceMethod(
+                    parameters.get(0), greet, true, List.of()).returning()))
+            .build();
+
+        MapClassLoader loader = new MapClassLoader(Map.of(
+            contract.getName(), writeDirect(contract),
+            implementation.getName(), writeDirect(implementation),
+            caller.getName(), writeDirect(caller)
+        ));
+        Object instance = loader.loadClass(implementation.getName()).getConstructor().newInstance();
+        Class<?> callerClass = loader.loadClass(caller.getName());
+
+        assertEquals("hi", callerClass.getMethod("call", loader.loadClass(contract.getName())).invoke(null, instance));
+    }
+
+    @Test
+    void directlyWritesArrayConstantsAndMultiDimensionalArrays() throws Exception {
+        ClassDef definition = ClassDef.builder("example.JdkArrayParity")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("names")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.STRING.array())
+                .build((ignored, parameters) ->
+                    ExpressionDef.constant(new String[] {"a", "b"}).returning()))
+            .addMethod(MethodDef.builder("numbers")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.Primitive.INT.array())
+                .build((ignored, parameters) ->
+                    ExpressionDef.constant(new int[] {3, 4, 5}).returning()))
+            .addMethod(MethodDef.builder("grid")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(new TypeDef.Array(TypeDef.Primitive.INT, 2, false))
+                // A two-dimensional array allocates arrays of arrays, not of the base type
+                .build((ignored, parameters) -> new TypeDef.Array(TypeDef.Primitive.INT, 2, false)
+                    .instantiate(ExpressionDef.constant(new int[] {1, 2})).returning()))
+            .addMethod(MethodDef.builder("classConstant")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.of(Class.class))
+                .build((ignored, parameters) ->
+                    ExpressionDef.constant(ClassTypeDef.of(String[].class)).returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertArrayEquals(new String[] {"a", "b"}, (String[]) generated.getMethod("names").invoke(null));
+        assertArrayEquals(new int[] {3, 4, 5}, (int[]) generated.getMethod("numbers").invoke(null));
+        int[][] grid = (int[][]) generated.getMethod("grid").invoke(null);
+        assertArrayEquals(new int[] {1, 2}, grid[0]);
+        assertEquals(String[].class, generated.getMethod("classConstant").invoke(null));
+    }
+
+    @Test
+    void directlyWritesVoidMethodsThatReturnAnExpression() throws Exception {
+        MethodDef sideEffect = MethodDef.builder("record")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .returns(TypeDef.VOID)
+            .build();
+        ClassTypeDef self = ClassTypeDef.of("example.JdkVoidReturnParity");
+        FieldDef calls = FieldDef.builder("calls", TypeDef.Primitive.INT)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .build();
+        ClassDef definition = ClassDef.builder(self.getName())
+            .addModifiers(Modifier.PUBLIC)
+            .addField(calls)
+            .addMethod(MethodDef.builder("record")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.VOID)
+                .build((ignored, parameters) -> self.getStaticField(calls)
+                    .put(self.getStaticField(calls)
+                        .math(ExpressionDef.MathBinaryOperation.OpType.ADDITION, ExpressionDef.constant(1)))))
+            // A void method whose body returns the result of a void call
+            .addMethod(MethodDef.builder("delegate")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.VOID)
+                .build((ignored, parameters) -> self.invokeStatic(sideEffect).returning()))
+            // A void method that returns the result of a value-producing call, discarding it
+            .addMethod(MethodDef.builder("discard")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.VOID)
+                .build((ignored, parameters) -> ExpressionDef.constant("ignored").returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+        generated.getMethod("delegate").invoke(null);
+        generated.getMethod("discard").invoke(null);
+
+        assertEquals(1, generated.getField("calls").get(null));
+    }
+
+    @Test
+    void directlyWritesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes() throws Exception {
+        ClassDef definition = ClassDef.builder("example.JdkUnboxParity")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("asInt")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.OBJECT)
+                .returns(TypeDef.Primitive.INT)
+                // A Long held in an Object still unboxes to an int, as it does with the ASM backend
+                .build((ignored, parameters) -> parameters.get(0).cast(TypeDef.Primitive.INT).returning()))
+            .addMethod(MethodDef.builder("boxThenCast")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.Primitive.INT)
+                .returns(TypeDef.STRING)
+                // Boxing into an unrelated reference type must stay verifiable
+                .build((ignored, parameters) -> parameters.get(0).cast(TypeDef.STRING).returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertEquals(7, generated.getMethod("asInt", Object.class).invoke(null, 7L));
+        assertEquals(7, generated.getMethod("asInt", Object.class).invoke(null, 7));
+        assertThrows(InvocationTargetException.class,
+            () -> generated.getMethod("boxThenCast", int.class).invoke(null, 1));
+    }
+
+    @Test
+    void directlyWritesConstructorsWhoseSuperCallUsesAnEarlierLocal() throws Exception {
+        MethodDef superConstructor = MethodDef.constructor(
+            List.of(ParameterDef.of("initialValue", TypeDef.Primitive.INT)), Modifier.PUBLIC);
+        ClassDef definition = ClassDef.builder("example.JdkConstructorLocalParity")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(java.util.concurrent.atomic.AtomicInteger.class))
+            .addMethod(MethodDef.constructor()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("seed", TypeDef.Primitive.INT)
+                // The local is defined before the super call and used by it, so the call must not
+                // be hoisted above its definition
+                .build((aThis, parameters) -> parameters.get(0)
+                    .math(ExpressionDef.MathBinaryOperation.OpType.MULTIPLICATION, ExpressionDef.constant(3))
+                    .newLocal("scaled", scaled -> aThis.superRef()
+                        .invokeConstructor(superConstructor, scaled))))
+            .build();
+
+        Class<?> generated = define(definition);
+        Object instance = generated.getConstructor(int.class).newInstance(4);
+
+        assertEquals(12, ((java.util.concurrent.atomic.AtomicInteger) instance).get());
+    }
+
+    @Test
+    void directlyWritesSwitchesSharingOneBodyAcrossManyKeys() throws Exception {
+        // A wither-style dispatch maps many keys onto one statement; emitting that body once per
+        // key is what pushed micronaut-core's generated dispatch past the 64KB method limit
+        ExpressionDef.Constant[] keys = new ExpressionDef.Constant[60];
+        Map<ExpressionDef.Constant, StatementDef> cases = new LinkedHashMap<>();
+        MethodDef method = MethodDef.builder("classify")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addParameter("index", TypeDef.Primitive.INT)
+            .returns(TypeDef.STRING)
+            .build((ignored, parameters) -> {
+                StatementDef shared = ExpressionDef.constant("shared").returning();
+                for (int i = 0; i < keys.length; i++) {
+                    keys[i] = ExpressionDef.constant(i);
+                    cases.put(keys[i], i == keys.length - 1 ? ExpressionDef.constant("last").returning() : shared);
+                }
+                return StatementDef.multi(
+                    parameters.get(0).asStatementSwitch(TypeDef.STRING, cases, ExpressionDef.constant("none").returning())
+                );
+            });
+        ClassDef definition = ClassDef.builder("example.JdkSharedSwitchParity")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(method)
+            .build();
+
+        byte[] bytes = writeDirect(definition);
+        Class<?> generated = new MapClassLoader(Map.of(definition.getName(), bytes))
+            .loadClass(definition.getName());
+
+        assertEquals("shared", generated.getMethod("classify", int.class).invoke(null, 0));
+        assertEquals("shared", generated.getMethod("classify", int.class).invoke(null, 30));
+        assertEquals("last", generated.getMethod("classify", int.class).invoke(null, keys.length - 1));
+        assertEquals("none", generated.getMethod("classify", int.class).invoke(null, 999));
+        // Two distinct bodies, not sixty: the shared body is emitted once
+        assertTrue(bytes.length < 2000, () -> "Expected a compact switch, got " + bytes.length + " bytes");
+    }
+
+    @Test
+    void directlyWritesNestedCastsWithoutUnboxingAndReboxingAReference() throws Exception {
+        ClassDef definition = ClassDef.builder("example.JdkNestedCastParity")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("asBoolean")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.OBJECT)
+                .returns(ClassTypeDef.of(Boolean.class))
+                // A Kotlin default argument produces exactly this shape: the property value is
+                // cast to the primitive and then back to its wrapper. Emitting both casts would
+                // unbox a null and throw, so only the outer cast belongs in the bytecode.
+                .build((ignored, parameters) -> new ExpressionDef.Cast(ClassTypeDef.of(Boolean.class),
+                    new ExpressionDef.Cast(TypeDef.Primitive.BOOLEAN, parameters.get(0))).returning()))
+            .addMethod(MethodDef.builder("narrow")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.Primitive.INT)
+                .returns(TypeDef.Primitive.LONG)
+                // A primitive cast of something that is not Object is a real conversion and stays
+                .build((ignored, parameters) -> new ExpressionDef.Cast(TypeDef.Primitive.LONG,
+                    new ExpressionDef.Cast(TypeDef.Primitive.BYTE, parameters.get(0))).returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertEquals(Boolean.TRUE, generated.getMethod("asBoolean", Object.class).invoke(null, Boolean.TRUE));
+        assertNull(generated.getMethod("asBoolean", Object.class).invoke(null, new Object[] {null}));
+        assertEquals(1L, generated.getMethod("narrow", int.class).invoke(null, 257));
+    }
+
+    @Test
+    void directlyWritesClassesReferencingTypesThatAreNotResolvableYet() {
+        // Types generated earlier in the same compilation round have no class file to read. The
+        // writer must still emit the class rather than abandoning it, because the JVM checks the
+        // real hierarchy when the class is finally loaded.
+        ClassTypeDef first = ClassTypeDef.of("example.NotOnTheClassPathYetOne");
+        ClassTypeDef second = ClassTypeDef.of("example.NotOnTheClassPathYetTwo");
+        ClassDef definition = ClassDef.builder("example.JdkUnresolvedTypeParity")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("choose")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("flag", TypeDef.Primitive.BOOLEAN)
+                .returns(TypeDef.OBJECT)
+                .build((ignored, parameters) -> parameters.get(0).isTrue()
+                    .doIfElse(first.instantiate().returning(), second.instantiate().returning())))
+            .build();
+
+        assertVerified(writeDirect(definition));
+
+        // The same holds when a compilation type lookup is supplied but knows nothing about them
+        var withLookup = new JdkClassFileWriter(true, name -> java.util.Optional.empty())
+            .write(definition, null);
+        assertTrue(withLookup.isPresent());
+        assertVerified(withLookup.orElseThrow());
+    }
+
+    @Test
     void publicWriterFallsBackToJavacForConstructsTheDirectWriterDeclines() throws Exception {
-        // A super reference inside an expression is not lowered directly yet
+        // A switch yield case is not lowered directly yet
         ClassDef definition = ClassDef.builder("example.JdkJavacFallback")
             .addModifiers(Modifier.PUBLIC)
             .addMethod(MethodDef.builder("describe")
-                .addModifiers(Modifier.PUBLIC)
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.Primitive.INT)
                 .returns(TypeDef.STRING)
-                .build((aThis, parameters) -> aThis.superRef().invoke("toString", TypeDef.STRING, List.of()).returning()))
+                .build((ignored, parameters) -> parameters.get(0).asExpressionSwitch(TypeDef.STRING,
+                    Map.of(ExpressionDef.constant(1), new ExpressionDef.SwitchYieldCase(TypeDef.STRING,
+                        ExpressionDef.constant("one").returning())),
+                    ExpressionDef.constant("other")
+                ).returning()))
             .build();
         assertTrue(new JdkClassFileWriter(true).write(definition, null).isEmpty());
 
@@ -546,8 +839,8 @@ class JdkByteCodeWriterParityTest {
         assertArrayEquals(first, second);
         assertVerified(first);
         Class<?> generated = new MapClassLoader(Map.of(definition.getName(), first)).loadClass(definition.getName());
-        Object instance = generated.getConstructor().newInstance();
-        assertTrue(generated.getMethod("describe").invoke(instance).toString().startsWith("example.JdkJavacFallback@"));
+        assertEquals("one", generated.getMethod("describe", int.class).invoke(null, 1));
+        assertEquals("other", generated.getMethod("describe", int.class).invoke(null, 2));
     }
 
     @Test

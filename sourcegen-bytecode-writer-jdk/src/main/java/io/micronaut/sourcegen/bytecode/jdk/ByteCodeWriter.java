@@ -84,10 +84,11 @@ import java.util.function.Predicate;
 @Experimental
 public final class ByteCodeWriter {
 
-    private static final JavaPoetSourceGenerator SOURCE_GENERATOR = new JavaPoetSourceGenerator();
     private final List<Path> sourcePath;
     private final List<Path> classPath;
     private final boolean verify;
+    @Nullable
+    private final CompilationTypes compilationTypes;
 
     /**
      * Creates a writer using the current runtime class path.
@@ -116,9 +117,31 @@ public final class ByteCodeWriter {
      */
     @io.micronaut.core.annotation.Internal
     public ByteCodeWriter(List<Path> sourcePath, List<Path> classPath, boolean verify) {
+        this(sourcePath, classPath, verify, null);
+    }
+
+    /**
+     * Creates a writer that can resolve types of the compilation it is running in.
+     *
+     * <p>A generated class often references types that are still being compiled and so have no
+     * class file to read. Supplying the current compilation's type lookup, such as
+     * {@code visitorContext::getClassElement}, lets the writer resolve their hierarchy when it
+     * computes stack maps.</p>
+     *
+     * @param sourcePath Source roots containing types still being compiled
+     * @param classPath Classpath entries containing already compiled types
+     * @param verify Whether to run ClassFile verification
+     * @param compilationTypes Looks up a type of the current compilation by binary name
+     */
+    @io.micronaut.core.annotation.Internal
+    public ByteCodeWriter(List<Path> sourcePath,
+                          List<Path> classPath,
+                          boolean verify,
+                          @Nullable CompilationTypes compilationTypes) {
         this.sourcePath = List.copyOf(sourcePath);
         this.classPath = List.copyOf(classPath);
         this.verify = verify;
+        this.compilationTypes = compilationTypes;
     }
 
     /**
@@ -169,7 +192,7 @@ public final class ByteCodeWriter {
      */
     @io.micronaut.core.annotation.Internal
     public Map<String, byte[]> writeAll(ObjectDef objectDef, @Nullable ClassTypeDef outerType) {
-        java.util.Optional<byte[]> direct = new JdkClassFileWriter(verify).write(objectDef, outerType);
+        java.util.Optional<byte[]> direct = new JdkClassFileWriter(verify, compilationTypes).write(objectDef, outerType);
         if (direct.isPresent()) {
             // Member types are separate class files; each one picks its own direct or fallback path
             Map<String, byte[]> result = new LinkedHashMap<>();
@@ -198,7 +221,8 @@ public final class ByteCodeWriter {
                 continue;
             }
             result.put(name, normalizeAndVerify(
-                entry.getValue(), compiled, definitions.get(name), classElements, definitions.values(), verify
+                entry.getValue(), compiled, definitions.get(name), classElements, definitions.values(), verify,
+                compilationTypes
             ));
         }
         return result;
@@ -255,7 +279,7 @@ public final class ByteCodeWriter {
         for (ObjectDef definition : definitions.values()) {
             StringWriter writer = new StringWriter();
             try {
-                SOURCE_GENERATOR.write(definition, writer);
+                SourceGeneratorHolder.INSTANCE.write(definition, writer);
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to render '" + definition.getName() + "'", e);
             }
@@ -440,12 +464,13 @@ public final class ByteCodeWriter {
                                              @Nullable ObjectDef objectDef,
                                              Set<ClassElement> classElements,
                                              Collection<ObjectDef> objectDefs,
-                                             boolean verify) {
+                                             boolean verify,
+                                             @Nullable CompilationTypes compilationTypes) {
         ClassFile classFile = ClassFile.of(
             ClassFile.StackMapsOption.GENERATE_STACK_MAPS,
             ClassFile.ClassHierarchyResolverOption.of(
                 new SourcegenClassHierarchyResolver(
-                    compiled, classElements, objectDefs, ByteCodeWriter.class.getClassLoader()
+                    compiled, classElements, objectDefs, ByteCodeWriter.class.getClassLoader(), compilationTypes
                 )
             )
         );
@@ -554,6 +579,24 @@ public final class ByteCodeWriter {
             return AnnotationValue.ofArray(values.stream().map(ByteCodeWriter::toAnnotationValue).toList());
         }
         return AnnotationValue.of(value);
+    }
+
+    /**
+     * The source generator is only needed when a definition falls back to compiling Java source.
+     * Holding it here keeps that dependency off the class-initialization path, so a caller whose
+     * definitions all lower directly never has to have the source generator available.
+     */
+    private static final class SourceGeneratorHolder {
+        private static final JavaPoetSourceGenerator INSTANCE = create();
+
+        private static JavaPoetSourceGenerator create() {
+            try {
+                return new JavaPoetSourceGenerator();
+            } catch (LinkageError e) {
+                throw new IllegalStateException("This definition cannot be lowered directly and needs the Java "
+                    + "source fallback, which requires 'micronaut-sourcegen-generator-java' on the class path", e);
+            }
+        }
     }
 
     private record Compilation(ObjectDef sourceRoot, Map<String, byte[]> classes) {

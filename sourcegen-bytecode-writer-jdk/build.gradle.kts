@@ -16,7 +16,7 @@ java {
 
 dependencies {
     api(projects.sourcegenModel)
-    implementation(projects.sourcegenBytecodeWriterCore)
+    api(projects.sourcegenBytecodeWriterCore)
     implementation(projects.sourcegenGenerator) {
         exclude("org.ow2.asm", "asm")
     }

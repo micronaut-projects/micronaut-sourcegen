@@ -10,7 +10,7 @@ repositories {
 
 dependencies {
     api(projects.sourcegenModel)
-    implementation(projects.sourcegenBytecodeWriterCore)
+    api(projects.sourcegenBytecodeWriterCore)
     implementation(libs.managed.asm)
     implementation(libs.managed.asm.commons)
     implementation(libs.managed.asm.util)

@@ -36,6 +36,11 @@ types. A definition using a construct the direct writer does not lower yet is re
 and compiled with the in-process JDK compiler. Should that compilation fail as well, the generator
 emits the Java source file and reports a compiler warning naming the class and the reason.
 
+A generated class often references types that are still being compiled and so have no class file to
+read. The annotation-processor backend gives the writer the compilation's own type lookup so their
+hierarchy can be resolved. Code calling `sourcegen-bytecode-writer-jdk` directly should pass the same
+lookup, as an `io.micronaut.sourcegen.bytecode.jdk.CompilationTypes`, when it runs inside a compiler.
+
 When a generated class references a type that is still being compiled, the source compilation resolves
 such types from `src/main/java` and `src/test/java` of the project directory. Sources kept elsewhere,
 such as shared source sets, can be added through the `micronaut.sourcegen.bytecode.jdk.sourcepath`

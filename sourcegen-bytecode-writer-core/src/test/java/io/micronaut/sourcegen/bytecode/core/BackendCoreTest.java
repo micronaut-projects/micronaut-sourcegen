@@ -47,6 +47,15 @@ class BackendCoreTest {
     }
 
     @Test
+    void describesArrayClassNamesInBothTheirBinaryAndSourceForms() {
+        // Class#getName of an array is already a descriptor, unlike a source-style name
+        assertEquals("[Lcom/example/Item;", TypeUtils.getDescriptor("[Lcom.example.Item;"));
+        assertEquals("[[I", TypeUtils.getDescriptor("[[I"));
+        assertEquals("[Lcom/example/Item;", TypeUtils.getDescriptor("com.example.Item[]"));
+        assertEquals("Lcom/example/Item;", TypeUtils.getDescriptor("com.example.Item"));
+    }
+
+    @Test
     void resolvesAGenericReturnBridgeFromModelTypes() {
         TypeDef.TypeVariable typeVariable = TypeDef.variable("T");
         InterfaceDef parent = InterfaceDef.builder("example.Parent")

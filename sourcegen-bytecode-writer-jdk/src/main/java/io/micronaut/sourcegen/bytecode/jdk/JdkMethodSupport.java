@@ -108,7 +108,8 @@ final class JdkMethodSupport {
             case VariableDef.StaticField ignored -> true;
             case VariableDef.ExceptionVar ignored -> true;
             case VariableDef.Field field -> supported(field.instance());
-            case VariableDef.Super ignored -> false;
+            // Only meaningful as an invocation receiver, which is where the writer resolves it
+            case VariableDef.Super ignored -> true;
             case ExpressionDef.Cast cast -> supported(cast.expressionDef());
             case ExpressionDef.NewInstance newInstance -> newInstance.values().stream().allMatch(JdkMethodSupport::supported);
             case ExpressionDef.InvokeInstanceMethod invoke -> supported(invoke.instance())

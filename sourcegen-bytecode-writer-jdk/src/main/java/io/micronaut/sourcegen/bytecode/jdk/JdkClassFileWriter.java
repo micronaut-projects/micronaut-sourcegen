@@ -36,6 +36,7 @@ import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.classfile.ClassFile;
@@ -79,10 +80,18 @@ import java.util.Optional;
 final class JdkClassFileWriter {
 
     private final boolean verify;
+    @Nullable
+    private final CompilationTypes compilationTypes;
     private final List<MethodDef> syntheticMethods = new ArrayList<>();
 
     JdkClassFileWriter(boolean verify) {
+        this(verify, null);
+    }
+
+    JdkClassFileWriter(boolean verify,
+                       @Nullable CompilationTypes compilationTypes) {
         this.verify = verify;
+        this.compilationTypes = compilationTypes;
     }
 
     Optional<byte[]> write(ObjectDef definition, @Nullable ClassTypeDef outerType) {
@@ -97,7 +106,7 @@ final class JdkClassFileWriter {
             ClassFile.ClassHierarchyResolverOption.of(new SourcegenClassHierarchyResolver(
                 Map.of(), SourcegenClassHierarchyResolver.classElements(objectDef),
                 List.of(objectDef),
-                JdkClassFileWriter.class.getClassLoader()
+                JdkClassFileWriter.class.getClassLoader(), compilationTypes
             ))
         );
         try {
@@ -477,25 +486,31 @@ final class JdkClassFileWriter {
             addTypeAnnotations(methodBuilder, parameterTypeAnnotations(method));
             methodBuilder.withCode(code -> {
                 JdkMethodWriter writer = JdkMethodWriter.create(code, objectDef, method, owner);
-                // Mirror the ASM writer: the explicit super(...) or this(...) call may appear anywhere
-                // in the body and is moved to the front; without one an implicit super() is emitted.
-                // Field initializers belong to the constructor that calls super, never to one that
-                // delegates to this(...), otherwise they would run twice.
+                // Mirror the ASM writer. Field initializers run straight after the constructor
+                // call, so the call is hoisted to the front only when there are any; otherwise the
+                // statements stay as they are, because the call may use locals defined before it.
+                // A constructor delegating to this(...) gets no initializers: they would run twice.
                 List<StatementDef> statements = method.getStatements();
                 Optional<StatementDef> constructorCall = statements.stream()
                     .filter(JdkClassFileWriter::isConstructorInvocation)
                     .findFirst();
-                List<StatementDef> body = new ArrayList<>(statements);
-                constructorCall.ifPresent(body::remove);
-                if (constructorCall.isPresent()) {
-                    writer.writeStatements(List.of(constructorCall.get()));
-                } else {
-                    code.aload(0).invokespecial(superclass, MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void);
-                }
+                // Only a call on `this` delegates; the deprecated form of a super call is an
+                // instance invocation too, and its constructor still runs the field initializers
                 boolean delegatesToThis = constructorCall
-                    .map(statement -> statement instanceof ExpressionDef.InvokeInstanceMethod)
+                    .map(statement -> statement instanceof ExpressionDef.InvokeInstanceMethod call
+                        && !(call.instance() instanceof VariableDef.Super))
                     .orElse(false);
-                if (!delegatesToThis && objectDef instanceof ClassDef classDef) {
+                ClassDef classDef = !delegatesToThis && objectDef instanceof ClassDef declaring ? declaring : null;
+                boolean initializers = classDef != null && hasInstanceInitializers(classDef);
+                List<StatementDef> body = statements;
+                if (constructorCall.isEmpty()) {
+                    code.aload(0).invokespecial(superclass, MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void);
+                } else if (initializers) {
+                    writer.writeStatements(List.of(constructorCall.get()));
+                    body = new ArrayList<>(statements);
+                    body.remove(constructorCall.get());
+                }
+                if (classDef != null) {
                     writeInstanceInitializers(writer, classDef);
                 }
                 writer.writeStatements(body);
@@ -624,6 +639,11 @@ final class JdkClassFileWriter {
             .addModifiers(property.getModifiersArray())
             .build((aThis, parameters) -> aThis.field(field).assign(parameters.get(0)));
         writeMethod(builder, classDef, setter, owner);
+    }
+
+    private static boolean hasInstanceInitializers(ClassDef classDef) {
+        return classDef.getFields().stream()
+            .anyMatch(field -> !field.getModifiers().contains(Modifier.STATIC) && field.getInitializer().isPresent());
     }
 
     private static void writeInstanceInitializers(JdkMethodWriter writer, ClassDef classDef) {

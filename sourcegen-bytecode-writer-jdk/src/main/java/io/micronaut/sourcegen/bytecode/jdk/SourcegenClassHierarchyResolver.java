@@ -25,6 +25,7 @@ import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import org.jspecify.annotations.Nullable;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassHierarchyResolver;
 import java.lang.classfile.ClassModel;
@@ -49,12 +50,16 @@ final class SourcegenClassHierarchyResolver implements ClassHierarchyResolver {
 
     private final Map<String, byte[]> generated;
     private final ClassHierarchyResolver delegate;
+    @Nullable
+    private final CompilationTypes compilationTypes;
 
     SourcegenClassHierarchyResolver(Map<String, byte[]> generated,
                                    Collection<ClassElement> classElements,
                                    Collection<ObjectDef> objectDefs,
-                                   ClassLoader classLoader) {
+                                   ClassLoader classLoader,
+                                   @Nullable CompilationTypes compilationTypes) {
         this.generated = generated;
+        this.compilationTypes = compilationTypes;
         Set<ClassDesc> modelInterfaces = new LinkedHashSet<>();
         Map<ClassDesc, ClassDesc> modelSuperclasses = new LinkedHashMap<>();
         Set<ObjectDef> visitedModels = new LinkedHashSet<>();
@@ -251,6 +256,30 @@ final class SourcegenClassHierarchyResolver implements ClassHierarchyResolver {
                     .map(ClassEntry::asSymbol)
                     .orElse(ConstantDescs.CD_Object));
         }
-        return delegate.getClassInfo(classDesc);
+        ClassHierarchyInfo info = delegate.getClassInfo(classDesc);
+        if (info != null) {
+            return info;
+        }
+        // A type still being compiled has no class file to read, so the caller's view of the
+        // current compilation is the only place its hierarchy can come from
+        if (compilationTypes != null) {
+            info = compilationTypes.find(binaryName(classDesc)).map(SourcegenClassHierarchyResolver::infoOf).orElse(null);
+            if (info != null) {
+                return info;
+            }
+        }
+        // Assume an ordinary class: the JVM verifies the real hierarchy when the class is loaded,
+        // whereas failing here would abandon a class that is very likely correct
+        return ClassHierarchyInfo.ofClass(ConstantDescs.CD_Object);
+    }
+
+    private static ClassHierarchyInfo infoOf(ClassElement classElement) {
+        if (classElement.isInterface()) {
+            return ClassHierarchyInfo.ofInterface();
+        }
+        return ClassHierarchyInfo.ofClass(classElement.getSuperType()
+            .map(ClassElement::getName)
+            .map(ClassDesc::of)
+            .orElse(ConstantDescs.CD_Object));
     }
 }

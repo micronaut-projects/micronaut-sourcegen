@@ -125,6 +125,11 @@ public final class TypeUtils {
      * @return The descriptor
      */
     public static String getDescriptor(String className) {
+        if (className.startsWith("[")) {
+            // The binary name of an array class, as returned by Class#getName, is already a
+            // descriptor: [Lcom.Example; or [I. Wrapping it again would produce L[Lcom/Example;;
+            return className.replace('.', '/');
+        }
         Matcher matcher = ARRAY_PATTERN.matcher(className);
         StringBuilder result = new StringBuilder();
         if (matcher.find()) {
