@@ -18,14 +18,17 @@ package io.micronaut.sourcegen.bytecode.jdk;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.sourcegen.bytecode.core.AnnotationTargetUtils;
 import io.micronaut.sourcegen.bytecode.core.BridgeResolver;
+import io.micronaut.sourcegen.bytecode.core.EnumGenUtils;
 import io.micronaut.sourcegen.bytecode.core.ModifierUtils;
 import io.micronaut.sourcegen.bytecode.core.SignatureUtils;
 import io.micronaut.sourcegen.bytecode.core.TypeUtils;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
+import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
@@ -42,6 +45,10 @@ import java.lang.classfile.TypeAnnotation;
 import java.lang.classfile.FieldBuilder;
 import java.lang.classfile.MethodBuilder;
 import java.lang.classfile.attribute.ExceptionsAttribute;
+import java.lang.classfile.attribute.InnerClassInfo;
+import java.lang.classfile.attribute.InnerClassesAttribute;
+import java.lang.classfile.attribute.NestHostAttribute;
+import java.lang.classfile.attribute.NestMembersAttribute;
 import java.lang.classfile.attribute.MethodParameterInfo;
 import java.lang.classfile.attribute.MethodParametersAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
@@ -78,8 +85,10 @@ final class JdkClassFileWriter {
         this.verify = verify;
     }
 
-    Optional<byte[]> write(ObjectDef objectDef, @Nullable ClassTypeDef outerType) {
-        if (outerType != null || !supported(objectDef)) {
+    Optional<byte[]> write(ObjectDef definition, @Nullable ClassTypeDef outerType) {
+        // An enum is written in its lowered class form, the same way the ASM backend does it
+        ObjectDef objectDef = definition instanceof EnumDef enumDef ? EnumGenUtils.toClassDef(enumDef) : definition;
+        if (!supported(objectDef)) {
             return Optional.empty();
         }
         ClassDesc owner = classDesc(objectDef.asTypeDef(), objectDef);
@@ -92,7 +101,7 @@ final class JdkClassFileWriter {
             ))
         );
         try {
-            byte[] bytes = classFile.build(owner, builder -> writeObject(builder, objectDef, owner));
+            byte[] bytes = classFile.build(owner, builder -> writeObject(builder, objectDef, owner, outerType));
             if (verify) {
                 List<VerifyError> errors = classFile.verify(bytes);
                 if (!errors.isEmpty()) {
@@ -107,20 +116,119 @@ final class JdkClassFileWriter {
         }
     }
 
-    private void writeObject(ClassBuilder builder, ObjectDef objectDef, ClassDesc owner) {
+    private void writeObject(ClassBuilder builder, ObjectDef objectDef, ClassDesc owner, @Nullable ClassTypeDef outerType) {
         if (objectDef instanceof ClassDef classDef) {
-            writeClass(builder, classDef, owner);
+            writeClass(builder, classDef, owner, outerType);
         } else if (objectDef instanceof RecordDef recordDef) {
-            writeRecord(builder, recordDef, owner);
+            writeRecord(builder, recordDef, owner, outerType);
+        } else if (objectDef instanceof InterfaceDef interfaceDef) {
+            writeInterface(builder, interfaceDef, owner, outerType);
         }
     }
 
-    private void writeRecord(ClassBuilder builder, RecordDef recordDef, ClassDesc owner) {
+    /**
+     * Writes the {@code NestHost} and {@code InnerClasses} entries of a member type, and the
+     * {@code InnerClasses} and {@code NestMembers} entries for the member types this type declares.
+     * The outer and the member both write the entry describing the member, and the two agree by
+     * sharing {@link ModifierUtils#innerClassFlags}.
+     */
+    private static void writeOuterInner(ClassBuilder builder, ObjectDef objectDef, ClassDesc owner,
+                                        @Nullable ClassTypeDef outerType) {
+        List<InnerClassInfo> entries = new ArrayList<>();
+        if (outerType != null) {
+            ClassDesc outer = classDesc(outerType, objectDef);
+            builder.with(NestHostAttribute.of(outer));
+            entries.add(InnerClassInfo.of(owner, Optional.of(outer), Optional.of(objectDef.getSimpleName()),
+                ModifierUtils.innerClassFlags(objectDef, outerType.isInterface())));
+        }
+        List<ClassDesc> members = new ArrayList<>();
+        for (ObjectDef inner : objectDef.getInnerTypes()) {
+            ClassDesc member = classDesc(inner.asTypeDef(), objectDef);
+            entries.add(InnerClassInfo.of(member, Optional.of(owner), Optional.of(inner.getSimpleName()),
+                ModifierUtils.innerClassFlags(inner, objectDef instanceof InterfaceDef)));
+            members.add(member);
+        }
+        if (!entries.isEmpty()) {
+            builder.with(InnerClassesAttribute.of(entries));
+        }
+        if (!members.isEmpty()) {
+            builder.with(NestMembersAttribute.ofSymbols(members));
+        }
+    }
+
+    private void writeInterface(ClassBuilder builder, InterfaceDef interfaceDef, ClassDesc owner,
+                                @Nullable ClassTypeDef outerType) {
+        int flags = ModifierUtils.ACC_INTERFACE | ModifierUtils.ACC_ABSTRACT
+            | ModifierUtils.classFlags(interfaceDef.getModifiers(), outerType);
+        if (interfaceDef.isSynthetic()) {
+            flags |= ModifierUtils.ACC_SYNTHETIC;
+        }
         builder.withVersion(ClassFile.JAVA_17_VERSION, 0)
-            .withFlags(ModifierUtils.objectFlags(recordDef))
+            .withFlags(flags)
+            .withSuperclass(ConstantDescs.CD_Object)
+            .withInterfaceSymbols(interfaceDef.getSuperinterfaces().stream()
+                .map(type -> classDesc(type, interfaceDef)).toList());
+        writeOuterInner(builder, interfaceDef, owner, outerType);
+        addAnnotations(builder, interfaceDef.getAnnotations());
+        addSignature(builder, SignatureUtils.getInterfaceSignature(interfaceDef));
+        for (MethodDef method : interfaceDef.getMethods()) {
+            if (isAbstract(interfaceDef, method)) {
+                writeAbstractMethod(builder, interfaceDef, method);
+            } else {
+                writeMethod(builder, interfaceDef, method, owner);
+            }
+            writeBridgeMethods(builder, interfaceDef, method, owner);
+        }
+        for (PropertyDef property : interfaceDef.getProperties()) {
+            writeInterfaceProperty(builder, interfaceDef, property);
+        }
+        for (int i = 0; i < syntheticMethods.size(); i++) {
+            writeMethod(builder, interfaceDef, syntheticMethods.get(i), owner);
+        }
+    }
+
+    /**
+     * An interface property has no backing field; it is the pair of abstract accessors an
+     * implementation has to provide.
+     */
+    private void writeInterfaceProperty(ClassBuilder builder, InterfaceDef interfaceDef, PropertyDef property) {
+        String capitalized = io.micronaut.core.naming.NameUtils.capitalize(property.getName());
+        writeAbstractMethod(builder, interfaceDef, MethodDef.builder("get" + capitalized)
+            .addModifiers(property.getModifiersArray())
+            .returns(property.getType())
+            .addAnnotations(property.getAnnotations())
+            .build());
+        writeAbstractMethod(builder, interfaceDef, MethodDef.builder("set" + capitalized)
+            .addModifiers(property.getModifiersArray())
+            .addParameter(property.getName(), property.getType())
+            .build());
+    }
+
+    /**
+     * A method is abstract when declared so, and in an interface also when it is neither static nor
+     * given a body: the model marks interface methods abstract explicitly, but a body-less instance
+     * method can only be abstract there.
+     */
+    private static boolean isAbstract(ObjectDef objectDef, MethodDef method) {
+        if (method.getModifiers().contains(Modifier.ABSTRACT) || method.getModifiers().contains(Modifier.NATIVE)) {
+            return true;
+        }
+        return objectDef instanceof InterfaceDef
+            && !method.getModifiers().contains(Modifier.STATIC)
+            && method.getStatements().isEmpty();
+    }
+
+    private void writeRecord(ClassBuilder builder, RecordDef recordDef, ClassDesc owner, @Nullable ClassTypeDef outerType) {
+        int flags = ModifierUtils.ACC_FINAL | ModifierUtils.classFlags(recordDef.getModifiers(), outerType);
+        if (recordDef.isSynthetic()) {
+            flags |= ModifierUtils.ACC_SYNTHETIC;
+        }
+        builder.withVersion(ClassFile.JAVA_17_VERSION, 0)
+            .withFlags(flags)
             .withSuperclass(ClassDesc.of("java.lang.Record"))
             .withInterfaceSymbols(recordDef.getSuperinterfaces().stream()
                 .map(type -> classDesc(type, recordDef)).toList());
+        writeOuterInner(builder, recordDef, owner, outerType);
         addAnnotations(builder, recordDef.getAnnotations());
         addSignature(builder, SignatureUtils.getRecordSignature(recordDef));
 
@@ -156,6 +264,11 @@ final class JdkClassFileWriter {
         List<TypeDef> componentTypes = recordDef.getProperties().stream().map(PropertyDef::getType).toList();
         if (!hasDeclared(recordDef, MethodDef.CONSTRUCTOR, componentTypes)) {
             writeRecordConstructor(builder, recordDef, owner);
+        }
+        for (MethodDef method : recordDef.getMethods()) {
+            if (method.isConstructor()) {
+                writeConstructor(builder, recordDef, method, owner, ClassDesc.of("java.lang.Record"));
+            }
         }
         for (PropertyDef property : recordDef.getProperties()) {
             if (!hasDeclared(recordDef, property.getName(), List.of())) {
@@ -271,15 +384,23 @@ final class JdkClassFileWriter {
             }));
     }
 
-    private void writeClass(ClassBuilder builder, ClassDef classDef, ClassDesc owner) {
+    private void writeClass(ClassBuilder builder, ClassDef classDef, ClassDesc owner, @Nullable ClassTypeDef outerType) {
+        int flags = ModifierUtils.classFlags(classDef.getModifiers(), outerType);
+        if (classDef.isSynthetic()) {
+            flags |= ModifierUtils.ACC_SYNTHETIC;
+        }
+        if (EnumGenUtils.isEnum(classDef)) {
+            flags |= ModifierUtils.ACC_ENUM;
+        }
         builder.withVersion(ClassFile.JAVA_17_VERSION, 0)
-            .withFlags(ModifierUtils.classFlags(classDef.getModifiers(), null));
-        addAnnotations(builder, classDef.getAnnotations());
-        addSignature(builder, classSignature(classDef));
+            .withFlags(flags);
         ClassTypeDef superclass = classDef.getSuperclass();
         builder.withSuperclass(superclass == null ? ConstantDescs.CD_Object : classDesc(superclass, classDef));
         builder.withInterfaceSymbols(classDef.getSuperinterfaces().stream()
             .map(type -> classDesc(type, classDef)).toList());
+        writeOuterInner(builder, classDef, owner, outerType);
+        addAnnotations(builder, classDef.getAnnotations());
+        addSignature(builder, classSignature(classDef));
         for (FieldDef field : classDef.getFields()) {
             writeField(builder, classDef, field);
         }
@@ -305,7 +426,8 @@ final class JdkClassFileWriter {
         if (constructors.isEmpty()) {
             writeDefaultConstructor(builder, classDef, superclass, owner);
         } else {
-            constructors.forEach(method -> writeConstructor(builder, classDef, method, owner));
+            ClassDesc superclassDesc = superclass == null ? ConstantDescs.CD_Object : classDesc(superclass, classDef);
+            constructors.forEach(method -> writeConstructor(builder, classDef, method, owner, superclassDesc));
         }
         for (PropertyDef property : classDef.getProperties()) {
             writePropertyMethods(builder, classDef, property, owner);
@@ -347,13 +469,14 @@ final class JdkClassFileWriter {
         });
     }
 
-    private void writeConstructor(ClassBuilder builder, ClassDef classDef, MethodDef method, ClassDesc owner) {
-        MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(classDef, method));
+    private void writeConstructor(ClassBuilder builder, ObjectDef objectDef, MethodDef method, ClassDesc owner,
+                                  ClassDesc superclass) {
+        MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(objectDef, method));
         builder.withMethod(method.getName(), type, methodFlags(method), methodBuilder -> {
-            addMethodMetadata(methodBuilder, classDef, method);
+            addMethodMetadata(methodBuilder, objectDef, method);
             addTypeAnnotations(methodBuilder, parameterTypeAnnotations(method));
             methodBuilder.withCode(code -> {
-                JdkMethodWriter writer = JdkMethodWriter.create(code, classDef, method, owner);
+                JdkMethodWriter writer = JdkMethodWriter.create(code, objectDef, method, owner);
                 // Mirror the ASM writer: the explicit super(...) or this(...) call may appear anywhere
                 // in the body and is moved to the front; without one an implicit super() is emitted.
                 // Field initializers belong to the constructor that calls super, never to one that
@@ -367,14 +490,12 @@ final class JdkClassFileWriter {
                 if (constructorCall.isPresent()) {
                     writer.writeStatements(List.of(constructorCall.get()));
                 } else {
-                    ClassTypeDef superclass = classDef.getSuperclass();
-                    code.aload(0).invokespecial(superclass == null ? ConstantDescs.CD_Object : classDesc(superclass, classDef),
-                        MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void);
+                    code.aload(0).invokespecial(superclass, MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void);
                 }
                 boolean delegatesToThis = constructorCall
                     .map(statement -> statement instanceof ExpressionDef.InvokeInstanceMethod)
                     .orElse(false);
-                if (!delegatesToThis) {
+                if (!delegatesToThis && objectDef instanceof ClassDef classDef) {
                     writeInstanceInitializers(writer, classDef);
                 }
                 writer.writeStatements(body);
@@ -433,7 +554,12 @@ final class JdkClassFileWriter {
 
     private void writeAbstractMethod(ClassBuilder builder, ObjectDef objectDef, MethodDef method, int extraFlags) {
         MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(objectDef, method));
-        builder.withMethod(method.getName(), type, methodFlags(method) | extraFlags, methodBuilder -> {
+        int flags = methodFlags(method) | extraFlags;
+        if (!method.getModifiers().contains(Modifier.NATIVE)) {
+            // An interface method without a body is abstract whether or not the model says so
+            flags |= ModifierUtils.ACC_ABSTRACT;
+        }
+        builder.withMethod(method.getName(), type, flags, methodBuilder -> {
             addMethodMetadata(methodBuilder, objectDef, method, (extraFlags & ModifierUtils.ACC_BRIDGE) == 0);
             addTypeAnnotations(methodBuilder, methodTypeAnnotations(method));
         });
@@ -464,6 +590,9 @@ final class JdkClassFileWriter {
             int flags = ModifierUtils.memberFlags(field.getModifiers());
             if (field.isSynthetic()) {
                 flags |= ModifierUtils.ACC_SYNTHETIC;
+            }
+            if (EnumGenUtils.isEnumField(objectDef, field)) {
+                flags |= ModifierUtils.ACC_ENUM;
             }
             fieldBuilder.withFlags(flags);
             addAnnotations(fieldBuilder, field.getAnnotations());
@@ -698,33 +827,26 @@ final class JdkClassFileWriter {
         }
     }
 
+    /**
+     * Whether every construct of a definition (given in its lowered class form for an enum) can be
+     * emitted by this writer. Member types are emitted by their own write call and do not take part.
+     */
     private static boolean supported(ObjectDef objectDef) {
-        if (!objectDef.getInnerTypes().isEmpty()) {
-            return false;
-        }
-        if (objectDef instanceof RecordDef recordDef) {
-            // A user-declared record constructor has special canonical-constructor rules. Let the
-            // source fallback handle that uncommon form until it can be lowered without losing
-            // those rules.
-            if (recordDef.getMethods().stream().anyMatch(MethodDef::isConstructor)) {
+        if (objectDef instanceof ClassDef classDef) {
+            for (FieldDef field : classDef.getFields()) {
+                if (field.getInitializer().isPresent()
+                    && !field.getInitializer().stream().allMatch(JdkMethodSupport::supported)) {
+                    return false;
+                }
+            }
+            if (classDef.getStaticInitializer() != null && !JdkMethodSupport.supported(classDef.getStaticInitializer())) {
                 return false;
             }
-            return recordDef.getMethods().stream().allMatch(JdkMethodSupport::supported);
-        }
-        if (!(objectDef instanceof ClassDef classDef)) {
+        } else if (!(objectDef instanceof RecordDef) && !(objectDef instanceof InterfaceDef)) {
             return false;
         }
-        for (FieldDef field : classDef.getFields()) {
-            if (field.getInitializer().isPresent()
-                && !field.getInitializer().stream().allMatch(JdkMethodSupport::supported)) {
-                return false;
-            }
-        }
-        if (classDef.getStaticInitializer() != null && !JdkMethodSupport.supported(classDef.getStaticInitializer())) {
-            return false;
-        }
-        for (MethodDef method : classDef.getMethods()) {
-            if (!method.isConstructor() && method.getModifiers().contains(javax.lang.model.element.Modifier.ABSTRACT)) {
+        for (MethodDef method : objectDef.getMethods()) {
+            if (!method.isConstructor() && isAbstract(objectDef, method)) {
                 continue;
             }
             if (!JdkMethodSupport.supported(method)) {

@@ -19,6 +19,7 @@ import io.micronaut.sourcegen.bytecode.core.TypeUtils;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.ObjectDef;
@@ -126,24 +127,24 @@ final class JdkMethodWriter {
                 code.athrow();
             }
             case StatementDef.DefineAndAssign define -> {
-                writeExpression(define.expression());
+                writeExpression(new ExpressionDef.Cast(define.variable().type(), define.expression()));
                 int slot = code.allocateLocal(kind(define.variable().type()));
                 locals.put(define.variable().name(), new Local(define.variable().type(), slot));
                 store(define.variable().type(), slot);
             }
             case StatementDef.Assign assign -> {
-                writeExpression(assign.expression());
                 Local local = local(assign.variable().name());
+                writeExpression(new ExpressionDef.Cast(local.type(), assign.expression()));
                 store(local.type(), local.slot());
             }
             case StatementDef.PutField putField -> {
                 writeExpression(putField.field().instance());
-                writeExpression(putField.expression());
+                writeExpression(new ExpressionDef.Cast(putField.field().type(), putField.expression()));
                 code.putfield(classDesc(putField.field().declaringType()), putField.field().name(),
                     classDesc(putField.field().type()));
             }
             case StatementDef.PutStaticField putStaticField -> {
-                writeExpression(putStaticField.expression());
+                writeExpression(new ExpressionDef.Cast(putStaticField.field().type(), putStaticField.expression()));
                 code.putstatic(classDesc(putStaticField.field().ownerType()), putStaticField.field().name(),
                     classDesc(putStaticField.field().type()));
             }
@@ -521,38 +522,36 @@ final class JdkMethodWriter {
                 writeNewArray(array.type());
                 for (int i = 0; i < array.expressions().size(); i++) {
                     code.dup().loadConstant(i);
-                    writeExpression(array.expressions().get(i));
-                    code.arrayStore(kind(array.type().componentType()));
+                    writeExpression(new ExpressionDef.Cast(array.type().componentType(), array.expressions().get(i)));
+                    code.arrayStore(exactKind(array.type().componentType()));
                 }
             }
             case ExpressionDef.ArrayElement array -> {
                 writeExpression(array.expression());
                 writeExpression(array.indexExpression());
-                code.arrayLoad(kind(array.type()));
+                code.arrayLoad(exactKind(array.type()));
             }
-            case ExpressionDef.GetPropertyValue property -> {
-                writeExpression(property.instance());
-                code.getfield(classDesc(property.instance().type()), property.propertyElement().getName(),
-                    classDesc(property.type()));
-            }
+            case ExpressionDef.GetPropertyValue property ->
+                // The same idiom the ASM writer uses: the read method when the property has one,
+                // the field otherwise. A direct getfield would break on a private field.
+                writeExpression(new ExpressionDef.Cast(property.type(), JavaIdioms.getPropertyValue(property)));
             case ExpressionDef.InvokeGetClassMethod getClass -> {
                 writeExpression(getClass.instance());
                 code.invokevirtual(ConstantDescs.CD_Object, "getClass", MethodTypeDesc.of(ConstantDescs.CD_Class));
             }
-            case ExpressionDef.InvokeHashCodeMethod hashCode -> {
-                writeExpression(hashCode.instance());
-                code.invokevirtual(ConstantDescs.CD_Object, HASH_CODE, MethodTypeDesc.of(ConstantDescs.CD_int));
-            }
+            case ExpressionDef.InvokeHashCodeMethod hashCode ->
+                // Null-safe, array-aware and primitive-aware, exactly as the ASM writer lowers it
+                writeExpression(JavaIdioms.hashCode(hashCode));
             case ExpressionDef.InstanceOf instanceOf -> {
                 writeExpression(instanceOf.expression());
                 code.instanceOf(classDesc(instanceOf.instanceType()));
             }
             case ExpressionDef.EqualsReferentially equals -> writeReferenceComparison(equals.instance(), equals.other(), false);
             case ExpressionDef.NotEqualsReferentially notEquals -> writeReferenceComparison(notEquals.instance(), notEquals.other(), true);
-            case ExpressionDef.EqualsStructurally equals -> writeObjectsEquals(equals.instance(), equals.other());
+            case ExpressionDef.EqualsStructurally equals -> writeStructuralEquals(equals.instance(), equals.other());
             case ExpressionDef.NotEqualsStructurally notEquals -> {
-                writeObjectsEquals(notEquals.instance(), notEquals.other());
-                code.ixor().loadConstant(1);
+                writeStructuralEquals(notEquals.instance(), notEquals.other());
+                code.loadConstant(1).ixor();
             }
             case ExpressionDef.ComparisonOperation comparison -> writeBooleanExpression(comparison);
             case ExpressionDef.IsNull isNull -> {
@@ -575,7 +574,7 @@ final class JdkMethodWriter {
     void writeInstanceInitializer(ClassDef classDef, io.micronaut.sourcegen.model.FieldDef field,
                                   ExpressionDef initializer) {
         code.aload(code.receiverSlot());
-        writeExpression(initializer);
+        writeExpression(new ExpressionDef.Cast(field.getType(), initializer));
         code.putfield(classDesc(classDef.asTypeDef()), field.getName(), classDesc(field.getType()));
     }
 
@@ -730,9 +729,11 @@ final class JdkMethodWriter {
         var elseLabel = code.newLabel();
         var end = code.newLabel();
         writeCondition(ifElse.condition(), null, elseLabel);
-        writeExpression(ifElse.ifExpression());
+        // Both branches must leave the result type on the stack, boxed or unboxed as needed, so
+        // that the two paths agree where they join
+        writeExpression(new ExpressionDef.Cast(ifElse.type(), ifElse.ifExpression()));
         code.goto_(end).labelBinding(elseLabel);
-        writeExpression(ifElse.elseExpression());
+        writeExpression(new ExpressionDef.Cast(ifElse.type(), ifElse.elseExpression()));
         code.labelBinding(end);
     }
 
@@ -812,10 +813,16 @@ final class JdkMethodWriter {
             return;
         }
         if (condition instanceof ExpressionDef.Or or) {
+            // A true left operand must skip the right one. Without a true label (statement
+            // context, where the true path is the fall-through) that needs a label of its own.
             var right = code.newLabel();
-            writeCondition(or.left(), trueLabel, right);
+            var leftTrue = trueLabel != null ? trueLabel : code.newLabel();
+            writeCondition(or.left(), leftTrue, right);
             code.labelBinding(right);
             writeCondition(or.right(), trueLabel, falseLabel);
+            if (trueLabel == null) {
+                code.labelBinding(leftTrue);
+            }
             return;
         }
         if (condition instanceof ExpressionDef.IsNull isNull) {
@@ -857,31 +864,25 @@ final class JdkMethodWriter {
             return;
         }
         if (condition instanceof ExpressionDef.EqualsStructurally equals) {
-            writeObjectsEquals(equals.instance(), equals.other());
+            writeStructuralEquals(equals.instance(), equals.other());
             jump(java.lang.classfile.Opcode.IFNE, trueLabel, falseLabel);
             return;
         }
         if (condition instanceof ExpressionDef.NotEqualsStructurally notEquals) {
-            writeObjectsEquals(notEquals.instance(), notEquals.other());
+            writeStructuralEquals(notEquals.instance(), notEquals.other());
             jump(java.lang.classfile.Opcode.IFEQ, trueLabel, falseLabel);
             return;
         }
         throw unsupported(condition);
     }
 
-    private void writeObjectsEquals(ExpressionDef left, ExpressionDef right) {
-        writeBoxed(left);
-        writeBoxed(right);
-        code.invokestatic(ClassDesc.of("java.util.Objects"), "equals",
-            MethodTypeDesc.of(ConstantDescs.CD_boolean, ConstantDescs.CD_Object, ConstantDescs.CD_Object));
-    }
-
-    private void writeBoxed(ExpressionDef expression) {
-        writeExpression(expression);
-        TypeKind expressionKind = kind(expression.type());
-        if (expressionKind != TypeKind.REFERENCE) {
-            box(expressionKind);
-        }
+    /**
+     * Structural equality as the ASM writer lowers it: {@code Arrays.equals} or
+     * {@code Arrays.deepEquals} for arrays, {@code Objects.equals} otherwise; the static-call
+     * lowering boxes primitive operands.
+     */
+    private void writeStructuralEquals(ExpressionDef left, ExpressionDef right) {
+        writeExpression(JavaIdioms.equalsStructurally(left, right));
     }
 
     private void writeComparisonBranch(ExpressionDef.ComparisonOperation comparison,
@@ -1164,20 +1165,24 @@ final class JdkMethodWriter {
         TypeDef source = cast.expressionDef().type();
         TypeDef target = cast.type();
         writeExpression(cast.expressionDef());
-        TypeKind sourceKind = kind(source);
-        TypeKind targetKind = kind(target);
-        if (sourceKind == targetKind) {
-            if (targetKind == TypeKind.REFERENCE && !classDesc(target).equals(ConstantDescs.CD_Object)) {
+        // The exact kinds matter here: a boolean boxes to Boolean, not Integer, and an int
+        // narrows to byte with i2b even though both load as int
+        TypeKind sourceKind = exactKind(source);
+        TypeKind targetKind = exactKind(target);
+        boolean sourceReference = sourceKind == TypeKind.REFERENCE;
+        boolean targetReference = targetKind == TypeKind.REFERENCE;
+        if (sourceReference && targetReference) {
+            if (!classDesc(target).equals(ConstantDescs.CD_Object)) {
                 code.checkcast(classDesc(target));
             }
-        } else if (sourceKind != TypeKind.REFERENCE && targetKind != TypeKind.REFERENCE) {
-            code.conversion(sourceKind, targetKind);
-        } else if (sourceKind != TypeKind.REFERENCE) {
+        } else if (!sourceReference && !targetReference) {
+            if (sourceKind != targetKind) {
+                code.conversion(sourceKind, targetKind);
+            }
+        } else if (!sourceReference) {
             box(sourceKind);
-        } else if (targetKind != TypeKind.REFERENCE) {
-            unbox(targetKind);
         } else {
-            code.checkcast(classDesc(target));
+            unbox(targetKind);
         }
     }
 
@@ -1252,16 +1257,90 @@ final class JdkMethodWriter {
                 ClassDesc type = ClassDesc.of(anEnum.getDeclaringClass().getName());
                 code.getstatic(type, anEnum.name(), type);
             }
-            case Integer integer -> code.loadConstant(integer);
-            case Long longValue -> code.loadConstant(longValue);
-            case Float floatValue -> code.loadConstant(floatValue);
-            case Double doubleValue -> code.loadConstant(doubleValue);
-            case Byte byteValue -> code.loadConstant(byteValue.intValue());
-            case Short shortValue -> code.loadConstant(shortValue.intValue());
-            case Character character -> code.loadConstant(character.charValue());
-            case Boolean booleanValue -> code.loadConstant(booleanValue ? 1 : 0);
+            case Integer integer -> {
+                code.loadConstant(integer);
+                boxConstant(constant, TypeKind.INT);
+            }
+            case Long longValue -> {
+                code.loadConstant(longValue);
+                boxConstant(constant, TypeKind.LONG);
+            }
+            case Float floatValue -> {
+                code.loadConstant(floatValue);
+                boxConstant(constant, TypeKind.FLOAT);
+            }
+            case Double doubleValue -> {
+                code.loadConstant(doubleValue);
+                boxConstant(constant, TypeKind.DOUBLE);
+            }
+            case Byte byteValue -> {
+                code.loadConstant(byteValue.intValue());
+                boxConstant(constant, TypeKind.BYTE);
+            }
+            case Short shortValue -> {
+                code.loadConstant(shortValue.intValue());
+                boxConstant(constant, TypeKind.SHORT);
+            }
+            case Character character -> {
+                code.loadConstant((int) character.charValue());
+                boxConstant(constant, TypeKind.CHAR);
+            }
+            case Boolean booleanValue -> {
+                code.loadConstant(booleanValue ? 1 : 0);
+                boxConstant(constant, TypeKind.BOOLEAN);
+            }
             default -> throw unsupported(constant);
         }
+    }
+
+    /**
+     * A constant declared with a reference type, such as {@code constant(Integer.valueOf(1))} or a
+     * builder default typed by its property, has to leave the wrapper on the stack, not the raw
+     * primitive. A wrapper of another kind converts first, as in {@code Long} for an {@code int} value.
+     */
+    private void boxConstant(ExpressionDef.Constant constant, TypeKind valueKind) {
+        ClassDesc declared = classDesc(constant.type());
+        if (declared.isPrimitive()) {
+            return;
+        }
+        TypeKind targetKind = wrapperKind(declared);
+        if (targetKind == null) {
+            box(valueKind);
+            return;
+        }
+        if (targetKind != valueKind) {
+            code.conversion(valueKind, targetKind);
+        }
+        box(targetKind);
+    }
+
+    @Nullable
+    private static TypeKind wrapperKind(ClassDesc type) {
+        if (type.equals(ConstantDescs.CD_Integer)) {
+            return TypeKind.INT;
+        }
+        if (type.equals(ConstantDescs.CD_Long)) {
+            return TypeKind.LONG;
+        }
+        if (type.equals(ConstantDescs.CD_Float)) {
+            return TypeKind.FLOAT;
+        }
+        if (type.equals(ConstantDescs.CD_Double)) {
+            return TypeKind.DOUBLE;
+        }
+        if (type.equals(ConstantDescs.CD_Byte)) {
+            return TypeKind.BYTE;
+        }
+        if (type.equals(ConstantDescs.CD_Short)) {
+            return TypeKind.SHORT;
+        }
+        if (type.equals(ConstantDescs.CD_Character)) {
+            return TypeKind.CHAR;
+        }
+        if (type.equals(ConstantDescs.CD_Boolean)) {
+            return TypeKind.BOOLEAN;
+        }
+        return null;
     }
 
     private void writeInvocation(ExpressionDef instance, MethodDef method, List<? extends ExpressionDef> values,
@@ -1290,10 +1369,12 @@ final class JdkMethodWriter {
         ClassDesc methodOwner = classDesc(classDef);
         code.invokestatic(methodOwner, method.getName(),
             methodType(method.getParameters().stream().map(parameter -> parameter.getType()).toList(), method.getReturnType()),
-            classDef.isInterface());
+            isInterfaceType(classDef));
     }
 
-    private static boolean isInterfaceType(TypeDef type) {
+    private boolean isInterfaceType(TypeDef type) {
+        // THIS and SUPER only know whether they are an interface once resolved against the definition
+        type = ObjectDef.getContextualType(objectDef, type);
         if (type instanceof ClassTypeDef.Parameterized parameterized) {
             return isInterfaceType(parameterized.rawType());
         }
@@ -1340,7 +1421,8 @@ final class JdkMethodWriter {
     }
 
     private void writeNewArray(TypeDef.Array type) {
-        TypeKind componentKind = kind(type.componentType());
+        // newarray needs the exact element kind; a boolean[] is not an int[]
+        TypeKind componentKind = exactKind(type.componentType());
         if (componentKind == TypeKind.REFERENCE) {
             code.anewarray(classDesc(type.componentType()));
         } else {
@@ -1359,8 +1441,20 @@ final class JdkMethodWriter {
         return classDesc(type);
     }
 
+    /**
+     * The kind a value of the type occupies on the stack and in locals: boolean, byte, char and
+     * short all load and store as int.
+     */
     private TypeKind kind(TypeDef type) {
-        return TypeKind.fromDescriptor(TypeUtils.getDescriptor(type, objectDef)).asLoadable();
+        return exactKind(type).asLoadable();
+    }
+
+    /**
+     * The declared kind of the type, needed wherever the JVM distinguishes the small integral
+     * types: boxing, array creation and element access, and narrowing conversions.
+     */
+    private TypeKind exactKind(TypeDef type) {
+        return TypeKind.fromDescriptor(TypeUtils.getDescriptor(type, objectDef));
     }
 
     private MethodTypeDesc methodType(List<TypeDef> parameters, TypeDef returnType) {

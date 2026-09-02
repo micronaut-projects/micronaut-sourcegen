@@ -31,10 +31,10 @@ emits Java 17-compatible classes. It is an alternative to `sourcegen-generator-b
 ASM. Select exactly one Java Sourcegen backend on an annotation-processor path. The direct
 `sourcegen-bytecode-writer-jdk` API is available when a `byte[]` is required; it also requires JDK 25.
 
-The backend writes class files directly for top-level classes and records. Interfaces, enums, nested
-types and constructs the direct writer does not lower yet are rendered to Java source and compiled with
-the in-process JDK compiler. Should that compilation fail as well, the generator emits the Java source
-file and reports a compiler warning naming the class and the reason.
+The backend writes class files directly for classes, records, interfaces, enums and their member
+types. A definition using a construct the direct writer does not lower yet is rendered to Java source
+and compiled with the in-process JDK compiler. Should that compilation fail as well, the generator
+emits the Java source file and reports a compiler warning naming the class and the reason.
 
 When a generated class references a type that is still being compiled, the source compilation resolves
 such types from `src/main/java` and `src/test/java` of the project directory. Sources kept elsewhere,

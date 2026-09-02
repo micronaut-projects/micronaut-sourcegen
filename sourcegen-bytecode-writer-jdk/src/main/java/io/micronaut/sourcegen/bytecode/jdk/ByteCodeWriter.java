@@ -171,7 +171,13 @@ public final class ByteCodeWriter {
     public Map<String, byte[]> writeAll(ObjectDef objectDef, @Nullable ClassTypeDef outerType) {
         java.util.Optional<byte[]> direct = new JdkClassFileWriter(verify).write(objectDef, outerType);
         if (direct.isPresent()) {
-            return Map.of(objectDef.getName(), direct.get());
+            // Member types are separate class files; each one picks its own direct or fallback path
+            Map<String, byte[]> result = new LinkedHashMap<>();
+            result.put(objectDef.getName(), direct.get());
+            for (ObjectDef inner : objectDef.getInnerTypes()) {
+                result.putAll(writeAll(inner, objectDef.asTypeDef()));
+            }
+            return result;
         }
         Compilation compilation = compileFallback(objectDef, outerType);
         ObjectDef sourceRoot = compilation.sourceRoot();
@@ -353,20 +359,21 @@ public final class ByteCodeWriter {
             throw new IllegalStateException("The JDK backend requires a full JDK 25, including javac");
         }
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-        try (StandardJavaFileManager standard = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8)) {
+        List<String> options = compilerOptions();
+        List<JavaFileObject> sourceFiles = sources.entrySet().stream()
+            .map(entry -> new SourceFile(entry.getKey(), entry.getValue()))
+            .map(JavaFileObject.class::cast)
+            .toList();
+        // The standard file manager holds the opened class-path archives; reusing it across the
+        // classes of one compilation is what keeps a per-class javac task affordable.
+        StandardJavaFileManager standard = Tooling.fileManager(compiler, options);
+        synchronized (standard) {
             MemoryFileManager fileManager = new MemoryFileManager(standard);
-            List<String> options = compilerOptions();
-            List<JavaFileObject> sourceFiles = sources.entrySet().stream()
-                .map(entry -> new SourceFile(entry.getKey(), entry.getValue()))
-                .map(JavaFileObject.class::cast)
-                .toList();
             Boolean success = compiler.getTask(null, fileManager, diagnostics, options, null, sourceFiles).call();
             if (!Boolean.TRUE.equals(success)) {
                 throw new IllegalStateException(formatDiagnostics(diagnostics));
             }
             return fileManager.bytes();
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to compile generated source", e);
         }
     }
 
@@ -517,7 +524,7 @@ public final class ByteCodeWriter {
             return AnnotationValue.ofEnum(ClassDesc.of(field.ownerType().getName()), field.name());
         }
         if (value instanceof io.micronaut.sourcegen.model.AnnotationDef annotation) {
-            return AnnotationValue.of(toAnnotation(annotation));
+            return AnnotationValue.ofAnnotation(toAnnotation(annotation));
         }
         if (value instanceof ClassTypeDef type) {
             return AnnotationValue.ofClass(ClassDesc.ofDescriptor(
@@ -560,6 +567,17 @@ public final class ByteCodeWriter {
         @Nullable
         static final JavaCompiler COMPILER = ToolProvider.getSystemJavaCompiler();
         static final List<Path> DISCOVERED_CLASS_PATH = discoveredClassPath();
+        private static final Map<String, StandardJavaFileManager> FILE_MANAGERS = new java.util.concurrent.ConcurrentHashMap<>();
+
+        /**
+         * One standard file manager per distinct set of compiler options. The options carry the
+         * class and source paths, so a manager is only ever asked about one configuration, and
+         * javac's archive cache inside it is shared by every class compiled with that configuration.
+         */
+        static StandardJavaFileManager fileManager(JavaCompiler compiler, List<String> options) {
+            return FILE_MANAGERS.computeIfAbsent(String.join("\n", options),
+                key -> compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8));
+        }
     }
 
     private static final class SourceFile extends SimpleJavaFileObject {

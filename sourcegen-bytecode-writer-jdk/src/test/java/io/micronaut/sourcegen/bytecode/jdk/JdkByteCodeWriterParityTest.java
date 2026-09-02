@@ -520,12 +520,190 @@ class JdkByteCodeWriterParityTest {
                 .build((aThis, parameters) -> aThis.invokeConstructor(
                     canonicalConstructor, parameters.get(0), ExpressionDef.constant(0))))
             .build();
-        assertTrue(new JdkClassFileWriter(true).write(additionalConstructor, null).isEmpty());
-        byte[] bytes = new ByteCodeWriter().write(additionalConstructor);
-        Class<?> fallbackClass = new MapClassLoader(Map.of(additionalConstructor.getName(), bytes))
-            .loadClass(additionalConstructor.getName());
-        Object value = fallbackClass.getConstructor(String.class).newInstance("Ada");
+        Class<?> recordClass = define(additionalConstructor);
+        Object value = recordClass.getConstructor(String.class).newInstance("Ada");
         assertEquals("JdkConstructorRecordParity[name=Ada, age=0]", value.toString());
+        assertTrue(recordClass.isRecord());
+        assertEquals(2, recordClass.getDeclaredConstructors().length);
+    }
+
+    @Test
+    void publicWriterFallsBackToJavacForConstructsTheDirectWriterDeclines() throws Exception {
+        // A super reference inside an expression is not lowered directly yet
+        ClassDef definition = ClassDef.builder("example.JdkJavacFallback")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("describe")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.STRING)
+                .build((aThis, parameters) -> aThis.superRef().invoke("toString", TypeDef.STRING, List.of()).returning()))
+            .build();
+        assertTrue(new JdkClassFileWriter(true).write(definition, null).isEmpty());
+
+        ByteCodeWriter writer = new ByteCodeWriter();
+        // Twice, so the second compilation goes through the shared file manager
+        byte[] first = writer.write(definition);
+        byte[] second = writer.write(definition);
+        assertArrayEquals(first, second);
+        assertVerified(first);
+        Class<?> generated = new MapClassLoader(Map.of(definition.getName(), first)).loadClass(definition.getName());
+        Object instance = generated.getConstructor().newInstance();
+        assertTrue(generated.getMethod("describe").invoke(instance).toString().startsWith("example.JdkJavacFallback@"));
+    }
+
+    @Test
+    void directlyWritesBoxedConstantsSmallPrimitivesAndPrimitiveHashCodes() throws Exception {
+        ClassDef definition = ClassDef.builder("example.JdkBoxingParity")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("isOne")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.Primitive.INT)
+                .returns(TypeDef.Primitive.BOOLEAN)
+                .build((ignored, parameters) -> parameters.get(0)
+                    .equalsStructurally(ExpressionDef.constant(Integer.valueOf(1))).returning()))
+            .addMethod(MethodDef.builder("flag")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(Boolean.class)
+                .build((ignored, parameters) -> ExpressionDef.trueValue().returning()))
+            .addMethod(MethodDef.builder("hash")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.Primitive.LONG)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> parameters.get(0).invokeHashCode().returning()))
+            .addMethod(MethodDef.builder("flags")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.Primitive.BOOLEAN.array())
+                .build((ignored, parameters) -> TypeDef.Primitive.BOOLEAN.array()
+                    .instantiate(ExpressionDef.trueValue(), ExpressionDef.falseValue()).returning()))
+            .addMethod(MethodDef.builder("narrow")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.Primitive.INT)
+                .returns(TypeDef.Primitive.BYTE)
+                .build((ignored, parameters) -> parameters.get(0).cast(TypeDef.Primitive.BYTE).returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertEquals(true, generated.getMethod("isOne", int.class).invoke(null, 1));
+        assertEquals(false, generated.getMethod("isOne", int.class).invoke(null, 2));
+        assertEquals(Boolean.TRUE, generated.getMethod("flag").invoke(null));
+        assertEquals(Long.hashCode(1L << 40), generated.getMethod("hash", long.class).invoke(null, 1L << 40));
+        assertArrayEquals(new boolean[] {true, false}, (boolean[]) generated.getMethod("flags").invoke(null));
+        assertEquals((byte) 1, generated.getMethod("narrow", int.class).invoke(null, 257));
+    }
+
+    @Test
+    void directlyWritesInterfacesWithAbstractDefaultAndStaticMethods() throws Exception {
+        MethodDef name = MethodDef.builder("name")
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .returns(TypeDef.STRING)
+            .build();
+        InterfaceDef contract = InterfaceDef.builder("example.JdkInterfaceParity")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(name)
+            .addMethod(MethodDef.builder("greet")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.STRING)
+                .build((aThis, parameters) -> aThis.invoke(name).returning()))
+            .addMethod(MethodDef.builder("twice")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.Primitive.INT)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> parameters.get(0)
+                    .math(ExpressionDef.MathBinaryOperation.OpType.MULTIPLICATION, ExpressionDef.constant(2))
+                    .returning()))
+            .build();
+        ClassDef implementation = ClassDef.builder("example.JdkInterfaceParityImpl")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(contract.asTypeDef())
+            .addMethod(MethodDef.builder("name")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> ExpressionDef.constant("Ada").returning()))
+            .build();
+
+        MapClassLoader loader = new MapClassLoader(Map.of(
+            contract.getName(), writeDirect(contract),
+            implementation.getName(), writeDirect(implementation)
+        ));
+        Class<?> contractClass = loader.loadClass(contract.getName());
+        Class<?> implementationClass = loader.loadClass(implementation.getName());
+
+        assertTrue(contractClass.isInterface());
+        assertTrue(java.lang.reflect.Modifier.isAbstract(contractClass.getMethod("name").getModifiers()));
+        assertTrue(contractClass.getMethod("greet").isDefault());
+        assertTrue(java.lang.reflect.Modifier.isStatic(contractClass.getMethod("twice", int.class).getModifiers()));
+        assertEquals(42, contractClass.getMethod("twice", int.class).invoke(null, 21));
+        Object instance = implementationClass.getConstructor().newInstance();
+        assertInstanceOf(contractClass, instance);
+        assertEquals("Ada", contractClass.getMethod("greet").invoke(instance));
+    }
+
+    @Test
+    void directlyWritesEnums() throws Exception {
+        EnumDef definition = EnumDef.builder("example.JdkEnumParity")
+            .addModifiers(Modifier.PUBLIC)
+            .addEnumConstant("ALPHA")
+            .addEnumConstant("BETA")
+            .addMethod(MethodDef.builder("tag")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> ExpressionDef.constant("tagged").returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertTrue(generated.isEnum());
+        assertEquals(Enum.class, generated.getSuperclass());
+        assertTrue(java.lang.reflect.Modifier.isFinal(generated.getModifiers()));
+        Object[] constants = generated.getEnumConstants();
+        assertEquals(2, constants.length);
+        assertEquals("ALPHA", ((Enum<?>) constants[0]).name());
+        assertEquals(1, ((Enum<?>) constants[1]).ordinal());
+        Object beta = generated.getMethod("valueOf", String.class).invoke(null, "BETA");
+        assertSame(constants[1], beta);
+        assertEquals("tagged", generated.getMethod("tag").invoke(beta));
+        assertArrayEquals(constants, (Object[]) generated.getMethod("values").invoke(null));
+    }
+
+    @Test
+    void directlyWritesNestedTypesAsNestmates() throws Exception {
+        ClassTypeDef outerType = ClassTypeDef.of("example.JdkNestParity");
+        FieldDef secret = FieldDef.builder("secret", TypeDef.Primitive.INT)
+            .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
+            .initializer(ExpressionDef.constant(7))
+            .build();
+        // A member type is declared by its simple name; adding it to the outer type gives it its binary name
+        ClassDef outer = ClassDef.builder(outerType.getName())
+            .addModifiers(Modifier.PUBLIC)
+            .addField(secret)
+            .addInnerType(ClassDef.builder("Inner")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addMethod(MethodDef.builder("peek")
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .returns(TypeDef.Primitive.INT)
+                    .build((ignored, parameters) -> outerType.getStaticField(secret).returning()))
+                .build())
+            .build();
+        ObjectDef inner = outer.getInnerTypes().get(0);
+        assertEquals("example.JdkNestParity$Inner", inner.getName());
+
+        var innerResult = new JdkClassFileWriter(true).write(inner, outer.asTypeDef());
+        assertTrue(innerResult.isPresent(), "Expected direct ClassFile lowering for the member type");
+        assertVerified(innerResult.orElseThrow());
+        MapClassLoader loader = new MapClassLoader(Map.of(
+            outer.getName(), writeDirect(outer),
+            inner.getName(), innerResult.orElseThrow()
+        ));
+        Class<?> outerClass = loader.loadClass(outer.getName());
+        Class<?> innerClass = loader.loadClass(inner.getName());
+
+        assertEquals(outerClass, innerClass.getDeclaringClass());
+        assertEquals(outerClass, innerClass.getNestHost());
+        assertArrayEquals(new Class<?>[] {innerClass}, outerClass.getDeclaredClasses());
+        assertEquals("Inner", innerClass.getSimpleName());
+        assertTrue(java.lang.reflect.Modifier.isStatic(innerClass.getModifiers()));
+        // Reading the outer type's private field only links when the two really are nestmates
+        assertEquals(7, innerClass.getMethod("peek").invoke(null));
     }
 
     @Test
