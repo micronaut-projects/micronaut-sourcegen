@@ -505,6 +505,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Define what annotations should be added to the generated builder.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/annotations/StagedBuilder.html#annotatedWith()" class="member-name-link">annotatedWith()</a> - Element in annotation interface io.micronaut.sourcegen.annotations.<a href="io/micronaut/sourcegen/annotations/StagedBuilder.html" title="annotation interface in io.micronaut.sourcegen.annotations">StagedBuilder</a></dt>
+<dd>
+<div class="block">Define what annotations should be added to the generated builder.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/annotations/SuperBuilder.html#annotatedWith()" class="member-name-link">annotatedWith()</a> - Element in annotation interface io.micronaut.sourcegen.annotations.<a href="io/micronaut/sourcegen/annotations/SuperBuilder.html" title="annotation interface in io.micronaut.sourcegen.annotations">SuperBuilder</a></dt>
 <dd>
 <div class="block">Define what annotations should be added to the generated builder.</div>
@@ -2391,6 +2395,8 @@ target, variable arity included.</div>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/ObjectAnnotationVisitor.html#getSupportedAnnotationNames()" class="member-name-link">getSupportedAnnotationNames()</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/ObjectAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">ObjectAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html#getSupportedAnnotationNames()" class="member-name-link">getSupportedAnnotationNames()</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">StagedBuilderAnnotationVisitor</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/WitherAnnotationVisitor.html#getSupportedAnnotationNames()" class="member-name-link">getSupportedAnnotationNames()</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/WitherAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">WitherAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/MethodDef.html#getThrowTypes()" class="member-name-link">getThrowTypes()</a> - Method in class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></dt>
@@ -2446,6 +2452,8 @@ target, variable arity included.</div>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/DelegateAnnotationVisitor.html#getVisitorKind()" class="member-name-link">getVisitorKind()</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/DelegateAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">DelegateAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/ObjectAnnotationVisitor.html#getVisitorKind()" class="member-name-link">getVisitorKind()</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/ObjectAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">ObjectAnnotationVisitor</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html#getVisitorKind()" class="member-name-link">getVisitorKind()</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">StagedBuilderAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/SuperBuilderAnnotationVisitor.html#getVisitorKind()" class="member-name-link">getVisitorKind()</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/SuperBuilderAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">SuperBuilderAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
@@ -4561,6 +4569,17 @@ a single element method for filling a collection.</div>
 <dd>
 <div class="block">The source generators.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/annotations/StagedBuilder.html" class="type-name-link" title="annotation interface in io.micronaut.sourcegen.annotations">StagedBuilder</a> - Annotation Interface in <a href="io/micronaut/sourcegen/annotations/package-summary.html">io.micronaut.sourcegen.annotations</a></dt>
+<dd>
+<div class="block">The staged builder annotation on a bean should create a builder that initializes the required
+properties in stages.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">StagedBuilderAnnotationVisitor</a> - Class in <a href="io/micronaut/sourcegen/generator/visitors/package-summary.html">io.micronaut.sourcegen.generator.visitors</a></dt>
+<dd>
+<div class="block">The visitor that is generating a staged builder.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html#%3Cinit%3E()" class="member-name-link">StagedBuilderAnnotationVisitor()</a> - Constructor for class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">StagedBuilderAnnotationVisitor</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html#start()" class="member-name-link">start()</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html#param-start"><code>start</code></a> record component.</div>
@@ -4570,6 +4589,8 @@ a single element method for filling a collection.</div>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/DelegateAnnotationVisitor.html#start(io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">start(VisitorContext)</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/DelegateAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">DelegateAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/ObjectAnnotationVisitor.html#start(io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">start(VisitorContext)</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/ObjectAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">ObjectAnnotationVisitor</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html#start(io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">start(VisitorContext)</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">StagedBuilderAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/SuperBuilderAnnotationVisitor.html#start(io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">start(VisitorContext)</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/SuperBuilderAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">SuperBuilderAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
@@ -5544,6 +5565,8 @@ the order they are declared.</div>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/DelegateAnnotationVisitor.html#visitClass(io.micronaut.inject.ast.ClassElement,io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">visitClass(ClassElement, VisitorContext)</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/DelegateAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">DelegateAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/ObjectAnnotationVisitor.html#visitClass(io.micronaut.inject.ast.ClassElement,io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">visitClass(ClassElement, VisitorContext)</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/ObjectAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">ObjectAnnotationVisitor</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html#visitClass(io.micronaut.inject.ast.ClassElement,io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">visitClass(ClassElement, VisitorContext)</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">StagedBuilderAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/SuperBuilderAnnotationVisitor.html#visitClass(io.micronaut.inject.ast.ClassElement,io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">visitClass(ClassElement, VisitorContext)</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/SuperBuilderAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">SuperBuilderAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>

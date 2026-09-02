@@ -99,17 +99,19 @@
         
         <div class="toc-item" style="margin-left:10px" id="toc-item-builder"><a href="#builder"><strong>5.1</strong><span>Builder</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-wither"><a href="#wither"><strong>5.2</strong><span>Wither</span></a></div>
+        <div class="toc-item" style="margin-left:10px" id="toc-item-stagedBuilder"><a href="#stagedBuilder"><strong>5.2</strong><span>Staged Builder</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-superBuilder"><a href="#superBuilder"><strong>5.3</strong><span>Super Builder</span></a></div>
+        <div class="toc-item" style="margin-left:10px" id="toc-item-wither"><a href="#wither"><strong>5.3</strong><span>Wither</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-singular"><a href="#singular"><strong>5.4</strong><span>Singular</span></a></div>
+        <div class="toc-item" style="margin-left:10px" id="toc-item-superBuilder"><a href="#superBuilder"><strong>5.4</strong><span>Super Builder</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-toString"><a href="#toString"><strong>5.5</strong><span>ToString</span></a></div>
+        <div class="toc-item" style="margin-left:10px" id="toc-item-singular"><a href="#singular"><strong>5.5</strong><span>Singular</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-equalsAndHashCode"><a href="#equalsAndHashCode"><strong>5.6</strong><span>Equals and HashCode</span></a></div>
+        <div class="toc-item" style="margin-left:10px" id="toc-item-toString"><a href="#toString"><strong>5.6</strong><span>ToString</span></a></div>
         
-        <div class="toc-item" style="margin-left:10px" id="toc-item-delegate"><a href="#delegate"><strong>5.7</strong><span>Delegate</span></a></div>
+        <div class="toc-item" style="margin-left:10px" id="toc-item-equalsAndHashCode"><a href="#equalsAndHashCode"><strong>5.7</strong><span>Equals and HashCode</span></a></div>
+        
+        <div class="toc-item" style="margin-left:10px" id="toc-item-delegate"><a href="#delegate"><strong>5.8</strong><span>Delegate</span></a></div>
         
         <div class="toc-item" style="margin-left:0px" id="toc-item-repository"><a href="#repository"><strong>6</strong><span>Repository</span></a></div>
         
@@ -465,6 +467,10 @@ To see more examples take a look at some of the existing implementations like <a
 <td class="tableblock halign-left valign-top"><p class="tableblock">Create a builder of the annotated type.</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../api/io/micronaut/sourcegen/annotations/StagedBuilder.html">StagedBuilder</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Create a builder of the annotated type that assigns the required properties in stages.</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../api/io/micronaut/sourcegen/annotations/Wither.html">Wither</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Create an interface with copy style method and possible builder style methods for a record</p></td>
 </tr>
@@ -531,7 +537,136 @@ The <a href="https://github.com/micronaut-projects/micronaut-sourcegen/blob/mast
 </table>
 </div>
 
-<h2 id="wither"><a class="anchor" href="#wither"></a>5.2 Wither</h2>
+<h2 id="stagedBuilder"><a class="anchor" href="#stagedBuilder"></a>5.2 Staged Builder</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/2.2.x/src/main/docs/guide/annotations/stagedBuilder.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The <code>@StagedBuilder</code> annotation generates a <a href="https://immutables.github.io/immutable.html#staged-builder">staged builder</a>: a builder that assigns the required properties in stages, so that forgetting one of them is a compilation error instead of a missing value at runtime.</p>
+</div>
+<div class="paragraph">
+<p>If you annotate a type with <code>@StagedBuilder</code>, an <code>EmployeeStagedBuilder</code> class is generated at compilation-time.</p>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import io.micronaut.core.annotation.Nullable;
+import io.micronaut.sourcegen.annotations.StagedBuilder;
+
+@StagedBuilder
+public record Employee(String name, int age, boolean employed, @Nullable String nickname) {
+}</code></pre>
+</div>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-kotlin hljs" data-lang="kotlin">import io.micronaut.sourcegen.annotations.StagedBuilder
+
+@StagedBuilder
+data class Employee(val name: String, val age: Int, val employed: Boolean, val nickname: String?)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Every required property gets its own stage interface, which declares the single method that assigns that property and returns the next stage. The last of them returns <code>BuildFinal</code>, the only stage that declares the <code>build</code> method:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public final class EmployeeStagedBuilder {
+    public static NameBuildStage builder() { ... }
+
+    public interface NameBuildStage {
+        AgeBuildStage name(String name);
+    }
+    public interface AgeBuildStage {
+        EmployedBuildStage age(int age);
+    }
+    public interface EmployedBuildStage {
+        BuildFinal employed(boolean employed);
+    }
+    public interface BuildFinal {
+        BuildFinal nickname(String nickname);
+
+        Employee build();
+    }
+
+    public static final class Builder implements NameBuildStage, AgeBuildStage, EmployedBuildStage, BuildFinal { ... }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can use the builder to create an <code>Employee</code> instance, assigning the required properties in the order they are declared in:</p>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Test
+public void buildsEmployee() {
+    var employee = EmployeeStagedBuilder.builder()
+        .name("Billy Bounce")
+        .age(33)
+        .employed(false)
+        .nickname("Billy")
+        .build();
+    assertEquals("Billy Bounce", employee.name());
+    assertEquals(33, employee.age());
+    assertEquals(false, employee.employed());
+    assertEquals("Billy", employee.nickname());
+}</code></pre>
+</div>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-kotlin hljs" data-lang="kotlin">@Test
+fun buildsEmployee() {
+    val employee: Employee = EmployeeStagedBuilder.builder()
+        .name("Billy Bounce")
+        .age(33)
+        .employed(false)
+        .nickname("Billy")
+        .build()
+    assertEquals("Billy Bounce", employee.name)
+    assertEquals(33, employee.age)
+    assertEquals(false, employee.employed)
+    assertEquals("Billy", employee.nickname)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A property is required unless the builder can leave it unassigned, which is the case for:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a nullable property, which keeps its <code>null</code></p>
+</li>
+<li>
+<p>a property with a <code>@Bindable(defaultValue = "&#8230;&#8203;")</code> default value, which keeps that value</p>
+</li>
+<li>
+<p>a property annotated with <a href="../api/io/micronaut/sourcegen/annotations/Singular.html">Singular</a>, which accumulates into an empty collection</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Those properties are declared on the <code>BuildFinal</code> stage instead and can be assigned in any order, or not at all.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The stages add generated interfaces to the compilation output, which affects the class-loading time of an application using them extensively. Use <code>@Builder</code> when the compile-time safety is not worth that.
+</td>
+</tr>
+</table>
+</div>
+
+<h2 id="wither"><a class="anchor" href="#wither"></a>5.3 Wither</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/2.2.x/src/main/docs/guide/annotations/wither.adoc"'>
@@ -738,7 +873,7 @@ The generated interface still declares the accessors of every record component, 
 </div>
 </div>
 
-<h2 id="superBuilder"><a class="anchor" href="#superBuilder"></a>5.3 Super Builder</h2>
+<h2 id="superBuilder"><a class="anchor" href="#superBuilder"></a>5.4 Super Builder</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/2.2.x/src/main/docs/guide/annotations/superBuilder.adoc"'>
@@ -873,7 +1008,7 @@ public void testDog() {
 </div>
 </div>
 
-<h2 id="singular"><a class="anchor" href="#singular"></a>5.4 Singular</h2>
+<h2 id="singular"><a class="anchor" href="#singular"></a>5.5 Singular</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/2.2.x/src/main/docs/guide/annotations/singular.adoc"'>
@@ -1014,7 +1149,7 @@ public void testClear() {
 </div>
 </div>
 
-<h2 id="toString"><a class="anchor" href="#toString"></a>5.5 ToString</h2>
+<h2 id="toString"><a class="anchor" href="#toString"></a>5.6 ToString</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/2.2.x/src/main/docs/guide/annotations/toString.adoc"'>
@@ -1130,7 +1265,7 @@ public void testToString() {
 </div>
 </div>
 
-<h2 id="equalsAndHashCode"><a class="anchor" href="#equalsAndHashCode"></a>5.6 Equals and HashCode</h2>
+<h2 id="equalsAndHashCode"><a class="anchor" href="#equalsAndHashCode"></a>5.7 Equals and HashCode</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/2.2.x/src/main/docs/guide/annotations/equalsAndHashCode.adoc"'>
@@ -1327,7 +1462,7 @@ public void testHashCode() {
 </div>
 </div>
 
-<h2 id="delegate"><a class="anchor" href="#delegate"></a>5.7 Delegate</h2>
+<h2 id="delegate"><a class="anchor" href="#delegate"></a>5.8 Delegate</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/micronaut-projects/micronaut-sourcegen/edit/2.2.x/src/main/docs/guide/annotations/delegate.adoc"'>
