@@ -32,6 +32,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -67,14 +68,39 @@ public final class ByteCodeGenerator extends AbstractByteCodeGenerator {
                                  @Nullable ClassTypeDef outerType,
                                  VisitorContext context,
                                  Element[] originatingElements) throws Exception {
+        Map<String, byte[]> produced;
         try {
             ByteCodeWriter byteCodeWriter = new ByteCodeWriter(sourcePath(context), classPath(context));
-            writeClass(objectDef.getName(), byteCodeWriter.write(objectDef, outerType), context, originatingElements);
-            return true;
+            produced = byteCodeWriter.writeAll(objectDef, outerType);
+            if (!produced.containsKey(objectDef.getName())) {
+                throw new IllegalStateException("The JDK compiler did not produce '" + objectDef.getName() + "'");
+            }
         } catch (Exception e) {
+            if (outerType != null) {
+                // The enclosing class has already been emitted, so its member can no longer be folded
+                // back into a source file. Report the failure instead of writing an unusable source.
+                throw new ProcessingException(
+                    originatingElements.length > 0 ? originatingElements[0] : null,
+                    "Failed to generate '" + objectDef.getName() + "': " + e.getMessage(),
+                    e
+                );
+            }
             writeSource(objectDef, context, originatingElements, e);
             return false;
         }
+        writeClass(objectDef.getName(), produced.get(objectDef.getName()), context, originatingElements);
+        // The source fallback compiles member types together with their enclosing type. Emit
+        // those classfiles now and stop the traversal from generating them a second time, where
+        // sibling members would no longer be resolvable.
+        String memberPrefix = objectDef.getName() + "$";
+        boolean membersWritten = false;
+        for (Map.Entry<String, byte[]> entry : produced.entrySet()) {
+            if (entry.getKey().startsWith(memberPrefix)) {
+                writeClass(entry.getKey(), entry.getValue(), context, originatingElements);
+                membersWritten = true;
+            }
+        }
+        return !membersWritten;
     }
 
     private static void writeSource(ObjectDef objectDef,
