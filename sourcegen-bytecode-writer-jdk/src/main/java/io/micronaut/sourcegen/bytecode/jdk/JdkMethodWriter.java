@@ -62,6 +62,9 @@ import static java.lang.classfile.Opcode.IFEQ;
 final class JdkMethodWriter {
 
     private static final String EXCEPTION_NAME = "$exception";
+    private static final String HASH_CODE = "hashCode";
+    private static final String EQUALS = "equals";
+    private static final String SUPER = "super";
 
     private final CodeBuilder code;
     private final ObjectDef objectDef;
@@ -220,68 +223,96 @@ final class JdkMethodWriter {
         Label tryEnd = code.newLabel();
         Label end = code.newLabel();
         Label finallyHandler = finallyStatement == null ? null : code.newLabel();
+        List<CatchHandler> handlers = registerCatchHandlers(aTry, tryStart, tryEnd);
+        if (finallyHandler != null) {
+            registerFinallyHandlers(tryStart, tryEnd, finallyHandler, handlers);
+        }
+
+        code.labelBinding(tryStart);
+        writeTryBody(aTry.statement(), finallyStatement);
+        code.labelBinding(tryEnd);
+        if (canCompleteNormally(aTry.statement())) {
+            writeFinally(finallyStatement);
+            code.goto_(end);
+        }
+
+        writeCatchHandlers(handlers, finallyStatement, end);
+        if (finallyHandler != null) {
+            writeFinallyHandler(finallyHandler, finallyStatement);
+        }
+        code.labelBinding(end);
+    }
+
+    private List<CatchHandler> registerCatchHandlers(StatementDef.Try aTry, Label tryStart, Label tryEnd) {
         List<CatchHandler> handlers = new ArrayList<>();
         for (StatementDef.Try.Catch aCatch : aTry.catches()) {
             Label handler = code.newLabel();
             handlers.add(new CatchHandler(aCatch, handler));
             code.exceptionCatch(tryStart, tryEnd, handler, classDesc(aCatch.exception()));
         }
-        if (finallyHandler != null) {
-            code.exceptionCatchAll(tryStart, tryEnd, finallyHandler);
-            for (CatchHandler handler : handlers) {
-                handler.protectedEnd = code.newLabel();
-                code.exceptionCatchAll(handler.label, handler.protectedEnd, finallyHandler);
-            }
-        }
+        return handlers;
+    }
 
-        code.labelBinding(tryStart);
-        if (finallyStatement != null) {
-            cleanups.add(() -> writeStatements(finallyStatement.flatten()));
+    private void registerFinallyHandlers(Label tryStart, Label tryEnd, Label finallyHandler,
+                                         List<CatchHandler> handlers) {
+        code.exceptionCatchAll(tryStart, tryEnd, finallyHandler);
+        for (CatchHandler handler : handlers) {
+            handler.protectedEnd = code.newLabel();
+            code.exceptionCatchAll(handler.label, handler.protectedEnd, finallyHandler);
         }
-        writeStatement(aTry.statement());
-        if (finallyStatement != null) {
-            cleanups.removeLast();
-        }
-        code.labelBinding(tryEnd);
-        if (canCompleteNormally(aTry.statement())) {
-            if (finallyStatement != null) {
-                writeStatements(finallyStatement.flatten());
-            }
-            code.goto_(end);
-        }
+    }
 
+    private void writeTryBody(StatementDef statement, @Nullable StatementDef finallyStatement) {
+        addCleanup(finallyStatement);
+        writeStatement(statement);
+        removeCleanup(finallyStatement);
+    }
+
+    private void writeCatchHandlers(List<CatchHandler> handlers, @Nullable StatementDef finallyStatement, Label end) {
         for (CatchHandler handler : handlers) {
             code.labelBinding(handler.label);
             int slot = code.allocateLocal(TypeKind.REFERENCE);
             code.storeLocal(TypeKind.REFERENCE, slot);
             locals.put(EXCEPTION_NAME, new Local(handler.aCatch.exception(), slot));
-            if (finallyStatement != null) {
-                cleanups.add(() -> writeStatements(finallyStatement.flatten()));
-            }
+            addCleanup(finallyStatement);
             writeStatement(handler.aCatch.statement());
-            if (finallyStatement != null) {
-                cleanups.removeLast();
-            }
+            removeCleanup(finallyStatement);
             locals.remove(EXCEPTION_NAME);
             if (handler.protectedEnd != null) {
                 code.labelBinding(handler.protectedEnd);
             }
             if (canCompleteNormally(handler.aCatch.statement())) {
-                if (finallyStatement != null) {
-                    writeStatements(finallyStatement.flatten());
-                }
+                writeFinally(finallyStatement);
                 code.goto_(end);
             }
         }
-        if (finallyHandler != null) {
-            StatementDef requiredFinally = Objects.requireNonNull(finallyStatement);
-            code.labelBinding(finallyHandler);
-            int slot = code.allocateLocal(TypeKind.REFERENCE);
-            code.storeLocal(TypeKind.REFERENCE, slot);
-            writeStatements(requiredFinally.flatten());
-            code.loadLocal(TypeKind.REFERENCE, slot).athrow();
+    }
+
+    private void writeFinallyHandler(Label finallyHandler, @Nullable StatementDef finallyStatement) {
+        StatementDef requiredFinally = Objects.requireNonNull(finallyStatement);
+        code.labelBinding(finallyHandler);
+        int slot = code.allocateLocal(TypeKind.REFERENCE);
+        code.storeLocal(TypeKind.REFERENCE, slot);
+        writeStatements(requiredFinally.flatten());
+        code.loadLocal(TypeKind.REFERENCE, slot).athrow();
+    }
+
+    private void addCleanup(@Nullable StatementDef finallyStatement) {
+        if (finallyStatement != null) {
+            cleanups.add(() -> writeStatements(finallyStatement.flatten()));
         }
-        code.labelBinding(end);
+    }
+
+    private void removeCleanup(@Nullable StatementDef finallyStatement) {
+        if (finallyStatement != null) {
+            cleanups.removeLast();
+        }
+    }
+
+    private void writeFinally(@Nullable StatementDef finallyStatement) {
+        if (finallyStatement != null) {
+            writeStatements(finallyStatement.flatten());
+        }
     }
 
     private void writeSynchronized(StatementDef.Synchronized synchronizedStatement) {
@@ -348,7 +379,7 @@ final class JdkMethodWriter {
         int valueSlot = code.allocateLocal(TypeKind.REFERENCE);
         code.storeLocal(TypeKind.REFERENCE, valueSlot);
         code.loadLocal(TypeKind.REFERENCE, valueSlot)
-            .invokevirtual(ConstantDescs.CD_String, "hashCode", MethodTypeDesc.of(ConstantDescs.CD_int));
+            .invokevirtual(ConstantDescs.CD_String, HASH_CODE, MethodTypeDesc.of(ConstantDescs.CD_int));
         Label defaultLabel = code.newLabel();
         Label end = code.newLabel();
         Map<Integer, Label> hashLabels = new LinkedHashMap<>();
@@ -367,7 +398,7 @@ final class JdkMethodWriter {
             code.labelBinding(entry.getValue())
                 .loadLocal(TypeKind.REFERENCE, valueSlot)
                 .loadConstant((String) constant.value())
-                .invokevirtual(ConstantDescs.CD_String, "equals",
+                .invokevirtual(ConstantDescs.CD_String, EQUALS,
                     MethodTypeDesc.of(ConstantDescs.CD_boolean, ConstantDescs.CD_Object))
                 .branch(IFEQ, defaultLabel);
             StatementDef statement = aSwitch.cases().get(constant);
@@ -510,7 +541,7 @@ final class JdkMethodWriter {
             }
             case ExpressionDef.InvokeHashCodeMethod hashCode -> {
                 writeExpression(hashCode.instance());
-                code.invokevirtual(ConstantDescs.CD_Object, "hashCode", MethodTypeDesc.of(ConstantDescs.CD_int));
+                code.invokevirtual(ConstantDescs.CD_Object, HASH_CODE, MethodTypeDesc.of(ConstantDescs.CD_int));
             }
             case ExpressionDef.InstanceOf instanceOf -> {
                 writeExpression(instanceOf.expression());
@@ -651,7 +682,7 @@ final class JdkMethodWriter {
                 case VariableDef.Local local -> local.name();
                 case VariableDef.MethodParameter parameter -> parameter.name();
                 case VariableDef.This ignored -> "this";
-                case VariableDef.Super ignored -> "super";
+                case VariableDef.Super ignored -> SUPER;
                 case VariableDef.ExceptionVar ignored -> "exception";
                 default -> null;
             };
@@ -671,7 +702,7 @@ final class JdkMethodWriter {
             case VariableDef.Local local -> local.name();
             case VariableDef.MethodParameter parameter -> parameter.name();
             case VariableDef.This ignored -> "this";
-            case VariableDef.Super ignored -> "super";
+                case VariableDef.Super ignored -> SUPER;
             case VariableDef.ExceptionVar ignored -> "exception";
             default -> variable.type().toString();
         };
@@ -737,7 +768,7 @@ final class JdkMethodWriter {
         int valueSlot = code.allocateLocal(TypeKind.REFERENCE);
         code.storeLocal(TypeKind.REFERENCE, valueSlot);
         code.loadLocal(TypeKind.REFERENCE, valueSlot)
-            .invokevirtual(ConstantDescs.CD_String, "hashCode", MethodTypeDesc.of(ConstantDescs.CD_int));
+            .invokevirtual(ConstantDescs.CD_String, HASH_CODE, MethodTypeDesc.of(ConstantDescs.CD_int));
         Label defaultLabel = code.newLabel();
         Label end = code.newLabel();
         Map<Integer, Label> labels = new LinkedHashMap<>();
@@ -756,7 +787,7 @@ final class JdkMethodWriter {
             code.labelBinding(entry.getValue())
                 .loadLocal(TypeKind.REFERENCE, valueSlot)
                 .loadConstant((String) constant.value())
-                .invokevirtual(ConstantDescs.CD_String, "equals",
+                .invokevirtual(ConstantDescs.CD_String, EQUALS,
                     MethodTypeDesc.of(ConstantDescs.CD_boolean, ConstantDescs.CD_Object))
                 .branch(IFEQ, defaultLabel);
             writeExpression(new ExpressionDef.Cast(
@@ -1086,6 +1117,9 @@ final class JdkMethodWriter {
         }
     }
 
+    // The model permits a Super variable only in the static helper context; the non-static branch
+    // is retained as a defensive failure for malformed model trees.
+    @SuppressWarnings("java:S2583")
     private void writeVariable(VariableDef variable) {
         switch (variable) {
             case VariableDef.This thisVariable -> {
@@ -1105,7 +1139,7 @@ final class JdkMethodWriter {
             case VariableDef.ExceptionVar exception -> load(EXCEPTION_NAME, exception.type());
             case VariableDef.Super superVariable -> {
                 if (methodDef.getModifiers().contains(Modifier.STATIC)) {
-                    load("super", superVariable.type());
+                    load(SUPER, superVariable.type());
                 } else {
                     throw unsupported(variable);
                 }
@@ -1204,33 +1238,29 @@ final class JdkMethodWriter {
         Object value = constant.value();
         if (value == null) {
             code.aconst_null();
-        } else if (value instanceof String string) {
-            code.ldc(code.constantPool().stringEntry(string));
-        } else if (value instanceof Class<?> type) {
-            code.ldc(ClassDesc.ofDescriptor(type.descriptorString().replace('.', '/')));
-        } else if (value instanceof TypeDef type) {
-            code.ldc(classDesc(type));
-        } else if (value instanceof Enum<?> anEnum) {
-            ClassDesc type = ClassDesc.of(anEnum.getDeclaringClass().getName());
-            code.getstatic(type, anEnum.name(), type);
-        } else if (value instanceof Integer integer) {
-            code.loadConstant(integer);
-        } else if (value instanceof Long longValue) {
-            code.loadConstant(longValue);
-        } else if (value instanceof Float floatValue) {
-            code.loadConstant(floatValue);
-        } else if (value instanceof Double doubleValue) {
-            code.loadConstant(doubleValue);
-        } else if (value instanceof Byte byteValue) {
-            code.loadConstant(byteValue.intValue());
-        } else if (value instanceof Short shortValue) {
-            code.loadConstant(shortValue.intValue());
-        } else if (value instanceof Character character) {
-            code.loadConstant((int) character.charValue());
-        } else if (value instanceof Boolean booleanValue) {
-            code.loadConstant(booleanValue ? 1 : 0);
         } else {
-            throw unsupported(constant);
+            writeNonNullConstant(constant, value);
+        }
+    }
+
+    private void writeNonNullConstant(ExpressionDef.Constant constant, Object value) {
+        switch (value) {
+            case String string -> code.ldc(code.constantPool().stringEntry(string));
+            case Class<?> type -> code.ldc(ClassDesc.ofDescriptor(type.descriptorString().replace('.', '/')));
+            case TypeDef type -> code.ldc(classDesc(type));
+            case Enum<?> anEnum -> {
+                ClassDesc type = ClassDesc.of(anEnum.getDeclaringClass().getName());
+                code.getstatic(type, anEnum.name(), type);
+            }
+            case Integer integer -> code.loadConstant(integer);
+            case Long longValue -> code.loadConstant(longValue);
+            case Float floatValue -> code.loadConstant(floatValue);
+            case Double doubleValue -> code.loadConstant(doubleValue);
+            case Byte byteValue -> code.loadConstant(byteValue.intValue());
+            case Short shortValue -> code.loadConstant(shortValue.intValue());
+            case Character character -> code.loadConstant(character.charValue());
+            case Boolean booleanValue -> code.loadConstant(booleanValue ? 1 : 0);
+            default -> throw unsupported(constant);
         }
     }
 
