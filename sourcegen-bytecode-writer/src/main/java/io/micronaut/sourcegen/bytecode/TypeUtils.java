@@ -18,18 +18,12 @@ package io.micronaut.sourcegen.bytecode;
 import io.micronaut.core.annotation.Internal;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.inject.processing.JavaModelUtils;
-import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
-import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
-import io.micronaut.sourcegen.model.ParameterDef;
-import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Type;
 
-import java.util.List;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -46,91 +40,11 @@ public final class TypeUtils {
     private static final Pattern ARRAY_PATTERN = Pattern.compile("(\\[])+$");
 
     public static String getMethodDescriptor(@Nullable ObjectDef objectDef, MethodDef methodDef) {
-        StringBuilder builder = new StringBuilder();
-        builder.append('(');
-        for (ParameterDef parameterDef : methodDef.getParameters()) {
-            builder.append(TypeUtils.getType(parameterDef.getType(), objectDef));
-        }
-        builder.append(')');
-        builder.append(TypeUtils.getType(Objects.requireNonNullElse(methodDef.getReturnType(), TypeDef.VOID), objectDef));
-        return builder.toString();
+        return io.micronaut.sourcegen.bytecode.core.TypeUtils.getMethodDescriptor(objectDef, methodDef);
     }
 
     public static Type getType(TypeDef typeDef, @Nullable ObjectDef objectDef) {
-        typeDef = ObjectDef.getContextualType(objectDef, typeDef);
-        // The annotations a type carries are written separately, they play no part in its erasure
-        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
-            return getType(annotated.typeDef(), objectDef);
-        }
-        if (typeDef instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
-            return getType(annotated.typeDef(), objectDef);
-        }
-        if (typeDef instanceof TypeDef.Array array) {
-            return Type.getType("[".repeat(array.dimensions()) + getType(array.componentType(), objectDef).getDescriptor());
-        }
-        if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
-            return getType(
-                parameterized.rawType().getName()
-            );
-        }
-        if (typeDef instanceof ClassTypeDef classTypeDef) {
-            return getType(classTypeDef.getName());
-        }
-        if (typeDef instanceof TypeDef.Primitive primitive) {
-            return getType(primitive);
-        }
-        if (typeDef instanceof TypeDef.Wildcard wildcard) {
-            if (!wildcard.lowerBounds().isEmpty()) {
-                return getBoundsType(wildcard.lowerBounds(), objectDef);
-            }
-            if (!wildcard.upperBounds().isEmpty()) {
-                return getBoundsType(wildcard.upperBounds(), objectDef);
-            }
-            return TypeUtils.OBJECT_TYPE;
-        }
-        if (typeDef instanceof TypeDef.TypeVariable typeVariable) {
-            if (typeVariable.bounds().isEmpty()) {
-                String name = typeVariable.name();
-                if (objectDef instanceof ClassDef classDef) {
-                    TypeDef.TypeVariable tvDef = classDef.getTypeVariables().stream()
-                        .filter(tv -> tv.name().equals(name)).findFirst()
-                        .orElse(null);
-                    if (tvDef != null) {
-                        return getBoundsType(tvDef.bounds(), objectDef);
-                    }
-                }
-                if (objectDef instanceof InterfaceDef interfaceDef) {
-                    TypeDef.TypeVariable tvDef = interfaceDef.getTypeVariables().stream()
-                        .filter(tv -> tv.name().equals(name)).findFirst()
-                        .orElse(null);
-                    if (tvDef != null) {
-                        return getBoundsType(tvDef.bounds(), objectDef);
-                    }
-                }
-                if (objectDef instanceof RecordDef recordDef) {
-                    TypeDef.TypeVariable tvDef = recordDef.getTypeVariables().stream()
-                        .filter(tv -> tv.name().equals(name)).findFirst()
-                        .orElse(null);
-                    if (tvDef != null) {
-                        return getBoundsType(tvDef.bounds(), objectDef);
-                    }
-                }
-                return TypeUtils.OBJECT_TYPE;
-            }
-            return getBoundsType(typeVariable.bounds(), objectDef);
-        }
-        throw new IllegalStateException("Unsupported type: " + typeDef);
-    }
-
-    private static Type getBoundsType(List<TypeDef> bounds, @Nullable ObjectDef objectDef) {
-        // Select first non-object type
-        for (TypeDef bound : bounds) {
-            Type type = getType(bound, objectDef);
-            if (!type.equals(OBJECT_TYPE)) {
-                return type;
-            }
-        }
-        return OBJECT_TYPE;
+        return Type.getType(io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(typeDef, objectDef));
     }
 
     public static Type getType(TypeDef.Primitive primitive) {

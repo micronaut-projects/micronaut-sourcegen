@@ -23,3 +23,10 @@ snippet::io.micronaut.sourcegen.custom.visitor.GenerateInterfaceBuilder[tags="cl
 <5> Once you have built the model write it to a source file!
 
 TIP: To see more examples take a look at some of the existing implementations like https://github.com/micronaut-projects/micronaut-sourcegen/blob/master/sourcegen-generator/src/main/java/io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.java[BuilderAnnotationVisitor] that powers the ann:sourcegen.annotations.Builder[] annotation.
+
+== JDK bytecode backend
+
+The `sourcegen-generator-bytecode-jdk` annotation-processor backend uses the JDK 25 toolchain and
+emits Java 17-compatible classes. It is an alternative to `sourcegen-generator-bytecode`, which uses
+ASM. Select exactly one Java Sourcegen backend on an annotation-processor path. The direct
+`sourcegen-bytecode-writer-jdk` API is available when a `byte[]` is required; it also requires JDK 25.
