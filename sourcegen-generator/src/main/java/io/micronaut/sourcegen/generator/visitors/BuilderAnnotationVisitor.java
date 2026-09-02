@@ -657,7 +657,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                                                PropertyElement beanProperty,
                                                MethodElement writeMethod) {
         TypeDef propertyType = TypeDef.of(beanProperty.getType());
-        TypeDef fieldType = propertyType.makeNullable();
+        TypeDef fieldType = builderFieldType(beanProperty);
         VariableDef.Field field = self.field(beanProperty.getSimpleName(), fieldType);
         StatementDef assign = instanceVar.invoke(
             writeMethod,

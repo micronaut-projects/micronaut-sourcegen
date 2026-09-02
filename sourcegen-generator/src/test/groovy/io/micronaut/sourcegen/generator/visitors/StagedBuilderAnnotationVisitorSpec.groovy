@@ -184,6 +184,76 @@ class StagedBuilderAnnotationVisitorSpec extends AbstractTypeElementSpec {
         walrus.age == 1
     }
 
+    void "test staged builder of a record with a bounded type variable"() {
+        given:
+        var classLoader = buildClassLoader("test.Walrus", """
+        package test;
+        import io.micronaut.sourcegen.annotations.StagedBuilder;
+
+        @StagedBuilder(annotatedWith = {})
+        public record Walrus<I extends CharSequence>(
+              I name,
+              int age
+        ) {
+        }
+        """)
+        var stagedBuilderClass = classLoader.loadClass("test.WalrusStagedBuilder")
+
+        expect: "the builder method keeps the type variable, so that its bound stays resolvable"
+        stagedBuilderClass.getMethod("builder").typeParameters.collect { it.name } == ["I"]
+
+        when:
+        var walrus = stagedBuilderClass.builder()
+                .name("Ted the Walrus")
+                .age(1)
+                .build()
+
+        then:
+        walrus.name == "Ted the Walrus"
+        walrus.age == 1
+    }
+
+    void "test a property the build method cannot assign is not a stage"() {
+        given:
+        var classLoader = buildClassLoader("test.Walrus", """
+        package test;
+        import io.micronaut.sourcegen.annotations.StagedBuilder;
+
+        @StagedBuilder(annotatedWith = {})
+        public class Walrus {
+
+            private String name;
+
+            public String getName() {
+                return name;
+            }
+
+            public void setName(String name) {
+                this.name = name;
+            }
+
+            public String getDescription() {
+                return name + " the Walrus";
+            }
+        }
+        """)
+        var stagedBuilderClass = classLoader.loadClass("test.WalrusStagedBuilder")
+        var nameStage = classLoader.loadClass("test.WalrusStagedBuilder\$NameBuildStage")
+
+        expect: "the read-only property is on the final stage, since a value given for it is dropped"
+        stagedBuilderClass.getMethod("builder").returnType == nameStage
+        nameStage.declaredMethods.collect { it.name } == ["name"]
+        classLoader.loadClass("test.WalrusStagedBuilder\$BuildFinal")
+                .declaredMethods.collect { it.name }.toSorted() == ["build", "description"]
+
+        when:
+        var walrus = stagedBuilderClass.builder().name("Ted").build()
+
+        then:
+        walrus.name == "Ted"
+        walrus.description == "Ted the Walrus"
+    }
+
     void "test the builder is introspected by default"() {
         given:
         var classLoader = buildClassLoader("test.Walrus", """

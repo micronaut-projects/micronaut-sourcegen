@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor.addAnnotations;
 import static io.micronaut.sourcegen.generator.visitors.BuilderAnnotationVisitor.createAllPropertiesConstructor;
@@ -154,8 +155,9 @@ public final class StagedBuilderAnnotationVisitor implements TypeElementVisitor<
         List<TypeDef.TypeVariable> typeArguments = typeArguments(elementType);
         ClassTypeDef builderType = nestedType(stagedBuilderClassName, BUILDER_IMPLEMENTATION_NAME, typeArguments);
 
-        List<PropertyElement> requiredProperties = properties.stream().filter(StagedBuilderAnnotationVisitor::isRequired).toList();
-        List<PropertyElement> remainingProperties = properties.stream().filter(p -> !isRequired(p)).toList();
+        Predicate<PropertyElement> required = property -> isRequired(property, constructorParameters);
+        List<PropertyElement> requiredProperties = properties.stream().filter(required).toList();
+        List<PropertyElement> remainingProperties = properties.stream().filter(required.negate()).toList();
 
         ClassTypeDef finalStageType = nestedType(stagedBuilderClassName, FINAL_STAGE_NAME, typeArguments);
         List<ClassTypeDef> requiredStageTypes = requiredProperties.stream()
@@ -212,7 +214,8 @@ public final class StagedBuilderAnnotationVisitor implements TypeElementVisitor<
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addMethod(createBuilderMethod(
                 builderType,
-                requiredStageTypes.isEmpty() ? finalStageType : requiredStageTypes.get(0)
+                requiredStageTypes.isEmpty() ? finalStageType : requiredStageTypes.get(0),
+                typeArguments
             ));
         stages.forEach(stagedBuilder::addInnerType);
         stagedBuilder.addInnerType(builder.build());
@@ -224,13 +227,23 @@ public final class StagedBuilderAnnotationVisitor implements TypeElementVisitor<
      * null, a property with a default value keeps that value and a {@link Singular} property
      * accumulates into an empty collection.
      *
-     * @param property The property
+     * <p>A property the build method cannot assign at all - it is neither a constructor parameter nor
+     * writable - is never required: making it a stage would demand a value that is then dropped.
+     *
+     * @param property              The property
+     * @param constructorParameters The constructor parameters
      * @return True if the property has to be assigned before the instance can be built
      */
-    private static boolean isRequired(PropertyElement property) {
+    private static boolean isRequired(PropertyElement property, List<ParameterElement> constructorParameters) {
         return !property.hasAnnotation(Singular.class)
             && !property.isNullable()
-            && property.stringValue(Bindable.class, "defaultValue").isEmpty();
+            && property.stringValue(Bindable.class, "defaultValue").isEmpty()
+            && isAssignable(property, constructorParameters);
+    }
+
+    private static boolean isAssignable(PropertyElement property, List<ParameterElement> constructorParameters) {
+        return property.getWriteMethod().isPresent()
+            || constructorParameters.stream().anyMatch(parameter -> parameter.getName().equals(property.getName()));
     }
 
     private static String stagedBuilderClassName(String packageName, ClassTypeDef elementType) {
@@ -306,30 +319,26 @@ public final class StagedBuilderAnnotationVisitor implements TypeElementVisitor<
         return stage.build();
     }
 
-    private static MethodDef createBuilderMethod(ClassTypeDef builderType, ClassTypeDef firstStageType) {
+    /**
+     * Create the method that starts the builder. The type it is declared on has no type variables of
+     * its own - only the stages and the builder nested in it do - so the method can declare the ones
+     * the built type declares, which keeps a bound that refers to them resolvable.
+     *
+     * @param builderType    The type of the builder to instantiate
+     * @param firstStageType The stage the method returns
+     * @param typeArguments  The type arguments of the built type
+     * @return The builder method
+     */
+    private static MethodDef createBuilderMethod(ClassTypeDef builderType,
+                                                 ClassTypeDef firstStageType,
+                                                 List<TypeDef.TypeVariable> typeArguments) {
         ClassTypeDef erasure = builderType instanceof ClassTypeDef.Parameterized parameterized ? parameterized.rawType() : builderType;
         MethodDef.MethodDefBuilder methodBuilder = MethodDef.builder("builder")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addStatement(erasure.instantiate().returning());
-        if (firstStageType instanceof ClassTypeDef.Parameterized parameterized) {
-            List<TypeDef> resolvedTypeDefs = new ArrayList<>();
-            for (TypeDef typeDef : parameterized.typeArguments()) {
-                if (typeDef instanceof TypeDef.TypeVariable variable) {
-                    TypeDef.TypeVariable newTypeDef = new TypeDef.TypeVariable(
-                        variable.name() + "S",
-                        variable.bounds(),
-                        variable.nullable()
-                    );
-                    resolvedTypeDefs.add(newTypeDef);
-                    methodBuilder.addTypeVariable(newTypeDef);
-                }
-            }
-            methodBuilder.returns(TypeDef.parameterized(
-                parameterized.rawType(),
-                resolvedTypeDefs.toArray(TypeDef[]::new)
-            ));
-        } else {
-            methodBuilder.returns(firstStageType);
+            .addStatement(erasure.instantiate().returning())
+            .returns(firstStageType);
+        for (TypeDef.TypeVariable typeArgument : typeArguments) {
+            methodBuilder.addTypeVariable(typeArgument);
         }
         return methodBuilder.build();
     }
