@@ -692,7 +692,11 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         // List.of()
                         ExpressionDef.constant(0), javaListType.invokeStatic("of", javaListType),
                         // List.of(single)
-                        ExpressionDef.constant(1), javaListType.invokeStatic("of", javaListType, field.invoke("get", elementType, ExpressionDef.constant(0)))
+                        ExpressionDef.constant(1), javaListType.invokeStatic(
+                            "of",
+                            javaListType,
+                            field.invoke("get", ClassTypeDef.OBJECT, ExpressionDef.constant(0))
+                        )
                     ),
                     javaListType.invokeStatic("copyOf", javaListType, field)
                 );
@@ -705,7 +709,11 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                         // Set.of()
                         ExpressionDef.constant(0), setListType.invokeStatic("of", setListType),
                         // Set.of(single)
-                        ExpressionDef.constant(1), setListType.invokeStatic("of", setListType, field.invoke("get", elementType, ExpressionDef.constant(0)))
+                        ExpressionDef.constant(1), setListType.invokeStatic(
+                            "of",
+                            setListType,
+                            field.invoke("get", ClassTypeDef.OBJECT, ExpressionDef.constant(0))
+                        )
                     ),
                     // Collections.unmodifiableSet(new LinkedHashSet(all))
                     ClassTypeDef.of(Collections.class)

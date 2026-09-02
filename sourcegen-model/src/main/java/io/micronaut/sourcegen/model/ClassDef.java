@@ -68,7 +68,7 @@ public final class ClassDef extends ObjectDef {
 
     @Override
     public ClassDef withClassName(ClassTypeDef.ClassName className) {
-        return new ClassDef(className, modifiers, fields, methods, properties, annotations, javadoc, typeVariables, superinterfaces, superclass, innerTypes, staticInitializer, synthetic);
+        return new ClassDef(className, modifiers, fields, methods, properties, annotations, javadoc, typeVariables, superinterfaces, superclass, rebaseInnerTypes(className, innerTypes), staticInitializer, synthetic);
     }
 
     @Override

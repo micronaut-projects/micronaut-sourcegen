@@ -17,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class RecordWriteTest {
@@ -211,6 +212,32 @@ public class RecordWriteTest {
         }
         """;
         assertEquals(expected.strip(), result.strip());
+    }
+
+    @Test
+    public void staticSelfTypeDoesNotUseRecordTypeVariables() throws IOException {
+        RecordDef recordDef = RecordDef.builder("test.StaticSelfRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("create")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.THIS)
+                .build((aThis, parameters) -> ClassTypeDef.of(UnsupportedOperationException.class)
+                    .instantiate()
+                    .doThrow()))
+            .build();
+
+        String source = writeRecordFile(recordDef);
+
+        assertTrue(source.contains("static StaticSelfRecord<Object> create()"), source);
+        JavaCompileAssertions.assertCompiles(source);
+    }
+
+    private String writeRecordFile(RecordDef recordDef) throws IOException {
+        try (StringWriter writer = new StringWriter()) {
+            new JavaPoetSourceGenerator().write(recordDef, writer);
+            return writer.toString();
+        }
     }
 
 }

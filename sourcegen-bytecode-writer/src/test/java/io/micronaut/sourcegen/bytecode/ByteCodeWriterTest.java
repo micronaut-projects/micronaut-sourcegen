@@ -5029,6 +5029,8 @@ public final class example/MyRecord extends java/lang/Record {
 
   // access flags 0x1
   public <init>(Ljava/lang/String;I)V
+    // parameter  name
+    // parameter  age
    L0
     ALOAD 0
     INVOKESPECIAL java/lang/Record.<init> ()V
@@ -5110,10 +5112,6 @@ public final class example/MyRecord extends java/lang/Record {
 package example;
 
 public record MyRecord(String name, int age) {
-   public MyRecord(String name, int age) {
-      this.name = name;
-      this.age = age;
-   }
 }
 """, decompileToJava(bytes));
 
@@ -5167,6 +5165,7 @@ public final class example/MyRecord extends java/lang/Record implements java/uti
   // signature (TT;)V
   // declaration: void <init>(T)
   public <init>(Ljava/lang/Object;)V
+    // parameter  value
    L0
     ALOAD 0
     INVOKESPECIAL java/lang/Record.<init> ()V
@@ -5283,6 +5282,7 @@ public final class example/MyRecord extends java/lang/Record {
   // signature (TT;)V
   // declaration: void <init>(T)
   public <init>(Ljava/lang/Object;)V
+    // parameter  value
    L0
     ALOAD 0
     INVOKESPECIAL java/lang/Record.<init> ()V
@@ -5394,6 +5394,7 @@ public final class example/MyRecord extends java/lang/Record {
   // signature (TT;)V
   // declaration: void <init>(T)
   public <init>(Ljava/lang/Number;)V
+    // parameter  value
    L0
     ALOAD 0
     INVOKESPECIAL java/lang/Record.<init> ()V
@@ -5504,6 +5505,8 @@ public final class example/MyRecord extends java/lang/Record {
 
   // access flags 0x1
   public <init>(Ljava/lang/String;I)V
+    // parameter  name
+    // parameter  age
    L0
     ALOAD 0
     INVOKESPECIAL java/lang/Record.<init> ()V
@@ -5730,6 +5733,9 @@ public final class example/MyRecord extends java/lang/Record {
 
   // access flags 0x1
   public <init>(JD[Ljava/lang/String;)V
+    // parameter  id
+    // parameter  weight
+    // parameter  tags
    L0
     ALOAD 0
     INVOKESPECIAL java/lang/Record.<init> ()V
@@ -5863,6 +5869,7 @@ public final class example/MyRecord extends java/lang/Record {
 
   // access flags 0x1
   public <init>(Ljava/lang/String;)V
+    // parameter  name
    L0
     ALOAD 0
     INVOKESPECIAL java/lang/Record.<init> ()V
@@ -5967,6 +5974,7 @@ public final class example/MyRecord extends java/lang/Record implements java/uti
 
   // access flags 0x1
   public <init>(Ljava/lang/String;)V
+    // parameter  get
    L0
     ALOAD 0
     INVOKESPECIAL java/lang/Record.<init> ()V
@@ -6094,6 +6102,7 @@ public final class example/Outer$Inner extends java/lang/Record {
 
   // access flags 0x1
   public <init>(I)V
+    // parameter  id
    L0
     ALOAD 0
     INVOKESPECIAL java/lang/Record.<init> ()V
@@ -6510,6 +6519,7 @@ public final class example/MyRecord extends java/lang/Record {
 
   // access flags 0x1
   public <init>(Ljava/lang/String;)V
+    // parameter  name
    L0
     ALOAD 0
     INVOKESPECIAL java/lang/Record.<init> ()V

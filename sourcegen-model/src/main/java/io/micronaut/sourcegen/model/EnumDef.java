@@ -60,7 +60,7 @@ public final class EnumDef extends ObjectDef {
 
     @Override
     public EnumDef withClassName(ClassTypeDef.ClassName className) {
-        return new EnumDef(className, modifiers, fields, methods, properties, annotations, javadoc, enumConstants, superinterfaces, innerTypes, synthetic);
+        return new EnumDef(className, modifiers, fields, methods, properties, annotations, javadoc, enumConstants, superinterfaces, rebaseInnerTypes(className, innerTypes), synthetic);
     }
 
     public static EnumDefBuilder builder(String name) {

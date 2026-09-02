@@ -77,6 +77,28 @@ class RecordWriteTest {
         Assertions.assertEquals(expected.trim(), write(recordDef).trim())
     }
 
+    @Test
+    fun staticSelfTypeDoesNotUseRecordTypeVariables() {
+        val recordDef = RecordDef.builder("test.StaticSelfRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(
+                MethodDef.builder("create")
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .returns(TypeDef.THIS)
+                    .build { _, _ ->
+                        ClassTypeDef.of(UnsupportedOperationException::class.java)
+                            .instantiate()
+                            .doThrow()
+                    }
+            )
+            .build()
+
+        val source = write(recordDef)
+
+        Assertions.assertTrue(source.contains("fun create(): StaticSelfRecord<Any>"), source)
+    }
+
     private fun write(recordDef: RecordDef): String {
         val generator = KotlinPoetSourceGenerator()
         StringWriter().use { writer ->

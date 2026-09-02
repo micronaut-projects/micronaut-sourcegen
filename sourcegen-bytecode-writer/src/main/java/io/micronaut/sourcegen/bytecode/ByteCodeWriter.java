@@ -52,7 +52,10 @@ import org.objectweb.asm.util.CheckClassAdapter;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
+import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -197,11 +200,15 @@ public final class ByteCodeWriter {
 
     private void writeTypeAnnotations(List<AnnotationDef> annotations, int typeRef, String typePath, TypeAnnotatable member) {
         for (AnnotationDef annotation : annotations) {
+            RetentionPolicy retention = retentionOf(annotation);
+            if (retention == RetentionPolicy.SOURCE) {
+                continue;
+            }
             visitAnnotation(annotation, member.visitTypeAnnotation(
                 typeRef,
                 TypePath.fromString(typePath),
                 TypeUtils.getType(annotation.getType(), null).getDescriptor(),
-                true
+                retention == RetentionPolicy.RUNTIME
             ));
         }
     }
@@ -237,8 +244,7 @@ public final class ByteCodeWriter {
             null
         );
         for (AnnotationDef annotation : fieldDef.getAnnotations()) {
-            AnnotationVisitor annotationVisitor = fieldVisitor.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
-            visitAnnotation(annotation, annotationVisitor);
+            writeAnnotation(annotation, fieldVisitor::visitAnnotation);
         }
         writeTypeAnnotations(
             fieldDef.getType(),
@@ -270,8 +276,7 @@ public final class ByteCodeWriter {
         );
         writeOuterInner(classVisitor, interfaceDef.asTypeDef(), interfaceDef, outerType);
         for (AnnotationDef annotation : interfaceDef.getAnnotations()) {
-            AnnotationVisitor annotationVisitor = classVisitor.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
-            visitAnnotation(annotation, annotationVisitor);
+            writeAnnotation(annotation, classVisitor::visitAnnotation);
         }
         for (MethodDef method : interfaceDef.getMethods()) {
             writeMethod(classVisitor, interfaceDef, method, emittedBridges);
@@ -322,10 +327,7 @@ public final class ByteCodeWriter {
         writeOuterInner(classVisitor, recordDef.asTypeDef(), recordDef, outerType);
 
         for (AnnotationDef annotation : recordDef.getAnnotations()) {
-            AnnotationVisitor annotationVisitor = classVisitor.visitAnnotation(
-                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
-                true);
-            visitAnnotation(annotation, annotationVisitor);
+            writeAnnotation(annotation, classVisitor::visitAnnotation);
         }
 
         List<PropertyDef> components = recordDef.getProperties();
@@ -453,6 +455,29 @@ public final class ByteCodeWriter {
         return target == null ? Optional.empty() : Optional.of(Set.of(target.value()));
     }
 
+    private static RetentionPolicy retentionOf(AnnotationDef annotation) {
+        ClassTypeDef typeDef = annotation.getType();
+        if (typeDef instanceof ClassTypeDef.ClassDefType classDefType) {
+            return declaredRetentionOf(classDefType.objectDef()).orElse(RetentionPolicy.CLASS);
+        }
+        if (typeDef instanceof ClassTypeDef.ClassElementType classElementType) {
+            Retention retention = sourceAnnotation(classElementType.classElement(), Retention.class);
+            if (retention != null) {
+                return retention.value();
+            }
+        }
+        Class<?> annotationType = resolveAnnotationType(typeDef);
+        if (annotationType == null) {
+            if (typeDef instanceof ClassTypeDef.ClassElementType) {
+                return RetentionPolicy.CLASS;
+            }
+            // Preserve annotations whose definitions are unavailable to the generator.
+            return RetentionPolicy.RUNTIME;
+        }
+        Retention retention = annotationType.getAnnotation(Retention.class);
+        return retention == null ? RetentionPolicy.CLASS : retention.value();
+    }
+
     /**
      * The {@link Target} of an annotation type that is being compiled, read from the compiler's own element.
      * Its class cannot be loaded, and the annotation metadata of a {@link io.micronaut.inject.ast.ClassElement}
@@ -465,6 +490,12 @@ public final class ByteCodeWriter {
      */
     @Nullable
     private static Target sourceTargetOf(io.micronaut.inject.ast.ClassElement classElement) {
+        return sourceAnnotation(classElement, Target.class);
+    }
+
+    @Nullable
+    private static <A extends Annotation> A sourceAnnotation(io.micronaut.inject.ast.ClassElement classElement,
+                                                             Class<A> annotationType) {
         Object nativeType = classElement.getNativeType();
         Element element = null;
         if (nativeType instanceof Element nativeElement) {
@@ -480,7 +511,7 @@ public final class ByteCodeWriter {
                 return null;
             }
         }
-        return element == null ? null : element.getAnnotation(Target.class);
+        return element == null ? null : element.getAnnotation(annotationType);
     }
 
     /**
@@ -494,10 +525,26 @@ public final class ByteCodeWriter {
         return objectDef.getAnnotations().stream()
             .filter(a -> a.getType().getName().equals(Target.class.getName()))
             .findFirst()
-            .map(a -> toElementTypes(a.getValues().get(AnnotationMetadata.VALUE_MEMBER)))
-            // Nothing recognisable in the member leaves the annotation untargeted rather than targeting
-            // nothing at all, which would drop it from every member the component expands to
-            .filter(targets -> !targets.isEmpty());
+            .map(a -> toElementTypes(a.getValues().get(AnnotationMetadata.VALUE_MEMBER)));
+    }
+
+    private static Optional<RetentionPolicy> declaredRetentionOf(ObjectDef objectDef) {
+        return objectDef.getAnnotations().stream()
+            .filter(a -> a.getType().getName().equals(Retention.class.getName()))
+            .findFirst()
+            .flatMap(a -> toRetentionPolicy(a.getValues().get(AnnotationMetadata.VALUE_MEMBER)));
+    }
+
+    private static Optional<RetentionPolicy> toRetentionPolicy(@Nullable Object value) {
+        if (value instanceof RetentionPolicy retentionPolicy) {
+            return Optional.of(retentionPolicy);
+        }
+        String name = value instanceof VariableDef.StaticField staticField ? staticField.name() : Objects.toString(value, "");
+        try {
+            return Optional.of(RetentionPolicy.valueOf(name));
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
     }
 
     /**
@@ -550,10 +597,7 @@ public final class ByteCodeWriter {
             SignatureWriterUtils.getFieldSignature(recordDef, componentField)
         );
         for (AnnotationDef annotation : annotationsFor(component, ElementType.RECORD_COMPONENT)) {
-            AnnotationVisitor annotationVisitor = recordComponentVisitor.visitAnnotation(
-                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
-                true);
-            visitAnnotation(annotation, annotationVisitor);
+            writeAnnotation(annotation, recordComponentVisitor::visitAnnotation);
         }
         writeTypeAnnotations(
             componentField.getType(),
@@ -696,10 +740,7 @@ public final class ByteCodeWriter {
         writeOuterInner(classVisitor, classDef.asTypeDef(), classDef, outerType);
 
         for (AnnotationDef annotation : classDef.getAnnotations()) {
-            AnnotationVisitor annotationVisitor = classVisitor.visitAnnotation(
-                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
-                true);
-            visitAnnotation(annotation, annotationVisitor);
+            writeAnnotation(annotation, classVisitor::visitAnnotation);
         }
 
         List<StatementDef> staticInitStatements = new ArrayList<>();
@@ -741,7 +782,7 @@ public final class ByteCodeWriter {
     private void writeOuterInner(ClassVisitor classVisitor, ClassTypeDef thisType, ObjectDef thisDef, @Nullable ClassTypeDef outerType) {
         if (outerType != null) {
             String outerInternalName = TypeUtils.getType(outerType).getInternalName();
-            classVisitor.visitNestHost(outerInternalName);
+            classVisitor.visitNestHost(nestHostInternalName(outerType));
             classVisitor.visitInnerClass(
                 TypeUtils.getType(thisType).getInternalName(),
                 outerInternalName,
@@ -749,10 +790,13 @@ public final class ByteCodeWriter {
                 getInnerClassModifiersFlag(thisDef, outerType.isInterface())
             );
         }
-        writeInnerTypes(classVisitor, thisType, thisDef);
+        writeInnerTypes(classVisitor, thisType, thisDef, outerType == null);
     }
 
-    private void writeInnerTypes(ClassVisitor outerClassVisitor, ClassTypeDef outerType, ObjectDef outerDef) {
+    private void writeInnerTypes(ClassVisitor outerClassVisitor,
+                                 ClassTypeDef outerType,
+                                 ObjectDef outerDef,
+                                 boolean nestHost) {
         for (ObjectDef innerDef : outerDef.getInnerTypes()) {
             String outerClassInternalName = TypeUtils.getType(outerType).getInternalName();
 
@@ -763,8 +807,25 @@ public final class ByteCodeWriter {
                 interType.getSimpleName(),
                 getInnerClassModifiersFlag(innerDef, outerDef instanceof InterfaceDef)
             );
-            outerClassVisitor.visitNestMember(TypeUtils.getType(innerDef.asTypeDef()).getInternalName());
+            if (nestHost) {
+                writeNestMember(outerClassVisitor, innerDef);
+            }
         }
+    }
+
+    private void writeNestMember(ClassVisitor nestHostVisitor, ObjectDef member) {
+        nestHostVisitor.visitNestMember(TypeUtils.getType(member.asTypeDef()).getInternalName());
+        for (ObjectDef innerType : member.getInnerTypes()) {
+            writeNestMember(nestHostVisitor, innerType);
+        }
+    }
+
+    private String nestHostInternalName(ClassTypeDef memberType) {
+        String name = memberType.getName();
+        int simpleNameStart = name.lastIndexOf('.') + 1;
+        int separator = name.indexOf('$', simpleNameStart + 1);
+        String hostName = separator == -1 ? name : name.substring(0, separator);
+        return TypeUtils.getType(hostName).getInternalName();
     }
 
     /**
@@ -802,7 +863,21 @@ public final class ByteCodeWriter {
         return getModifiersFlag(objectDef.getModifiers());
     }
 
-    private void visitAnnotation(AnnotationDef annotation, AnnotationVisitor annotationVisitor) {
+    private void writeAnnotation(AnnotationDef annotation, Annotatable member) {
+        RetentionPolicy retention = retentionOf(annotation);
+        if (retention == RetentionPolicy.SOURCE) {
+            return;
+        }
+        visitAnnotation(annotation, member.visitAnnotation(
+            TypeUtils.getType(annotation.getType(), null).getDescriptor(),
+            retention == RetentionPolicy.RUNTIME
+        ));
+    }
+
+    private void visitAnnotation(AnnotationDef annotation, @Nullable AnnotationVisitor annotationVisitor) {
+        if (annotationVisitor == null) {
+            return;
+        }
         for (Map.Entry<String, Object> entry : annotation.getValues().entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
@@ -811,13 +886,21 @@ public final class ByteCodeWriter {
         annotationVisitor.visitEnd();
     }
 
-    private void visitAnnotation(AnnotationVisitor annotationVisitor, String name, Object value) {
+    private void visitAnnotation(AnnotationVisitor annotationVisitor, @Nullable String name, Object value) {
         if (value instanceof VariableDef.StaticField staticField) {
-            annotationVisitor.visitEnum(
-                name,
-                TypeUtils.getType(staticField.ownerType(), null).getDescriptor(),
-                staticField.name()
-            );
+            if (staticField.name().equals("class") && staticField.type().equals(TypeDef.CLASS)) {
+                annotationVisitor.visit(name, TypeUtils.getType(staticField.ownerType(), null));
+            } else {
+                annotationVisitor.visitEnum(
+                    name,
+                    TypeUtils.getType(staticField.ownerType(), null).getDescriptor(),
+                    staticField.name()
+                );
+            }
+        } else if (value instanceof ClassTypeDef classTypeDef) {
+            annotationVisitor.visit(name, TypeUtils.getType(classTypeDef, null));
+        } else if (value instanceof Class<?> type) {
+            annotationVisitor.visit(name, Type.getType(type));
         } else if (value instanceof AnnotationDef nestedAnnotation) {
             visitAnnotation(
                 nestedAnnotation,
@@ -828,20 +911,20 @@ public final class ByteCodeWriter {
             for (AnnotationDef annotationDef : annotations) {
                 visitAnnotation(
                     annotationDef,
-                    annotationVisitor.visitAnnotation(name, TypeUtils.getType(annotationDef.getType(), null).getDescriptor())
+                    arrayVisitor.visitAnnotation(null, TypeUtils.getType(annotationDef.getType(), null).getDescriptor())
                 );
             }
             arrayVisitor.visitEnd();
         } else if (value instanceof Collection<?> coll) {
             AnnotationVisitor arrayVisitor = annotationVisitor.visitArray(name);
             for (Object object : coll) {
-                visitAnnotation(arrayVisitor, name, object);
+                visitAnnotation(arrayVisitor, null, object);
             }
             arrayVisitor.visitEnd();
         } else if (value instanceof Object[] array) {
             AnnotationVisitor arrayVisitor = annotationVisitor.visitArray(name);
             for (Object object : array) {
-                visitAnnotation(arrayVisitor, name, object);
+                visitAnnotation(arrayVisitor, null, object);
             }
             arrayVisitor.visitEnd();
         } else {
@@ -915,9 +998,18 @@ public final class ByteCodeWriter {
             (modifiersFlag & ACC_BRIDGE) == 0 ? SignatureWriterUtils.getMethodSignature(objectDef, methodDef) : null,
             exceptions
         );
+        if (objectDef instanceof RecordDef recordDef && isCanonicalRecordConstructor(recordDef, methodDef)) {
+            for (ParameterDef parameter : methodDef.getParameters()) {
+                int parameterModifiers = parameter.getModifiers().contains(Modifier.FINAL) ? ACC_FINAL : 0;
+                if (parameter.isSynthetic()) {
+                    parameterModifiers |= ACC_SYNTHETIC;
+                }
+                methodVisitor.visitParameter(parameter.getName(), parameterModifiers);
+            }
+        }
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, methodDescriptor);
         for (AnnotationDef annotation : methodDef.getAnnotations()) {
-            visitAnnotation(annotation, generatorAdapter.visitAnnotation(TypeUtils.getType(annotation.getType(), null).getDescriptor(), true));
+            writeAnnotation(annotation, generatorAdapter::visitAnnotation);
         }
 
         if (!methodDef.isConstructor()) {
@@ -957,6 +1049,21 @@ public final class ByteCodeWriter {
         }
     }
 
+    private static boolean isCanonicalRecordConstructor(RecordDef recordDef, MethodDef methodDef) {
+        if (!methodDef.isConstructor() || methodDef.getParameters().size() != recordDef.getProperties().size()) {
+            return false;
+        }
+        for (int i = 0; i < methodDef.getParameters().size(); i++) {
+            ParameterDef parameter = methodDef.getParameters().get(i);
+            PropertyDef property = recordDef.getProperties().get(i);
+            if (!parameter.getName().equals(property.getName())
+                || !TypeUtils.getType(parameter.getType(), recordDef).equals(TypeUtils.getType(property.getType(), recordDef))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * Register the parameters as locals and write their annotations.
      *
@@ -980,8 +1087,8 @@ public final class ByteCodeWriter {
                 startMethod = new Label();
             }
             for (AnnotationDef annotation : parameter.getAnnotations()) {
-                AnnotationVisitor annotationVisitor = generatorAdapter.visitParameterAnnotation(parameterIndex, TypeUtils.getType(annotation.getType(), null).getDescriptor(), true);
-                visitAnnotation(annotation, annotationVisitor);
+                int index = parameterIndex;
+                writeAnnotation(annotation, (descriptor, visible) -> generatorAdapter.visitParameterAnnotation(index, descriptor, visible));
             }
             writeTypeAnnotations(
                 parameter.getType(),
@@ -1258,6 +1365,12 @@ public final class ByteCodeWriter {
     private interface TypeAnnotatable {
 
         AnnotationVisitor visitTypeAnnotation(int typeRef, @Nullable TypePath typePath, String descriptor, boolean visible);
+    }
+
+    @FunctionalInterface
+    private interface Annotatable {
+
+        AnnotationVisitor visitAnnotation(String descriptor, boolean visible);
     }
 
 }

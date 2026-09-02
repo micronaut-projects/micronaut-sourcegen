@@ -31,6 +31,7 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.signature.SignatureVisitor;
 import org.objectweb.asm.signature.SignatureWriter;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -139,7 +140,12 @@ final class SignatureWriterUtils {
 
     private static boolean needsSignature(TypeDef typeDef) {
         typeDef = unwrapAnnotated(typeDef);
-        return typeDef instanceof ClassTypeDef.Parameterized || typeDef instanceof TypeDef.TypeVariable;
+        if (typeDef instanceof TypeDef.Array array) {
+            return needsSignature(array.componentType());
+        }
+        return typeDef instanceof ClassTypeDef.Parameterized
+            || typeDef instanceof TypeDef.TypeVariable
+            || typeDef instanceof TypeDef.Wildcard;
     }
 
     /**
@@ -178,12 +184,16 @@ final class SignatureWriterUtils {
             if (isDefinition) {
                 signatureWriter.visitFormalTypeParameter(name);
                 if (typeVariable.bounds().isEmpty()) {
-                    signatureWriter.visitClassType(TypeUtils.OBJECT_TYPE.getInternalName());
-                    signatureWriter.visitEnd();
+                    writeSignature(signatureWriter.visitClassBound(), objectDef, TypeDef.OBJECT, false);
                 } else {
-                    TypeDef bound = typeVariable.bounds().get(0);
-                    signatureWriter.visitClassBound();
-                    writeSignature(signatureWriter, objectDef, methodDef, bound, false);
+                    boolean first = true;
+                    for (TypeDef bound : typeVariable.bounds()) {
+                        SignatureVisitor boundVisitor = first && !isInterface(bound)
+                            ? signatureWriter.visitClassBound()
+                            : signatureWriter.visitInterfaceBound();
+                        writeSignature(boundVisitor, objectDef, methodDef, bound, false);
+                        first = false;
+                    }
                 }
             } else {
                 if (isVariablePartOfTheDefinition(name, objectDef, methodDef)) {
@@ -202,8 +212,7 @@ final class SignatureWriterUtils {
             signatureWriter.visitClassType(TypeUtils.getType(parameterized.rawType()).getInternalName());
             if (!parameterized.typeArguments().isEmpty()) {
                 for (TypeDef typeArgument : parameterized.typeArguments()) {
-                    SignatureVisitor signatureVisitor = signatureWriter.visitTypeArgument(SignatureVisitor.INSTANCEOF);
-                    writeSignature(signatureVisitor, objectDef, methodDef, typeArgument, false);
+                    writeTypeArgument(signatureWriter, objectDef, methodDef, typeArgument);
                 }
                 signatureWriter.visitEnd();
             }
@@ -232,6 +241,46 @@ final class SignatureWriterUtils {
             return;
         }
         throw new IllegalStateException("Not recognized typedef: " + typeDef);
+    }
+
+    private static void writeTypeArgument(SignatureVisitor signatureWriter,
+                                          @Nullable ObjectDef objectDef,
+                                          @Nullable MethodDef methodDef,
+                                          TypeDef typeArgument) {
+        TypeDef unwrapped = unwrapAnnotated(typeArgument);
+        if (!(unwrapped instanceof TypeDef.Wildcard wildcard)) {
+            writeSignature(signatureWriter.visitTypeArgument(SignatureVisitor.INSTANCEOF), objectDef, methodDef, typeArgument, false);
+            return;
+        }
+        if (!wildcard.lowerBounds().isEmpty()) {
+            writeSignature(
+                signatureWriter.visitTypeArgument(SignatureVisitor.SUPER),
+                objectDef,
+                methodDef,
+                wildcard.lowerBounds().get(0),
+                false
+            );
+            return;
+        }
+        if (wildcard.upperBounds().isEmpty() || wildcard.upperBounds().equals(List.of(TypeDef.OBJECT))) {
+            signatureWriter.visitTypeArgument();
+            return;
+        }
+        writeSignature(
+            signatureWriter.visitTypeArgument(SignatureVisitor.EXTENDS),
+            objectDef,
+            methodDef,
+            wildcard.upperBounds().get(0),
+            false
+        );
+    }
+
+    private static boolean isInterface(TypeDef typeDef) {
+        typeDef = unwrapAnnotated(typeDef);
+        if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
+            typeDef = parameterized.rawType();
+        }
+        return typeDef instanceof ClassTypeDef classTypeDef && classTypeDef.isInterface();
     }
 
     private static boolean isVariablePartOfTheDefinition(String variableName, @Nullable ObjectDef objectDef, @Nullable MethodDef methodDef) {
