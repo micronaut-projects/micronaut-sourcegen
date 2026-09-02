@@ -15,8 +15,9 @@
  */
 package io.micronaut.sourcegen.example
 
-import io.micronaut.core.annotation.Nullable
+//tag::clazz[]
 import io.micronaut.sourcegen.annotations.StagedBuilder
 
 @StagedBuilder
-data class Employee(val name: String, val age: Int, val employed: Boolean, @Nullable val nickname: String?)
+data class Employee(val name: String, val age: Int, val employed: Boolean, val nickname: String?)
+//end::clazz[]

@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 class EmployeeStagedBuilderTest {
+
+//tag::test[]
     @Test
     fun buildsEmployee() {
         val employee: Employee = EmployeeStagedBuilder.builder()
@@ -18,6 +20,7 @@ class EmployeeStagedBuilderTest {
         assertEquals(false, employee.employed)
         assertEquals("Billy", employee.nickname)
     }
+//end::test[]
 
     @Test
     fun buildsEmployeeWithoutTheOptionalProperties() {
