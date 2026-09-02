@@ -25,11 +25,17 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 /**
  * The annotation to generate an interface implementing `with` copy method for records - `MyRecord withMyProperty(MyProperty)`.
  *
+ * <p>When placed on a record type a `with` method is generated for every record component.
+ * Alternatively the annotation can be placed on individual record components, in which case
+ * a `with` method is only generated for the annotated components. Component-level annotations
+ * take precedence, so combining a type-level `@Wither` with component-level ones restricts the
+ * generation to the annotated components.</p>
+ *
  * @author Denis Stepanov
  * @since 1.0
  */
 @Documented
 @Retention(RUNTIME)
-@Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE})
+@Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.FIELD, ElementType.PARAMETER})
 public @interface Wither {
 }
