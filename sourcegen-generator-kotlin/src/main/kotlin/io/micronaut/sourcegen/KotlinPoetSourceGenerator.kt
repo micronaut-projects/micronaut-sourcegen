@@ -94,7 +94,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
     private fun getAnnotationObjectBuilder(def: AnnotationObjectDef): TypeSpec.Builder {
         val builder = TypeSpec.annotationBuilder(def.simpleName)
-        builder.addModifiers(asKModifiers(def.modifiers))
+        builder.addModifiers(asKModifiers(stripStatic(def.modifiers)))
         def.javadoc.forEach(Consumer { format: String -> builder.addKdoc(format) })
         for (annotation in def.annotations) {
             builder.addAnnotation(asAnnotationSpec(annotation))
@@ -159,7 +159,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         if (interfaceDef.annotations.any { it.type.name.equals(FunctionalInterface::class.qualifiedName) }) {
             interfaceBuilder.addModifiers(KModifier.FUN)
         }
-        interfaceBuilder.addModifiers(asKModifiers(interfaceDef.modifiers))
+        interfaceBuilder.addModifiers(asKModifiers(stripStatic(interfaceDef.modifiers)))
         interfaceDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, interfaceDef) }
             .forEach { typeVariable: TypeVariableName -> interfaceBuilder.addTypeVariable(typeVariable) }
         interfaceDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, interfaceDef) }
@@ -232,7 +232,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
     private fun getClassBuilder(classDef: ClassDef): TypeSpec.Builder {
         val classBuilder = TypeSpec.classBuilder(classDef.simpleName)
-        classBuilder.addModifiers(asKModifiers(classDef.modifiers))
+        classBuilder.addModifiers(asKModifiers(stripStatic(classDef.modifiers)))
         classDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, classDef) }
             .forEach { typeVariable: TypeVariableName -> classBuilder.addTypeVariable(typeVariable) }
         classDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, classDef) }
@@ -351,7 +351,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     private fun getRecordBuilder(recordDef: RecordDef): TypeSpec.Builder {
         val classBuilder = TypeSpec.classBuilder(recordDef.simpleName)
         classBuilder.addModifiers(KModifier.DATA)
-        classBuilder.addModifiers(asKModifiers(recordDef.modifiers))
+        classBuilder.addModifiers(asKModifiers(stripStatic(recordDef.modifiers)))
         recordDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, recordDef) }
             .forEach { typeVariable: TypeVariableName -> classBuilder.addTypeVariable(typeVariable) }
         recordDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, recordDef) }
@@ -427,7 +427,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
     private fun getEnumBuilder(enumDef: EnumDef): TypeSpec.Builder {
         val enumBuilder = TypeSpec.enumBuilder(enumDef.simpleName)
-        enumBuilder.addModifiers(asKModifiers(enumDef.modifiers))
+        enumBuilder.addModifiers(asKModifiers(stripStatic(enumDef.modifiers)))
         enumDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, enumDef) }
             .forEach { it: TypeName -> enumBuilder.addSuperinterface(it) }
         enumDef.javadoc.forEach(Consumer { format: String -> enumBuilder.addKdoc(format) })

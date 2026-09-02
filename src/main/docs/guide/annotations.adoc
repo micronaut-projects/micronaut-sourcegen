@@ -10,6 +10,8 @@ dependency:micronaut-sourcegen-annotations[groupId=io.micronaut.sourcegen]
 
 | api:sourcegen.annotations.Builder[]
 | Create a builder of the annotated type.
+| api:sourcegen.annotations.StagedBuilder[]
+| Create a builder of the annotated type that assigns the required properties in stages.
 | api:sourcegen.annotations.Wither[]
 | Create an interface with copy style method and possible builder style methods for a record
 | api:sourcegen.annotations.ToString[]
