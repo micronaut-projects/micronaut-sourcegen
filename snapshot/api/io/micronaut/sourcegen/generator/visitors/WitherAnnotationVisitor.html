@@ -67,6 +67,7 @@ loadScripts(document, 'script');</script>
 <ol class="toc-list">
 <li><a href="#getVisitorKind()" tabindex="0">getVisitorKind()</a></li>
 <li><a href="#start(io.micronaut.inject.visitor.VisitorContext)" tabindex="0">start(VisitorContext)</a></li>
+<li><a href="#getSupportedAnnotationNames()" tabindex="0">getSupportedAnnotationNames()</a></li>
 <li><a href="#visitClass(io.micronaut.inject.ast.ClassElement,io.micronaut.inject.visitor.VisitorContext)" tabindex="0">visitClass(ClassElement, VisitorContext)</a></li>
 </ol>
 </li>
@@ -83,14 +84,14 @@ loadScripts(document, 'script');</script>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Implemented Interfaces:</dt>
-<dd><code>io.micronaut.core.order.Ordered, io.micronaut.core.util.Toggleable, io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="../../annotations/Wither.html" title="annotation interface in io.micronaut.sourcegen.annotations">Wither</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</code></dd>
+<dd><code>io.micronaut.core.order.Ordered, io.micronaut.core.util.Toggleable, io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</code></dd>
 </dl>
 <hr>
 <div class="horizontal-scroll">
 <div class="type-signature"><span class="annotations">@Internal
 </span><span class="modifiers">public final class </span><span class="element-name type-name-label">WitherAnnotationVisitor</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
-implements io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="../../annotations/Wither.html" title="annotation interface in io.micronaut.sourcegen.annotations">Wither</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</span></div>
+implements io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</span></div>
 <div class="block">The visitor that is generation a builder.</div>
 <dl class="notes">
 <dt>Since:</dt>
@@ -144,16 +145,19 @@ implements io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="../../anno
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>@NonNull io.micronaut.inject.visitor.TypeElementVisitor.VisitorKind</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getVisitorKind()" class="member-name-link">getVisitorKind</a>()</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getSupportedAnnotationNames()" class="member-name-link">getSupportedAnnotationNames</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#start(io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">start</a><wbr>(io.micronaut.inject.visitor.VisitorContext&nbsp;visitorContext)</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>@NonNull io.micronaut.inject.visitor.TypeElementVisitor.VisitorKind</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getVisitorKind()" class="member-name-link">getVisitorKind</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#visitClass(io.micronaut.inject.ast.ClassElement,io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">visitClass</a><wbr>(io.micronaut.inject.ast.ClassElement&nbsp;recordElement,
- io.micronaut.inject.visitor.VisitorContext&nbsp;context)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#start(io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">start</a><wbr>(io.micronaut.inject.visitor.VisitorContext&nbsp;visitorContext)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#visitClass(io.micronaut.inject.ast.ClassElement,io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">visitClass</a><wbr>(io.micronaut.inject.ast.ClassElement&nbsp;recordElement,
+ io.micronaut.inject.visitor.VisitorContext&nbsp;context)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
 </div>
@@ -168,7 +172,7 @@ implements io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="../../anno
 <code>isEnabled</code></div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-io.micronaut.inject.visitor.TypeElementVisitor">Methods inherited from interface&nbsp;io.micronaut.inject.visitor.TypeElementVisitor</h3>
-<code>finish, getClassType, getElementType, getSupportedAnnotationNames, getSupportedOptions, query, visitConstructor, visitEnumConstant, visitField, visitMethod</code></div>
+<code>finish, getClassType, getElementType, getSupportedOptions, query, visitConstructor, visitEnumConstant, visitField, visitMethod</code></div>
 </section>
 </li>
 </ul>
@@ -203,7 +207,7 @@ implements io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="../../anno
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">@NonNull io.micronaut.inject.visitor.TypeElementVisitor.VisitorKind</span>&nbsp;<span class="element-name">getVisitorKind</span>()</div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code>getVisitorKind</code>&nbsp;in interface&nbsp;<code>io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="../../annotations/Wither.html" title="annotation interface in io.micronaut.sourcegen.annotations">Wither</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</code></dd>
+<dd><code>getVisitorKind</code>&nbsp;in interface&nbsp;<code>io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</code></dd>
 </dl>
 </div>
 </section>
@@ -215,7 +219,19 @@ implements io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="../../anno
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">start</span><wbr><span class="parameters">(io.micronaut.inject.visitor.VisitorContext&nbsp;visitorContext)</span></div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code>start</code>&nbsp;in interface&nbsp;<code>io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="../../annotations/Wither.html" title="annotation interface in io.micronaut.sourcegen.annotations">Wither</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</code></dd>
+<dd><code>start</code>&nbsp;in interface&nbsp;<code>io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</code></dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="getSupportedAnnotationNames()">
+<h3>getSupportedAnnotationNames</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;</span>&nbsp;<span class="element-name">getSupportedAnnotationNames</span>()</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code>getSupportedAnnotationNames</code>&nbsp;in interface&nbsp;<code>io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</code></dd>
 </dl>
 </div>
 </section>
@@ -228,7 +244,7 @@ implements io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="../../anno
  io.micronaut.inject.visitor.VisitorContext&nbsp;context)</span></div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code>visitClass</code>&nbsp;in interface&nbsp;<code>io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="../../annotations/Wither.html" title="annotation interface in io.micronaut.sourcegen.annotations">Wither</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</code></dd>
+<dd><code>visitClass</code>&nbsp;in interface&nbsp;<code>io.micronaut.inject.visitor.TypeElementVisitor&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;</code></dd>
 </dl>
 </div>
 </section>

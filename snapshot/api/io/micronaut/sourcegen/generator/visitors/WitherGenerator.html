@@ -64,7 +64,9 @@ loadScripts(document, 'script');</script>
 <li><a href="#method-detail" tabindex="0">Method Details</a>
 <ol class="toc-list">
 <li><a href="#createWither(java.lang.String,io.micronaut.sourcegen.model.ClassTypeDef,java.util.List,java.util.List,boolean)" tabindex="0">createWither(String, ClassTypeDef, List, List, boolean)</a></li>
+<li><a href="#createWither(java.lang.String,io.micronaut.sourcegen.model.ClassTypeDef,java.util.List,java.util.List,java.util.List,boolean)" tabindex="0">createWither(String, ClassTypeDef, List, List, List, boolean)</a></li>
 <li><a href="#weaveWithMethods(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.RecordDef.RecordDefBuilder,java.util.List,java.util.List,boolean)" tabindex="0">weaveWithMethods(ClassTypeDef, RecordDef.RecordDefBuilder, List, List, boolean)</a></li>
+<li><a href="#weaveWithMethods(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.RecordDef.RecordDefBuilder,java.util.List,java.util.List,java.util.List,boolean)" tabindex="0">weaveWithMethods(ClassTypeDef, RecordDef.RecordDefBuilder, List, List, List, boolean)</a></li>
 </ol>
 </li>
 </ol>
@@ -120,10 +122,30 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Builds a wither interface for the given arguments.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#weaveWithMethods(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.RecordDef.RecordDefBuilder,java.util.List,java.util.List,boolean)" class="member-name-link">weaveWithMethods</a><wbr>(<a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;recordType,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="../../model/InterfaceDef.InterfaceDefBuilder.html" title="class in io.micronaut.sourcegen.model">InterfaceDef.InterfaceDefBuilder</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#createWither(java.lang.String,io.micronaut.sourcegen.model.ClassTypeDef,java.util.List,java.util.List,java.util.List,boolean)" class="member-name-link">createWither</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;packageName,
+ <a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;recordType,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.PropertyElement&gt;&nbsp;properties,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.PropertyElement&gt;&nbsp;witherProperties,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.ParameterElement&gt;&nbsp;parameters,
+ boolean&nbsp;hasBuilder)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Builds a wither interface for the given arguments.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#weaveWithMethods(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.RecordDef.RecordDefBuilder,java.util.List,java.util.List,boolean)" class="member-name-link">weaveWithMethods</a><wbr>(<a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;recordType,
  <a href="../../model/RecordDef.RecordDefBuilder.html" title="class in io.micronaut.sourcegen.model">RecordDef.RecordDefBuilder</a>&nbsp;recordBuilder,
  <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.PropertyElement&gt;&nbsp;properties,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.ParameterElement&gt;&nbsp;parameters,
+ boolean&nbsp;hasBuilder)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Add with methods to an existing record type being generated.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#weaveWithMethods(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.RecordDef.RecordDefBuilder,java.util.List,java.util.List,java.util.List,boolean)" class="member-name-link">weaveWithMethods</a><wbr>(<a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;recordType,
+ <a href="../../model/RecordDef.RecordDefBuilder.html" title="class in io.micronaut.sourcegen.model">RecordDef.RecordDefBuilder</a>&nbsp;recordBuilder,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.PropertyElement&gt;&nbsp;properties,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.PropertyElement&gt;&nbsp;witherProperties,
  <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.ParameterElement&gt;&nbsp;parameters,
  boolean&nbsp;hasBuilder)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
@@ -186,6 +208,33 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
+<section class="detail" id="createWither(java.lang.String,io.micronaut.sourcegen.model.ClassTypeDef,java.util.List,java.util.List,java.util.List,boolean)">
+<h3>createWither</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="../../model/InterfaceDef.InterfaceDefBuilder.html" title="class in io.micronaut.sourcegen.model">InterfaceDef.InterfaceDefBuilder</a></span>&nbsp;<span class="element-name">createWither</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;packageName,
+ <a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;recordType,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.PropertyElement&gt;&nbsp;properties,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.PropertyElement&gt;&nbsp;witherProperties,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.ParameterElement&gt;&nbsp;parameters,
+ boolean&nbsp;hasBuilder)</span></div>
+<div class="block">Builds a wither interface for the given arguments.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>packageName</code> - The package name</dd>
+<dd><code>recordType</code> - The record type</dd>
+<dd><code>properties</code> - The properties</dd>
+<dd><code>witherProperties</code> - The subset of the properties that should get a `with` method</dd>
+<dd><code>parameters</code> - The parameters</dd>
+<dd><code>hasBuilder</code> - Is there a builder</dd>
+<dt>Returns:</dt>
+<dd>The interface</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
 <section class="detail" id="weaveWithMethods(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.RecordDef.RecordDefBuilder,java.util.List,java.util.List,boolean)">
 <h3>weaveWithMethods</h3>
 <div class="horizontal-scroll">
@@ -202,6 +251,31 @@ loadScripts(document, 'script');</script>
 <dd><code>properties</code> - The properties</dd>
 <dd><code>parameters</code> - The parameters</dd>
 <dd><code>hasBuilder</code> - Whether a builder is present</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="weaveWithMethods(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.RecordDef.RecordDefBuilder,java.util.List,java.util.List,java.util.List,boolean)">
+<h3>weaveWithMethods</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">weaveWithMethods</span><wbr><span class="parameters">(<a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;recordType,
+ <a href="../../model/RecordDef.RecordDefBuilder.html" title="class in io.micronaut.sourcegen.model">RecordDef.RecordDefBuilder</a>&nbsp;recordBuilder,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.PropertyElement&gt;&nbsp;properties,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.PropertyElement&gt;&nbsp;witherProperties,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;io.micronaut.inject.ast.ParameterElement&gt;&nbsp;parameters,
+ boolean&nbsp;hasBuilder)</span></div>
+<div class="block">Add with methods to an existing record type being generated.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>recordType</code> - The record type</dd>
+<dd><code>recordBuilder</code> - The record builder</dd>
+<dd><code>properties</code> - The properties</dd>
+<dd><code>witherProperties</code> - The subset of the properties that should get a `with` method</dd>
+<dd><code>parameters</code> - The parameters</dd>
+<dd><code>hasBuilder</code> - Whether a builder is present</dd>
+<dt>Since:</dt>
+<dd>2.2</dd>
 </dl>
 </div>
 </section>
