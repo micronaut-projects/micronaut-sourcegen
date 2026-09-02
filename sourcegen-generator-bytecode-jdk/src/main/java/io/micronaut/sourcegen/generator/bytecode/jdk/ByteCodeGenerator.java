@@ -56,6 +56,14 @@ public final class ByteCodeGenerator extends AbstractByteCodeGenerator {
      */
     public static final String SOURCE_PATH_OPTION = "micronaut.sourcegen.bytecode.jdk.sourcepath";
 
+    /**
+     * Annotation-processor option holding the compilation's class path, separated by {@link File#pathSeparator}.
+     * An annotation processor cannot see the class path javac was started with, only its own processor path,
+     * so builds whose generated classes reference compile-scope dependencies should pass that class path here
+     * for the source fallback to resolve them.
+     */
+    public static final String CLASS_PATH_OPTION = "micronaut.sourcegen.bytecode.jdk.classpath";
+
     private static final JavaPoetSourceGenerator SOURCE_GENERATOR = new JavaPoetSourceGenerator();
 
     @Override
@@ -85,6 +93,9 @@ public final class ByteCodeGenerator extends AbstractByteCodeGenerator {
                     e
                 );
             }
+            Element element = originatingElements.length > 0 ? originatingElements[0] : null;
+            context.warn("The JDK bytecode backend could not emit '" + objectDef.getName()
+                + "' as a class file and generated Java source instead: " + e.getMessage(), element);
             writeSource(objectDef, context, originatingElements, e);
             return false;
         }
@@ -134,7 +145,12 @@ public final class ByteCodeGenerator extends AbstractByteCodeGenerator {
             paths.add(projectDir.resolve("src/main/java"));
             paths.add(projectDir.resolve("src/test/java"));
         });
-        String configured = context.getOptions().get(SOURCE_PATH_OPTION);
+        addConfigured(context, SOURCE_PATH_OPTION, paths);
+        return existing(paths);
+    }
+
+    private static void addConfigured(VisitorContext context, String option, Set<Path> paths) {
+        String configured = context.getOptions().get(option);
         if (configured != null && !configured.isBlank()) {
             for (String entry : configured.split(Pattern.quote(File.pathSeparator), -1)) {
                 if (!entry.isBlank()) {
@@ -142,11 +158,11 @@ public final class ByteCodeGenerator extends AbstractByteCodeGenerator {
                 }
             }
         }
-        return existing(paths);
     }
 
     private static List<Path> classPath(VisitorContext context) {
         Set<Path> paths = new LinkedHashSet<>();
+        addConfigured(context, CLASS_PATH_OPTION, paths);
         context.getClassesOutputPath().ifPresent(paths::add);
         for (String resource : List.of(
             "META-INF/MANIFEST.MF",

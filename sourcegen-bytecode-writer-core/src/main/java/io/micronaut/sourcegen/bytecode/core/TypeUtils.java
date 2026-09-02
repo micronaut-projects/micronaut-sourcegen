@@ -101,8 +101,8 @@ public final class TypeUtils {
             if (!variable.bounds().isEmpty()) {
                 return getBoundsDescriptor(variable.bounds(), objectDef);
             }
-            TypeDef declaration = findTypeVariable(objectDef, variable.name());
-            return declaration == null ? "Ljava/lang/Object;" : getDescriptor(declaration, objectDef);
+            TypeDef.TypeVariable declaration = findTypeVariable(objectDef, variable.name());
+            return declaration == null ? "Ljava/lang/Object;" : getBoundsDescriptor(declaration.bounds(), objectDef);
         }
         throw new IllegalStateException("Unsupported type: " + typeDef);
     }
@@ -160,8 +160,7 @@ public final class TypeUtils {
         };
     }
 
-    @Nullable
-    private static TypeDef findTypeVariable(@Nullable ObjectDef objectDef, String name) {
+    private static TypeDef.@Nullable TypeVariable findTypeVariable(@Nullable ObjectDef objectDef, String name) {
         List<TypeDef.TypeVariable> variables = switch (objectDef) {
             case ClassDef classDef -> classDef.getTypeVariables();
             case InterfaceDef interfaceDef -> interfaceDef.getTypeVariables();
@@ -170,7 +169,6 @@ public final class TypeUtils {
         };
         return variables.stream()
             .filter(variable -> variable.name().equals(name))
-            .flatMap(variable -> variable.bounds().stream())
             .findFirst()
             .orElse(null);
     }

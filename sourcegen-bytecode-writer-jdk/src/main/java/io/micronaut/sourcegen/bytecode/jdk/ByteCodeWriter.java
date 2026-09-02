@@ -173,22 +173,58 @@ public final class ByteCodeWriter {
         if (direct.isPresent()) {
             return Map.of(objectDef.getName(), direct.get());
         }
-        ObjectDef sourceRoot = outerType == null ? objectDef : wrapInnerType(objectDef, outerType);
-        Map<String, String> sources = renderSources(sourceRoot);
-        Map<String, byte[]> compiled = compile(sources);
+        Compilation compilation = compileFallback(objectDef, outerType);
+        ObjectDef sourceRoot = compilation.sourceRoot();
+        Map<String, byte[]> compiled = compilation.classes();
         Map<String, ObjectDef> definitions = new LinkedHashMap<>();
         collectDefinitions(sourceRoot, definitions);
         Set<ClassElement> classElements = new LinkedHashSet<>();
         definitions.values().forEach(definition -> classElements.addAll(
             SourcegenClassHierarchyResolver.classElements(definition)
         ));
+        // Only the requested definition and its own members are returned; the enclosing type or
+        // sibling members compiled alongside it are emitted by their own traversal step.
+        String memberPrefix = objectDef.getName() + "$";
         Map<String, byte[]> result = new LinkedHashMap<>();
         for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
-            result.put(entry.getKey(), normalizeAndVerify(
-                entry.getValue(), compiled, definitions.get(entry.getKey()), classElements, definitions.values(), verify
+            String name = entry.getKey();
+            if (!name.equals(objectDef.getName()) && !name.startsWith(memberPrefix)) {
+                continue;
+            }
+            result.put(name, normalizeAndVerify(
+                entry.getValue(), compiled, definitions.get(name), classElements, definitions.values(), verify
             ));
         }
         return result;
+    }
+
+    private Compilation compileFallback(ObjectDef objectDef, @Nullable ClassTypeDef outerType) {
+        if (outerType == null) {
+            return new Compilation(objectDef, compile(renderSources(objectDef)));
+        }
+        // A member is compiled inside its real enclosing definition when the outer type carries
+        // one, so that references to the outer type's members resolve. A bare outer name only
+        // allows an empty stub, which is kept as the last resort.
+        ObjectDef enclosing = enclosingDefinition(objectDef, outerType);
+        if (enclosing != null) {
+            try {
+                return new Compilation(enclosing, compile(renderSources(enclosing)));
+            } catch (IllegalStateException e) {
+                // Fall through to the stub
+            }
+        }
+        ObjectDef stub = wrapInnerType(objectDef, outerType);
+        return new Compilation(stub, compile(renderSources(stub)));
+    }
+
+    @Nullable
+    private static ObjectDef enclosingDefinition(ObjectDef objectDef, ClassTypeDef outerType) {
+        if (outerType instanceof ClassTypeDef.ClassDefType outerDef
+            && outerDef.objectDef().getInnerTypes().stream()
+                .anyMatch(inner -> inner.getName().equals(objectDef.getName()))) {
+            return outerDef.objectDef();
+        }
+        return null;
     }
 
     private static void collectDefinitions(ObjectDef definition, Map<String, ObjectDef> definitions) {
@@ -312,7 +348,7 @@ public final class ByteCodeWriter {
     }
 
     private Map<String, byte[]> compile(Map<String, String> sources) {
-        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        JavaCompiler compiler = Tooling.COMPILER;
         if (compiler == null) {
             throw new IllegalStateException("The JDK backend requires a full JDK 25, including javac");
         }
@@ -339,20 +375,18 @@ public final class ByteCodeWriter {
         options.add("--release");
         options.add("17");
         options.add("-proc:none");
+        // Explicitly supplied entries (the compilation's own class path) take precedence over
+        // whatever the processor's class loader and the JVM's class path happen to expose.
         String runtimeClassPath = System.getProperty("java.class.path", "");
-        String discoveredClassPath = Stream.concat(
-                classPath.stream(), discoveredClassPath().stream()
+        String combinedClassPath = Stream.concat(
+                Stream.concat(classPath.stream(), Tooling.DISCOVERED_CLASS_PATH.stream()).map(Path::toString),
+                Stream.of(runtimeClassPath.split(java.util.regex.Pattern.quote(java.io.File.pathSeparator)))
             )
-            .map(Path::toString)
+            .filter(entry -> !entry.isEmpty())
             .distinct()
             .collect(java.util.stream.Collectors.joining(java.io.File.pathSeparator));
-        if (!runtimeClassPath.isEmpty() && !discoveredClassPath.isEmpty()) {
-            discoveredClassPath = runtimeClassPath + java.io.File.pathSeparator + discoveredClassPath;
-        } else if (discoveredClassPath.isEmpty()) {
-            discoveredClassPath = runtimeClassPath;
-        }
         options.add("-classpath");
-        options.add(discoveredClassPath);
+        options.add(combinedClassPath);
         if (!sourcePath.isEmpty()) {
             options.add("-sourcepath");
             options.add(sourcePath.stream().map(Path::toString)
@@ -513,6 +547,19 @@ public final class ByteCodeWriter {
             return AnnotationValue.ofArray(values.stream().map(ByteCodeWriter::toAnnotationValue).toList());
         }
         return AnnotationValue.of(value);
+    }
+
+    private record Compilation(ObjectDef sourceRoot, Map<String, byte[]> classes) {
+    }
+
+    /**
+     * Compiler and class-path discovery are shared by every writer instance: both are stable for the
+     * lifetime of the JVM and scanning the manifests on each generated class is measurable.
+     */
+    private static final class Tooling {
+        @Nullable
+        static final JavaCompiler COMPILER = ToolProvider.getSystemJavaCompiler();
+        static final List<Path> DISCOVERED_CLASS_PATH = discoveredClassPath();
     }
 
     private static final class SourceFile extends SimpleJavaFileObject {

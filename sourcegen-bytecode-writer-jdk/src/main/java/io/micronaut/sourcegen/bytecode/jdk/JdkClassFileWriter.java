@@ -100,7 +100,9 @@ final class JdkClassFileWriter {
                 }
             }
             return Optional.of(bytes);
-        } catch (UnsupportedOperationException | IllegalArgumentException e) {
+        } catch (UnsupportedOperationException e) {
+            // The only signal that a construct cannot be lowered directly; every other failure is a
+            // defect in this writer and must not be hidden behind the source fallback.
             return Optional.empty();
         }
     }
@@ -352,20 +354,32 @@ final class JdkClassFileWriter {
             addTypeAnnotations(methodBuilder, parameterTypeAnnotations(method));
             methodBuilder.withCode(code -> {
                 JdkMethodWriter writer = JdkMethodWriter.create(code, classDef, method, owner);
-                int bodyStart = 0;
-                if (!method.getStatements().isEmpty()
-                    && method.getStatements().get(0) instanceof StatementDef.InvokeSuperConstructor) {
-                    writer.writeStatements(List.of(method.getStatements().get(0)));
-                    bodyStart = 1;
+                // Mirror the ASM writer: the explicit super(...) or this(...) call may appear anywhere
+                // in the body and is moved to the front; without one an implicit super() is emitted.
+                // Field initializers belong to the constructor that calls super, never to one that
+                // delegates to this(...), otherwise they would run twice.
+                List<StatementDef> statements = method.getStatements();
+                Optional<StatementDef> constructorCall = statements.stream()
+                    .filter(JdkClassFileWriter::isConstructorInvocation)
+                    .findFirst();
+                List<StatementDef> body = new ArrayList<>(statements);
+                constructorCall.ifPresent(body::remove);
+                if (constructorCall.isPresent()) {
+                    writer.writeStatements(List.of(constructorCall.get()));
                 } else {
                     ClassTypeDef superclass = classDef.getSuperclass();
                     code.aload(0).invokespecial(superclass == null ? ConstantDescs.CD_Object : classDesc(superclass, classDef),
                         MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void);
                 }
-                writeInstanceInitializers(writer, classDef);
-                writer.writeStatements(method.getStatements().subList(bodyStart, method.getStatements().size()));
+                boolean delegatesToThis = constructorCall
+                    .map(statement -> statement instanceof ExpressionDef.InvokeInstanceMethod)
+                    .orElse(false);
+                if (!delegatesToThis) {
+                    writeInstanceInitializers(writer, classDef);
+                }
+                writer.writeStatements(body);
                 syntheticMethods.addAll(writer.lambdaMethods());
-                if (canCompleteNormally(method.getStatements().subList(bodyStart, method.getStatements().size()))) {
+                if (JdkMethodWriter.canCompleteNormally(StatementDef.multi(body))) {
                     code.return_();
                 }
                 writer.writeLocalVariables();
@@ -404,7 +418,7 @@ final class JdkClassFileWriter {
                     JdkMethodWriter writer = JdkMethodWriter.create(code, objectDef, method, owner);
                     writer.writeStatements(method.getStatements());
                     syntheticMethods.addAll(writer.lambdaMethods());
-                    if (canCompleteNormally(method.getStatements())) {
+                    if (JdkMethodWriter.canCompleteNormally(StatementDef.multi(method.getStatements()))) {
                         code.return_();
                     }
                     writer.writeLocalVariables();
@@ -640,19 +654,9 @@ final class JdkClassFileWriter {
             .toList();
     }
 
-    private static boolean canCompleteNormally(List<StatementDef> statements) {
-        if (statements.isEmpty()) {
-            return true;
-        }
-        StatementDef last = statements.getLast();
-        if (last instanceof StatementDef.Multi multi) {
-            return canCompleteNormally(multi.flatten());
-        }
-        if (last instanceof StatementDef.IfElse ifElse) {
-            return canCompleteNormally(ifElse.statement().flatten())
-                || canCompleteNormally(ifElse.elseStatement().flatten());
-        }
-        return !(last instanceof StatementDef.Return || last instanceof StatementDef.Throw);
+    private static boolean isConstructorInvocation(StatementDef statement) {
+        return statement instanceof StatementDef.InvokeSuperConstructor
+            || (statement instanceof ExpressionDef.InvokeInstanceMethod call && call.method().isConstructor());
     }
 
     private static void addAnnotations(ClassBuilder builder, List<AnnotationDef> annotations) {

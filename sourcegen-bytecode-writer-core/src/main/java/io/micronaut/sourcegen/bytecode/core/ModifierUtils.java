@@ -55,7 +55,6 @@ public final class ModifierUtils {
     public static final int ACC_SYNTHETIC = 0x1000;
     public static final int ACC_ANNOTATION = 0x2000;
     public static final int ACC_ENUM = 0x4000;
-    public static final int ACC_RECORD = 0x10000;
 
     private ModifierUtils() {
     }
@@ -118,7 +117,8 @@ public final class ModifierUtils {
             return ACC_INTERFACE | ACC_ABSTRACT | memberFlags(interfaceDef.getModifiers());
         }
         if (objectDef instanceof RecordDef recordDef) {
-            return ACC_RECORD | ACC_FINAL | memberFlags(recordDef.getModifiers());
+            // The JVMS has no record access flag; the Record attribute marks a record class.
+            return ACC_FINAL | memberFlags(recordDef.getModifiers());
         }
         return memberFlags(objectDef.getModifiers());
     }

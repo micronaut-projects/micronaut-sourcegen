@@ -407,7 +407,15 @@ final class JdkMethodWriter {
             .orElseThrow();
     }
 
-    private static boolean canCompleteNormally(StatementDef statement) {
+    /**
+     * Whether control can reach the end of a statement, following JLS 14.22. Being wrong in the
+     * "cannot complete" direction is not just a verifier error: an if/else then-branch judged as
+     * non-completing gets no jump over the else-branch and falls through into it.
+     *
+     * @param statement The statement
+     * @return {@code true} if the statement can complete normally
+     */
+    static boolean canCompleteNormally(StatementDef statement) {
         List<StatementDef> statements = statement.flatten();
         if (statements.isEmpty()) {
             return true;
@@ -417,10 +425,18 @@ final class JdkMethodWriter {
             return canCompleteNormally(ifElse.statement()) || canCompleteNormally(ifElse.elseStatement());
         }
         if (last instanceof StatementDef.Try aTry) {
-            return canCompleteNormally(aTry.statement());
+            boolean bodyOrCatchCompletes = canCompleteNormally(aTry.statement())
+                || aTry.catches().stream().anyMatch(aCatch -> canCompleteNormally(aCatch.statement()));
+            return bodyOrCatchCompletes
+                && (aTry.finallyStatement() == null || canCompleteNormally(aTry.finallyStatement()));
         }
         if (last instanceof StatementDef.Synchronized synchronizedStatement) {
             return canCompleteNormally(synchronizedStatement.statement());
+        }
+        if (last instanceof StatementDef.Switch aSwitch) {
+            return aSwitch.defaultCase() == null
+                || canCompleteNormally(aSwitch.defaultCase())
+                || aSwitch.cases().values().stream().anyMatch(JdkMethodWriter::canCompleteNormally);
         }
         return !(last instanceof StatementDef.Return || last instanceof StatementDef.Throw);
     }

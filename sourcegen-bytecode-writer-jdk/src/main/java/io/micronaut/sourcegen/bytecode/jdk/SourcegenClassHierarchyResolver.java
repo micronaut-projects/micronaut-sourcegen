@@ -38,8 +38,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Resolves generated classes first, then class-loaded and model-backed types, annotation-processing
- * types, classpath resources, and finally the JDK resolver.
+ * Resolves generated classes first, then model-backed types, annotation-processing types,
+ * class-loaded types, classpath resources, and finally the JDK resolver.
  *
  * <p>The ClassFile API resolver is intentionally conservative for classes which do not yet exist on
  * a class loader. Keeping generated models in this resolver makes verification deterministic while
@@ -48,11 +48,7 @@ import java.util.Set;
 final class SourcegenClassHierarchyResolver implements ClassHierarchyResolver {
 
     private final Map<String, byte[]> generated;
-    private final ClassHierarchyResolver models;
-    private final ClassHierarchyResolver ast;
-    private final ClassHierarchyResolver resources;
-    private final ClassHierarchyResolver classLoading;
-    private final ClassHierarchyResolver fallback;
+    private final ClassHierarchyResolver delegate;
 
     SourcegenClassHierarchyResolver(Map<String, byte[]> generated,
                                    Collection<ClassElement> classElements,
@@ -79,11 +75,13 @@ final class SourcegenClassHierarchyResolver implements ClassHierarchyResolver {
                 astSuperclasses.put(classDesc, superclass);
             }
         }
-        this.models = ClassHierarchyResolver.of(modelInterfaces, modelSuperclasses);
-        this.ast = ClassHierarchyResolver.of(astInterfaces, astSuperclasses);
-        this.resources = ClassHierarchyResolver.ofResourceParsing(classLoader);
-        this.classLoading = ClassHierarchyResolver.ofClassLoading(classLoader);
-        this.fallback = ClassHierarchyResolver.defaultResolver();
+        // The JDK resolvers answer null, not an exception, for a class they do not know, so they
+        // have to be chained with orElse rather than by catching failures.
+        this.delegate = ClassHierarchyResolver.of(modelInterfaces, modelSuperclasses)
+            .orElse(ClassHierarchyResolver.of(astInterfaces, astSuperclasses))
+            .orElse(ClassHierarchyResolver.ofClassLoading(classLoader))
+            .orElse(ClassHierarchyResolver.ofResourceParsing(classLoader))
+            .orElse(ClassHierarchyResolver.defaultResolver());
     }
 
     static Set<ClassElement> classElements(ObjectDef objectDef) {
@@ -123,7 +121,32 @@ final class SourcegenClassHierarchyResolver implements ClassHierarchyResolver {
             addObjectTypes(method.getReturnType(), interfaces, superclasses, visited);
             method.getParameters().forEach(parameter -> addObjectTypes(parameter.getType(), interfaces, superclasses, visited));
             method.getThrowTypes().forEach(type -> addObjectTypes(type, interfaces, superclasses, visited));
+            // Types that only appear inside method bodies still take part in stack-map merges
+            method.getStatements().forEach(statement -> addStatementTypes(statement, interfaces, superclasses, visited));
         });
+        if (objectDef instanceof ClassDef classDef) {
+            classDef.getFields().forEach(field -> field.getInitializer()
+                .ifPresent(initializer -> addExpressionTypes(initializer, interfaces, superclasses, visited)));
+            if (classDef.getStaticInitializer() != null) {
+                addStatementTypes(classDef.getStaticInitializer(), interfaces, superclasses, visited);
+            }
+        }
+    }
+
+    private static void addStatementTypes(StatementDef statement,
+                                          Set<ClassDesc> interfaces,
+                                          Map<ClassDesc, ClassDesc> superclasses,
+                                          Set<ObjectDef> visited) {
+        statement.nestedExpressionsStream().forEach(expression ->
+            addExpressionTypes(expression, interfaces, superclasses, visited));
+    }
+
+    private static void addExpressionTypes(ExpressionDef expression,
+                                           Set<ClassDesc> interfaces,
+                                           Map<ClassDesc, ClassDesc> superclasses,
+                                           Set<ObjectDef> visited) {
+        addObjectTypes(expression.type(), interfaces, superclasses, visited);
+        expression.nestedExpressionsStream().forEach(child -> addExpressionTypes(child, interfaces, superclasses, visited));
     }
 
     private static void addObjectTypes(TypeDef type,
@@ -228,22 +251,6 @@ final class SourcegenClassHierarchyResolver implements ClassHierarchyResolver {
                     .map(ClassEntry::asSymbol)
                     .orElse(ConstantDescs.CD_Object));
         }
-        try {
-            return classLoading.getClassInfo(classDesc);
-        } catch (RuntimeException ignored) {
-            try {
-                return models.getClassInfo(classDesc);
-            } catch (RuntimeException ignoredAst) {
-                try {
-                    return ast.getClassInfo(classDesc);
-                } catch (RuntimeException ignoredClassLoading) {
-                    try {
-                        return resources.getClassInfo(classDesc);
-                    } catch (RuntimeException ignoredResource) {
-                        return fallback.getClassInfo(classDesc);
-                    }
-                }
-            }
-        }
+        return delegate.getClassInfo(classDesc);
     }
 }

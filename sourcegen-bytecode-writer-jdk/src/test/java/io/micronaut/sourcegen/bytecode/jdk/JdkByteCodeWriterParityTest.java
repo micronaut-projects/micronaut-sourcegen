@@ -528,6 +528,117 @@ class JdkByteCodeWriterParityTest {
         assertEquals("JdkConstructorRecordParity[name=Ada, age=0]", value.toString());
     }
 
+    @Test
+    void directlyWritesTryWhoseCatchCompletesInsideAnIfBranch() throws Exception {
+        ClassTypeDef self = ClassTypeDef.of("example.JdkTryCompletionParity");
+        MethodDef boom = MethodDef.builder("boom")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .returns(TypeDef.STRING)
+            .build((ignored, parameters) -> ClassTypeDef.of(IllegalStateException.class)
+                .instantiate(ExpressionDef.constant("boom")).doThrow());
+        ClassDef definition = ClassDef.builder(self.getName())
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(boom)
+            .addMethod(MethodDef.builder("pick")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("flag", TypeDef.Primitive.BOOLEAN)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> StatementDef.multi(
+                    parameters.get(0).isTrue().doIfElse(
+                        StatementDef.doTry(self.invokeStatic(boom).returning())
+                            .doCatch(RuntimeException.class, exception -> StatementDef.multi()),
+                        ExpressionDef.constant("else").returning()
+                    ),
+                    ExpressionDef.constant("after").returning()
+                )))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        // The caught exception must not fall through into the else branch
+        assertEquals("after", generated.getMethod("pick", boolean.class).invoke(null, true));
+        assertEquals("else", generated.getMethod("pick", boolean.class).invoke(null, false));
+    }
+
+    @Test
+    @SuppressWarnings("removal")
+    void directlyWritesConstructorDelegationWithoutRepeatingFieldInitializers() throws Exception {
+        ClassTypeDef self = ClassTypeDef.of("example.JdkConstructorDelegationParity");
+        FieldDef counter = FieldDef.builder("initializations", TypeDef.Primitive.INT)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .build();
+        MethodDef next = MethodDef.builder("next")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .returns(TypeDef.Primitive.INT)
+            .build((ignored, parameters) -> StatementDef.multi(
+                self.getStaticField(counter).put(self.getStaticField(counter)
+                    .math(ExpressionDef.MathBinaryOperation.OpType.ADDITION, ExpressionDef.constant(1))),
+                self.getStaticField(counter).returning()
+            ));
+        FieldDef marker = FieldDef.builder("marker", TypeDef.Primitive.INT)
+            .addModifiers(Modifier.PUBLIC)
+            .initializer(self.invokeStatic(next))
+            .build();
+        FieldDef name = FieldDef.builder("name", TypeDef.STRING).addModifiers(Modifier.PUBLIC).build();
+        FieldDef age = FieldDef.builder("age", TypeDef.Primitive.INT).addModifiers(Modifier.PUBLIC).build();
+        MethodDef full = MethodDef.constructor()
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("name", TypeDef.STRING)
+            .addParameter("age", TypeDef.Primitive.INT)
+            .build((aThis, parameters) -> StatementDef.multi(
+                aThis.field(name).assign(parameters.get(0)),
+                aThis.field(age).assign(parameters.get(1))
+            ));
+        ClassDef definition = ClassDef.builder(self.getName())
+            .addModifiers(Modifier.PUBLIC)
+            .addField(counter)
+            .addField(marker)
+            .addField(name)
+            .addField(age)
+            .addMethod(next)
+            .addMethod(full)
+            .addMethod(MethodDef.constructor()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("name", TypeDef.STRING)
+                .build((aThis, parameters) -> aThis.invokeConstructor(full, parameters.get(0), ExpressionDef.constant(0))))
+            .build();
+
+        Class<?> generated = define(definition);
+        Object value = generated.getConstructor(String.class).newInstance("Ada");
+
+        assertEquals("Ada", generated.getField("name").get(value));
+        assertEquals(0, generated.getField("age").get(value));
+        assertEquals(1, generated.getField("marker").get(value));
+        assertEquals(1, generated.getField("initializations").get(null));
+    }
+
+    @Test
+    void directlyWritesJoinsOfModelOnlyTypesThroughTheHierarchyResolver() throws Exception {
+        ClassDef first = ClassDef.builder("example.JdkMergeFirst").addModifiers(Modifier.PUBLIC).build();
+        ClassDef second = ClassDef.builder("example.JdkMergeSecond").addModifiers(Modifier.PUBLIC).build();
+        ClassDef definition = ClassDef.builder("example.JdkMergeParity")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("choose")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("flag", TypeDef.Primitive.BOOLEAN)
+                .returns(TypeDef.OBJECT)
+                .build((ignored, parameters) -> parameters.get(0).isTrue()
+                    .doIfElse(first.asTypeDef().instantiate(), second.asTypeDef().instantiate())
+                    .returning()))
+            .build();
+
+        // The stack map at the join needs the hierarchy of two classes that exist only as models
+        MapClassLoader loader = new MapClassLoader(Map.of(
+            first.getName(), writeDirect(first),
+            second.getName(), writeDirect(second),
+            definition.getName(), writeDirect(definition)
+        ));
+        Class<?> generated = loader.loadClass(definition.getName());
+
+        assertInstanceOf(loader.loadClass(first.getName()), generated.getMethod("choose", boolean.class).invoke(null, true));
+        assertInstanceOf(loader.loadClass(second.getName()), generated.getMethod("choose", boolean.class).invoke(null, false));
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     private @interface ParameterMarker {
