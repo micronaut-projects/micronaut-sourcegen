@@ -507,31 +507,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                             @Nullable MethodDef methodDef,
                             boolean staticContext) {
         if (typeDef.equals(TypeDef.THIS)) {
-            if (objectDef == null) {
-                throw new IllegalStateException("This type is used outside of the instance scope!");
-            }
-            // The scope is kept: the self type of a generic definition carries the variables it declares
-            return asType(objectDef.asTypeDef(), staticContext ? null : objectDef, methodDef, staticContext);
+            return asSelfType(objectDef, methodDef, staticContext);
         }
         if (typeDef.equals(TypeDef.SUPER)) {
-            if (objectDef == null) {
-                throw new IllegalStateException("Super type is used outside of the instance scope!");
-            }
-            if (objectDef instanceof ClassDef classDef) {
-                return asType(Objects.requireNonNullElse(classDef.getSuperclass(), ClassTypeDef.OBJECT), objectDef, methodDef, staticContext);
-            }
-            if (objectDef instanceof EnumDef) {
-                return asClassType(ClassTypeDef.of(Enum.class));
-            }
-            throw new IllegalStateException("Super type is not supported for " + objectDef);
+            return asSuperType(objectDef, methodDef, staticContext);
         }
         switch (typeDef) {
             case TypeDef.Array array -> {
-                TypeName arrayTypeName = ArrayTypeName.of(asType(array.componentType(), objectDef, methodDef, staticContext));
-                for (int i = 1; i < array.dimensions(); ++i) {
-                    arrayTypeName = ArrayTypeName.of(arrayTypeName);
-                }
-                return arrayTypeName;
+                return asArrayType(array, objectDef, methodDef, staticContext);
             }
             case ClassTypeDef.Parameterized parameterized -> {
                 return ParameterizedTypeName.get(
@@ -540,19 +523,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 );
             }
             case TypeDef.Primitive primitive -> {
-                return switch (primitive.name()) {
-                    case "void" -> TypeName.VOID;
-                    case "byte" -> TypeName.BYTE;
-                    case "short" -> TypeName.SHORT;
-                    case "char" -> TypeName.CHAR;
-                    case "int" -> TypeName.INT;
-                    case "long" -> TypeName.LONG;
-                    case "float" -> TypeName.FLOAT;
-                    case "double" -> TypeName.DOUBLE;
-                    case "boolean" -> TypeName.BOOLEAN;
-                    default ->
-                        throw new IllegalStateException("Unrecognized primitive name: " + primitive.name());
-                };
+                return asPrimitiveType(primitive);
             }
             case ClassTypeDef.AnnotatedClassTypeDef annotatedType -> {
                 var annotationsSpecs = annotatedType.annotations().stream().map(this::asAnnotationSpec).toList();
@@ -562,33 +533,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return asClassType(classType);
             }
             case TypeDef.Wildcard wildcard -> {
-                if (!wildcard.lowerBounds().isEmpty()) {
-                    return WildcardTypeName.supertypeOf(
-                        asType(
-                            wildcard.lowerBounds().get(0),
-                            objectDef,
-                            methodDef,
-                            staticContext
-                        )
-                    );
-                }
-                return WildcardTypeName.subtypeOf(
-                    asType(
-                        wildcard.upperBounds().get(0),
-                        objectDef,
-                        methodDef,
-                        staticContext
-                    )
-                );
+                return asWildcardType(wildcard, objectDef, methodDef, staticContext);
             }
             case TypeDef.TypeVariable typeVariable -> {
-                if (isVariablePartOfTheDefinition(typeVariable.name(), objectDef, methodDef, staticContext)) {
-                    return asTypeVariable(typeVariable, objectDef);
-                }
-                if (typeVariable.bounds().isEmpty()) {
-                    return asType(ClassTypeDef.OBJECT, objectDef, methodDef, staticContext);
-                }
-                return asType(typeVariable.bounds().get(0), objectDef, methodDef, staticContext);
+                return asTypeVariableType(typeVariable, objectDef, methodDef, staticContext);
             }
             case TypeDef.AnnotatedTypeDef annotatedType -> {
                 var annotationsSpecs = annotatedType.annotations().stream().map(this::asAnnotationSpec).toList();
@@ -596,6 +544,80 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             default -> throw new IllegalStateException("Unrecognized type definition " + typeDef);
         }
+    }
+
+    /**
+     * The self type in the scope it is written in. In a static context the enclosing definition is dropped,
+     * so its type variables are not treated as being in scope.
+     */
+    private TypeName asSelfType(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, boolean staticContext) {
+        if (objectDef == null) {
+            throw new IllegalStateException("This type is used outside of the instance scope!");
+        }
+        // The scope is kept: the self type of a generic definition carries the variables it declares
+        return asType(objectDef.asTypeDef(), staticContext ? null : objectDef, methodDef, staticContext);
+    }
+
+    private TypeName asSuperType(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, boolean staticContext) {
+        if (objectDef == null) {
+            throw new IllegalStateException("Super type is used outside of the instance scope!");
+        }
+        if (objectDef instanceof ClassDef classDef) {
+            return asType(Objects.requireNonNullElse(classDef.getSuperclass(), ClassTypeDef.OBJECT), objectDef, methodDef, staticContext);
+        }
+        if (objectDef instanceof EnumDef) {
+            return asClassType(ClassTypeDef.of(Enum.class));
+        }
+        throw new IllegalStateException("Super type is not supported for " + objectDef);
+    }
+
+    private TypeName asArrayType(TypeDef.Array array,
+                                 @Nullable ObjectDef objectDef,
+                                 @Nullable MethodDef methodDef,
+                                 boolean staticContext) {
+        TypeName arrayTypeName = ArrayTypeName.of(asType(array.componentType(), objectDef, methodDef, staticContext));
+        for (int i = 1; i < array.dimensions(); ++i) {
+            arrayTypeName = ArrayTypeName.of(arrayTypeName);
+        }
+        return arrayTypeName;
+    }
+
+    private TypeName asWildcardType(TypeDef.Wildcard wildcard,
+                                    @Nullable ObjectDef objectDef,
+                                    @Nullable MethodDef methodDef,
+                                    boolean staticContext) {
+        if (!wildcard.lowerBounds().isEmpty()) {
+            return WildcardTypeName.supertypeOf(asType(wildcard.lowerBounds().get(0), objectDef, methodDef, staticContext));
+        }
+        return WildcardTypeName.subtypeOf(asType(wildcard.upperBounds().get(0), objectDef, methodDef, staticContext));
+    }
+
+    private TypeName asTypeVariableType(TypeDef.TypeVariable typeVariable,
+                                        @Nullable ObjectDef objectDef,
+                                        @Nullable MethodDef methodDef,
+                                        boolean staticContext) {
+        if (isVariablePartOfTheDefinition(typeVariable.name(), objectDef, methodDef, staticContext)) {
+            return asTypeVariable(typeVariable, objectDef);
+        }
+        if (typeVariable.bounds().isEmpty()) {
+            return asType(ClassTypeDef.OBJECT, objectDef, methodDef, staticContext);
+        }
+        return asType(typeVariable.bounds().get(0), objectDef, methodDef, staticContext);
+    }
+
+    private static TypeName asPrimitiveType(TypeDef.Primitive primitive) {
+        return switch (primitive.name()) {
+            case "void" -> TypeName.VOID;
+            case "byte" -> TypeName.BYTE;
+            case "short" -> TypeName.SHORT;
+            case "char" -> TypeName.CHAR;
+            case "int" -> TypeName.INT;
+            case "long" -> TypeName.LONG;
+            case "float" -> TypeName.FLOAT;
+            case "double" -> TypeName.DOUBLE;
+            case "boolean" -> TypeName.BOOLEAN;
+            default -> throw new IllegalStateException("Unrecognized primitive name: " + primitive.name());
+        };
     }
 
     private static boolean isVariablePartOfTheDefinition(String variableName,

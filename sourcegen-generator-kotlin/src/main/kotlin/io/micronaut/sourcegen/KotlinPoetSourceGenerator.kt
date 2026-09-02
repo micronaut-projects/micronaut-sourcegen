@@ -864,78 +864,96 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             methodDef: MethodDef?,
             staticContext: Boolean,
         ): TypeName {
-            val result: TypeName = if (typeDef == TypeDef.THIS) {
-                if (objectDef == null) {
-                    throw java.lang.IllegalStateException("This type is used outside of the instance scope!")
-                }
-                // The scope is kept: the self type of a generic definition carries the variables it declares
-                asType(objectDef.asTypeDef(), if (staticContext) null else objectDef, methodDef, staticContext)
-            } else if (typeDef is TypeDef.Array) {
-                asArray(typeDef, objectDef, methodDef, staticContext)
-            } else if (typeDef is ClassTypeDef.Parameterized) {
-                asClassName(typeDef.rawType).parameterizedBy(
+            val result: TypeName = when {
+                typeDef == TypeDef.THIS -> asSelfType(objectDef, methodDef, staticContext)
+                typeDef is TypeDef.Array -> asArray(typeDef, objectDef, methodDef, staticContext)
+                typeDef is ClassTypeDef.Parameterized -> asClassName(typeDef.rawType).parameterizedBy(
                     typeDef.typeArguments.map { v: TypeDef -> this.asType(v, objectDef, methodDef, staticContext) }
                 )
-            } else if (typeDef is TypeDef.Primitive) {
-                when (typeDef.name()) {
-                    "void" -> UNIT
-                    "byte" -> com.squareup.javapoet.TypeName.BYTE.toKTypeName()
-                    "short" -> com.squareup.javapoet.TypeName.SHORT.toKTypeName()
-                    "char" -> com.squareup.javapoet.TypeName.CHAR.toKTypeName()
-                    "int" -> com.squareup.javapoet.TypeName.INT.toKTypeName()
-                    "long" -> com.squareup.javapoet.TypeName.LONG.toKTypeName()
-                    "float" -> com.squareup.javapoet.TypeName.FLOAT.toKTypeName()
-                    "double" -> com.squareup.javapoet.TypeName.DOUBLE.toKTypeName()
-                    "boolean" -> com.squareup.javapoet.TypeName.BOOLEAN.toKTypeName()
-                    else -> unrecognizedPrimitive(typeDef.name())
-                }
-            } else if (typeDef is ClassTypeDef) {
-                asClassName(typeDef)
-            } else if (typeDef is ClassTypeDef.AnnotatedClassTypeDef) {
-                asType(typeDef.typeDef, objectDef, methodDef, staticContext).copy(
-                    typeDef.typeDef.isNullable,
-                    typeDef.annotations.stream().map{ asAnnotationSpec(it) }.toList()
+                typeDef is TypeDef.Primitive -> asPrimitive(typeDef)
+                typeDef is ClassTypeDef -> asClassName(typeDef)
+                typeDef is ClassTypeDef.AnnotatedClassTypeDef -> asAnnotated(
+                    typeDef.typeDef, typeDef.annotations, objectDef, methodDef, staticContext
                 )
-            } else if (typeDef is TypeDef.Wildcard) {
-                if (typeDef.lowerBounds.isNotEmpty()) {
-                    WildcardTypeName.consumerOf(
-                        asType(
-                            typeDef.lowerBounds[0],
-                            objectDef,
-                            methodDef,
-                            staticContext,
-                        )
-                    )
-                } else {
-                    WildcardTypeName.producerOf(
-                        asType(
-                            typeDef.upperBounds[0],
-                            objectDef,
-                            methodDef,
-                            staticContext,
-                        )
-                    )
-                }
-            } else if (typeDef is TypeDef.TypeVariable) {
-                if (isVariablePartOfTheDefinition(typeDef.name, objectDef, methodDef, staticContext)) {
-                    return asTypeVariable(typeDef, objectDef)
-                }
-                if (typeDef.bounds.isEmpty()) {
-                    return asType(TypeDef.OBJECT, objectDef, methodDef, staticContext)
-                }
-                return asType(typeDef.bounds.get(0), objectDef, methodDef, staticContext)
-            } else if (typeDef is TypeDef.Annotated && typeDef is TypeDef.AnnotatedTypeDef) {
-                return asType(typeDef.typeDef, objectDef, methodDef, staticContext).copy(
-                    typeDef.typeDef.isNullable,
-                    typeDef.annotations.stream().map{ asAnnotationSpec(it) }.toList()
+                typeDef is TypeDef.Wildcard -> asWildcard(typeDef, objectDef, methodDef, staticContext)
+                typeDef is TypeDef.TypeVariable ->
+                    return asTypeVariableType(typeDef, objectDef, methodDef, staticContext)
+                typeDef is TypeDef.Annotated && typeDef is TypeDef.AnnotatedTypeDef -> return asAnnotated(
+                    typeDef.typeDef, typeDef.annotations, objectDef, methodDef, staticContext
                 )
-            } else {
-                throw IllegalStateException("Unrecognized type definition $typeDef")
+                else -> throw IllegalStateException("Unrecognized type definition $typeDef")
             }
             if (typeDef.isNullable) {
                 return asNullable(result)
             }
             return result
+        }
+
+        /**
+         * The self type in the scope it is written in. In a static context the enclosing definition is
+         * dropped, so its type variables are not treated as being in scope.
+         */
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asSelfType(objectDef: ObjectDef?, methodDef: MethodDef?, staticContext: Boolean): TypeName {
+            if (objectDef == null) {
+                throw java.lang.IllegalStateException("This type is used outside of the instance scope!")
+            }
+            // The scope is kept: the self type of a generic definition carries the variables it declares
+            return asType(objectDef.asTypeDef(), if (staticContext) null else objectDef, methodDef, staticContext)
+        }
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asAnnotated(
+            typeDef: TypeDef,
+            annotations: List<AnnotationDef>,
+            objectDef: ObjectDef?,
+            methodDef: MethodDef?,
+            staticContext: Boolean,
+        ): TypeName = asType(typeDef, objectDef, methodDef, staticContext).copy(
+            typeDef.isNullable,
+            annotations.map { asAnnotationSpec(it) }
+        )
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asWildcard(
+            typeDef: TypeDef.Wildcard,
+            objectDef: ObjectDef?,
+            methodDef: MethodDef?,
+            staticContext: Boolean,
+        ): TypeName = if (typeDef.lowerBounds.isNotEmpty()) {
+            WildcardTypeName.consumerOf(asType(typeDef.lowerBounds[0], objectDef, methodDef, staticContext))
+        } else {
+            WildcardTypeName.producerOf(asType(typeDef.upperBounds[0], objectDef, methodDef, staticContext))
+        }
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asTypeVariableType(
+            typeDef: TypeDef.TypeVariable,
+            objectDef: ObjectDef?,
+            methodDef: MethodDef?,
+            staticContext: Boolean,
+        ): TypeName {
+            if (isVariablePartOfTheDefinition(typeDef.name, objectDef, methodDef, staticContext)) {
+                return asTypeVariable(typeDef, objectDef)
+            }
+            if (typeDef.bounds.isEmpty()) {
+                return asType(TypeDef.OBJECT, objectDef, methodDef, staticContext)
+            }
+            return asType(typeDef.bounds[0], objectDef, methodDef, staticContext)
+        }
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asPrimitive(typeDef: TypeDef.Primitive): TypeName = when (typeDef.name()) {
+            "void" -> UNIT
+            "byte" -> com.squareup.javapoet.TypeName.BYTE.toKTypeName()
+            "short" -> com.squareup.javapoet.TypeName.SHORT.toKTypeName()
+            "char" -> com.squareup.javapoet.TypeName.CHAR.toKTypeName()
+            "int" -> com.squareup.javapoet.TypeName.INT.toKTypeName()
+            "long" -> com.squareup.javapoet.TypeName.LONG.toKTypeName()
+            "float" -> com.squareup.javapoet.TypeName.FLOAT.toKTypeName()
+            "double" -> com.squareup.javapoet.TypeName.DOUBLE.toKTypeName()
+            "boolean" -> com.squareup.javapoet.TypeName.BOOLEAN.toKTypeName()
+            else -> unrecognizedPrimitive(typeDef.name())
         }
 
         private fun isVariablePartOfTheDefinition(

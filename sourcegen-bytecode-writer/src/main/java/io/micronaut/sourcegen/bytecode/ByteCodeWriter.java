@@ -471,7 +471,10 @@ public final class ByteCodeWriter {
             if (typeDef instanceof ClassTypeDef.ClassElementType) {
                 return RetentionPolicy.CLASS;
             }
-            // Preserve annotations whose definitions are unavailable to the generator.
+            // The annotation type is not on the generator's own class path, which is the normal case for
+            // an annotation processor writing annotations of the project it is processing. Nothing here can
+            // read its retention, so keep the runtime visibility every annotation had before retention was
+            // honoured at all - downgrading to CLASS would hide these from the frameworks that read them.
             return RetentionPolicy.RUNTIME;
         }
         Retention retention = annotationType.getAnnotation(Retention.class);
@@ -944,29 +947,22 @@ public final class ByteCodeWriter {
                 annotationVisitor.visitAnnotation(name, TypeUtils.getType(nestedAnnotation.getType(), null).getDescriptor())
             );
         } else if (value instanceof AnnotationDef[] annotations) {
-            AnnotationVisitor arrayVisitor = annotationVisitor.visitArray(name);
-            for (AnnotationDef annotationDef : annotations) {
-                visitAnnotation(
-                    annotationDef,
-                    arrayVisitor.visitAnnotation(null, TypeUtils.getType(annotationDef.getType(), null).getDescriptor())
-                );
-            }
-            arrayVisitor.visitEnd();
+            visitAnnotationArray(annotationVisitor, name, Arrays.asList(annotations));
         } else if (value instanceof Collection<?> coll) {
-            AnnotationVisitor arrayVisitor = annotationVisitor.visitArray(name);
-            for (Object object : coll) {
-                visitAnnotation(arrayVisitor, null, object);
-            }
-            arrayVisitor.visitEnd();
+            visitAnnotationArray(annotationVisitor, name, coll);
         } else if (value instanceof Object[] array) {
-            AnnotationVisitor arrayVisitor = annotationVisitor.visitArray(name);
-            for (Object object : array) {
-                visitAnnotation(arrayVisitor, null, object);
-            }
-            arrayVisitor.visitEnd();
+            visitAnnotationArray(annotationVisitor, name, Arrays.asList(array));
         } else {
             annotationVisitor.visit(name, value);
         }
+    }
+
+    private void visitAnnotationArray(AnnotationVisitor annotationVisitor, @Nullable String name, Collection<?> values) {
+        AnnotationVisitor arrayVisitor = annotationVisitor.visitArray(name);
+        for (Object value : values) {
+            visitAnnotation(arrayVisitor, null, value);
+        }
+        arrayVisitor.visitEnd();
     }
 
     private void writeProperty(ClassVisitor classWriter, ObjectDef objectDef, PropertyDef property, Set<String> emittedBridges) {
@@ -1024,42 +1020,9 @@ public final class ByteCodeWriter {
         if (methodDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
-        String[] exceptions = methodDef.getThrowTypes().isEmpty() ? null : methodDef.getThrowTypes().stream()
-            .map(t -> TypeUtils.getType(t, objectDef).getClassName().replace(".", "/"))
-            .toArray(String[]::new);
-        MethodVisitor methodVisitor = classVisitor.visitMethod(
-            modifiersFlag,
-            name,
-            methodDescriptor,
-            // A bridge carries an erased signature, it never gets a Signature attribute
-            (modifiersFlag & ACC_BRIDGE) == 0 ? SignatureWriterUtils.getMethodSignature(objectDef, methodDef) : null,
-            exceptions
-        );
-        if (objectDef instanceof RecordDef recordDef && isCanonicalRecordConstructor(recordDef, methodDef)) {
-            for (ParameterDef parameter : methodDef.getParameters()) {
-                int parameterModifiers = parameter.getModifiers().contains(Modifier.FINAL) ? ACC_FINAL : 0;
-                if (parameter.isSynthetic()) {
-                    parameterModifiers |= ACC_SYNTHETIC;
-                }
-                methodVisitor.visitParameter(parameter.getName(), parameterModifiers);
-            }
-        }
+        MethodVisitor methodVisitor = visitMethodHeader(classVisitor, objectDef, methodDef, modifiersFlag, name, methodDescriptor);
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, methodDescriptor);
-        for (AnnotationDef annotation : methodDef.getAnnotations()) {
-            writeAnnotation(annotation, generatorAdapter::visitAnnotation);
-        }
-
-        if (!methodDef.isConstructor()) {
-            writeTypeAnnotations(
-                methodDef.getReturnType(),
-                TypeReference.newTypeReference(TypeReference.METHOD_RETURN).getValue(),
-                generatorAdapter::visitTypeAnnotation
-            );
-        }
-
-        if (methodDef.getParameters().stream().anyMatch(p -> !p.getAnnotations().isEmpty())) {
-            generatorAdapter.visitAnnotableParameterCount(methodDef.getParameters().size(), true);
-        }
+        writeMethodAnnotations(generatorAdapter, methodDef);
 
         MethodContext context = new MethodContext(objectDef, methodDef, isLambda);
         Label startMethod = writeParameters(generatorAdapter, objectDef, methodDef, context);
@@ -1083,6 +1046,75 @@ public final class ByteCodeWriter {
 
         if (!isLambda && (extraModifiersFlag & ACC_BRIDGE) == 0) {
             writeBridgeMethods(classVisitor, objectDef, methodDef, emittedBridges);
+        }
+    }
+
+    /**
+     * Declare the method and everything that belongs to its declaration rather than its body: the throws
+     * clause, the generic signature - which a bridge never carries - and, for a record's canonical
+     * constructor, the component names.
+     *
+     * @param classVisitor     The class visitor
+     * @param objectDef        The object definition
+     * @param methodDef        The method definition
+     * @param modifiersFlag    The access flags
+     * @param name             The method name
+     * @param methodDescriptor The method descriptor
+     * @return The visitor of the declared method
+     */
+    private static MethodVisitor visitMethodHeader(ClassVisitor classVisitor,
+                                                   @Nullable ObjectDef objectDef,
+                                                   MethodDef methodDef,
+                                                   int modifiersFlag,
+                                                   String name,
+                                                   String methodDescriptor) {
+        String[] exceptions = methodDef.getThrowTypes().isEmpty() ? null : methodDef.getThrowTypes().stream()
+            .map(t -> TypeUtils.getType(t, objectDef).getClassName().replace(".", "/"))
+            .toArray(String[]::new);
+        MethodVisitor methodVisitor = classVisitor.visitMethod(
+            modifiersFlag,
+            name,
+            methodDescriptor,
+            // A bridge carries an erased signature, it never gets a Signature attribute
+            (modifiersFlag & ACC_BRIDGE) == 0 ? SignatureWriterUtils.getMethodSignature(objectDef, methodDef) : null,
+            exceptions
+        );
+        if (objectDef instanceof RecordDef recordDef && isCanonicalRecordConstructor(recordDef, methodDef)) {
+            writeCanonicalRecordParameters(methodVisitor, methodDef);
+        }
+        return methodVisitor;
+    }
+
+    private void writeMethodAnnotations(GeneratorAdapter generatorAdapter, MethodDef methodDef) {
+        for (AnnotationDef annotation : methodDef.getAnnotations()) {
+            writeAnnotation(annotation, generatorAdapter::visitAnnotation);
+        }
+        if (!methodDef.isConstructor()) {
+            writeTypeAnnotations(
+                methodDef.getReturnType(),
+                TypeReference.newTypeReference(TypeReference.METHOD_RETURN).getValue(),
+                generatorAdapter::visitTypeAnnotation
+            );
+        }
+        if (methodDef.getParameters().stream().anyMatch(p -> !p.getAnnotations().isEmpty())) {
+            generatorAdapter.visitAnnotableParameterCount(methodDef.getParameters().size(), true);
+        }
+    }
+
+    /**
+     * Write the MethodParameters attribute of a record's canonical constructor, so the component names
+     * survive into the class file and reflection can recover them.
+     *
+     * @param methodVisitor The method visitor
+     * @param methodDef     The canonical constructor
+     */
+    private static void writeCanonicalRecordParameters(MethodVisitor methodVisitor, MethodDef methodDef) {
+        for (ParameterDef parameter : methodDef.getParameters()) {
+            int parameterModifiers = parameter.getModifiers().contains(Modifier.FINAL) ? ACC_FINAL : 0;
+            if (parameter.isSynthetic()) {
+                parameterModifiers |= ACC_SYNTHETIC;
+            }
+            methodVisitor.visitParameter(parameter.getName(), parameterModifiers);
         }
     }
 

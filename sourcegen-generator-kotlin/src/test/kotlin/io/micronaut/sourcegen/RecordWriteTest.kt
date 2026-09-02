@@ -99,6 +99,41 @@ class RecordWriteTest {
         Assertions.assertTrue(source.contains("fun create(): StaticSelfRecord<Any>"), source)
     }
 
+    @Test
+    fun writeWildcardsAndOutOfScopeVariables() {
+        val recordDef = RecordDef.builder("test.WildcardRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(
+                PropertyDef.builder("producers").ofType(
+                    TypeDef.parameterized(
+                        ClassTypeDef.of(java.util.List::class.java),
+                        TypeDef.wildcardSubtypeOf(TypeDef.of(Number::class.java))
+                    )
+                ).build()
+            )
+            .addProperty(
+                PropertyDef.builder("consumers").ofType(
+                    TypeDef.parameterized(
+                        ClassTypeDef.of(java.util.List::class.java),
+                        TypeDef.wildcardSupertypeOf(TypeDef.of(Number::class.java))
+                    )
+                ).build()
+            )
+            // A variable neither the record nor the method declares falls back to its bound
+            .addProperty(
+                PropertyDef.builder("bound").ofType(TypeDef.variable("U", TypeDef.of(CharSequence::class.java))).build()
+            )
+            .addProperty(PropertyDef.builder("unbound").ofType(TypeDef.variable("W")).build())
+            .build()
+
+        val source = write(recordDef)
+
+        Assertions.assertTrue(source.contains("val producers: List<out Number>"), source)
+        Assertions.assertTrue(source.contains("val consumers: List<in Number>"), source)
+        Assertions.assertTrue(source.contains("val bound: CharSequence"), source)
+        Assertions.assertTrue(source.contains("val unbound: Any"), source)
+    }
+
     private fun write(recordDef: RecordDef): String {
         val generator = KotlinPoetSourceGenerator()
         StringWriter().use { writer ->

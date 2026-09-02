@@ -32,7 +32,9 @@ import org.objectweb.asm.signature.SignatureVisitor;
 import org.objectweb.asm.signature.SignatureWriter;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The bytecode signature utils.
@@ -42,6 +44,12 @@ import java.util.Objects;
  */
 @Internal
 final class SignatureWriterUtils {
+
+    /**
+     * Whether the class a bound names is an interface, kept per name so writing many bounds asks the
+     * class loader about each one once.
+     */
+    private static final Map<String, Boolean> NAMED_BOUND_IS_INTERFACE = new ConcurrentHashMap<>();
 
     @Nullable
     static String getFieldSignature(@Nullable ObjectDef objectDef, FieldDef fieldDef) {
@@ -262,7 +270,7 @@ final class SignatureWriterUtils {
             );
             return;
         }
-        if (wildcard.upperBounds().isEmpty() || wildcard.upperBounds().equals(List.of(TypeDef.OBJECT))) {
+        if (isUnbounded(wildcard)) {
             signatureWriter.visitTypeArgument();
             return;
         }
@@ -273,6 +281,27 @@ final class SignatureWriterUtils {
             wildcard.upperBounds().get(0),
             false
         );
+    }
+
+    /**
+     * Whether a wildcard is the unbounded {@code ?}: no lower bound, and either no upper bound or the
+     * single implicit {@code Object} one. The bound is unwrapped and compared by name rather than by
+     * instance, so an annotated {@code Object}, or one named as a string instead of built from
+     * {@link Object}, is still recognised as the implicit bound it is rather than written out as
+     * {@code ? extends Object}.
+     *
+     * @param wildcard The wildcard
+     * @return True when the wildcard carries no bound of its own
+     */
+    private static boolean isUnbounded(TypeDef.Wildcard wildcard) {
+        List<TypeDef> upperBounds = wildcard.upperBounds();
+        if (upperBounds.isEmpty()) {
+            return true;
+        }
+        return upperBounds.size() == 1
+            && unwrapAnnotated(upperBounds.get(0)) instanceof ClassTypeDef classTypeDef
+            && !(classTypeDef instanceof ClassTypeDef.Parameterized)
+            && Object.class.getName().equals(classTypeDef.getName());
     }
 
     /**
@@ -295,14 +324,17 @@ final class SignatureWriterUtils {
             return true;
         }
         if (classTypeDef instanceof ClassTypeDef.ClassName) {
-            try {
-                return Class.forName(classTypeDef.getName(), false, SignatureWriterUtils.class.getClassLoader())
-                    .isInterface();
-            } catch (ClassNotFoundException | LinkageError e) {
-                return false;
-            }
+            return NAMED_BOUND_IS_INTERFACE.computeIfAbsent(classTypeDef.getName(), SignatureWriterUtils::loadIsInterface);
         }
         return false;
+    }
+
+    private static boolean loadIsInterface(String name) {
+        try {
+            return Class.forName(name, false, SignatureWriterUtils.class.getClassLoader()).isInterface();
+        } catch (ClassNotFoundException | LinkageError e) {
+            return false;
+        }
     }
 
     private static boolean isVariablePartOfTheDefinition(String variableName, @Nullable ObjectDef objectDef, @Nullable MethodDef methodDef) {
