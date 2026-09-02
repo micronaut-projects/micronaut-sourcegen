@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassHierarchyResolver.ClassHierarchyInfo;
 import java.lang.reflect.Method;
 import java.lang.reflect.Field;
 import java.io.IOException;
@@ -352,6 +353,67 @@ class ByteCodeWriterTest {
         assertEquals(9, generated.getMethod("caught").invoke(null));
         assertEquals(3, generated.getMethod("locked", Object.class).invoke(null, new Object()));
     }
+    @Test
+    void writesLambdaFieldInitializerWithDefaultConstructor() throws Exception {
+        ClassTypeDef function = TypeDef.parameterized(Function.class, String.class, String.class);
+        FieldDef mapper = FieldDef.builder("mapper", function)
+            .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
+            .initializer(function.getLambda().implement((ignored, lambdaParameters) ->
+                lambdaParameters.get(0).invoke("concat", TypeDef.STRING, ExpressionDef.constant("!")).returning()))
+            .build();
+        ClassDef definition = ClassDef.builder("example.JdkLambdaField")
+            .addModifiers(Modifier.PUBLIC)
+            .addField(mapper)
+            .addMethod(MethodDef.builder("apply")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("value", TypeDef.STRING)
+                .returns(TypeDef.STRING)
+                .build((aThis, parameters) -> aThis.field(mapper)
+                    .invoke("apply", List.of(TypeDef.OBJECT), TypeDef.OBJECT, List.of(parameters.get(0)))
+                    .cast(TypeDef.STRING)
+                    .returning()))
+            .build();
+
+        byte[] bytes = writeDirect(definition);
+        assertTrue(ClassFile.of().verify(bytes).isEmpty());
+        assertTrue(ClassFile.of().parse(bytes).methods().stream()
+            .anyMatch(method -> method.methodName().stringValue().startsWith("lambda$")),
+            "Expected the field initializer lambda body to be emitted");
+        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
+            Class<?> define() {
+                return defineClass(definition.getName(), bytes, 0, bytes.length);
+            }
+        }.define();
+        Object instance = generated.getConstructor().newInstance();
+        assertEquals("Hello!", generated.getMethod("apply", String.class).invoke(instance, "Hello"));
+    }
+
+    @Test
+    void resolvesGeneratedClassHierarchyByBinaryName() {
+        ClassDef parent = ClassDef.builder("example.hierarchy.Parent")
+            .addModifiers(Modifier.PUBLIC)
+            .build();
+        ClassDef child = ClassDef.builder("example.hierarchy.Child")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(parent.asTypeDef())
+            .build();
+        String contract = "example.hierarchy.Contract";
+        Map<String, byte[]> generated = new LinkedHashMap<>();
+        generated.put(parent.getName(), writeDirect(parent));
+        generated.put(child.getName(), writeDirect(child));
+        generated.put(contract, ClassFile.of().build(java.lang.constant.ClassDesc.of(contract), builder ->
+            builder.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT)));
+
+        var resolver = new SourcegenClassHierarchyResolver(generated, List.of(), List.of(), getClass().getClassLoader());
+
+        assertEquals(ClassHierarchyInfo.ofClass(java.lang.constant.ClassDesc.of(parent.getName())),
+            resolver.getClassInfo(java.lang.constant.ClassDesc.of(child.getName())));
+        assertEquals(ClassHierarchyInfo.ofClass(java.lang.constant.ClassDesc.of("java.lang.Object")),
+            resolver.getClassInfo(java.lang.constant.ClassDesc.of(parent.getName())));
+        assertEquals(ClassHierarchyInfo.ofInterface(),
+            resolver.getClassInfo(java.lang.constant.ClassDesc.of(contract)));
+    }
+
     private static byte[] writeDirect(io.micronaut.sourcegen.model.ObjectDef definition) {
         var bytes = new JdkClassFileWriter(true).write(definition, null);
         assertTrue(bytes.isPresent(), () -> "Expected direct ClassFile lowering for " + definition.getName());

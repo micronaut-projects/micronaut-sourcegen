@@ -338,6 +338,7 @@ final class JdkClassFileWriter {
             JdkMethodWriter writer = JdkMethodWriter.create(code, classDef,
                 MethodDef.constructor().build(), owner);
             writeInstanceInitializers(writer, classDef);
+            syntheticMethods.addAll(writer.lambdaMethods());
             writer.writeLocalVariables();
             code.return_();
             });

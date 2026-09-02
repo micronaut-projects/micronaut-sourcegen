@@ -30,3 +30,16 @@ The `sourcegen-generator-bytecode-jdk` annotation-processor backend uses the JDK
 emits Java 17-compatible classes. It is an alternative to `sourcegen-generator-bytecode`, which uses
 ASM. Select exactly one Java Sourcegen backend on an annotation-processor path. The direct
 `sourcegen-bytecode-writer-jdk` API is available when a `byte[]` is required; it also requires JDK 25.
+
+When a generated class references a type that is still being compiled, the backend falls back to
+compiling Java source and resolves such types from `src/main/java` and `src/test/java` of the project
+directory. Sources kept elsewhere, such as shared source sets, can be added through the
+`micronaut.sourcegen.bytecode.jdk.sourcepath` annotation-processor option, which accepts a
+path-separator-delimited list of source roots:
+
+[source,kotlin]
+----
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("-Amicronaut.sourcegen.bytecode.jdk.sourcepath=/path/to/shared/src/main/java")
+}
+----

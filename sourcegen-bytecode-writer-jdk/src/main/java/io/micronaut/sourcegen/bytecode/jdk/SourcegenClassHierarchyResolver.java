@@ -28,7 +28,9 @@ import io.micronaut.sourcegen.model.TypeDef;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassHierarchyResolver;
 import java.lang.classfile.ClassModel;
+import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.constant.ClassDesc;
+import java.lang.constant.ConstantDescs;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -207,14 +209,24 @@ final class SourcegenClassHierarchyResolver implements ClassHierarchyResolver {
         }
     }
 
+    /**
+     * The binary name used by javac to key compiled output, e.g. {@code com.example.Outer$Inner}.
+     */
+    static String binaryName(ClassDesc classDesc) {
+        String descriptor = classDesc.descriptorString();
+        return descriptor.substring(1, descriptor.length() - 1).replace('/', '.');
+    }
+
     @Override
     public ClassHierarchyInfo getClassInfo(ClassDesc classDesc) {
-        byte[] bytes = generated.get(classDesc.displayName());
+        byte[] bytes = classDesc.isClassOrInterface() ? generated.get(binaryName(classDesc)) : null;
         if (bytes != null) {
             ClassModel model = ClassFile.of().parse(bytes);
             return model.flags().has(java.lang.reflect.AccessFlag.INTERFACE)
                 ? ClassHierarchyInfo.ofInterface()
-                : ClassHierarchyInfo.ofClass(classDesc);
+                : ClassHierarchyInfo.ofClass(model.superclass()
+                    .map(ClassEntry::asSymbol)
+                    .orElse(ConstantDescs.CD_Object));
         }
         try {
             return classLoading.getClassInfo(classDesc);

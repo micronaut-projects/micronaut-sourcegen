@@ -539,7 +539,7 @@ final class JdkMethodWriter {
             parameters.add(ParameterDef.builder(captureName(variable), variable.type()).build());
         }
         parameters.addAll(lambda.implementation().getParameters());
-        MethodDef implementation = MethodDef.builder("lambda$" + methodDef.getName() + "$" + lambdaMethods.size())
+        MethodDef implementation = MethodDef.builder("lambda$" + lambdaOwnerName(methodDef) + "$" + lambdaMethods.size())
             .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
             .addParameters(parameters)
             .returns(lambda.implementation().getReturnType())
@@ -561,6 +561,19 @@ final class JdkMethodWriter {
             methodType(captured.stream().map(VariableDef::type).toList(), lambda.type()),
             methodType(lambda.target()), implementationHandle, methodType(lambda.implementation()));
         code.invokedynamic(callSite);
+    }
+
+    /**
+     * The enclosing method segment of a lambda implementation name. Constructors and static
+     * initializers are named {@code <init>} and {@code <clinit>}, which are not valid in a member
+     * name, so use the same {@code new} and {@code static} placeholders that javac does.
+     */
+    private static String lambdaOwnerName(MethodDef methodDef) {
+        return switch (methodDef.getName()) {
+            case MethodDef.CONSTRUCTOR -> "new";
+            case "<clinit>" -> "static";
+            default -> methodDef.getName();
+        };
     }
 
     private void writeMethodReference(MethodReferenceExpression methodReference) {

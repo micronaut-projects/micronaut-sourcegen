@@ -25,6 +25,7 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import org.jspecify.annotations.Nullable;
 
+import java.io.File;
 import java.io.OutputStream;
 import java.net.JarURLConnection;
 import java.net.URL;
@@ -32,6 +33,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Sourcegen generator entry point for the JDK backend.
@@ -44,6 +46,14 @@ import java.util.Set;
  * @since 2.2
  */
 public final class ByteCodeGenerator extends AbstractByteCodeGenerator {
+
+    /**
+     * Annotation-processor option holding additional source roots, separated by {@link File#pathSeparator},
+     * which javac may read when a generated class references a type that is still being compiled.
+     * Builds whose sources live outside {@code src/main/java} and {@code src/test/java} of the project
+     * directory, for example shared source sets, should pass those roots through this option.
+     */
+    public static final String SOURCE_PATH_OPTION = "micronaut.sourcegen.bytecode.jdk.sourcepath";
 
     private static final JavaPoetSourceGenerator SOURCE_GENERATOR = new JavaPoetSourceGenerator();
 
@@ -97,10 +107,15 @@ public final class ByteCodeGenerator extends AbstractByteCodeGenerator {
             paths.add(projectDir);
             paths.add(projectDir.resolve("src/main/java"));
             paths.add(projectDir.resolve("src/test/java"));
-            Path sibling = projectDir.resolve("../test-suite-bytecode").normalize();
-            paths.add(sibling.resolve("src/main/java"));
-            paths.add(sibling.resolve("src/test/java"));
         });
+        String configured = context.getOptions().get(SOURCE_PATH_OPTION);
+        if (configured != null && !configured.isBlank()) {
+            for (String entry : configured.split(Pattern.quote(File.pathSeparator), -1)) {
+                if (!entry.isBlank()) {
+                    paths.add(Path.of(entry.trim()).toAbsolutePath().normalize());
+                }
+            }
+        }
         return existing(paths);
     }
 
