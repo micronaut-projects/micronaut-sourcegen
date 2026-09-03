@@ -417,6 +417,45 @@ To see more examples take a look at some of the existing implementations like <a
 </tr>
 </table>
 </div>
+<div class="sect1">
+<h2 id="_jdk_bytecode_backend">JDK bytecode backend</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>sourcegen-generator-bytecode-jdk</code> annotation-processor backend uses the JDK 25 toolchain and
+emits Java 17-compatible classes. It is an alternative to <code>sourcegen-generator-bytecode</code>, which uses
+ASM. Select exactly one Java Sourcegen backend on an annotation-processor path. The direct
+<code>sourcegen-bytecode-writer-jdk</code> API is available when a <code>byte[]</code> is required; it also requires JDK 25.</p>
+</div>
+<div class="paragraph">
+<p>The backend writes class files directly for classes, records, interfaces, enums and their member
+types. A definition using a construct the direct writer does not lower yet is rendered to Java source
+and compiled with the in-process JDK compiler. Should that compilation fail as well, the generator
+emits the Java source file and reports a compiler warning naming the class and the reason.</p>
+</div>
+<div class="paragraph">
+<p>A generated class often references types that are still being compiled and so have no class file to
+read. The annotation-processor backend gives the writer the compilation&#8217;s own type lookup so their
+hierarchy can be resolved. Code calling <code>sourcegen-bytecode-writer-jdk</code> directly should pass the same
+lookup, as an <code>io.micronaut.sourcegen.bytecode.jdk.CompilationTypes</code>, when it runs inside a compiler.</p>
+</div>
+<div class="paragraph">
+<p>When a generated class references a type that is still being compiled, the source compilation resolves
+such types from <code>src/main/java</code> and <code>src/test/java</code> of the project directory. Sources kept elsewhere,
+such as shared source sets, can be added through the <code>micronaut.sourcegen.bytecode.jdk.sourcepath</code>
+annotation-processor option. An annotation processor only sees its own processor path, so generated
+classes that reference compile-scope dependencies need the compilation&#8217;s class path passed through the
+<code>micronaut.sourcegen.bytecode.jdk.classpath</code> option. Both accept a path-separator-delimited list:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-kotlin hljs" data-lang="kotlin">tasks.withType&lt;JavaCompile&gt;().configureEach {
+    options.compilerArgs.add("-Amicronaut.sourcegen.bytecode.jdk.sourcepath=/path/to/shared/src/main/java")
+    options.compilerArgs.add("-Amicronaut.sourcegen.bytecode.jdk.classpath=${classpath.asPath}")
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
 
 <h1 id="annotations"><a class="anchor" href="#annotations"></a>5 Annotations</h1>
 

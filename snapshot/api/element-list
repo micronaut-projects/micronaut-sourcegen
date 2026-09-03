@@ -1,10 +1,13 @@
 io.micronaut.sourcegen
 io.micronaut.sourcegen.annotations
 io.micronaut.sourcegen.bytecode
+io.micronaut.sourcegen.bytecode.core
 io.micronaut.sourcegen.bytecode.expression
+io.micronaut.sourcegen.bytecode.jdk
 io.micronaut.sourcegen.bytecode.statement
 io.micronaut.sourcegen.generator
 io.micronaut.sourcegen.generator.bytecode
+io.micronaut.sourcegen.generator.bytecode.jdk
 io.micronaut.sourcegen.generator.visitors
 io.micronaut.sourcegen.info
 io.micronaut.sourcegen.javapoet

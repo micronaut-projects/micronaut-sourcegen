@@ -55,10 +55,13 @@ loadScripts(document, 'script');</script>
 <li><a href="io/micronaut/sourcegen/package-tree.html">io.micronaut.sourcegen</a>, </li>
 <li><a href="io/micronaut/sourcegen/annotations/package-tree.html">io.micronaut.sourcegen.annotations</a>, </li>
 <li><a href="io/micronaut/sourcegen/bytecode/package-tree.html">io.micronaut.sourcegen.bytecode</a>, </li>
+<li><a href="io/micronaut/sourcegen/bytecode/core/package-tree.html">io.micronaut.sourcegen.bytecode.core</a>, </li>
 <li><a href="io/micronaut/sourcegen/bytecode/expression/package-tree.html">io.micronaut.sourcegen.bytecode.expression</a>, </li>
+<li><a href="io/micronaut/sourcegen/bytecode/jdk/package-tree.html">io.micronaut.sourcegen.bytecode.jdk</a>, </li>
 <li><a href="io/micronaut/sourcegen/bytecode/statement/package-tree.html">io.micronaut.sourcegen.bytecode.statement</a>, </li>
 <li><a href="io/micronaut/sourcegen/generator/package-tree.html">io.micronaut.sourcegen.generator</a>, </li>
 <li><a href="io/micronaut/sourcegen/generator/bytecode/package-tree.html">io.micronaut.sourcegen.generator.bytecode</a>, </li>
+<li><a href="io/micronaut/sourcegen/generator/bytecode/jdk/package-tree.html">io.micronaut.sourcegen.generator.bytecode.jdk</a>, </li>
 <li><a href="io/micronaut/sourcegen/generator/visitors/package-tree.html">io.micronaut.sourcegen.generator.visitors</a>, </li>
 <li><a href="io/micronaut/sourcegen/info/package-tree.html">io.micronaut.sourcegen.info</a>, </li>
 <li><a href="io/micronaut/sourcegen/javapoet/package-tree.html">io.micronaut.sourcegen.javapoet</a>, </li>
@@ -69,6 +72,12 @@ loadScripts(document, 'script');</script>
 <ul>
 <li class="circle">java.lang.<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" class="type-name-link external-link" title="class or interface in java.lang">Object</a>
 <ul>
+<li class="circle">io.micronaut.sourcegen.generator.<a href="io/micronaut/sourcegen/generator/AbstractByteCodeGenerator.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator">AbstractByteCodeGenerator</a> (implements io.micronaut.sourcegen.generator.<a href="io/micronaut/sourcegen/generator/SourceGenerator.html" title="interface in io.micronaut.sourcegen.generator">SourceGenerator</a>)
+<ul>
+<li class="circle">io.micronaut.sourcegen.generator.bytecode.<a href="io/micronaut/sourcegen/generator/bytecode/ByteCodeGenerator.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.bytecode">ByteCodeGenerator</a></li>
+<li class="circle">io.micronaut.sourcegen.generator.bytecode.jdk.<a href="io/micronaut/sourcegen/generator/bytecode/jdk/ByteCodeGenerator.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.bytecode.jdk">ByteCodeGenerator</a></li>
+</ul>
+</li>
 <li class="circle">io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/AbstractConditionalWriter.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode">AbstractConditionalWriter</a></li>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/AbstractElementBuilder.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">AbstractElementBuilder</a>&lt;ThisType&gt;
 <ul>
@@ -91,7 +100,10 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.micronaut.module.info.AbstractMicronautModuleInfo (implements io.micronaut.module.info.MicronautModuleInfo)
 <ul>
 <li class="circle">io.micronaut.sourcegen.info.<a href="io/micronaut/sourcegen/info/MicronautSourcegenAnnotationsModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenAnnotationsModuleInfo</a></li>
+<li class="circle">io.micronaut.sourcegen.info.<a href="io/micronaut/sourcegen/info/MicronautSourcegenBytecodeWriterCoreModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenBytecodeWriterCoreModuleInfo</a></li>
+<li class="circle">io.micronaut.sourcegen.info.<a href="io/micronaut/sourcegen/info/MicronautSourcegenBytecodeWriterJdkModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenBytecodeWriterJdkModuleInfo</a></li>
 <li class="circle">io.micronaut.sourcegen.info.<a href="io/micronaut/sourcegen/info/MicronautSourcegenBytecodeWriterModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenBytecodeWriterModuleInfo</a></li>
+<li class="circle">io.micronaut.sourcegen.info.<a href="io/micronaut/sourcegen/info/MicronautSourcegenGeneratorBytecodeJdkModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenGeneratorBytecodeJdkModuleInfo</a></li>
 <li class="circle">io.micronaut.sourcegen.info.<a href="io/micronaut/sourcegen/info/MicronautSourcegenGeneratorBytecodeModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenGeneratorBytecodeModuleInfo</a></li>
 <li class="circle">io.micronaut.sourcegen.info.<a href="io/micronaut/sourcegen/info/MicronautSourcegenGeneratorJavaModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenGeneratorJavaModuleInfo</a></li>
 <li class="circle">io.micronaut.sourcegen.info.<a href="io/micronaut/sourcegen/info/MicronautSourcegenGeneratorKotlinModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenGeneratorKotlinModuleInfo</a></li>
@@ -106,14 +118,17 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/AnnotationObjectDef.AnnotationMemberDef.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">AnnotationObjectDef.AnnotationMemberDef</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">AnnotationSpec</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.Builder.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">AnnotationSpec.Builder</a></li>
+<li class="circle">io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">AnnotationTargetUtils</a></li>
+<li class="circle">io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/BridgeResolver.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver</a></li>
 <li class="circle">io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">BuilderAnnotationVisitor</a> (implements io.micronaut.inject.visitor.TypeElementVisitor&lt;C,<wbr>E&gt;)</li>
 <li class="circle">io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator</a></li>
-<li class="circle">io.micronaut.sourcegen.generator.bytecode.<a href="io/micronaut/sourcegen/generator/bytecode/ByteCodeGenerator.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.bytecode">ByteCodeGenerator</a> (implements io.micronaut.sourcegen.generator.<a href="io/micronaut/sourcegen/generator/SourceGenerator.html" title="interface in io.micronaut.sourcegen.generator">SourceGenerator</a>)</li>
 <li class="circle">io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/ByteCodeWriter.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode">ByteCodeWriter</a></li>
+<li class="circle">io.micronaut.sourcegen.bytecode.jdk.<a href="io/micronaut/sourcegen/bytecode/jdk/ByteCodeWriter.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.jdk">ByteCodeWriter</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/CodeBlock.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">CodeBlock</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/CodeBlock.Builder.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">CodeBlock.Builder</a></li>
 <li class="circle">io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/DelegateAnnotationVisitor.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">DelegateAnnotationVisitor</a> (implements io.micronaut.inject.visitor.TypeElementVisitor&lt;C,<wbr>E&gt;)</li>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/EnumDef.EnumConstantDefBuilder.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">EnumDef.EnumConstantDefBuilder</a></li>
+<li class="circle">io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/EnumGenUtils.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">EnumGenUtils</a></li>
 <li class="circle">io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/EnumGenUtils.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode">EnumGenUtils</a></li>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/FieldDef.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">FieldDef</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/FieldSpec.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">FieldSpec</a></li>
@@ -130,6 +145,7 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">MethodDef</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/MethodSpec.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">MethodSpec</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/MethodSpec.Builder.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">MethodSpec.Builder</a></li>
+<li class="circle">io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/ModifierUtils.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">ModifierUtils</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/NameAllocator.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">NameAllocator</a> (implements java.lang.<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Cloneable.html" title="class or interface in java.lang" class="external-link">Cloneable</a>)</li>
 <li class="circle">io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/ObjectAnnotationVisitor.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">ObjectAnnotationVisitor</a> (implements io.micronaut.inject.visitor.TypeElementVisitor&lt;C,<wbr>E&gt;)</li>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ObjectDef.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ObjectDef</a>
@@ -145,6 +161,7 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/ParameterSpec.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">ParameterSpec</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/ParameterSpec.Builder.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">ParameterSpec.Builder</a></li>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/PropertyDef.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">PropertyDef</a></li>
+<li class="circle">io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/SignatureUtils.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">SignatureUtils</a></li>
 <li class="circle">io.micronaut.sourcegen.generator.<a href="io/micronaut/sourcegen/generator/SourceGenerators.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator">SourceGenerators</a></li>
 <li class="circle">io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/StagedBuilderAnnotationVisitor.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">StagedBuilderAnnotationVisitor</a> (implements io.micronaut.inject.visitor.TypeElementVisitor&lt;C,<wbr>E&gt;)</li>
 <li class="circle">io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/SuperBuilderAnnotationVisitor.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">SuperBuilderAnnotationVisitor</a> (implements io.micronaut.inject.visitor.TypeElementVisitor&lt;C,<wbr>E&gt;)</li>
@@ -160,6 +177,7 @@ loadScripts(document, 'script');</script>
 </li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/TypeSpec.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">TypeSpec</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/TypeSpec.Builder.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">TypeSpec.Builder</a></li>
+<li class="circle">io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/TypeUtils.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">TypeUtils</a></li>
 <li class="circle">io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/TypeUtils.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode">TypeUtils</a></li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/Util.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">Util</a></li>
 <li class="circle">io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/WitherAnnotationVisitor.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">WitherAnnotationVisitor</a> (implements io.micronaut.inject.visitor.TypeElementVisitor&lt;C,<wbr>E&gt;)</li>
@@ -177,6 +195,7 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/MethodDef.MethodBodyBuilder.html" class="type-name-link" title="interface in io.micronaut.sourcegen.model">MethodDef.MethodBodyBuilder</a></li>
 </ul>
 </li>
+<li class="circle">io.micronaut.sourcegen.bytecode.jdk.<a href="io/micronaut/sourcegen/bytecode/jdk/CompilationTypes.html" class="type-name-link" title="interface in io.micronaut.sourcegen.bytecode.jdk">CompilationTypes</a></li>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.html" class="type-name-link" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>
 <ul>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.ConditionExpressionDef.html" class="type-name-link" title="interface in io.micronaut.sourcegen.model">ExpressionDef.ConditionExpressionDef</a></li>
@@ -237,6 +256,7 @@ loadScripts(document, 'script');</script>
 <ul>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.AnnotationSpecValue.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">AnnotationSpec.AnnotationSpecValue</a> (implements io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.AnnotationValueSpec.html" title="interface in io.micronaut.sourcegen.javapoet">AnnotationSpec.AnnotationValueSpec</a>)</li>
 <li class="circle">io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.CodeAnnotationValue.html" class="type-name-link" title="class in io.micronaut.sourcegen.javapoet">AnnotationSpec.CodeAnnotationValue</a> (implements io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/AnnotationSpec.AnnotationValueSpec.html" title="interface in io.micronaut.sourcegen.javapoet">AnnotationSpec.AnnotationValueSpec</a>)</li>
+<li class="circle">io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/BridgeResolver.BridgeMethod.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.BridgeMethod</a></li>
 <li class="circle">io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a></li>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.AnnotatedClassTypeDef.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ClassTypeDef.AnnotatedClassTypeDef</a> (implements io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.Annotated.html" title="interface in io.micronaut.sourcegen.model">TypeDef.Annotated</a>)</li>
 <li class="circle">io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.ClassDefType.html" class="type-name-link" title="class in io.micronaut.sourcegen.model">ClassTypeDef.ClassDefType</a> (implements io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>)</li>
