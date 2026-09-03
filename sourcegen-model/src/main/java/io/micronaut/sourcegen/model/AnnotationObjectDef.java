@@ -54,7 +54,7 @@ public final class AnnotationObjectDef extends ObjectDef {
 
     @Override
     public ObjectDef withClassName(ClassName className) {
-        return new AnnotationObjectDef(members, fields, className, modifiers, annotations, javadoc, innerTypes);
+        return new AnnotationObjectDef(members, fields, className, modifiers, annotations, javadoc, rebaseInnerTypes(className, innerTypes));
     }
 
     /**

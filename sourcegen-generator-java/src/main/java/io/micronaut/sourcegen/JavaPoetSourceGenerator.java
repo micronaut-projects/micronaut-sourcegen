@@ -357,7 +357,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private void buildFields(ObjectDef objectDef, List<FieldDef> fields, TypeSpec.Builder builder) {
         for (FieldDef field : fields) {
             FieldSpec.Builder fieldBuilder = FieldSpec.builder(
-                asType(field.getType(), objectDef),
+                asType(field.getType(), objectDef, field.getModifiers().contains(Modifier.STATIC)),
                 field.getName()
             ).addModifiers(field.getModifiersArray());
             field.getInitializer().ifPresent(init ->
@@ -490,102 +490,146 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private TypeName asType(TypeDef typeDef, @Nullable ObjectDef objectDef) {
-        return asType(typeDef, objectDef, null);
+        return asType(typeDef, objectDef, null, false);
     }
 
     private TypeName asType(TypeDef typeDef, @Nullable ObjectDef objectDef, @Nullable MethodDef methodDef) {
+        return asType(typeDef, objectDef, methodDef,
+            methodDef != null && methodDef.getModifiers().contains(Modifier.STATIC));
+    }
+
+    private TypeName asType(TypeDef typeDef, @Nullable ObjectDef objectDef, boolean staticContext) {
+        return asType(typeDef, objectDef, null, staticContext);
+    }
+
+    private TypeName asType(TypeDef typeDef,
+                            @Nullable ObjectDef objectDef,
+                            @Nullable MethodDef methodDef,
+                            boolean staticContext) {
         if (typeDef.equals(TypeDef.THIS)) {
-            if (objectDef == null) {
-                throw new IllegalStateException("This type is used outside of the instance scope!");
-            }
-            // The scope is kept: the self type of a generic definition carries the variables it declares
-            return asType(objectDef.asTypeDef(), objectDef, methodDef);
+            return asSelfType(objectDef, methodDef, staticContext);
         }
         if (typeDef.equals(TypeDef.SUPER)) {
-            if (objectDef == null) {
-                throw new IllegalStateException("Super type is used outside of the instance scope!");
-            }
-            if (objectDef instanceof ClassDef classDef) {
-                return asType(Objects.requireNonNullElse(classDef.getSuperclass(), ClassTypeDef.OBJECT), objectDef);
-            }
-            if (objectDef instanceof EnumDef) {
-                return asClassType(ClassTypeDef.of(Enum.class));
-            }
-            throw new IllegalStateException("Super type is not supported for " + objectDef);
+            return asSuperType(objectDef, methodDef, staticContext);
         }
         switch (typeDef) {
             case TypeDef.Array array -> {
-                TypeName arrayTypeName = ArrayTypeName.of(asType(array.componentType(), objectDef));
-                for (int i = 1; i < array.dimensions(); ++i) {
-                    arrayTypeName = ArrayTypeName.of(arrayTypeName);
-                }
-                return arrayTypeName;
+                return asArrayType(array, objectDef, methodDef, staticContext);
             }
             case ClassTypeDef.Parameterized parameterized -> {
                 return ParameterizedTypeName.get(
                     asClassType(parameterized.rawType()),
-                    parameterized.typeArguments().stream().map(t -> asType(t, objectDef, methodDef)).toArray(TypeName[]::new)
+                    parameterized.typeArguments().stream().map(t -> asType(t, objectDef, methodDef, staticContext)).toArray(TypeName[]::new)
                 );
             }
             case TypeDef.Primitive primitive -> {
-                return switch (primitive.name()) {
-                    case "void" -> TypeName.VOID;
-                    case "byte" -> TypeName.BYTE;
-                    case "short" -> TypeName.SHORT;
-                    case "char" -> TypeName.CHAR;
-                    case "int" -> TypeName.INT;
-                    case "long" -> TypeName.LONG;
-                    case "float" -> TypeName.FLOAT;
-                    case "double" -> TypeName.DOUBLE;
-                    case "boolean" -> TypeName.BOOLEAN;
-                    default ->
-                        throw new IllegalStateException("Unrecognized primitive name: " + primitive.name());
-                };
+                return asPrimitiveType(primitive);
             }
             case ClassTypeDef.AnnotatedClassTypeDef annotatedType -> {
                 var annotationsSpecs = annotatedType.annotations().stream().map(this::asAnnotationSpec).toList();
-                return asType(annotatedType.typeDef(), objectDef).annotated(annotationsSpecs);
+                return asType(annotatedType.typeDef(), objectDef, methodDef, staticContext).annotated(annotationsSpecs);
             }
             case ClassTypeDef classType -> {
                 return asClassType(classType);
             }
             case TypeDef.Wildcard wildcard -> {
-                if (!wildcard.lowerBounds().isEmpty()) {
-                    return WildcardTypeName.supertypeOf(
-                        asType(
-                            wildcard.lowerBounds().get(0),
-                            objectDef
-                        )
-                    );
-                }
-                return WildcardTypeName.subtypeOf(
-                    asType(
-                        wildcard.upperBounds().get(0),
-                        objectDef
-                    )
-                );
+                return asWildcardType(wildcard, objectDef, methodDef, staticContext);
             }
             case TypeDef.TypeVariable typeVariable -> {
-                if (isVariablePartOfTheDefinition(typeVariable.name(), objectDef, methodDef)) {
-                    return asTypeVariable(typeVariable, objectDef);
-                }
-                if (typeVariable.bounds().isEmpty()) {
-                    return asType(ClassTypeDef.OBJECT, objectDef);
-                }
-                return asType(typeVariable.bounds().get(0), objectDef);
+                return asTypeVariableType(typeVariable, objectDef, methodDef, staticContext);
             }
             case TypeDef.AnnotatedTypeDef annotatedType -> {
                 var annotationsSpecs = annotatedType.annotations().stream().map(this::asAnnotationSpec).toList();
-                return asType(annotatedType.typeDef(), objectDef).annotated(annotationsSpecs);
+                return asType(annotatedType.typeDef(), objectDef, methodDef, staticContext).annotated(annotationsSpecs);
             }
             default -> throw new IllegalStateException("Unrecognized type definition " + typeDef);
         }
     }
 
-    private static boolean isVariablePartOfTheDefinition(String variableName, @Nullable ObjectDef objectDef, @Nullable MethodDef methodDef) {
+    /**
+     * The self type in the scope it is written in. In a static context the enclosing definition is dropped,
+     * so its type variables are not treated as being in scope.
+     */
+    private TypeName asSelfType(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, boolean staticContext) {
+        if (objectDef == null) {
+            throw new IllegalStateException("This type is used outside of the instance scope!");
+        }
+        // The scope is kept: the self type of a generic definition carries the variables it declares
+        return asType(objectDef.asTypeDef(), staticContext ? null : objectDef, methodDef, staticContext);
+    }
+
+    private TypeName asSuperType(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, boolean staticContext) {
+        if (objectDef == null) {
+            throw new IllegalStateException("Super type is used outside of the instance scope!");
+        }
+        if (objectDef instanceof ClassDef classDef) {
+            return asType(Objects.requireNonNullElse(classDef.getSuperclass(), ClassTypeDef.OBJECT), objectDef, methodDef, staticContext);
+        }
+        if (objectDef instanceof EnumDef) {
+            return asClassType(ClassTypeDef.of(Enum.class));
+        }
+        throw new IllegalStateException("Super type is not supported for " + objectDef);
+    }
+
+    private TypeName asArrayType(TypeDef.Array array,
+                                 @Nullable ObjectDef objectDef,
+                                 @Nullable MethodDef methodDef,
+                                 boolean staticContext) {
+        TypeName arrayTypeName = ArrayTypeName.of(asType(array.componentType(), objectDef, methodDef, staticContext));
+        for (int i = 1; i < array.dimensions(); ++i) {
+            arrayTypeName = ArrayTypeName.of(arrayTypeName);
+        }
+        return arrayTypeName;
+    }
+
+    private TypeName asWildcardType(TypeDef.Wildcard wildcard,
+                                    @Nullable ObjectDef objectDef,
+                                    @Nullable MethodDef methodDef,
+                                    boolean staticContext) {
+        if (!wildcard.lowerBounds().isEmpty()) {
+            return WildcardTypeName.supertypeOf(asType(wildcard.lowerBounds().get(0), objectDef, methodDef, staticContext));
+        }
+        return WildcardTypeName.subtypeOf(asType(wildcard.upperBounds().get(0), objectDef, methodDef, staticContext));
+    }
+
+    private TypeName asTypeVariableType(TypeDef.TypeVariable typeVariable,
+                                        @Nullable ObjectDef objectDef,
+                                        @Nullable MethodDef methodDef,
+                                        boolean staticContext) {
+        if (isVariablePartOfTheDefinition(typeVariable.name(), objectDef, methodDef, staticContext)) {
+            return asTypeVariable(typeVariable, objectDef);
+        }
+        if (typeVariable.bounds().isEmpty()) {
+            return asType(ClassTypeDef.OBJECT, objectDef, methodDef, staticContext);
+        }
+        return asType(typeVariable.bounds().get(0), objectDef, methodDef, staticContext);
+    }
+
+    private static TypeName asPrimitiveType(TypeDef.Primitive primitive) {
+        return switch (primitive.name()) {
+            case "void" -> TypeName.VOID;
+            case "byte" -> TypeName.BYTE;
+            case "short" -> TypeName.SHORT;
+            case "char" -> TypeName.CHAR;
+            case "int" -> TypeName.INT;
+            case "long" -> TypeName.LONG;
+            case "float" -> TypeName.FLOAT;
+            case "double" -> TypeName.DOUBLE;
+            case "boolean" -> TypeName.BOOLEAN;
+            default -> throw new IllegalStateException("Unrecognized primitive name: " + primitive.name());
+        };
+    }
+
+    private static boolean isVariablePartOfTheDefinition(String variableName,
+                                                         @Nullable ObjectDef objectDef,
+                                                         @Nullable MethodDef methodDef,
+                                                         boolean staticContext) {
         if (methodDef != null
             && methodDef.getTypeVariables().stream().anyMatch(v -> v.name().equals(variableName))) {
             return true;
+        }
+        if (staticContext) {
+            return false;
         }
         return switch (objectDef) {
             case ClassDef classDef -> classDef.getTypeVariables().stream()

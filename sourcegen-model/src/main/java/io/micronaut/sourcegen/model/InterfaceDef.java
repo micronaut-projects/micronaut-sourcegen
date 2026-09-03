@@ -49,7 +49,7 @@ public final class InterfaceDef extends ObjectDef {
 
     @Override
     public InterfaceDef withClassName(ClassTypeDef.ClassName className) {
-        return new InterfaceDef(className, modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
+        return new InterfaceDef(className, modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, rebaseInnerTypes(className, innerTypes), synthetic);
     }
 
     @Override

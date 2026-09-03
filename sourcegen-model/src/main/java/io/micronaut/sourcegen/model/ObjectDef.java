@@ -90,6 +90,22 @@ public abstract sealed class ObjectDef extends AbstractElement permits ClassDef,
     public abstract ObjectDef withClassName(ClassTypeDef.ClassName className);
 
     /**
+     * Rebase member type names when their enclosing definition is itself moved below another type.
+     *
+     * @param className The new name of the enclosing definition
+     * @param innerTypes Its member types
+     * @return The member types with names rooted at the new enclosing name
+     */
+    static List<ObjectDef> rebaseInnerTypes(ClassTypeDef.ClassName className, List<ObjectDef> innerTypes) {
+        return innerTypes.stream()
+            .map(innerType -> innerType.withClassName(new ClassTypeDef.ClassName(
+                className.getName() + "$" + innerType.getSimpleName(),
+                true
+            )))
+            .toList();
+    }
+
+    /**
      * Get the type definition for this type.
      *
      * @return The type definition

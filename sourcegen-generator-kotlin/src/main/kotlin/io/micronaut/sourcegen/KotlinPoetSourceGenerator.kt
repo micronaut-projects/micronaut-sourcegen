@@ -206,7 +206,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 modifiers = stripStatic(modifiers)
                 companionBuilder.addFunction(
-                    buildFunction(null, method, modifiers)
+                    buildFunction(interfaceDef, method, modifiers)
                 )
             } else {
                 interfaceBuilder.addFunction(
@@ -270,7 +270,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 modifiers = stripStatic(modifiers)
                 currentCompanion.addFunction(
-                    buildFunction(null, method, modifiers)
+                    buildFunction(classDef, method, modifiers)
                 )
             } else if (method.name == "<init>") {
                 val superCallStatement = method.statements.firstOrNull {
@@ -401,7 +401,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 modifiers = stripStatic(modifiers)
                 companionBuilder.addFunction(
-                    buildFunction(null, method, modifiers)
+                    buildFunction(recordDef, method, modifiers)
                 )
             } else {
                 classBuilder.addFunction(
@@ -475,7 +475,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 modifiers = stripStatic(modifiers)
                 companionBuilder.addFunction(
-                    buildFunction(null, method, modifiers)
+                    buildFunction(enumDef, method, modifiers)
                 )
             } else {
                 enumBuilder.addFunction(
@@ -615,11 +615,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         modifiers: Set<Modifier>,
         annotations: List<AnnotationDef>,
         docs: List<String>, initializer: ExpressionDef?,
-        objectDef: ObjectDef?
+        objectDef: ObjectDef?,
+        staticContext: Boolean = false,
     ): PropertySpec {
         val propertyBuilder = PropertySpec.builder(
             name,
-            asType(typeDef, objectDef),
+            asType(typeDef, objectDef, staticContext),
             asKModifiers(modifiers)
         )
         docs.forEach(Consumer { format: String -> propertyBuilder.addKdoc(format) })
@@ -683,7 +684,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             field.annotations,
             docs,
             field.initializer.orElse(null),
-            objectDef
+            objectDef,
+            field.modifiers.contains(Modifier.STATIC),
         )
     }
 
@@ -691,7 +693,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         var funBuilder = if (method.name == "<init>") {
             FunSpec.constructorBuilder()
         } else {
-            FunSpec.builder(method.name).returns(asType(method.returnType, objectDef))
+            FunSpec.builder(method.name).returns(asType(method.returnType, objectDef, method))
         }
         funBuilder = funBuilder
             .addModifiers(asKModifiers(method, modifiers))
@@ -700,7 +702,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     .map { param: ParameterDef ->
                         ParameterSpec.builder(
                             param.name,
-                            asType(param.type, objectDef)
+                            asType(param.type, objectDef, method)
                         ).build()
                     }
                     .toList()
@@ -718,14 +720,15 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 AnnotationSpec.builder(Throws::class)
                     .addMember(
                         method.throwTypes.joinToString { "%T::class" },
-                        *method.throwTypes.map { asType(it, objectDef) }.toTypedArray()
+                        *method.throwTypes.map { asType(it, objectDef, method) }.toTypedArray()
                     )
                     .build(),
             )
         }
         val scope = RenderScope.root(method)
+        val renderingObjectDef = if (method.modifiers.contains(Modifier.STATIC)) null else objectDef
         method.statements.stream()
-            .map { st: StatementDef -> renderStatementCodeBlock(objectDef, method, scope, st) }
+            .map { st: StatementDef -> renderStatementCodeBlock(renderingObjectDef, method, scope, st) }
             .forEach(funBuilder::addCode)
         method.javadoc.forEach(Consumer { format: String -> funBuilder.addKdoc(format) })
         return funBuilder.build()
@@ -836,74 +839,49 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
         @OptIn(KotlinPoetJavaPoetPreview::class)
         private fun asType(typeDef: TypeDef?, objectDef: ObjectDef?): TypeName {
-            return asType(typeDef, objectDef, null)
+            return asType(typeDef, objectDef, null, false)
         }
 
         @OptIn(KotlinPoetJavaPoetPreview::class)
         private fun asType(typeDef: TypeDef?, objectDef: ObjectDef?, methodDef: MethodDef?): TypeName {
-            val result: TypeName = if (typeDef == TypeDef.THIS) {
-                if (objectDef == null) {
-                    throw java.lang.IllegalStateException("This type is used outside of the instance scope!")
-                }
-                // The scope is kept: the self type of a generic definition carries the variables it declares
-                asType(objectDef.asTypeDef(), objectDef, methodDef)
-            } else if (typeDef is TypeDef.Array) {
-                asArray(typeDef, objectDef)
-            } else if (typeDef is ClassTypeDef.Parameterized) {
-                asClassName(typeDef.rawType).parameterizedBy(
-                    typeDef.typeArguments.map { v: TypeDef -> this.asType(v, objectDef) }
+            return asType(
+                typeDef,
+                objectDef,
+                methodDef,
+                methodDef != null && methodDef.modifiers.contains(Modifier.STATIC),
+            )
+        }
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asType(typeDef: TypeDef?, objectDef: ObjectDef?, staticContext: Boolean): TypeName {
+            return asType(typeDef, objectDef, null, staticContext)
+        }
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asType(
+            typeDef: TypeDef?,
+            objectDef: ObjectDef?,
+            methodDef: MethodDef?,
+            staticContext: Boolean,
+        ): TypeName {
+            val result: TypeName = when {
+                typeDef == TypeDef.THIS -> asSelfType(objectDef, methodDef, staticContext)
+                typeDef is TypeDef.Array -> asArray(typeDef, objectDef, methodDef, staticContext)
+                typeDef is ClassTypeDef.Parameterized -> asClassName(typeDef.rawType).parameterizedBy(
+                    typeDef.typeArguments.map { v: TypeDef -> this.asType(v, objectDef, methodDef, staticContext) }
                 )
-            } else if (typeDef is TypeDef.Primitive) {
-                when (typeDef.name()) {
-                    "void" -> UNIT
-                    "byte" -> com.squareup.javapoet.TypeName.BYTE.toKTypeName()
-                    "short" -> com.squareup.javapoet.TypeName.SHORT.toKTypeName()
-                    "char" -> com.squareup.javapoet.TypeName.CHAR.toKTypeName()
-                    "int" -> com.squareup.javapoet.TypeName.INT.toKTypeName()
-                    "long" -> com.squareup.javapoet.TypeName.LONG.toKTypeName()
-                    "float" -> com.squareup.javapoet.TypeName.FLOAT.toKTypeName()
-                    "double" -> com.squareup.javapoet.TypeName.DOUBLE.toKTypeName()
-                    "boolean" -> com.squareup.javapoet.TypeName.BOOLEAN.toKTypeName()
-                    else -> unrecognizedPrimitive(typeDef.name())
-                }
-            } else if (typeDef is ClassTypeDef) {
-                asClassName(typeDef)
-            } else if (typeDef is ClassTypeDef.AnnotatedClassTypeDef) {
-                asType(typeDef.typeDef, objectDef).copy(
-                    typeDef.typeDef.isNullable,
-                    typeDef.annotations.stream().map{ asAnnotationSpec(it) }.toList()
+                typeDef is TypeDef.Primitive -> asPrimitive(typeDef)
+                typeDef is ClassTypeDef -> asClassName(typeDef)
+                typeDef is ClassTypeDef.AnnotatedClassTypeDef -> asAnnotated(
+                    typeDef.typeDef, typeDef.annotations, objectDef, methodDef, staticContext
                 )
-            } else if (typeDef is TypeDef.Wildcard) {
-                if (typeDef.lowerBounds.isNotEmpty()) {
-                    WildcardTypeName.consumerOf(
-                        asType(
-                            typeDef.lowerBounds[0],
-                            objectDef
-                        )
-                    )
-                } else {
-                    WildcardTypeName.producerOf(
-                        asType(
-                            typeDef.upperBounds[0],
-                            objectDef
-                        )
-                    )
-                }
-            } else if (typeDef is TypeDef.TypeVariable) {
-                if (isVariablePartOfTheDefinition(typeDef.name, objectDef, methodDef)) {
-                    return asTypeVariable(typeDef, objectDef)
-                }
-                if (typeDef.bounds.isEmpty()) {
-                    return asType(TypeDef.OBJECT, objectDef)
-                }
-                return asType(typeDef.bounds.get(0), objectDef)
-            } else if (typeDef is TypeDef.Annotated && typeDef is TypeDef.AnnotatedTypeDef) {
-                return asType(typeDef.typeDef, objectDef).copy(
-                    typeDef.typeDef.isNullable,
-                    typeDef.annotations.stream().map{ asAnnotationSpec(it) }.toList()
+                typeDef is TypeDef.Wildcard -> asWildcard(typeDef, objectDef, methodDef, staticContext)
+                typeDef is TypeDef.TypeVariable ->
+                    return asTypeVariableType(typeDef, objectDef, methodDef, staticContext)
+                typeDef is TypeDef.Annotated && typeDef is TypeDef.AnnotatedTypeDef -> return asAnnotated(
+                    typeDef.typeDef, typeDef.annotations, objectDef, methodDef, staticContext
                 )
-            } else {
-                throw IllegalStateException("Unrecognized type definition $typeDef")
+                else -> throw IllegalStateException("Unrecognized type definition $typeDef")
             }
             if (typeDef.isNullable) {
                 return asNullable(result)
@@ -911,15 +889,86 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             return result
         }
 
+        /**
+         * The self type in the scope it is written in. In a static context the enclosing definition is
+         * dropped, so its type variables are not treated as being in scope.
+         */
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asSelfType(objectDef: ObjectDef?, methodDef: MethodDef?, staticContext: Boolean): TypeName {
+            if (objectDef == null) {
+                throw java.lang.IllegalStateException("This type is used outside of the instance scope!")
+            }
+            // The scope is kept: the self type of a generic definition carries the variables it declares
+            return asType(objectDef.asTypeDef(), if (staticContext) null else objectDef, methodDef, staticContext)
+        }
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asAnnotated(
+            typeDef: TypeDef,
+            annotations: List<AnnotationDef>,
+            objectDef: ObjectDef?,
+            methodDef: MethodDef?,
+            staticContext: Boolean,
+        ): TypeName = asType(typeDef, objectDef, methodDef, staticContext).copy(
+            typeDef.isNullable,
+            annotations.map { asAnnotationSpec(it) }
+        )
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asWildcard(
+            typeDef: TypeDef.Wildcard,
+            objectDef: ObjectDef?,
+            methodDef: MethodDef?,
+            staticContext: Boolean,
+        ): TypeName = if (typeDef.lowerBounds.isNotEmpty()) {
+            WildcardTypeName.consumerOf(asType(typeDef.lowerBounds[0], objectDef, methodDef, staticContext))
+        } else {
+            WildcardTypeName.producerOf(asType(typeDef.upperBounds[0], objectDef, methodDef, staticContext))
+        }
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asTypeVariableType(
+            typeDef: TypeDef.TypeVariable,
+            objectDef: ObjectDef?,
+            methodDef: MethodDef?,
+            staticContext: Boolean,
+        ): TypeName {
+            if (isVariablePartOfTheDefinition(typeDef.name, objectDef, methodDef, staticContext)) {
+                return asTypeVariable(typeDef, objectDef)
+            }
+            if (typeDef.bounds.isEmpty()) {
+                return asType(TypeDef.OBJECT, objectDef, methodDef, staticContext)
+            }
+            return asType(typeDef.bounds[0], objectDef, methodDef, staticContext)
+        }
+
+        @OptIn(KotlinPoetJavaPoetPreview::class)
+        private fun asPrimitive(typeDef: TypeDef.Primitive): TypeName = when (typeDef.name()) {
+            "void" -> UNIT
+            "byte" -> com.squareup.javapoet.TypeName.BYTE.toKTypeName()
+            "short" -> com.squareup.javapoet.TypeName.SHORT.toKTypeName()
+            "char" -> com.squareup.javapoet.TypeName.CHAR.toKTypeName()
+            "int" -> com.squareup.javapoet.TypeName.INT.toKTypeName()
+            "long" -> com.squareup.javapoet.TypeName.LONG.toKTypeName()
+            "float" -> com.squareup.javapoet.TypeName.FLOAT.toKTypeName()
+            "double" -> com.squareup.javapoet.TypeName.DOUBLE.toKTypeName()
+            "boolean" -> com.squareup.javapoet.TypeName.BOOLEAN.toKTypeName()
+            else -> unrecognizedPrimitive(typeDef.name())
+        }
+
         private fun isVariablePartOfTheDefinition(
             variableName: String,
             objectDef: ObjectDef?,
-            methodDef: MethodDef?
+            methodDef: MethodDef?,
+            staticContext: Boolean,
         ): Boolean {
             if (methodDef != null
                 && methodDef.typeVariables.stream().anyMatch { v: TypeDef.TypeVariable -> v.name == variableName }
             ) {
                 return true
+            }
+            if (staticContext) {
+                return false
             }
             if (objectDef != null) {
                 if (objectDef is ClassDef) {
@@ -945,7 +994,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             )
         }
 
-        private fun asArray(classType: TypeDef.Array, objectDef: ObjectDef?): TypeName {
+        private fun asArray(
+            classType: TypeDef.Array,
+            objectDef: ObjectDef?,
+            methodDef: MethodDef?,
+            staticContext: Boolean,
+        ): TypeName {
             val componentType = classType.componentType
             // Kotlin has a dedicated type per primitive array, Array<Int> is an Integer[]
             val primitiveArray = primitiveArrayType(componentType)
@@ -954,7 +1008,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             for (i in 2..classType.dimensions) {
                 newDef = ClassTypeDef.Parameterized(ClassTypeDef.of("kotlin.Array"), listOf(newDef))
             }
-            return asType(newDef, objectDef)
+            return asType(newDef, objectDef, methodDef, staticContext)
         }
 
         /**

@@ -67,7 +67,7 @@ public final class RecordDef extends ObjectDef {
 
     @Override
     public RecordDef withClassName(ClassTypeDef.ClassName className) {
-        return new RecordDef(className, modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
+        return new RecordDef(className, modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, rebaseInnerTypes(className, innerTypes), synthetic);
     }
 
     public static RecordDefBuilder builder(String name) {
