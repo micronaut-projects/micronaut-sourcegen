@@ -81,6 +81,53 @@ class SignatureUtilsTest {
     }
 
     @Test
+    void writesWildcardTypeArguments() {
+        // A wildcard is a type argument in its own right, not a type: * unbounded, + upper, - lower
+        assertEquals("Ljava/util/List<*>;", fieldSignature(
+            TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.wildcard())));
+        assertEquals("Ljava/util/List<*>;", fieldSignature(
+            TypeDef.parameterized(ClassTypeDef.of(List.class),
+                TypeDef.wildcardSubtypeOf(TypeDef.OBJECT))));
+        assertEquals("Ljava/util/List<+Ljava/lang/Number;>;", fieldSignature(
+            TypeDef.parameterized(ClassTypeDef.of(List.class),
+                TypeDef.wildcardSubtypeOf(TypeDef.of(Number.class)))));
+        assertEquals("Ljava/util/List<-Ljava/lang/Number;>;", fieldSignature(
+            TypeDef.parameterized(ClassTypeDef.of(List.class),
+                TypeDef.wildcardSupertypeOf(TypeDef.of(Number.class)))));
+    }
+
+    @Test
+    void writesEveryBoundOfATypeVariable() {
+        // A class bound comes first, then an interface bound for each remaining bound
+        TypeDef.TypeVariable multiple = TypeDef.variable("T",
+            TypeDef.of(Number.class), TypeDef.of(Comparable.class));
+        assertEquals("<T:Ljava/lang/Number;:Ljava/lang/Comparable;>Ljava/lang/Object;",
+            SignatureUtils.getClassSignature(
+                ClassDef.builder("example.Bounded").addTypeVariable(multiple).build()));
+
+        // Bounded only by interfaces, the class bound is present but empty
+        TypeDef.TypeVariable interfaces = TypeDef.variable("T",
+            TypeDef.of(Comparable.class), TypeDef.of(Runnable.class));
+        assertEquals("<T::Ljava/lang/Comparable;:Ljava/lang/Runnable;>Ljava/lang/Object;",
+            SignatureUtils.getClassSignature(
+                ClassDef.builder("example.Interfaces").addTypeVariable(interfaces).build()));
+    }
+
+    @Test
+    void looksThroughArraysWhenDecidingWhetherASignatureIsNeeded() {
+        // The array itself is not generic; its component decides
+        assertNull(fieldSignature(TypeDef.STRING.array()));
+        assertEquals("[Ljava/util/List<Ljava/lang/String;>;", fieldSignature(
+            TypeDef.parameterized(List.class, String.class).array()));
+        assertEquals("[[Ljava/util/List<Ljava/lang/String;>;", fieldSignature(
+            new TypeDef.Array(TypeDef.parameterized(List.class, String.class), 2, false)));
+    }
+
+    private static String fieldSignature(TypeDef type) {
+        return SignatureUtils.getFieldSignature(null, FieldDef.builder("value", type).build());
+    }
+
+    @Test
     void writesFieldAndMethodSignaturesIncludingTypeVariables() {
         assertEquals("Ljava/util/List<Ljava/lang/String;>;",
             SignatureUtils.getFieldSignature(null,

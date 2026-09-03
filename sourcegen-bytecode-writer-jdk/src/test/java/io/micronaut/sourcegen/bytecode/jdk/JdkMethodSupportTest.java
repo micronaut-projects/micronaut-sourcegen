@@ -116,20 +116,28 @@ class JdkMethodSupportTest {
 
     @Test
     void declinesConstructsTheWriterCannotLowerYet() {
-        // A switch yield case has no direct lowering
-        assertFalse(JdkMethodSupport.supported(NUMBER.asExpressionSwitch(TypeDef.STRING,
-            Map.of(ExpressionDef.constant(1), new ExpressionDef.SwitchYieldCase(
-                TypeDef.STRING, TEXT.returning())),
-            TEXT)));
-        // A switch is only lowered over int and String, with distinct keys
+        // A switch is only lowered over int and String
         assertFalse(JdkMethodSupport.supported(TEXT.cast(TypeDef.Primitive.LONG)
             .asStatementSwitch(TypeDef.STRING,
                 Map.of(ExpressionDef.constant(1), TEXT.returning()), TEXT.returning())));
-        // A case body that cannot be lowered makes the whole switch unsupported
+        // A case key that is neither an int nor a String has no switch key
         assertFalse(JdkMethodSupport.supported(NUMBER.asStatementSwitch(TypeDef.STRING,
+            Map.of(ExpressionDef.constant('a'), TEXT.returning()), TEXT.returning())));
+    }
+
+    @Test
+    void supportsSwitchYieldCases() {
+        // A yield case is a statement block, and is supported when its body is
+        assertTrue(JdkMethodSupport.supported(NUMBER.asExpressionSwitch(TypeDef.STRING,
             Map.of(ExpressionDef.constant(1), new ExpressionDef.SwitchYieldCase(
-                TypeDef.STRING, TEXT.returning()).returning()),
-            TEXT.returning())));
+                TypeDef.STRING, TEXT.returning())),
+            TEXT)));
+        // ... and declined when its body is not
+        assertFalse(JdkMethodSupport.supported(NUMBER.asExpressionSwitch(TypeDef.STRING,
+            Map.of(ExpressionDef.constant(1), new ExpressionDef.SwitchYieldCase(TypeDef.STRING,
+                TEXT.cast(TypeDef.Primitive.LONG).asStatementSwitch(TypeDef.STRING,
+                    Map.of(ExpressionDef.constant(1), TEXT.returning()), TEXT.returning()))),
+            TEXT)));
     }
 
     @Test

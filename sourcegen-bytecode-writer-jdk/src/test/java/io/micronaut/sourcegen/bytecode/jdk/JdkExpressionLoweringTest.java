@@ -25,7 +25,9 @@ import io.micronaut.sourcegen.model.TypeDef;
 import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
+import java.lang.classfile.ClassFile;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -323,6 +325,46 @@ class JdkExpressionLoweringTest {
         assertEquals(5, generated.getMethod("countTo", int.class).invoke(null, 5));
         assertEquals(0, generated.getMethod("countTo", int.class).invoke(null, 0));
         assertEquals("inside", generated.getMethod("guarded", Object.class).invoke(null, new Object()));
+    }
+
+    @Test
+    void lowersSwitchYieldCasesWithoutTheSourceFallback() throws Exception {
+        Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
+        // A yield case is a statement block; a plain expression case sits alongside it
+        cases.put(ExpressionDef.constant(1), new ExpressionDef.SwitchYieldCase(TypeDef.STRING,
+            ExpressionDef.constant("one").returning()));
+        cases.put(ExpressionDef.constant(2), ExpressionDef.constant("two"));
+        Map<ExpressionDef.Constant, ExpressionDef> strings = new LinkedHashMap<>();
+        strings.put(ExpressionDef.constant("a"), new ExpressionDef.SwitchYieldCase(TypeDef.STRING,
+            ExpressionDef.constant("first").returning()));
+        strings.put(ExpressionDef.constant("b"), ExpressionDef.constant("second"));
+
+        ClassDef definition = ClassDef.builder("example.JdkYieldCase")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("byIndex")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("index", TypeDef.Primitive.INT)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> parameters.get(0)
+                    .asExpressionSwitch(TypeDef.STRING, cases, ExpressionDef.constant("none"))
+                    .returning()))
+            .addMethod(MethodDef.builder("byName")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("name", TypeDef.STRING)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> parameters.get(0)
+                    .asExpressionSwitch(TypeDef.STRING, strings, ExpressionDef.constant("none"))
+                    .returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertEquals("one", generated.getMethod("byIndex", int.class).invoke(null, 1));
+        assertEquals("two", generated.getMethod("byIndex", int.class).invoke(null, 2));
+        assertEquals("none", generated.getMethod("byIndex", int.class).invoke(null, 3));
+        assertEquals("first", generated.getMethod("byName", String.class).invoke(null, "a"));
+        assertEquals("second", generated.getMethod("byName", String.class).invoke(null, "b"));
+        assertEquals("none", generated.getMethod("byName", String.class).invoke(null, "c"));
     }
 
     private static final class MapClassLoader extends ClassLoader {

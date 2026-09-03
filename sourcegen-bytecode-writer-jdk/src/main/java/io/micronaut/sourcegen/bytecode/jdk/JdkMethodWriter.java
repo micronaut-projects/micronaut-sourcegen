@@ -583,6 +583,7 @@ final class JdkMethodWriter {
             case MethodReferenceExpression methodReference -> writeMethodReference(methodReference);
             case ExpressionDef.IfElse ifElse -> writeIfElseExpression(ifElse);
             case ExpressionDef.Switch aSwitch -> writeExpressionSwitch(aSwitch);
+            case ExpressionDef.SwitchYieldCase yieldCase -> writeStatement(yieldCase.statement());
             case ExpressionDef.NewArrayOfSize array -> {
                 code.loadConstant(array.size());
                 writeNewArray(array.type());
@@ -821,14 +822,32 @@ final class JdkMethodWriter {
         writeSwitchInstruction(defaultLabel, labels);
         for (Map.Entry<Label, ExpressionDef> body : bodies) {
             code.labelBinding(body.getKey());
-            writeExpression(new ExpressionDef.Cast(aSwitch.type(), body.getValue()));
-            code.goto_(end);
+            writeCaseValue(aSwitch.type(), body.getValue(), end);
         }
         code.labelBinding(defaultLabel);
         if (aSwitch.defaultCase() != null) {
-            writeExpression(new ExpressionDef.Cast(aSwitch.type(), aSwitch.defaultCase()));
+            writeCaseValue(aSwitch.type(), aSwitch.defaultCase(), null);
         }
         code.labelBinding(end);
+    }
+
+    /**
+     * Writes the value a case contributes to a switch expression. A yield case is a statement
+     * block, so it is written as one and only jumps to the end of the switch when control can
+     * reach there; the ASM backend lowers a yielding return the same way.
+     */
+    private void writeCaseValue(TypeDef type, ExpressionDef value, @Nullable Label end) {
+        if (value instanceof ExpressionDef.SwitchYieldCase yieldCase) {
+            writeStatement(yieldCase.statement());
+            if (end != null && canCompleteNormally(yieldCase.statement())) {
+                code.goto_(end);
+            }
+            return;
+        }
+        writeExpression(new ExpressionDef.Cast(type, value));
+        if (end != null) {
+            code.goto_(end);
+        }
     }
 
     private void writeStringExpressionSwitch(ExpressionDef.Switch aSwitch) {
@@ -842,12 +861,11 @@ final class JdkMethodWriter {
         writeStringDispatch(aSwitch.cases().keySet(), caseLabels, valueSlot, defaultLabel);
         for (Map.Entry<Label, ExpressionDef> body : bodies) {
             code.labelBinding(body.getKey());
-            writeExpression(new ExpressionDef.Cast(aSwitch.type(), body.getValue()));
-            code.goto_(end);
+            writeCaseValue(aSwitch.type(), body.getValue(), end);
         }
         code.labelBinding(defaultLabel);
         if (aSwitch.defaultCase() != null) {
-            writeExpression(new ExpressionDef.Cast(aSwitch.type(), aSwitch.defaultCase()));
+            writeCaseValue(aSwitch.type(), aSwitch.defaultCase(), null);
         }
         code.labelBinding(end);
     }

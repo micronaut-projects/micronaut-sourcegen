@@ -817,18 +817,16 @@ class JdkByteCodeWriterParityTest {
 
     @Test
     void publicWriterFallsBackToJavacForConstructsTheDirectWriterDeclines() throws Exception {
-        // A switch yield case is not lowered directly yet
+        // A char selector is not lowered directly
         ClassDef definition = ClassDef.builder("example.JdkJavacFallback")
             .addModifiers(Modifier.PUBLIC)
             .addMethod(MethodDef.builder("describe")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("value", TypeDef.Primitive.INT)
+                .addParameter("value", TypeDef.Primitive.CHAR)
                 .returns(TypeDef.STRING)
-                .build((ignored, parameters) -> parameters.get(0).asExpressionSwitch(TypeDef.STRING,
-                    Map.of(ExpressionDef.constant(1), new ExpressionDef.SwitchYieldCase(TypeDef.STRING,
-                        ExpressionDef.constant("one").returning())),
-                    ExpressionDef.constant("other")
-                ).returning()))
+                .build((ignored, parameters) -> parameters.get(0).asStatementSwitch(TypeDef.STRING,
+                    Map.of(ExpressionDef.constant(1), ExpressionDef.constant("one").returning()),
+                    ExpressionDef.constant("other").returning())))
             .build();
         assertTrue(new JdkClassFileWriter(true).write(definition, null).isEmpty());
 
@@ -839,8 +837,8 @@ class JdkByteCodeWriterParityTest {
         assertArrayEquals(first, second);
         assertVerified(first);
         Class<?> generated = new MapClassLoader(Map.of(definition.getName(), first)).loadClass(definition.getName());
-        assertEquals("one", generated.getMethod("describe", int.class).invoke(null, 1));
-        assertEquals("other", generated.getMethod("describe", int.class).invoke(null, 2));
+        assertEquals("one", generated.getMethod("describe", char.class).invoke(null, (char) 1));
+        assertEquals("other", generated.getMethod("describe", char.class).invoke(null, (char) 9));
     }
 
     @Test
