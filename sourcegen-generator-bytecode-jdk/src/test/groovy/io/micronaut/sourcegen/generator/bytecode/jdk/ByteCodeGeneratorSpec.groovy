@@ -65,16 +65,15 @@ class ByteCodeGeneratorSpec extends Specification {
     private static ClassDef broken(String name) {
         ClassDef.builder(name)
                 .addModifiers(Modifier.PUBLIC)
-                // A switch yield case is not lowered directly, so this goes to the source fallback
+                // A char selector is not lowered directly, so this goes to the source fallback
                 .addMethod(MethodDef.builder("describe")
                         .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                        .addParameter("index", TypeDef.Primitive.INT)
+                        .addParameter("index", TypeDef.Primitive.CHAR)
                         .returns(TypeDef.STRING)
                         .build({ aThis, parameters ->
-                            parameters.get(0).asExpressionSwitch(TypeDef.STRING,
-                                    [(ExpressionDef.constant(1)): new ExpressionDef.SwitchYieldCase(
-                                            TypeDef.STRING, ExpressionDef.constant("one").returning())],
-                                    ExpressionDef.constant("other")).returning()
+                            parameters.get(0).asStatementSwitch(TypeDef.STRING,
+                                    [(ExpressionDef.constant(1)): ExpressionDef.constant("one").returning()],
+                                    ExpressionDef.constant("other").returning())
                         }))
                 // ... where it names a type that exists nowhere, so the compilation fails
                 .addMethod(MethodDef.builder("broken")

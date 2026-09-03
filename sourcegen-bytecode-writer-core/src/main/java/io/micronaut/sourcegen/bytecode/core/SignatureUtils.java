@@ -41,6 +41,13 @@ import java.util.Objects;
 @Internal
 public final class SignatureUtils {
 
+    /**
+     * Whether the class a bound names is an interface, kept per name so writing many bounds asks
+     * the class loader about each one once.
+     */
+    private static final java.util.Map<String, Boolean> NAMED_BOUND_IS_INTERFACE =
+        new java.util.concurrent.ConcurrentHashMap<>();
+
     private SignatureUtils() {
     }
 
@@ -160,7 +167,12 @@ public final class SignatureUtils {
 
     private static boolean needsSignature(TypeDef typeDef) {
         typeDef = unwrapAnnotated(typeDef);
-        return typeDef instanceof ClassTypeDef.Parameterized || typeDef instanceof TypeDef.TypeVariable;
+        if (typeDef instanceof TypeDef.Array array) {
+            return needsSignature(array.componentType());
+        }
+        return typeDef instanceof ClassTypeDef.Parameterized
+            || typeDef instanceof TypeDef.TypeVariable
+            || typeDef instanceof TypeDef.Wildcard;
     }
 
     private static void writeSignature(StringBuilder signature,
@@ -179,9 +191,7 @@ public final class SignatureUtils {
             if (!parameterized.typeArguments().isEmpty()) {
                 signature.append('<');
                 for (TypeDef argument : parameterized.typeArguments()) {
-                    // The ASM backend historically emits unbounded type arguments here. Preserve
-                    // that representation so both backends have identical signatures.
-                    writeSignature(signature, objectDef, methodDef, argument, false);
+                    writeTypeArgument(signature, objectDef, methodDef, argument);
                 }
                 signature.append('>');
             }
@@ -205,12 +215,7 @@ public final class SignatureUtils {
                                            boolean definition) {
         String name = variable.name();
         if (definition) {
-            signature.append(name).append(':');
-            if (variable.bounds().isEmpty()) {
-                appendClass(signature, Object.class.getName());
-            } else {
-                writeSignature(signature, objectDef, methodDef, variable.bounds().get(0), false);
-            }
+            writeTypeVariableDeclaration(signature, objectDef, methodDef, variable);
             return;
         }
         if (isVariablePartOfDefinition(name, objectDef, methodDef)) {
@@ -218,9 +223,106 @@ public final class SignatureUtils {
         } else if (variable.bounds().isEmpty()) {
             appendClass(signature, Object.class.getName());
         } else {
-            appendClass(signature, TypeUtils.getInternalName(TypeUtils.getDescriptor(
-                variable.bounds().get(0), objectDef).substring(1,
-                TypeUtils.getDescriptor(variable.bounds().get(0), objectDef).length() - 1)));
+            // Outside its own declaration a variable stands for the erasure of its first bound
+            signature.append(TypeUtils.getDescriptor(variable.bounds().get(0), objectDef));
+        }
+    }
+
+    /**
+     * Writes the declaration of a formal type parameter, which the JVMS spells as its name, a class
+     * bound and then an interface bound per remaining bound. A variable bounded only by interfaces
+     * has an empty class bound, which is why the first bound decides whether {@code :} appears once
+     * or twice.
+     */
+    private static void writeTypeVariableDeclaration(StringBuilder signature,
+                                                     @Nullable ObjectDef objectDef,
+                                                     @Nullable MethodDef methodDef,
+                                                     TypeDef.TypeVariable variable) {
+        signature.append(variable.name());
+        if (variable.bounds().isEmpty()) {
+            signature.append(':');
+            appendClass(signature, Object.class.getName());
+            return;
+        }
+        boolean first = true;
+        for (TypeDef bound : variable.bounds()) {
+            if (first && isInterface(bound)) {
+                signature.append(':');
+            }
+            signature.append(':');
+            writeSignature(signature, objectDef, methodDef, bound, false);
+            first = false;
+        }
+    }
+
+    /**
+     * Writes one type argument. A wildcard is an argument in its own right rather than a type:
+     * {@code *} unbounded, {@code +} for an upper bound and {@code -} for a lower one.
+     */
+    private static void writeTypeArgument(StringBuilder signature,
+                                          @Nullable ObjectDef objectDef,
+                                          @Nullable MethodDef methodDef,
+                                          TypeDef argument) {
+        if (!(unwrapAnnotated(argument) instanceof TypeDef.Wildcard wildcard)) {
+            writeSignature(signature, objectDef, methodDef, argument, false);
+            return;
+        }
+        if (!wildcard.lowerBounds().isEmpty()) {
+            signature.append('-');
+            writeSignature(signature, objectDef, methodDef, wildcard.lowerBounds().get(0), false);
+            return;
+        }
+        if (isUnbounded(wildcard)) {
+            signature.append('*');
+            return;
+        }
+        signature.append('+');
+        writeSignature(signature, objectDef, methodDef, wildcard.upperBounds().get(0), false);
+    }
+
+    /**
+     * Whether a wildcard is the unbounded {@code ?}: no lower bound, and either no upper bound or
+     * the single implicit {@code Object} one. The bound is compared by name so an annotated
+     * {@code Object}, or one named as a string, is still recognised as the implicit bound it is
+     * rather than written out as {@code ? extends Object}.
+     */
+    private static boolean isUnbounded(TypeDef.Wildcard wildcard) {
+        List<TypeDef> upperBounds = wildcard.upperBounds();
+        if (upperBounds.isEmpty()) {
+            return true;
+        }
+        return upperBounds.size() == 1
+            && unwrapAnnotated(upperBounds.get(0)) instanceof ClassTypeDef classTypeDef
+            && !(classTypeDef instanceof ClassTypeDef.Parameterized)
+            && Object.class.getName().equals(classTypeDef.getName());
+    }
+
+    /**
+     * Whether the type a bound names is an interface, which decides where it belongs in a type
+     * parameter declaration. A named type has to be loaded to find out, so the answer is kept.
+     */
+    private static boolean isInterface(TypeDef typeDef) {
+        typeDef = unwrapAnnotated(typeDef);
+        if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
+            typeDef = parameterized.rawType();
+        }
+        if (!(typeDef instanceof ClassTypeDef classTypeDef)) {
+            return false;
+        }
+        if (classTypeDef.isInterface()) {
+            return true;
+        }
+        if (classTypeDef instanceof ClassTypeDef.ClassName) {
+            return NAMED_BOUND_IS_INTERFACE.computeIfAbsent(classTypeDef.getName(), SignatureUtils::loadIsInterface);
+        }
+        return false;
+    }
+
+    private static boolean loadIsInterface(String name) {
+        try {
+            return Class.forName(name, false, SignatureUtils.class.getClassLoader()).isInterface();
+        } catch (ClassNotFoundException | LinkageError e) {
+            return false;
         }
     }
 

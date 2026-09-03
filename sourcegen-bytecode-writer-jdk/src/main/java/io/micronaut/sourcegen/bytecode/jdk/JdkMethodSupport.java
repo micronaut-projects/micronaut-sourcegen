@@ -83,10 +83,13 @@ final class JdkMethodSupport {
         }
         // Distinctness is of the case values themselves; two strings that share a hash code are
         // still two cases, and the writer separates them with an equality test
+        // A case value has to match the kind of the selector: the writer switches on an int
+        // directly and on a string by its hash, and cannot mix the two
+        boolean strings = aSwitch.expression().type().equals(TypeDef.STRING);
         java.util.Set<Object> keys = new java.util.HashSet<>();
         for (var entry : aSwitch.cases().entrySet()) {
             Object value = entry.getKey().value();
-            if (!(value instanceof Integer) && !(value instanceof String)) {
+            if (strings ? !(value instanceof String) : !(value instanceof Integer)) {
                 return false;
             }
             if (!keys.add(value) || !supported(entry.getValue())) {
@@ -139,7 +142,7 @@ final class JdkMethodSupport {
             case MethodReferenceExpression methodReference -> methodReference.instance() == null
                 || supported(methodReference.instance());
             case ExpressionDef.Switch aSwitch -> supportedSwitch(aSwitch);
-            case ExpressionDef.SwitchYieldCase _ -> false;
+            case ExpressionDef.SwitchYieldCase yieldCase -> supported(yieldCase.statement());
             default -> false;
         };
     }
@@ -152,10 +155,13 @@ final class JdkMethodSupport {
         }
         // Distinctness is of the case values themselves; two strings that share a hash code are
         // still two cases, and the writer separates them with an equality test
+        // A case value has to match the kind of the selector: the writer switches on an int
+        // directly and on a string by its hash, and cannot mix the two
+        boolean strings = aSwitch.expression().type().equals(TypeDef.STRING);
         java.util.Set<Object> keys = new java.util.HashSet<>();
         for (var entry : aSwitch.cases().entrySet()) {
             Object value = entry.getKey().value();
-            if (!(value instanceof Integer) && !(value instanceof String)) {
+            if (strings ? !(value instanceof String) : !(value instanceof Integer)) {
                 return false;
             }
             if (!keys.add(value) || !supported(entry.getValue())) {

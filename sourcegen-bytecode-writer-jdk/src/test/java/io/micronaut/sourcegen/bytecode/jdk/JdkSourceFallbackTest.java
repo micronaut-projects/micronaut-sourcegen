@@ -37,20 +37,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The Java source fallback, used for definitions the direct writer declines. Every definition here
- * carries a switch yield case, which is the construct that sends it down that path.
+ * switches on a char, a selector the writer does not lower, and so goes down that path.
  */
 class JdkSourceFallbackTest {
 
     private static MethodDef declinedMethod(String name) {
         return MethodDef.builder(name)
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter("index", TypeDef.Primitive.INT)
+            .addParameter("index", TypeDef.Primitive.CHAR)
             .returns(TypeDef.STRING)
-            .build((ignored, parameters) -> parameters.get(0).asExpressionSwitch(TypeDef.STRING,
-                Map.of(ExpressionDef.constant(1), new ExpressionDef.SwitchYieldCase(TypeDef.STRING,
-                    ExpressionDef.constant("one").returning())),
-                ExpressionDef.constant("other")
-            ).returning());
+            .build((ignored, parameters) -> parameters.get(0).asStatementSwitch(TypeDef.STRING,
+                Map.of(ExpressionDef.constant(1), ExpressionDef.constant("one").returning()),
+                ExpressionDef.constant("other").returning()));
     }
 
     @Test
@@ -115,8 +113,8 @@ class JdkSourceFallbackTest {
         Map<String, byte[]> produced = new ByteCodeWriter().writeAll(definition);
         Class<?> generated = new MapClassLoader(produced).loadClass(definition.getName());
 
-        assertEquals("one", generated.getMethod("describe", int.class).invoke(null, 1));
-        assertEquals("other", generated.getMethod("describe", int.class).invoke(null, 2));
+        assertEquals("one", generated.getMethod("describe", char.class).invoke(null, (char) 1));
+        assertEquals("other", generated.getMethod("describe", char.class).invoke(null, (char) 9));
         assertEquals(3, generated.getField("counter").get(null));
     }
 
