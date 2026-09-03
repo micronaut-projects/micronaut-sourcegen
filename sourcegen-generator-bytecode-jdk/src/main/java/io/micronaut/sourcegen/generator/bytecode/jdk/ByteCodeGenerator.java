@@ -134,9 +134,15 @@ public final class ByteCodeGenerator extends AbstractByteCodeGenerator {
             generatedFile.get().write(writer -> SOURCE_GENERATOR.write(objectDef, writer));
         } catch (Exception sourceFailure) {
             Element element = originatingElements.length > 0 ? originatingElements[0] : null;
-            throw new ProcessingException(element,
-                "Failed to generate '" + objectDef.getName() + "': " + bytecodeFailure.getMessage(),
+            // Both attempts failed, and the source one is the more recent and more specific of the
+            // two, so report it as the cause while still saying why the class file was given up on
+            ProcessingException failure = new ProcessingException(element,
+                "Failed to generate '" + objectDef.getName() + "': writing the class file failed ("
+                    + bytecodeFailure.getMessage() + ") and writing Java source instead failed too ("
+                    + sourceFailure.getMessage() + ")",
                 sourceFailure);
+            failure.addSuppressed(bytecodeFailure);
+            throw failure;
         }
     }
 

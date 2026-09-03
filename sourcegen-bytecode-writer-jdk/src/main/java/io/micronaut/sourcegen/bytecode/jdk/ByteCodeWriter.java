@@ -56,7 +56,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import java.lang.classfile.ClassFile;
@@ -65,7 +64,6 @@ import java.lang.classfile.MethodModel;
 import java.lang.classfile.MethodTransform;
 import java.lang.classfile.attribute.RuntimeVisibleParameterAnnotationsAttribute;
 import java.lang.constant.ClassDesc;
-import java.util.function.Predicate;
 
 /**
  * Writes Sourcegen definitions using the JDK 25 classfile toolchain.
@@ -494,9 +492,13 @@ public final class ByteCodeWriter {
         return method.getParameters().stream().anyMatch(parameter -> !parameter.getAnnotations().isEmpty());
     }
 
+    /**
+     * Restores the parameter annotations of the model onto a class the source fallback compiled.
+     * Each method is looked up by its own name and descriptor as it is transformed, so nothing is
+     * carried between the decision to transform a method and the transformation itself.
+     */
     private static ClassTransform parameterAnnotationsTransform(ObjectDef objectDef) {
         Map<String, List<List<Annotation>>> annotations = new LinkedHashMap<>();
-        AtomicReference<List<List<Annotation>>> selectedAnnotations = new AtomicReference<>();
         for (MethodDef method : objectDef.getMethods()) {
             List<List<Annotation>> parameters = method.getParameters().stream()
                 .map(parameter -> parameter.getAnnotations().stream().map(ByteCodeWriter::toAnnotation).toList())
@@ -505,25 +507,19 @@ public final class ByteCodeWriter {
                 annotations.put(method.getName() + descriptor(objectDef, method), parameters);
             }
         }
-        Predicate<MethodModel> selected = method -> {
-            if (method.attributes().stream().anyMatch(RuntimeVisibleParameterAnnotationsAttribute.class::isInstance)) {
-                return false;
+        return (builder, element) -> {
+            List<List<Annotation>> methodAnnotations = element instanceof MethodModel method
+                ? annotations.get(method.methodName().stringValue() + method.methodType().stringValue())
+                : null;
+            if (methodAnnotations == null
+                || ((MethodModel) element).attributes().stream()
+                    .anyMatch(RuntimeVisibleParameterAnnotationsAttribute.class::isInstance)) {
+                builder.with(element);
+                return;
             }
-            List<List<Annotation>> methodAnnotations = annotations.get(
-                method.methodName().stringValue() + method.methodType().stringValue()
-            );
-            if (methodAnnotations == null) {
-                return false;
-            }
-            selectedAnnotations.set(methodAnnotations);
-            return true;
+            builder.transformMethod((MethodModel) element, MethodTransform.endHandler(method ->
+                method.with(RuntimeVisibleParameterAnnotationsAttribute.of(methodAnnotations))));
         };
-        return ClassTransform.transformingMethods(
-            selected,
-            MethodTransform.endHandler(method -> {
-                method.with(RuntimeVisibleParameterAnnotationsAttribute.of(selectedAnnotations.get()));
-            })
-        );
     }
 
     private static String descriptor(ObjectDef objectDef, MethodDef method) {

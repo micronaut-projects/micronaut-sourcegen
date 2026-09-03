@@ -133,6 +133,15 @@ class JdkMethodSupportTest {
     }
 
     @Test
+    void supportsAStringSwitchWhoseValuesShareAHashCode() {
+        // Distinctness is of the values, not their hash codes: "Aa" and "BB" collide
+        assertTrue(JdkMethodSupport.supported(TEXT.asStatementSwitch(TypeDef.STRING,
+            Map.of(ExpressionDef.constant("Aa"), TEXT.returning(),
+                ExpressionDef.constant("BB"), TEXT.returning()),
+            TEXT.returning())));
+    }
+
+    @Test
     void supportsSwitchesOverIntAndString() {
         assertTrue(JdkMethodSupport.supported(NUMBER.asStatementSwitch(TypeDef.STRING,
             Map.of(ExpressionDef.constant(1), TEXT.returning()), TEXT.returning())));

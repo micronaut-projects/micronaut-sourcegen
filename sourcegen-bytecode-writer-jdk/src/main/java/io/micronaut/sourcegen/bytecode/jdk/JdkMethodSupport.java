@@ -81,18 +81,15 @@ final class JdkMethodSupport {
             && !aSwitch.expression().type().equals(TypeDef.STRING))) {
             return false;
         }
-        java.util.Set<Integer> keys = new java.util.HashSet<>();
+        // Distinctness is of the case values themselves; two strings that share a hash code are
+        // still two cases, and the writer separates them with an equality test
+        java.util.Set<Object> keys = new java.util.HashSet<>();
         for (var entry : aSwitch.cases().entrySet()) {
             Object value = entry.getKey().value();
-            int key;
-            if (value instanceof Integer integer) {
-                key = integer;
-            } else if (value instanceof String string) {
-                key = string.hashCode();
-            } else {
+            if (!(value instanceof Integer) && !(value instanceof String)) {
                 return false;
             }
-            if (!keys.add(key) || !supported(entry.getValue())) {
+            if (!keys.add(value) || !supported(entry.getValue())) {
                 return false;
             }
         }
@@ -153,18 +150,15 @@ final class JdkMethodSupport {
             && !aSwitch.expression().type().equals(TypeDef.STRING))) {
             return false;
         }
-        java.util.Set<Integer> keys = new java.util.HashSet<>();
+        // Distinctness is of the case values themselves; two strings that share a hash code are
+        // still two cases, and the writer separates them with an equality test
+        java.util.Set<Object> keys = new java.util.HashSet<>();
         for (var entry : aSwitch.cases().entrySet()) {
             Object value = entry.getKey().value();
-            int key;
-            if (value instanceof Integer integer) {
-                key = integer;
-            } else if (value instanceof String string) {
-                key = string.hashCode();
-            } else {
+            if (!(value instanceof Integer) && !(value instanceof String)) {
                 return false;
             }
-            if (!keys.add(key) || !supported(entry.getValue())) {
+            if (!keys.add(value) || !supported(entry.getValue())) {
                 return false;
             }
         }

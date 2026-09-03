@@ -41,7 +41,7 @@ import java.lang.constant.DynamicCallSiteDesc;
 import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -381,34 +381,19 @@ final class JdkMethodWriter {
     }
 
     private void writeStringSwitch(StatementDef.Switch aSwitch) {
-        writeExpression(aSwitch.expression());
-        int valueSlot = code.allocateLocal(TypeKind.REFERENCE);
-        code.storeLocal(TypeKind.REFERENCE, valueSlot);
-        code.loadLocal(TypeKind.REFERENCE, valueSlot)
-            .invokevirtual(ConstantDescs.CD_String, HASH_CODE, MethodTypeDesc.of(ConstantDescs.CD_int));
+        int valueSlot = writeSwitchHash(aSwitch.expression());
         Label defaultLabel = code.newLabel();
         Label end = code.newLabel();
-        Map<Integer, Label> hashLabels = new LinkedHashMap<>();
-        Map<Integer, ExpressionDef.Constant> constants = new HashMap<>();
-        for (ExpressionDef.Constant constant : aSwitch.cases().keySet()) {
-            int key = switchKey(constant);
-            if (constants.put(key, constant) != null) {
-                throw new UnsupportedOperationException("String switch hash collision");
-            }
-            hashLabels.put(key, code.newLabel());
-        }
-        writeSwitchInstruction(defaultLabel, hashLabels);
-        for (Map.Entry<Integer, Label> entry : hashLabels.entrySet()) {
-            ExpressionDef.Constant constant = Objects.requireNonNull(constants.get(entry.getKey()));
-            code.labelBinding(entry.getValue())
-                .loadLocal(TypeKind.REFERENCE, valueSlot)
-                .loadConstant((String) constant.value())
-                .invokevirtual(ConstantDescs.CD_String, EQUALS,
-                    MethodTypeDesc.of(ConstantDescs.CD_boolean, ConstantDescs.CD_Object))
-                .branch(IFEQ, defaultLabel);
-            StatementDef statement = aSwitch.cases().get(constant);
-            writeStatement(Objects.requireNonNull(statement));
-            if (canCompleteNormally(statement)) {
+        List<Map.Entry<Label, StatementDef>> bodies = new ArrayList<>();
+        Map<ExpressionDef.Constant, Label> caseLabels = new LinkedHashMap<>();
+        aSwitch.cases().forEach((constant, statement) ->
+            caseLabels.put(constant, bodyLabel(statement, bodies)));
+
+        writeStringDispatch(aSwitch.cases().keySet(), caseLabels, valueSlot, defaultLabel);
+        for (Map.Entry<Label, StatementDef> body : bodies) {
+            code.labelBinding(body.getKey());
+            writeStatement(body.getValue());
+            if (canCompleteNormally(body.getValue())) {
                 code.goto_(end);
             }
         }
@@ -417,6 +402,48 @@ final class JdkMethodWriter {
             writeStatement(aSwitch.defaultCase());
         }
         code.labelBinding(end);
+    }
+
+    /**
+     * Pushes the hash code of the switch value and returns the local holding the value itself,
+     * which the equality tests then read.
+     */
+    private int writeSwitchHash(ExpressionDef expression) {
+        writeExpression(expression);
+        int valueSlot = code.allocateLocal(TypeKind.REFERENCE);
+        code.storeLocal(TypeKind.REFERENCE, valueSlot);
+        code.loadLocal(TypeKind.REFERENCE, valueSlot)
+            .invokevirtual(ConstantDescs.CD_String, HASH_CODE, MethodTypeDesc.of(ConstantDescs.CD_int));
+        return valueSlot;
+    }
+
+    /**
+     * Switches on the hash of the value, then confirms the match with {@code String.equals}. Two
+     * case values can share a hash code, so a hash may lead to several equality tests before the
+     * default is taken.
+     */
+    private void writeStringDispatch(Collection<ExpressionDef.Constant> constants,
+                                     Map<ExpressionDef.Constant, Label> caseLabels,
+                                     int valueSlot,
+                                     Label defaultLabel) {
+        Map<Integer, List<ExpressionDef.Constant>> byHash = new LinkedHashMap<>();
+        for (ExpressionDef.Constant constant : constants) {
+            byHash.computeIfAbsent(switchKey(constant), key -> new ArrayList<>()).add(constant);
+        }
+        Map<Integer, Label> hashLabels = new LinkedHashMap<>();
+        byHash.keySet().forEach(hash -> hashLabels.put(hash, code.newLabel()));
+        writeSwitchInstruction(defaultLabel, hashLabels);
+        for (Map.Entry<Integer, List<ExpressionDef.Constant>> entry : byHash.entrySet()) {
+            code.labelBinding(hashLabels.get(entry.getKey()));
+            for (ExpressionDef.Constant constant : entry.getValue()) {
+                code.loadLocal(TypeKind.REFERENCE, valueSlot)
+                    .loadConstant((String) constant.value())
+                    .invokevirtual(ConstantDescs.CD_String, EQUALS,
+                        MethodTypeDesc.of(ConstantDescs.CD_boolean, ConstantDescs.CD_Object))
+                    .branch(IFNE, caseLabels.get(constant));
+            }
+            code.goto_(defaultLabel);
+        }
     }
 
     /**
@@ -437,21 +464,25 @@ final class JdkMethodWriter {
                                                  List<Map.Entry<Label, T>> bodies) {
         Map<Integer, Label> labels = new LinkedHashMap<>();
         for (Map.Entry<ExpressionDef.Constant, ? extends T> entry : cases.entrySet()) {
-            T body = Objects.requireNonNull(entry.getValue(), "Switch case cannot be null");
-            Label label = null;
-            for (Map.Entry<Label, T> existing : bodies) {
-                if (existing.getValue() == body) {
-                    label = existing.getKey();
-                    break;
-                }
-            }
-            if (label == null) {
-                label = code.newLabel();
-                bodies.add(Map.entry(label, body));
-            }
-            labels.put(switchKey(entry.getKey()), label);
+            labels.put(switchKey(entry.getKey()), bodyLabel(entry.getValue(), bodies));
         }
         return labels;
+    }
+
+    /**
+     * The label bound to a case body, reusing the one already assigned when several keys share the
+     * very same body.
+     */
+    private <T> Label bodyLabel(T body, List<Map.Entry<Label, T>> bodies) {
+        Objects.requireNonNull(body, "Switch case cannot be null");
+        for (Map.Entry<Label, T> existing : bodies) {
+            if (existing.getValue() == body) {
+                return existing.getKey();
+            }
+        }
+        Label label = code.newLabel();
+        bodies.add(Map.entry(label, body));
+        return label;
     }
 
     private void writeSwitchInstruction(Label defaultLabel, Map<Integer, Label> labels) {
@@ -801,34 +832,17 @@ final class JdkMethodWriter {
     }
 
     private void writeStringExpressionSwitch(ExpressionDef.Switch aSwitch) {
-        writeExpression(aSwitch.expression());
-        int valueSlot = code.allocateLocal(TypeKind.REFERENCE);
-        code.storeLocal(TypeKind.REFERENCE, valueSlot);
-        code.loadLocal(TypeKind.REFERENCE, valueSlot)
-            .invokevirtual(ConstantDescs.CD_String, HASH_CODE, MethodTypeDesc.of(ConstantDescs.CD_int));
+        int valueSlot = writeSwitchHash(aSwitch.expression());
         Label defaultLabel = code.newLabel();
         Label end = code.newLabel();
-        Map<Integer, Label> labels = new LinkedHashMap<>();
-        Map<Integer, ExpressionDef.Constant> constants = new HashMap<>();
-        for (ExpressionDef.Constant constant : aSwitch.cases().keySet()) {
-            int key = switchKey(constant);
-            if (constants.put(key, constant) != null) {
-                throw new UnsupportedOperationException("String switch hash collision");
-            }
-            labels.put(key, code.newLabel());
-        }
-        writeSwitchInstruction(defaultLabel, labels);
-        for (Map.Entry<Integer, Label> entry : labels.entrySet()) {
-            ExpressionDef.Constant constant = Objects.requireNonNull(constants.get(entry.getKey()));
-            code.labelBinding(entry.getValue())
-                .loadLocal(TypeKind.REFERENCE, valueSlot)
-                .loadConstant((String) constant.value())
-                .invokevirtual(ConstantDescs.CD_String, EQUALS,
-                    MethodTypeDesc.of(ConstantDescs.CD_boolean, ConstantDescs.CD_Object))
-                .branch(IFEQ, defaultLabel);
-            writeExpression(new ExpressionDef.Cast(
-                aSwitch.type(), Objects.requireNonNull(aSwitch.cases().get(constant))
-            ));
+        List<Map.Entry<Label, ExpressionDef>> bodies = new ArrayList<>();
+        Map<ExpressionDef.Constant, Label> caseLabels = new LinkedHashMap<>();
+        aSwitch.cases().forEach((constant, value) -> caseLabels.put(constant, bodyLabel(value, bodies)));
+
+        writeStringDispatch(aSwitch.cases().keySet(), caseLabels, valueSlot, defaultLabel);
+        for (Map.Entry<Label, ExpressionDef> body : bodies) {
+            code.labelBinding(body.getKey());
+            writeExpression(new ExpressionDef.Cast(aSwitch.type(), body.getValue()));
             code.goto_(end);
         }
         code.labelBinding(defaultLabel);

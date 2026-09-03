@@ -80,6 +80,43 @@ class JdkExpressionLoweringTest {
     }
 
     @Test
+    void lowersAStringSwitchWhoseCaseValuesShareAHashCode() throws Exception {
+        // "Aa" and "BB" both hash to 2112, so the hash alone cannot pick the case
+        Map<ExpressionDef.Constant, StatementDef> cases = new LinkedHashMap<>();
+        cases.put(ExpressionDef.constant("Aa"), ExpressionDef.constant("first").returning());
+        cases.put(ExpressionDef.constant("BB"), ExpressionDef.constant("second").returning());
+        Map<ExpressionDef.Constant, ExpressionDef> values = new LinkedHashMap<>();
+        values.put(ExpressionDef.constant("Aa"), ExpressionDef.constant(1));
+        values.put(ExpressionDef.constant("BB"), ExpressionDef.constant(2));
+
+        ClassDef definition = ClassDef.builder("example.JdkStringSwitchCollision")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("classify")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.STRING)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> parameters.get(0).asStatementSwitch(
+                    TypeDef.STRING, cases, ExpressionDef.constant("none").returning())))
+            .addMethod(MethodDef.builder("rank")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.STRING)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> parameters.get(0).asExpressionSwitch(
+                    TypeDef.Primitive.INT, values, ExpressionDef.constant(0)).returning()))
+            .build();
+
+        assertEquals("Aa".hashCode(), "BB".hashCode());
+        Class<?> generated = define(definition);
+
+        assertEquals("first", generated.getMethod("classify", String.class).invoke(null, "Aa"));
+        assertEquals("second", generated.getMethod("classify", String.class).invoke(null, "BB"));
+        assertEquals("none", generated.getMethod("classify", String.class).invoke(null, "Cc"));
+        assertEquals(1, generated.getMethod("rank", String.class).invoke(null, "Aa"));
+        assertEquals(2, generated.getMethod("rank", String.class).invoke(null, "BB"));
+        assertEquals(0, generated.getMethod("rank", String.class).invoke(null, "Cc"));
+    }
+
+    @Test
     void lowersEveryLongOperationAndUnaryNegation() throws Exception {
         var builder = ClassDef.builder("example.JdkLongOps").addModifiers(Modifier.PUBLIC);
         for (ExpressionDef.MathBinaryOperation.OpType operation
