@@ -24,6 +24,9 @@ dependencies {
     implementation(projects.sourcegenGeneratorJava) {
         exclude("org.ow2.asm", "asm")
     }
+
+    testImplementation(projects.sourcegenAnnotations)
+    testImplementation(mn.micronaut.inject.java.test)
 }
 
 tasks.withType<Test> {
