@@ -39,6 +39,7 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 
+import java.lang.classfile.Annotation;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.TypeKind;
@@ -52,7 +53,9 @@ import java.lang.classfile.attribute.NestHostAttribute;
 import java.lang.classfile.attribute.NestMembersAttribute;
 import java.lang.classfile.attribute.MethodParameterInfo;
 import java.lang.classfile.attribute.MethodParametersAttribute;
+import java.lang.classfile.attribute.RuntimeInvisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
+import java.lang.classfile.attribute.RuntimeInvisibleParameterAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleParameterAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.RecordAttribute;
@@ -66,6 +69,7 @@ import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
 import javax.lang.model.element.Modifier;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -250,11 +254,14 @@ final class JdkClassFileWriter {
                 .addAnnotations(annotationsFor(property, ElementType.FIELD))
                 .build();
             List<java.lang.classfile.Attribute<?>> attributes = new ArrayList<>();
-            if (!annotationsFor(property, ElementType.RECORD_COMPONENT).isEmpty()) {
-                attributes.add(RuntimeVisibleAnnotationsAttribute.of(
-                    annotationsFor(property, ElementType.RECORD_COMPONENT).stream()
-                        .map(ByteCodeWriter::toAnnotation).toList()
-                ));
+            List<AnnotationDef> componentAnnotations = annotationsFor(property, ElementType.RECORD_COMPONENT);
+            List<Annotation> visibleComponent = retained(componentAnnotations, RetentionPolicy.RUNTIME);
+            if (!visibleComponent.isEmpty()) {
+                attributes.add(RuntimeVisibleAnnotationsAttribute.of(visibleComponent));
+            }
+            List<Annotation> invisibleComponent = retained(componentAnnotations, RetentionPolicy.CLASS);
+            if (!invisibleComponent.isEmpty()) {
+                attributes.add(RuntimeInvisibleAnnotationsAttribute.of(invisibleComponent));
             }
             String signature = SignatureUtils.getFieldSignature(recordDef, field);
             if (signature != null) {
@@ -676,16 +683,31 @@ final class JdkClassFileWriter {
                 .map(parameter -> MethodParameterInfo.of(Optional.of(parameter.getName())))
                 .toList()));
         }
-        if (method.getParameters().stream().anyMatch(parameter -> !parameter.getAnnotations().isEmpty())) {
-            builder.with(RuntimeVisibleParameterAnnotationsAttribute.of(method.getParameters().stream()
-                .map(parameter -> parameter.getAnnotations().stream().map(ByteCodeWriter::toAnnotation).toList())
-                .toList()));
-        }
+        addParameterAnnotations(builder, method, RetentionPolicy.RUNTIME);
+        addParameterAnnotations(builder, method, RetentionPolicy.CLASS);
         if (!method.getThrowTypes().isEmpty()) {
             addExceptions(builder, method.getThrowTypes(), objectDef);
         }
         if (addGenericSignature) {
             addSignature(builder, SignatureUtils.getMethodSignature(objectDef, method));
+        }
+    }
+
+    /**
+     * Writes one parameter-annotation attribute. The attribute is indexed by parameter, so every
+     * parameter contributes a list even when only one of them carries an annotation.
+     */
+    private static void addParameterAnnotations(MethodBuilder builder, MethodDef method, RetentionPolicy retention) {
+        List<List<Annotation>> parameters = method.getParameters().stream()
+            .map(parameter -> retained(parameter.getAnnotations(), retention))
+            .toList();
+        if (parameters.stream().allMatch(List::isEmpty)) {
+            return;
+        }
+        if (retention == RetentionPolicy.RUNTIME) {
+            builder.with(RuntimeVisibleParameterAnnotationsAttribute.of(parameters));
+        } else {
+            builder.with(RuntimeInvisibleParameterAnnotationsAttribute.of(parameters));
         }
     }
 
@@ -809,23 +831,50 @@ final class JdkClassFileWriter {
     }
 
     private static void addAnnotations(ClassBuilder builder, List<AnnotationDef> annotations) {
-        if (!annotations.isEmpty()) {
-            builder.with(RuntimeVisibleAnnotationsAttribute.of(annotations.stream()
-                .map(ByteCodeWriter::toAnnotation).toList()));
+        List<Annotation> visible = retained(annotations, RetentionPolicy.RUNTIME);
+        List<Annotation> invisible = retained(annotations, RetentionPolicy.CLASS);
+        if (!visible.isEmpty()) {
+            builder.with(RuntimeVisibleAnnotationsAttribute.of(visible));
+        }
+        if (!invisible.isEmpty()) {
+            builder.with(RuntimeInvisibleAnnotationsAttribute.of(invisible));
         }
     }
 
+    /**
+     * The annotations of the given retention, converted for writing. A {@code SOURCE} annotation
+     * belongs in no class file at all and so appears under neither retention.
+     */
+    private static List<Annotation> retained(List<AnnotationDef> annotations, RetentionPolicy retention) {
+        return annotations.stream()
+            .filter(annotation -> retentionOf(annotation) == retention)
+            .map(ByteCodeWriter::toAnnotation)
+            .toList();
+    }
+
+    private static RetentionPolicy retentionOf(AnnotationDef annotation) {
+        return AnnotationTargetUtils.retentionOf(annotation, JdkClassFileWriter.class.getClassLoader());
+    }
+
     private static void addAnnotations(MethodBuilder builder, List<AnnotationDef> annotations) {
-        if (!annotations.isEmpty()) {
-            builder.with(RuntimeVisibleAnnotationsAttribute.of(annotations.stream()
-                .map(ByteCodeWriter::toAnnotation).toList()));
+        List<Annotation> visible = retained(annotations, RetentionPolicy.RUNTIME);
+        List<Annotation> invisible = retained(annotations, RetentionPolicy.CLASS);
+        if (!visible.isEmpty()) {
+            builder.with(RuntimeVisibleAnnotationsAttribute.of(visible));
+        }
+        if (!invisible.isEmpty()) {
+            builder.with(RuntimeInvisibleAnnotationsAttribute.of(invisible));
         }
     }
 
     private static void addAnnotations(FieldBuilder builder, List<AnnotationDef> annotations) {
-        if (!annotations.isEmpty()) {
-            builder.with(RuntimeVisibleAnnotationsAttribute.of(annotations.stream()
-                .map(ByteCodeWriter::toAnnotation).toList()));
+        List<Annotation> visible = retained(annotations, RetentionPolicy.RUNTIME);
+        List<Annotation> invisible = retained(annotations, RetentionPolicy.CLASS);
+        if (!visible.isEmpty()) {
+            builder.with(RuntimeVisibleAnnotationsAttribute.of(visible));
+        }
+        if (!invisible.isEmpty()) {
+            builder.with(RuntimeInvisibleAnnotationsAttribute.of(invisible));
         }
     }
 

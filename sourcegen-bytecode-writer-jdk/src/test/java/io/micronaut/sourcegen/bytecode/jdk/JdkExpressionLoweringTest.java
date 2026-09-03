@@ -15,18 +15,28 @@
  */
 package io.micronaut.sourcegen.bytecode.jdk;
 
+import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.PropertyDef;
+import io.micronaut.sourcegen.model.RecordDef;
+import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.lang.classfile.ClassFile;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.classfile.Attributes;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.List;
 import java.util.Map;
 
@@ -365,6 +375,98 @@ class JdkExpressionLoweringTest {
         assertEquals("first", generated.getMethod("byName", String.class).invoke(null, "a"));
         assertEquals("second", generated.getMethod("byName", String.class).invoke(null, "b"));
         assertEquals("none", generated.getMethod("byName", String.class).invoke(null, "c"));
+    }
+
+    @Test
+    void honoursTheRetentionOfEveryAnnotationItWrites() throws Exception {
+        AnnotationDef runtime = AnnotationDef.builder(ClassTypeDef.of(RuntimeMarker.class)).build();
+        AnnotationDef classFile = AnnotationDef.builder(ClassTypeDef.of(ClassMarker.class)).build();
+        AnnotationDef source = AnnotationDef.builder(ClassTypeDef.of(SourceMarker.class)).build();
+        ClassDef definition = ClassDef.builder("example.JdkRetention")
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(runtime).addAnnotation(classFile).addAnnotation(source)
+            .addField(FieldDef.builder("value", TypeDef.STRING)
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(runtime).addAnnotation(classFile).addAnnotation(source)
+                .build())
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.VOID)
+                .addAnnotation(runtime).addAnnotation(classFile).addAnnotation(source)
+                .addParameter(ParameterDef.builder("input", TypeDef.STRING)
+                    .addAnnotation(runtime).addAnnotation(classFile).addAnnotation(source)
+                    .build())
+                .build((aThis, parameters) -> StatementDef.multi()))
+            .build();
+
+        byte[] bytes = new JdkClassFileWriter(true).write(definition, null).orElseThrow();
+        ClassModel model = ClassFile.of().parse(bytes);
+        var method = model.methods().stream()
+            .filter(m -> m.methodName().equalsString("run")).findFirst().orElseThrow();
+
+        // Each annotation lands under its own retention, and the source one lands nowhere
+        assertEquals(List.of(RuntimeMarker.class.descriptorString()), visible(model));
+        assertEquals(List.of(ClassMarker.class.descriptorString()), invisible(model));
+        assertEquals(List.of(RuntimeMarker.class.descriptorString()), visible(model.fields().getFirst()));
+        assertEquals(List.of(ClassMarker.class.descriptorString()), invisible(model.fields().getFirst()));
+        assertEquals(List.of(RuntimeMarker.class.descriptorString()), visible(method));
+        assertEquals(List.of(ClassMarker.class.descriptorString()), invisible(method));
+        assertEquals(List.of(RuntimeMarker.class.descriptorString()),
+            method.findAttribute(Attributes.runtimeVisibleParameterAnnotations()).orElseThrow()
+                .parameterAnnotations().getFirst().stream().map(a -> a.classSymbol().descriptorString()).toList());
+        assertEquals(List.of(ClassMarker.class.descriptorString()),
+            method.findAttribute(Attributes.runtimeInvisibleParameterAnnotations()).orElseThrow()
+                .parameterAnnotations().getFirst().stream().map(a -> a.classSymbol().descriptorString()).toList());
+
+        // And the runtime sees only the one that asked to be seen
+        Class<?> generated = new MapClassLoader(Map.of(definition.getName(), bytes))
+            .loadClass(definition.getName());
+        assertTrue(generated.isAnnotationPresent(RuntimeMarker.class));
+        assertFalse(generated.isAnnotationPresent(ClassMarker.class));
+    }
+
+    @Test
+    void honoursRetentionOnRecordComponentsToo() {
+        AnnotationDef runtime = AnnotationDef.builder(ClassTypeDef.of(RuntimeMarker.class)).build();
+        AnnotationDef classFile = AnnotationDef.builder(ClassTypeDef.of(ClassMarker.class)).build();
+        AnnotationDef source = AnnotationDef.builder(ClassTypeDef.of(SourceMarker.class)).build();
+        RecordDef definition = RecordDef.builder("example.JdkRetentionRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("value").ofType(TypeDef.STRING)
+                .addAnnotation(runtime).addAnnotation(classFile).addAnnotation(source)
+                .build())
+            .build();
+
+        byte[] bytes = new JdkClassFileWriter(true).write(definition, null).orElseThrow();
+        var component = ClassFile.of().parse(bytes)
+            .findAttribute(Attributes.record()).orElseThrow().components().getFirst();
+
+        assertEquals(List.of(RuntimeMarker.class.descriptorString()), visible(component));
+        assertEquals(List.of(ClassMarker.class.descriptorString()), invisible(component));
+    }
+
+    private static List<String> visible(java.lang.classfile.AttributedElement element) {
+        return element.findAttribute(Attributes.runtimeVisibleAnnotations())
+            .map(a -> a.annotations().stream().map(x -> x.classSymbol().descriptorString()).toList())
+            .orElse(List.of());
+    }
+
+    private static List<String> invisible(java.lang.classfile.AttributedElement element) {
+        return element.findAttribute(Attributes.runtimeInvisibleAnnotations())
+            .map(a -> a.annotations().stream().map(x -> x.classSymbol().descriptorString()).toList())
+            .orElse(List.of());
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface RuntimeMarker {
+    }
+
+    @Retention(RetentionPolicy.CLASS)
+    @interface ClassMarker {
+    }
+
+    @Retention(RetentionPolicy.SOURCE)
+    @interface SourceMarker {
     }
 
     private static final class MapClassLoader extends ClassLoader {

@@ -25,6 +25,8 @@ import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Element;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.Arrays;
 import java.util.Collection;
@@ -114,11 +116,70 @@ public final class AnnotationTargetUtils {
         }
     }
 
+    /**
+     * The retention of an annotation, resolved the way the ASM backend resolves it.
+     *
+     * @param annotation The annotation
+     * @param classLoader The fallback class loader
+     * @return Its retention
+     */
+    public static RetentionPolicy retentionOf(AnnotationDef annotation, @Nullable ClassLoader classLoader) {
+        ClassTypeDef type = annotation.getType();
+        if (type instanceof ClassTypeDef.ClassDefType classDefType) {
+            return declaredRetentionOf(classDefType.objectDef()).orElse(RetentionPolicy.CLASS);
+        }
+        if (type instanceof ClassTypeDef.ClassElementType classElementType) {
+            Retention retention = sourceAnnotation(classElementType.classElement(), Retention.class);
+            if (retention != null) {
+                return retention.value();
+            }
+        }
+        Class<?> annotationType = resolveAnnotationType(type, classLoader);
+        if (annotationType == null) {
+            // Not on the generator's class path, which is the normal case for a processor writing
+            // annotations of the project it is processing. Keep the runtime visibility they had
+            // before retention was honoured at all rather than hiding them from their readers.
+            return type instanceof ClassTypeDef.ClassElementType ? RetentionPolicy.CLASS : RetentionPolicy.RUNTIME;
+        }
+        Retention retention = annotationType.getAnnotation(Retention.class);
+        return retention == null ? RetentionPolicy.CLASS : retention.value();
+    }
+
+    /**
+     * @param objectDef An annotation definition
+     * @return The retention it declares, or empty when it declares none
+     */
+    public static Optional<RetentionPolicy> declaredRetentionOf(ObjectDef objectDef) {
+        return objectDef.getAnnotations().stream()
+            .filter(annotation -> annotation.getType().getName().equals(Retention.class.getName()))
+            .findFirst()
+            .flatMap(annotation -> toRetentionPolicy(annotation.getValues().get("value")));
+    }
+
+    private static Optional<RetentionPolicy> toRetentionPolicy(@Nullable Object value) {
+        if (value instanceof RetentionPolicy policy) {
+            return Optional.of(policy);
+        }
+        String name = value instanceof VariableDef.StaticField staticField
+            ? staticField.name() : java.util.Objects.toString(value, "");
+        try {
+            return Optional.of(RetentionPolicy.valueOf(name));
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
+    }
+
     @Nullable
     private static Target sourceTargetOf(ClassElement classElement) {
+        return sourceAnnotation(classElement, Target.class);
+    }
+
+    @Nullable
+    private static <A extends java.lang.annotation.Annotation> A sourceAnnotation(ClassElement classElement,
+                                                                                  Class<A> annotationType) {
         Object nativeType = classElement.getNativeType();
         Element element = nativeType instanceof Element nativeElement ? nativeElement : unwrapNativeElement(nativeType);
-        return element == null ? null : element.getAnnotation(Target.class);
+        return element == null ? null : element.getAnnotation(annotationType);
     }
 
     @Nullable
