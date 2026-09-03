@@ -101,15 +101,15 @@ final class JdkMethodSupport {
 
     static boolean supported(ExpressionDef expression) {
         return switch (expression) {
-            case ExpressionDef.Constant ignored -> true;
-            case VariableDef.This ignored -> true;
-            case VariableDef.MethodParameter ignored -> true;
-            case VariableDef.Local ignored -> true;
-            case VariableDef.StaticField ignored -> true;
-            case VariableDef.ExceptionVar ignored -> true;
+            case ExpressionDef.Constant _ -> true;
+            case VariableDef.This _ -> true;
+            case VariableDef.MethodParameter _ -> true;
+            case VariableDef.Local _ -> true;
+            case VariableDef.StaticField _ -> true;
+            case VariableDef.ExceptionVar _ -> true;
             case VariableDef.Field field -> supported(field.instance());
             // Only meaningful as an invocation receiver, which is where the writer resolves it
-            case VariableDef.Super ignored -> true;
+            case VariableDef.Super _ -> true;
             case ExpressionDef.Cast cast -> supported(cast.expressionDef());
             case ExpressionDef.NewInstance newInstance -> newInstance.values().stream().allMatch(JdkMethodSupport::supported);
             case ExpressionDef.InvokeInstanceMethod invoke -> supported(invoke.instance())
@@ -127,7 +127,7 @@ final class JdkMethodSupport {
             case ExpressionDef.Or or -> supported(or.left()) && supported(or.right());
             case ExpressionDef.IfElse ifElse -> supported(ifElse.condition()) && supported(ifElse.ifExpression())
                 && supported(ifElse.elseExpression());
-            case ExpressionDef.NewArrayOfSize ignored -> true;
+            case ExpressionDef.NewArrayOfSize _ -> true;
             case ExpressionDef.NewArrayInitialized array -> array.expressions().stream().allMatch(JdkMethodSupport::supported);
             case ExpressionDef.ArrayElement array -> supported(array.expression()) && supported(array.indexExpression());
             case ExpressionDef.GetPropertyValue property -> supported(property.instance());
@@ -142,7 +142,7 @@ final class JdkMethodSupport {
             case MethodReferenceExpression methodReference -> methodReference.instance() == null
                 || supported(methodReference.instance());
             case ExpressionDef.Switch aSwitch -> supportedSwitch(aSwitch);
-            case ExpressionDef.SwitchYieldCase ignored -> false;
+            case ExpressionDef.SwitchYieldCase _ -> false;
             default -> false;
         };
     }

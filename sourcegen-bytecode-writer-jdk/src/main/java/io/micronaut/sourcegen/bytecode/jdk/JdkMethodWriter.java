@@ -32,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.Label;
+import java.lang.classfile.Opcode;
 import java.lang.classfile.TypeKind;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
@@ -719,9 +720,9 @@ final class JdkMethodWriter {
             String name = switch (variable) {
                 case VariableDef.Local local -> local.name();
                 case VariableDef.MethodParameter parameter -> parameter.name();
-                case VariableDef.This ignored -> "this";
-                case VariableDef.Super ignored -> SUPER;
-                case VariableDef.ExceptionVar ignored -> "exception";
+                case VariableDef.This _ -> "this";
+                case VariableDef.Super _ -> SUPER;
+                case VariableDef.ExceptionVar _ -> "exception";
                 default -> null;
             };
             if (name != null && variables.add(name)) {
@@ -739,9 +740,9 @@ final class JdkMethodWriter {
         return switch (variable) {
             case VariableDef.Local local -> local.name();
             case VariableDef.MethodParameter parameter -> parameter.name();
-            case VariableDef.This ignored -> "this";
-                case VariableDef.Super ignored -> SUPER;
-            case VariableDef.ExceptionVar ignored -> "exception";
+            case VariableDef.This _ -> "this";
+                case VariableDef.Super _ -> SUPER;
+            case VariableDef.ExceptionVar _ -> "exception";
             default -> variable.type().toString();
         };
     }
@@ -839,75 +840,64 @@ final class JdkMethodWriter {
 
     private void writeCondition(ExpressionDef condition, @Nullable Label trueLabel,
                                 @Nullable Label falseLabel) {
-        if (condition instanceof ExpressionDef.And and) {
-            var right = code.newLabel();
-            writeCondition(and.left(), right, falseLabel);
-            code.labelBinding(right);
-            writeCondition(and.right(), trueLabel, falseLabel);
-            return;
-        }
-        if (condition instanceof ExpressionDef.Or or) {
-            // A true left operand must skip the right one. Without a true label (statement
-            // context, where the true path is the fall-through) that needs a label of its own.
-            var right = code.newLabel();
-            var leftTrue = trueLabel != null ? trueLabel : code.newLabel();
-            writeCondition(or.left(), leftTrue, right);
-            code.labelBinding(right);
-            writeCondition(or.right(), trueLabel, falseLabel);
-            if (trueLabel == null) {
-                code.labelBinding(leftTrue);
+        switch (condition) {
+            case ExpressionDef.And and -> writeAnd(and, trueLabel, falseLabel);
+            case ExpressionDef.Or or -> writeOr(or, trueLabel, falseLabel);
+            case ExpressionDef.IsNull isNull ->
+                writeUnaryBranch(isNull.expression(), Opcode.IFNULL, trueLabel, falseLabel);
+            case ExpressionDef.IsNotNull isNotNull ->
+                writeUnaryBranch(isNotNull.expression(), Opcode.IFNONNULL, trueLabel, falseLabel);
+            case ExpressionDef.IsTrue isTrue ->
+                writeUnaryBranch(isTrue.expression(), IFNE, trueLabel, falseLabel);
+            case ExpressionDef.IsFalse isFalse ->
+                writeUnaryBranch(isFalse.expression(), IFEQ, trueLabel, falseLabel);
+            case ExpressionDef.InstanceOf instanceOf -> {
+                writeExpression(instanceOf.expression());
+                code.instanceOf(classDesc(instanceOf.instanceType()));
+                jump(IFNE, trueLabel, falseLabel);
             }
-            return;
+            case ExpressionDef.EqualsReferentially equals ->
+                writeReferenceBranch(equals.instance(), equals.other(), trueLabel, falseLabel, false);
+            case ExpressionDef.NotEqualsReferentially notEquals ->
+                writeReferenceBranch(notEquals.instance(), notEquals.other(), trueLabel, falseLabel, true);
+            case ExpressionDef.ComparisonOperation comparison ->
+                writeComparisonBranch(comparison, trueLabel, falseLabel);
+            case ExpressionDef.EqualsStructurally equals -> {
+                writeStructuralEquals(equals.instance(), equals.other());
+                jump(IFNE, trueLabel, falseLabel);
+            }
+            case ExpressionDef.NotEqualsStructurally notEquals -> {
+                writeStructuralEquals(notEquals.instance(), notEquals.other());
+                jump(IFEQ, trueLabel, falseLabel);
+            }
+            default -> throw unsupported(condition);
         }
-        if (condition instanceof ExpressionDef.IsNull isNull) {
-            writeExpression(isNull.expression());
-            jump(java.lang.classfile.Opcode.IFNULL, trueLabel, falseLabel);
-            return;
+    }
+
+    private void writeUnaryBranch(ExpressionDef operand, Opcode opcode,
+                                  @Nullable Label trueLabel, @Nullable Label falseLabel) {
+        writeExpression(operand);
+        jump(opcode, trueLabel, falseLabel);
+    }
+
+    private void writeAnd(ExpressionDef.And and, @Nullable Label trueLabel, @Nullable Label falseLabel) {
+        Label right = code.newLabel();
+        writeCondition(and.left(), right, falseLabel);
+        code.labelBinding(right);
+        writeCondition(and.right(), trueLabel, falseLabel);
+    }
+
+    private void writeOr(ExpressionDef.Or or, @Nullable Label trueLabel, @Nullable Label falseLabel) {
+        // A true left operand must skip the right one. Without a true label (statement context,
+        // where the true path is the fall-through) that needs a label of its own.
+        Label right = code.newLabel();
+        Label leftTrue = trueLabel != null ? trueLabel : code.newLabel();
+        writeCondition(or.left(), leftTrue, right);
+        code.labelBinding(right);
+        writeCondition(or.right(), trueLabel, falseLabel);
+        if (trueLabel == null) {
+            code.labelBinding(leftTrue);
         }
-        if (condition instanceof ExpressionDef.IsNotNull isNotNull) {
-            writeExpression(isNotNull.expression());
-            jump(java.lang.classfile.Opcode.IFNONNULL, trueLabel, falseLabel);
-            return;
-        }
-        if (condition instanceof ExpressionDef.IsTrue isTrue) {
-            writeExpression(isTrue.expression());
-            jump(java.lang.classfile.Opcode.IFNE, trueLabel, falseLabel);
-            return;
-        }
-        if (condition instanceof ExpressionDef.IsFalse isFalse) {
-            writeExpression(isFalse.expression());
-            jump(java.lang.classfile.Opcode.IFEQ, trueLabel, falseLabel);
-            return;
-        }
-        if (condition instanceof ExpressionDef.InstanceOf instanceOf) {
-            writeExpression(instanceOf.expression());
-            code.instanceOf(classDesc(instanceOf.instanceType()));
-            jump(java.lang.classfile.Opcode.IFNE, trueLabel, falseLabel);
-            return;
-        }
-        if (condition instanceof ExpressionDef.EqualsReferentially equals) {
-            writeReferenceBranch(equals.instance(), equals.other(), trueLabel, falseLabel, false);
-            return;
-        }
-        if (condition instanceof ExpressionDef.NotEqualsReferentially notEquals) {
-            writeReferenceBranch(notEquals.instance(), notEquals.other(), trueLabel, falseLabel, true);
-            return;
-        }
-        if (condition instanceof ExpressionDef.ComparisonOperation comparison) {
-            writeComparisonBranch(comparison, trueLabel, falseLabel);
-            return;
-        }
-        if (condition instanceof ExpressionDef.EqualsStructurally equals) {
-            writeStructuralEquals(equals.instance(), equals.other());
-            jump(java.lang.classfile.Opcode.IFNE, trueLabel, falseLabel);
-            return;
-        }
-        if (condition instanceof ExpressionDef.NotEqualsStructurally notEquals) {
-            writeStructuralEquals(notEquals.instance(), notEquals.other());
-            jump(java.lang.classfile.Opcode.IFEQ, trueLabel, falseLabel);
-            return;
-        }
-        throw unsupported(condition);
     }
 
     /**
@@ -1198,22 +1188,31 @@ final class JdkMethodWriter {
     }
 
     private void writeCast(ExpressionDef.Cast cast) {
-        // Mirror the ASM writer: only the last cast of a chain is emitted. Keeping an inner
-        // primitive cast would unbox and rebox a reference, turning a legitimate null into a
-        // NullPointerException; a primitive cast of something that is not Object is a real
-        // conversion and stays.
-        ExpressionDef expression = cast.expressionDef();
-        while (expression instanceof ExpressionDef.Cast nested
-            && !(nested.type().isPrimitive() && !nested.expressionDef().type().equals(TypeDef.OBJECT))) {
-            expression = nested.expressionDef();
-        }
+        ExpressionDef expression = withoutRedundantCasts(cast.expressionDef());
         writeExpression(expression);
         if (expression instanceof ExpressionDef.Constant constant && constant.value() == null) {
             // null is assignable to every reference type, so it needs no cast
             return;
         }
-        TypeDef source = expression.type();
-        TypeDef target = cast.type();
+        writeConversion(expression.type(), cast.type());
+    }
+
+    /**
+     * Mirrors the ASM writer: only the last cast of a chain is emitted. Keeping an inner primitive
+     * cast would unbox and rebox a reference, turning a legitimate null into a
+     * NullPointerException; a primitive cast of something that is not Object is a real conversion
+     * and stays.
+     */
+    private static ExpressionDef withoutRedundantCasts(ExpressionDef expression) {
+        ExpressionDef result = expression;
+        while (result instanceof ExpressionDef.Cast nested
+            && !(nested.type().isPrimitive() && !nested.expressionDef().type().equals(TypeDef.OBJECT))) {
+            result = nested.expressionDef();
+        }
+        return result;
+    }
+
+    private void writeConversion(TypeDef source, TypeDef target) {
         // The exact kinds matter here: a boolean boxes to Boolean, not Integer, and an int
         // narrows to byte with i2b even though both load as int
         TypeKind sourceKind = exactKind(source);
@@ -1221,26 +1220,30 @@ final class JdkMethodWriter {
         boolean sourceReference = sourceKind == TypeKind.REFERENCE;
         boolean targetReference = targetKind == TypeKind.REFERENCE;
         if (sourceReference && targetReference) {
-            // A cast to the same erasure, or to Object, is a no-op; emitting it would only grow
-            // the method, and these casts are inserted on every argument and every return
-            ClassDesc targetDesc = classDesc(target);
-            if (!targetDesc.equals(ConstantDescs.CD_Object) && !targetDesc.equals(classDesc(source))) {
-                code.checkcast(targetDesc);
-            }
+            writeCheckCast(target, classDesc(source));
         } else if (!sourceReference && !targetReference) {
             if (sourceKind != targetKind) {
                 code.conversion(sourceKind, targetKind);
             }
-        } else if (!sourceReference) {
+        } else if (sourceReference) {
+            unbox(targetKind);
+        } else {
             box(sourceKind);
             // The target may be narrower than the box, and may even be unrelated to it when the
             // model casts through a shared dispatch signature; a checkcast keeps that verifiable
-            ClassDesc targetDesc = classDesc(target);
-            if (!targetDesc.equals(ConstantDescs.CD_Object) && !targetDesc.equals(wrapper(sourceKind))) {
-                code.checkcast(targetDesc);
-            }
-        } else {
-            unbox(targetKind);
+            writeCheckCast(target, wrapper(sourceKind));
+        }
+    }
+
+    /**
+     * Emits a checkcast unless it would be a no-op: a cast to Object, or to the type the value
+     * already has. These casts are inserted on every argument and every return, so leaving the
+     * redundant ones out keeps generated methods well inside the 64KB limit.
+     */
+    private void writeCheckCast(TypeDef target, ClassDesc redundant) {
+        ClassDesc targetDesc = classDesc(target);
+        if (!targetDesc.equals(ConstantDescs.CD_Object) && !targetDesc.equals(redundant)) {
+            code.checkcast(targetDesc);
         }
     }
 
@@ -1365,11 +1368,11 @@ final class JdkMethodWriter {
 
     private static TypeKind valueKind(Number value) {
         return switch (value) {
-            case Long ignored -> TypeKind.LONG;
-            case Float ignored -> TypeKind.FLOAT;
-            case Double ignored -> TypeKind.DOUBLE;
-            case Byte ignored -> TypeKind.BYTE;
-            case Short ignored -> TypeKind.SHORT;
+            case Long _ -> TypeKind.LONG;
+            case Float _ -> TypeKind.FLOAT;
+            case Double _ -> TypeKind.DOUBLE;
+            case Byte _ -> TypeKind.BYTE;
+            case Short _ -> TypeKind.SHORT;
             default -> TypeKind.INT;
         };
     }
@@ -1551,8 +1554,11 @@ final class JdkMethodWriter {
         if (objectDef instanceof RecordDef) {
             return ClassTypeDef.of(Record.class);
         }
-        if (objectDef instanceof ClassDef classDef && classDef.getSuperclass() != null) {
-            return classDef.getSuperclass();
+        if (objectDef instanceof ClassDef classDef) {
+            ClassTypeDef superclass = classDef.getSuperclass();
+            if (superclass != null) {
+                return superclass;
+            }
         }
         return TypeDef.OBJECT;
     }
