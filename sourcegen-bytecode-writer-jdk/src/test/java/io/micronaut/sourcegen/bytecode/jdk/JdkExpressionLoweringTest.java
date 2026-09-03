@@ -21,6 +21,8 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.PropertyDef;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -421,6 +423,26 @@ class JdkExpressionLoweringTest {
             .loadClass(definition.getName());
         assertTrue(generated.isAnnotationPresent(RuntimeMarker.class));
         assertFalse(generated.isAnnotationPresent(ClassMarker.class));
+    }
+
+    @Test
+    void honoursRetentionOnRecordComponentsToo() {
+        AnnotationDef runtime = AnnotationDef.builder(ClassTypeDef.of(RuntimeMarker.class)).build();
+        AnnotationDef classFile = AnnotationDef.builder(ClassTypeDef.of(ClassMarker.class)).build();
+        AnnotationDef source = AnnotationDef.builder(ClassTypeDef.of(SourceMarker.class)).build();
+        RecordDef definition = RecordDef.builder("example.JdkRetentionRecord")
+            .addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("value").ofType(TypeDef.STRING)
+                .addAnnotation(runtime).addAnnotation(classFile).addAnnotation(source)
+                .build())
+            .build();
+
+        byte[] bytes = new JdkClassFileWriter(true).write(definition, null).orElseThrow();
+        var component = ClassFile.of().parse(bytes)
+            .findAttribute(Attributes.record()).orElseThrow().components().getFirst();
+
+        assertEquals(List.of(RuntimeMarker.class.descriptorString()), visible(component));
+        assertEquals(List.of(ClassMarker.class.descriptorString()), invisible(component));
     }
 
     private static List<String> visible(java.lang.classfile.AttributedElement element) {
