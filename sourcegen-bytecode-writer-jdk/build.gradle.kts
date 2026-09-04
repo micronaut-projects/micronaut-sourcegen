@@ -24,6 +24,7 @@ dependencies {
         exclude("org.ow2.asm", "asm")
     }
 
+    testImplementation(projects.sourcegenBytecodeWriterTck)
     testImplementation(mnTest.junit.jupiter.api)
     testRuntimeOnly(mnTest.junit.jupiter.engine)
 }
