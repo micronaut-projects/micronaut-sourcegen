@@ -658,6 +658,15 @@ final class JdkMethodWriter {
             case ExpressionDef.InvokeHashCodeMethod hashCode ->
                 // Null-safe, array-aware and primitive-aware, exactly as the ASM writer lowers it
                 writeExpression(JavaIdioms.hashCode(hashCode));
+            default -> writeBooleanValued(expression);
+        }
+    }
+
+    /**
+     * Writes an expression whose value is a boolean, leaving 0 or 1 on the stack.
+     */
+    private void writeBooleanValued(ExpressionDef expression) {
+        switch (expression) {
             case ExpressionDef.InstanceOf instanceOf -> {
                 writeExpression(instanceOf.expression());
                 code.instanceOf(classDesc(instanceOf.instanceType()));
@@ -670,12 +679,8 @@ final class JdkMethodWriter {
                 code.loadConstant(1).ixor();
             }
             case ExpressionDef.ComparisonOperation comparison -> writeBooleanExpression(comparison);
-            case ExpressionDef.IsNull isNull -> {
-                writeBooleanExpression(isNull);
-            }
-            case ExpressionDef.IsNotNull isNotNull -> {
-                writeBooleanExpression(isNotNull);
-            }
+            case ExpressionDef.IsNull isNull -> writeBooleanExpression(isNull);
+            case ExpressionDef.IsNotNull isNotNull -> writeBooleanExpression(isNotNull);
             case ExpressionDef.IsTrue isTrue -> writeExpression(isTrue.expression());
             case ExpressionDef.IsFalse isFalse -> {
                 writeExpression(isFalse.expression());
