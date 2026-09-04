@@ -16,8 +16,8 @@
 package io.micronaut.sourcegen.example;
 
 import io.micronaut.core.util.CollectionUtils;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,11 +31,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Disabled
-class UserSuperSingularTest {
+class UserBuilderSingularTest {
 
-    private static UserSuperSingular buildUserSingle() {
-        return new UserSuperSingularSuperBuilder()
+    private static UserBuilderSingular buildUserSingle() {
+        return new UserBuilderSingularBuilder()
             .id(123L)
             .name("Denis")
             .iterable("iterable1")
@@ -55,8 +54,8 @@ class UserSuperSingularTest {
             .build();
     }
 
-    private static UserSuperSingular buildUserComplex() {
-        return new UserSuperSingularSuperBuilder()
+    private static UserBuilderSingular buildUserComplex() {
+        return new UserBuilderSingularBuilder()
             .id(123L)
             .name("Denis")
             .iterable("iterable1")
@@ -85,8 +84,8 @@ class UserSuperSingularTest {
     }
 
 
-    private static UserSuperSingular buildUserCleanup() {
-        return new UserSuperSingularSuperBuilder()
+    private static UserBuilderSingular buildUserCleanup() {
+        return new UserBuilderSingularBuilder()
             .id(123L)
             .name("Denis")
             .iterable("iterable1")
@@ -121,8 +120,10 @@ class UserSuperSingularTest {
     }
 
     @Test
-    public void testCombinationsSimple() {
-        UserSuperSingular user = buildUserSingle();
+    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode.*",
+        disabledReason = "The bytecode backends call Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
+    void testCombinationsSimple() {
+        UserBuilderSingular user = buildUserSingle();
         assertEquals(123L, user.id());
         assertEquals("Denis", user.name());
         assertEquals(List.of("iterable1", "iterable2"), CollectionUtils.iterableToList(user.iterables()));
@@ -135,8 +136,10 @@ class UserSuperSingularTest {
     }
 
     @Test
-    public void testCombinationsComplex() {
-        UserSuperSingular user = buildUserComplex();
+    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode.*",
+        disabledReason = "The bytecode backends call Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
+    void testCombinationsComplex() {
+        UserBuilderSingular user = buildUserComplex();
         assertEquals(123L, user.id());
         assertEquals("Denis", user.name());
         assertEquals(List.of("iterable1", "iterable2", "iterable3", "iterable4"), CollectionUtils.iterableToList(user.iterables()));
@@ -149,8 +152,10 @@ class UserSuperSingularTest {
     }
 
     @Test
-    public void testImmutable() {
-        UserSuperSingular user = buildUserSingle();
+    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode.*",
+        disabledReason = "The bytecode backends call Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
+    void testImmutable() {
+        UserBuilderSingular user = buildUserSingle();
         assertThrowsExactly(UnsupportedOperationException.class, () -> {
             user.lists().add("x");
         });
@@ -175,8 +180,8 @@ class UserSuperSingularTest {
     }
 
     @Test
-    public void testNotNull() {
-        UserSuperSingular user = new UserSuperSingularSuperBuilder().build();
+    void testNotNull() {
+        UserBuilderSingular user = new UserBuilderSingularBuilder().build();
         assertNotNull(user.iterables());
         assertNotNull(user.collections());
         assertNotNull(user.lists());
@@ -192,8 +197,10 @@ class UserSuperSingularTest {
     }
 
     @Test
-    public void mapOrder() {
-        UserSuperSingular user = buildUserComplex();
+    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode.*",
+        disabledReason = "The bytecode backends call Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
+    void mapOrder() {
+        UserBuilderSingular user = buildUserComplex();
         Map<String, Integer> maps = user.maps();
         ArrayList<Map.Entry<String, Integer>> entries = new ArrayList<>(maps.entrySet());
         assertEquals("A", entries.get(0).getKey());
@@ -203,8 +210,10 @@ class UserSuperSingularTest {
     }
 
     @Test
-    public void sortedMapOrder() {
-        UserSuperSingular user = buildUserComplex();
+    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode.*",
+        disabledReason = "The bytecode backends call Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
+    void sortedMapOrder() {
+        UserBuilderSingular user = buildUserComplex();
         ArrayList<Map.Entry<String, Integer>> entries = new ArrayList<>(user.sortedMaps().entrySet());
         assertEquals("AS", entries.get(0).getKey());
         assertEquals("BS", entries.get(1).getKey());
@@ -213,8 +222,8 @@ class UserSuperSingularTest {
     }
 
     @Test
-    public void testCleanup() {
-        UserSuperSingular user = buildUserCleanup();
+    void testCleanup() {
+        UserBuilderSingular user = buildUserCleanup();
         assertNotNull(user.iterables());
         assertNotNull(user.collections());
         assertNotNull(user.lists());
