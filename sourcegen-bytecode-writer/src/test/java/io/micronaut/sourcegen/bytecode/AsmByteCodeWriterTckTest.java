@@ -33,26 +33,31 @@ class AsmByteCodeWriterTckTest extends ByteCodeWriterTck {
     @Override
     @Disabled("The ASM backend compares NaN with the wrong one of dcmpg/dcmpl, so `NaN < 3` is true")
     public void writesAllComparisonsForIntegralAndFloatingPointValues() {
+        // Empty on purpose: the override exists only to disable the inherited test.
     }
 
     @Override
     @Disabled("The ASM backend writes no MethodParameters attribute, so a parameter reflects as arg0")
     public void writesCatchVariablesThrowsAndDeclarationMetadata() {
+        // Empty on purpose: the override exists only to disable the inherited test.
     }
 
     @Override
     @Disabled("The ASM backend rejects a void method whose body returns a value-producing call "
         + "instead of discarding the value")
     public void writesVoidMethodsThatReturnAnExpression() {
+        // Empty on purpose: the override exists only to disable the inherited test.
     }
 
     @Override
     @Disabled("On the ASM backend the caught exception falls through into the else branch")
     public void writesTryWhoseCatchCompletesInsideAnIfBranch() {
+        // Empty on purpose: the override exists only to disable the inherited test.
     }
 
     @Override
     @Disabled("The ASM backend repeats the field initializers in a delegating constructor, so they run twice")
     public void writesConstructorDelegationWithoutRepeatingFieldInitializers() {
+        // Empty on purpose: the override exists only to disable the inherited test.
     }
 }

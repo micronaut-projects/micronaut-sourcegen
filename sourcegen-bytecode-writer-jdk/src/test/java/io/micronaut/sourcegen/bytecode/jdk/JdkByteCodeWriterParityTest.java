@@ -17,45 +17,28 @@ package io.micronaut.sourcegen.bytecode.jdk;
 
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
-import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
-import io.micronaut.sourcegen.model.ParameterDef;
-import io.micronaut.sourcegen.model.PropertyDef;
-import io.micronaut.sourcegen.model.RecordDef;
-import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
-import io.micronaut.sourcegen.model.VariableDef;
 import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.lang.classfile.ClassFile;
-import java.io.IOException;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -225,37 +208,6 @@ class JdkByteCodeWriterParityTest {
 
         assertInstanceOf(loader.loadClass(first.getName()), generated.getMethod("choose", boolean.class).invoke(null, true));
         assertInstanceOf(loader.loadClass(second.getName()), generated.getMethod("choose", boolean.class).invoke(null, false));
-    }
-
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.PARAMETER)
-    private @interface ParameterMarker {
-    }
-
-    private static MethodDef binaryMethod(String name,
-                                          TypeDef type,
-                                          ExpressionDef.MathBinaryOperation.OpType operation) {
-        return MethodDef.builder(name)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter("left", type)
-            .addParameter("right", type)
-            .returns(type)
-            .build((ignored, parameters) -> parameters.get(0).math(operation, parameters.get(1)).returning());
-    }
-
-    private static MethodDef comparisonMethod(String name,
-                                              TypeDef type,
-                                              ExpressionDef.ComparisonOperation.OpType operation) {
-        return MethodDef.builder(name)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter("left", type)
-            .addParameter("right", type)
-            .returns(TypeDef.Primitive.BOOLEAN)
-            .build((ignored, parameters) -> parameters.get(0).compare(operation, parameters.get(1)).returning());
-    }
-
-    private static Class<?> define(ObjectDef definition) throws ClassNotFoundException {
-        return new MapClassLoader(Map.of(definition.getName(), writeDirect(definition))).loadClass(definition.getName());
     }
 
     private static byte[] writeDirect(ObjectDef definition) {
