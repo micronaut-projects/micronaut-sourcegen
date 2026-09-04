@@ -2,7 +2,17 @@ The `@StagedBuilder` annotation generates a https://immutables.github.io/immutab
 
 If you annotate a type with `@StagedBuilder`, an `EmployeeStagedBuilder` class is generated at compilation-time.
 
-snippet::io.micronaut.sourcegen.example.Employee[project-base="test-suite", source="main", tags="clazz", indent=0]
+// The Java sources live in test-suite-tck, which the snippet macro cannot reach because it only
+// looks under test-suite-<language>, so the language tabs are spelled out here.
+[source.multi-language-sample,java]
+----
+include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/Employee.java[tags=clazz,indent=0]
+----
+
+[source.multi-language-sample,kotlin]
+----
+include::test-suite-kotlin/src/main/kotlin/io/micronaut/sourcegen/example/Employee.kt[tags=clazz,indent=0]
+----
 
 Every required property gets its own stage interface, which declares the single method that assigns that property and returns the next stage. The last of them returns `BuildFinal`, the only stage that declares the `build` method:
 
@@ -32,7 +42,15 @@ public final class EmployeeStagedBuilder {
 
 You can use the builder to create an `Employee` instance, assigning the required properties in the order they are declared in:
 
-snippet::io.micronaut.sourcegen.example.EmployeeStagedBuilderTest[project-base="test-suite", tags="test", indent=0]
+[source.multi-language-sample,java]
+----
+include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/EmployeeStagedBuilderTest.java[tags=test,indent=0]
+----
+
+[source.multi-language-sample,kotlin]
+----
+include::test-suite-kotlin/src/test/kotlin/io/micronaut/sourcegen/example/EmployeeStagedBuilderTest.kt[tags=test,indent=0]
+----
 
 A property is required unless the builder can leave it unassigned, which is the case for:
 

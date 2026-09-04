@@ -11,11 +11,11 @@ NOTE: The user is expected to use the generated static method by overriding the 
 .An example annotated bean with different type of properties and an overridden toString() method:
 [source,java]
 ----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Elephant.java[tags=clazs,indent=0]
+include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/Elephant.java[tags=clazs,indent=0]
 ----
 
 .A test case with different examples how new methods can be used
 [source,java]
 ----
-include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/ObjectTest.java[tags=test,indent=0]
+include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/ObjectTest.java[tags=test,indent=0]
 ----

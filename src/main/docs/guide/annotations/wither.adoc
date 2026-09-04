@@ -2,7 +2,7 @@ If you annotate a Java Record with `@Wither`, a `YourRecordWither` interface is 
 
 [source,java]
 ----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Walrus.java[tags=clazz,indent=0]
+include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/Walrus.java[tags=clazz,indent=0]
 ----
 
 Example of different ways to use the copy methods:
@@ -20,7 +20,7 @@ If your record is annotated with api:sourcegen.annotations.Builder[] the wither 
 
 [source,java]
 ----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Walrus2.java[tags=clazz,indent=0]
+include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/Walrus2.java[tags=clazz,indent=0]
 ----
 
 Example of different ways to use the copy and builder methods:

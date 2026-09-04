@@ -15,7 +15,11 @@
  */
 package io.micronaut.sourcegen.example;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 
 import io.micronaut.core.beans.BeanIntrospection;
 import org.junit.jupiter.api.Test;
@@ -84,5 +88,60 @@ class AnimalSuperBuilderTest {
         assertEquals(0, DogSuperBuilder.class.getDeclaredFields().length);
 
         assertEquals(3, AbstractDogSuperBuilder.class.getDeclaredFields().length);
+    }
+    @Test
+    public void testBuildFromTheRootBuilderType() {
+        // Dispatches `self` and `build` through the erasure declared by the root builder, which only
+        // resolves when the generated bridge methods are in place
+        AbstractAnimalSuperBuilder<Cat, ?> builder = new CatSuperBuilder().name("MrPurr").age(2);
+
+        Animal animal = builder.build();
+        assertEquals("MrPurr", animal.getName());
+        assertEquals(2, animal.getAge());
+    }
+
+    @Test
+    public void catBridges() {
+        assertEquals(
+            List.of(AbstractAnimalSuperBuilder.class, AbstractCatSuperBuilder.class),
+            bridgeReturnTypes(CatSuperBuilder.class, "self")
+        );
+        assertEquals(
+            List.of(Animal.class),
+            bridgeReturnTypes(CatSuperBuilder.class, "build")
+        );
+        // The abstract builders redeclare `self` and `build`, so they carry abstract bridges too
+        assertEquals(
+            List.of(AbstractAnimalSuperBuilder.class),
+            bridgeReturnTypes(AbstractCatSuperBuilder.class, "self")
+        );
+        assertEquals(
+            List.of(Animal.class),
+            bridgeReturnTypes(AbstractCatSuperBuilder.class, "build")
+        );
+        // The root builder declares the erasure everything else bridges to
+        assertEquals(List.of(), bridgeReturnTypes(AbstractAnimalSuperBuilder.class, "self"));
+        assertEquals(List.of(), bridgeReturnTypes(AbstractAnimalSuperBuilder.class, "build"));
+    }
+
+    @Test
+    public void dogBridges() {
+        assertEquals(
+            List.of(AbstractAnimalSuperBuilder.class, AbstractDogSuperBuilder.class),
+            bridgeReturnTypes(DogSuperBuilder.class, "self")
+        );
+        assertEquals(
+            List.of(Animal.class),
+            bridgeReturnTypes(DogSuperBuilder.class, "build")
+        );
+    }
+
+    private static List<Class<?>> bridgeReturnTypes(Class<?> type, String methodName) {
+        return Arrays.stream(type.getDeclaredMethods())
+            .filter(m -> m.getName().equals(methodName))
+            .filter(Method::isBridge)
+            .map(Method::getReturnType)
+            .sorted(Comparator.comparing(Class::getName))
+            .toList();
     }
 }

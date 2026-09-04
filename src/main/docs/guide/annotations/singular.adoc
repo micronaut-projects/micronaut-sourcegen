@@ -21,7 +21,7 @@ NOTE: The final collection is always immutable
 .An example of a bean with two properties annotated as singular
 [source,java]
 ----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/User.java[tags=clazz,indent=0]
+include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/User.java[tags=clazz,indent=0]
 ----
 
 .A test case with different examples how new methods can be used
