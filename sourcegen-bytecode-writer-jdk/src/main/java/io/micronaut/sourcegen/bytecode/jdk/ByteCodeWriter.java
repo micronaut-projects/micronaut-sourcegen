@@ -542,6 +542,12 @@ public final class ByteCodeWriter {
             return toAnnotationValue(constantValue);
         }
         if (value instanceof VariableDef.StaticField field) {
+            if (field.name().equals("class") && field.type().equals(TypeDef.CLASS)) {
+                // A class-valued member is modelled as `SomeType.class`, not as an enum constant
+                return AnnotationValue.ofClass(ClassDesc.ofDescriptor(
+                    io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(field.ownerType(), null)
+                ));
+            }
             return AnnotationValue.ofEnum(ClassDesc.of(field.ownerType().getName()), field.name());
         }
         if (value instanceof io.micronaut.sourcegen.model.AnnotationDef annotation) {
