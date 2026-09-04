@@ -27,5 +27,5 @@ include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/User.java[t
 .A test case with different examples how new methods can be used
 [source,java]
 ----
-include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/UserTest.java[tags=test,indent=0]
+include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/UserTest.java[tags=test,indent=0]
 ----

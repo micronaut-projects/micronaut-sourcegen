@@ -9,7 +9,7 @@ Example of different ways to use the copy methods:
 
 [source,java]
 ----
-include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/WalrusTest.java[tags=test,indent=0]
+include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/WalrusTest.java[tags=test,indent=0]
 ----
 
 If your record is annotated with api:sourcegen.annotations.Builder[] the wither interface will also include:
@@ -27,7 +27,7 @@ Example of different ways to use the copy and builder methods:
 
 [source,java]
 ----
-include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/Walrus2Test.java[tags=test,indent=0]
+include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/Walrus2Test.java[tags=test,indent=0]
 ----
 
 === Selecting the properties
