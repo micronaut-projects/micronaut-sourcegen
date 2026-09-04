@@ -17,7 +17,6 @@ package io.micronaut.sourcegen.example;
 
 import io.micronaut.core.util.CollectionUtils;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -120,8 +119,6 @@ class UserSuperSingularTest {
     }
 
     @Test
-    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode",
-        disabledReason = "The ASM backend calls Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
     void testCombinationsSimple() {
         UserSuperSingular user = buildUserSingle();
         assertEquals(123L, user.id());
@@ -136,8 +133,6 @@ class UserSuperSingularTest {
     }
 
     @Test
-    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode",
-        disabledReason = "The ASM backend calls Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
     void testCombinationsComplex() {
         UserSuperSingular user = buildUserComplex();
         assertEquals(123L, user.id());
@@ -152,8 +147,6 @@ class UserSuperSingularTest {
     }
 
     @Test
-    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode",
-        disabledReason = "The ASM backend calls Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
     void testImmutable() {
         UserSuperSingular user = buildUserSingle();
         assertThrowsExactly(UnsupportedOperationException.class, () -> {
@@ -197,8 +190,6 @@ class UserSuperSingularTest {
     }
 
     @Test
-    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode",
-        disabledReason = "The ASM backend calls Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
     void mapOrder() {
         UserSuperSingular user = buildUserComplex();
         Map<String, Integer> maps = user.maps();
@@ -210,8 +201,6 @@ class UserSuperSingularTest {
     }
 
     @Test
-    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode",
-        disabledReason = "The ASM backend calls Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
     void sortedMapOrder() {
         UserSuperSingular user = buildUserComplex();
         ArrayList<Map.Entry<String, Integer>> entries = new ArrayList<>(user.sortedMaps().entrySet());

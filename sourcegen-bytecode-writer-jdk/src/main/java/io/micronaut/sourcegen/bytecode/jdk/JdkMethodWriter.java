@@ -40,7 +40,9 @@ import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.constant.DynamicCallSiteDesc;
 import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -74,6 +76,7 @@ final class JdkMethodWriter {
     private final ClassDesc owner;
     private final Map<String, Local> locals = new LinkedHashMap<>();
     private final List<Runnable> cleanups = new ArrayList<>();
+    private final Deque<YieldTarget> yieldTargets = new ArrayDeque<>();
     private final List<MethodDef> lambdaMethods = new ArrayList<>();
     private final MethodDef methodDef;
 
@@ -197,6 +200,11 @@ final class JdkMethodWriter {
     }
 
     private void writeReturn(@Nullable ExpressionDef expression) {
+        YieldTarget yieldTarget = yieldTargets.peek();
+        if (yieldTarget != null) {
+            writeYield(expression, yieldTarget);
+            return;
+        }
         TypeDef returnType = methodDef.getReturnType();
         if (expression == null || returnType.equals(TypeDef.VOID)) {
             // A void method may still return the result of an expression, which is evaluated for
@@ -223,8 +231,44 @@ final class JdkMethodWriter {
         code.loadLocal(returnKind, slot).return_(returnKind);
     }
 
+    /**
+     * Writes a return that is the value of the switch yield case being written: the value is held
+     * in the local of the case and control jumps to its end, where the case loads it.
+     */
+    private void writeYield(@Nullable ExpressionDef expression, YieldTarget yieldTarget) {
+        if (expression == null) {
+            throw new IllegalStateException("Switch yield return has no value");
+        }
+        writeExpression(new ExpressionDef.Cast(yieldTarget.type(), expression));
+        store(yieldTarget.type(), yieldTarget.slot());
+        writeCleanups(yieldTarget.cleanups());
+        code.goto_(yieldTarget.end());
+    }
+
+    /**
+     * Writes a switch yield case, leaving the value it yields on the stack. The case is a statement
+     * block, and the returns it contains are its yields; the ASM backend lowers them the same way.
+     */
+    private void writeYieldCase(ExpressionDef.SwitchYieldCase yieldCase) {
+        TypeKind kind = kind(yieldCase.type());
+        int slot = code.allocateLocal(kind);
+        Label end = code.newLabel();
+        yieldTargets.push(new YieldTarget(yieldCase.type(), slot, end, cleanups.size()));
+        try {
+            writeStatement(yieldCase.statement());
+        } finally {
+            yieldTargets.pop();
+        }
+        code.labelBinding(end);
+        code.loadLocal(kind, slot);
+    }
+
     private void writeCleanups() {
-        for (int i = cleanups.size() - 1; i >= 0; i--) {
+        writeCleanups(0);
+    }
+
+    private void writeCleanups(int from) {
+        for (int i = cleanups.size() - 1; i >= from; i--) {
             cleanups.get(i).run();
         }
     }
@@ -583,7 +627,7 @@ final class JdkMethodWriter {
             case MethodReferenceExpression methodReference -> writeMethodReference(methodReference);
             case ExpressionDef.IfElse ifElse -> writeIfElseExpression(ifElse);
             case ExpressionDef.Switch aSwitch -> writeExpressionSwitch(aSwitch);
-            case ExpressionDef.SwitchYieldCase yieldCase -> writeStatement(yieldCase.statement());
+            case ExpressionDef.SwitchYieldCase yieldCase -> writeYieldCase(yieldCase);
             case ExpressionDef.NewArrayOfSize array -> {
                 code.loadConstant(array.size());
                 writeNewArray(array.type());
@@ -838,8 +882,8 @@ final class JdkMethodWriter {
      */
     private void writeCaseValue(TypeDef type, ExpressionDef value, @Nullable Label end) {
         if (value instanceof ExpressionDef.SwitchYieldCase yieldCase) {
-            writeStatement(yieldCase.statement());
-            if (end != null && canCompleteNormally(yieldCase.statement())) {
+            writeYieldCase(yieldCase);
+            if (end != null) {
                 code.goto_(end);
             }
             return;
@@ -1625,6 +1669,18 @@ final class JdkMethodWriter {
 
     private static UnsupportedOperationException unsupported(Object value) {
         return new UnsupportedOperationException("Unsupported direct JDK lowering: " + value.getClass().getName());
+    }
+
+    /**
+     * A switch yield case being written.
+     *
+     * @param type     The type the case yields
+     * @param slot     The local the yielded value is held in
+     * @param end      The label the value is loaded at
+     * @param cleanups The number of finally blocks pending when the case was entered - only the
+     *                 ones opened inside the case run when it yields
+     */
+    private record YieldTarget(TypeDef type, int slot, Label end, int cleanups) {
     }
 
     private record Local(TypeDef type, int slot) {

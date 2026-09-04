@@ -16,7 +16,6 @@
 package io.micronaut.sourcegen.example;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 import java.util.List;
 import java.util.Map;
@@ -27,8 +26,6 @@ class UserTest {
 
     //tag::test[]
     @Test
-    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode",
-        disabledReason = "The ASM backend calls Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
     public void testSimple() {
         User user = new UserSuperBuilder()
             .id(123L)
@@ -44,8 +41,6 @@ class UserTest {
     }
 
     @Test
-    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode",
-        disabledReason = "The ASM backend calls Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
     public void testAddAll() {
         User user = new UserSuperBuilder()
             .id(123L)
@@ -63,8 +58,6 @@ class UserTest {
     }
 
     @Test
-    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode",
-        disabledReason = "The ASM backend calls Map.put through the descriptor of Collection.add, so building a singular map fails with NoSuchMethodError")
     public void testClear() {
         User user = new UserSuperBuilder()
             .id(123L)
