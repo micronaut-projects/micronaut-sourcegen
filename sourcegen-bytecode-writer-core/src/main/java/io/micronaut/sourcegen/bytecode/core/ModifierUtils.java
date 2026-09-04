@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.bytecode.core;
 
 import io.micronaut.core.annotation.Internal;
+import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
@@ -119,6 +120,9 @@ public final class ModifierUtils {
         if (objectDef instanceof RecordDef recordDef) {
             // The JVMS has no record access flag; the Record attribute marks a record class.
             return ACC_FINAL | memberFlags(recordDef.getModifiers());
+        }
+        if (objectDef instanceof AnnotationObjectDef annotationObjectDef) {
+            return ACC_ANNOTATION | ACC_INTERFACE | ACC_ABSTRACT | memberFlags(annotationObjectDef.getModifiers());
         }
         return memberFlags(objectDef.getModifiers());
     }

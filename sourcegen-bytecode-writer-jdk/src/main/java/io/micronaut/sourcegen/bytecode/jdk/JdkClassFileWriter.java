@@ -23,6 +23,7 @@ import io.micronaut.sourcegen.bytecode.core.ModifierUtils;
 import io.micronaut.sourcegen.bytecode.core.SignatureUtils;
 import io.micronaut.sourcegen.bytecode.core.TypeUtils;
 import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -49,6 +50,7 @@ import java.lang.classfile.MethodBuilder;
 import java.lang.classfile.attribute.ExceptionsAttribute;
 import java.lang.classfile.attribute.InnerClassInfo;
 import java.lang.classfile.attribute.InnerClassesAttribute;
+import java.lang.classfile.attribute.AnnotationDefaultAttribute;
 import java.lang.classfile.attribute.NestHostAttribute;
 import java.lang.classfile.attribute.NestMembersAttribute;
 import java.lang.classfile.attribute.MethodParameterInfo;
@@ -138,7 +140,73 @@ final class JdkClassFileWriter {
             writeRecord(builder, recordDef, owner, outerType);
         } else if (objectDef instanceof InterfaceDef interfaceDef) {
             writeInterface(builder, interfaceDef, owner, outerType);
+        } else if (objectDef instanceof AnnotationObjectDef annotationObjectDef) {
+            writeAnnotationObject(builder, annotationObjectDef, owner, outerType);
         }
+    }
+
+    /**
+     * Writes an annotation type the way a compiler emits one: an interface flagged
+     * {@code ACC_ANNOTATION} that extends {@link java.lang.annotation.Annotation}, with one abstract
+     * accessor per member and the member's default, when it has one, in that accessor's
+     * {@code AnnotationDefault} attribute.
+     */
+    private void writeAnnotationObject(ClassBuilder builder, AnnotationObjectDef annotationDef, ClassDesc owner,
+                                       @Nullable ClassTypeDef outerType) {
+        int flags = ModifierUtils.ACC_ANNOTATION | ModifierUtils.ACC_INTERFACE | ModifierUtils.ACC_ABSTRACT
+            | ModifierUtils.classFlags(annotationDef.getModifiers(), outerType);
+        if (annotationDef.isSynthetic()) {
+            flags |= ModifierUtils.ACC_SYNTHETIC;
+        }
+        builder.withVersion(ClassFile.JAVA_17_VERSION, 0)
+            .withFlags(flags)
+            .withSuperclass(ConstantDescs.CD_Object)
+            .withInterfaceSymbols(List.of(ClassDesc.of(java.lang.annotation.Annotation.class.getName())));
+        writeOuterInner(builder, annotationDef, owner, outerType);
+        addAnnotations(builder, annotationDef.getAnnotations());
+        List<StatementDef> staticInitializer = new ArrayList<>();
+        for (FieldDef field : annotationDef.getFields()) {
+            writeField(builder, annotationDef, field);
+            // A constant of an annotation type is implicitly static, wherever it is assigned from
+            field.getInitializer().ifPresent(initializer ->
+                staticInitializer.add(annotationDef.asTypeDef().getStaticField(field).put(initializer)));
+        }
+        if (!staticInitializer.isEmpty()) {
+            writeMethod(builder, annotationDef, MethodDef.builder("<clinit>")
+                .addModifiers(Modifier.STATIC)
+                .addStatement(StatementDef.multi(staticInitializer))
+                .build(), owner);
+        }
+        for (AnnotationObjectDef.AnnotationMemberDef member : annotationDef.getMembers()) {
+            writeAnnotationMember(builder, annotationDef, member);
+        }
+    }
+
+    /**
+     * Writes a member of an annotation type as the abstract accessor it is, followed by its default.
+     * A default is a single value, which is what the {@code AnnotationDefault} attribute holds.
+     */
+    private void writeAnnotationMember(ClassBuilder builder, AnnotationObjectDef annotationDef,
+                                       AnnotationObjectDef.AnnotationMemberDef member) {
+        MethodDef accessor = MethodDef.builder(member.getName())
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addAnnotations(member.getAnnotations())
+            .returns(member.getType())
+            .build();
+        Object defaultValue = member.getAnnotationDefaultValue() != null
+            ? member.getAnnotationDefaultValue()
+            : member.getDefaultValue();
+        builder.withMethod(accessor.getName(),
+            MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(annotationDef, accessor)),
+            ModifierUtils.ACC_PUBLIC | ModifierUtils.ACC_ABSTRACT,
+            methodBuilder -> {
+                addMethodMetadata(methodBuilder, annotationDef, accessor);
+                addTypeAnnotations(methodBuilder, methodTypeAnnotations(accessor));
+                if (defaultValue != null) {
+                    methodBuilder.with(AnnotationDefaultAttribute.of(
+                        ByteCodeWriter.toAnnotationValue(defaultValue, member.getType())));
+                }
+            });
     }
 
     /**
@@ -946,6 +1014,14 @@ final class JdkClassFileWriter {
             if (classDef.getStaticInitializer() != null && !JdkMethodSupport.supported(classDef.getStaticInitializer())) {
                 return false;
             }
+        } else if (objectDef instanceof AnnotationObjectDef annotationObjectDef) {
+            for (FieldDef field : annotationObjectDef.getFields()) {
+                if (field.getInitializer().isPresent()
+                    && !field.getInitializer().stream().allMatch(JdkMethodSupport::supported)) {
+                    return false;
+                }
+            }
+            return true;
         } else if (!(objectDef instanceof RecordDef) && !(objectDef instanceof InterfaceDef)) {
             return false;
         }

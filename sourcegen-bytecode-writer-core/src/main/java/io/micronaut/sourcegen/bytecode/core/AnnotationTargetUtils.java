@@ -17,7 +17,11 @@ package io.micronaut.sourcegen.bytecode.core;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.ElementQuery;
+import io.micronaut.inject.ast.MethodElement;
+import io.micronaut.inject.ast.TypedElement;
 import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -277,6 +281,53 @@ public final class AnnotationTargetUtils {
             return Optional.of(RetentionPolicy.valueOf(name));
         } catch (IllegalArgumentException e) {
             return Optional.empty();
+        }
+    }
+
+    /**
+     * Whether a member of an annotation is declared with an array type.
+     *
+     * <p>A single value is a legal source form for an array member - {@code @Target(TYPE)} means
+     * {@code @Target({TYPE})} - but a class file has no such shorthand, so a writer has to know the
+     * declared type to wrap the value. The declaration is read from the definition of an annotation
+     * type generated in this same round, from the source element of one still being compiled, and
+     * otherwise from the loaded class.</p>
+     *
+     * @param annotation  The annotation
+     * @param member      The name of the member
+     * @param classLoader The fallback class loader
+     * @return Whether the member is declared as an array
+     */
+    public static boolean isArrayMember(AnnotationDef annotation, String member, @Nullable ClassLoader classLoader) {
+        ClassTypeDef type = annotation.getType();
+        if (type instanceof ClassTypeDef.ClassDefType classDefType) {
+            return classDefType.objectDef() instanceof AnnotationObjectDef annotationObjectDef
+                && annotationObjectDef.getMembers().stream()
+                .filter(memberDef -> memberDef.getName().equals(member))
+                .anyMatch(memberDef -> memberDef.getType() instanceof TypeDef.Array);
+        }
+        if (type instanceof ClassTypeDef.ClassElementType classElementType) {
+            return isSourceArrayMember(classElementType.classElement(), member);
+        }
+        Class<?> annotationType = resolveAnnotationType(type, classLoader);
+        if (annotationType == null) {
+            return false;
+        }
+        try {
+            return annotationType.getMethod(member).getReturnType().isArray();
+        } catch (NoSuchMethodException | LinkageError _) {
+            return false;
+        }
+    }
+
+    private static boolean isSourceArrayMember(ClassElement classElement, String member) {
+        try {
+            return classElement.getEnclosedElements(ElementQuery.ALL_METHODS).stream()
+                .filter(method -> method.getName().equals(member))
+                .map(MethodElement::getReturnType)
+                .anyMatch(TypedElement::isArray);
+        } catch (RuntimeException _) {
+            return false;
         }
     }
 

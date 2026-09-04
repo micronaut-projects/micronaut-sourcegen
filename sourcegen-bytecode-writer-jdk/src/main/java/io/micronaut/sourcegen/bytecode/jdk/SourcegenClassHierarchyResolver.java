@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.bytecode.jdk;
 
 import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -103,7 +104,8 @@ final class SourcegenClassHierarchyResolver implements ClassHierarchyResolver {
             return;
         }
         ClassDesc name = ClassDesc.of(objectDef.getName());
-        if (objectDef instanceof InterfaceDef) {
+        if (objectDef instanceof InterfaceDef || objectDef instanceof AnnotationObjectDef) {
+            // An annotation type is an interface
             interfaces.add(name);
         } else if (objectDef instanceof RecordDef) {
             superclasses.put(name, ClassDesc.of("java.lang.Record"));

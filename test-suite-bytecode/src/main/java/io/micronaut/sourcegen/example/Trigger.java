@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.example;
 
 
+import io.micronaut.sourcegen.custom.example.GenerateAnnotationClass;
 import io.micronaut.sourcegen.custom.example.GenerateArray;
 import io.micronaut.sourcegen.custom.example.GenerateExpressions;
 import io.micronaut.sourcegen.custom.example.GenerateGenericBridges;
@@ -54,5 +55,6 @@ import io.micronaut.sourcegen.custom.example.GenerateSwitch;
 @GenerateStatements
 @GenerateExpressions
 @GenerateGenericBridges
+@GenerateAnnotationClass
 public class Trigger {
 }
