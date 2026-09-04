@@ -9,8 +9,4 @@
               <!-- files="DefaultBeanContext.java|BeanDefinitionWriter.java|DefaultHttpClient.java"/> -->
 
     <suppress checks="MissingJavadocType" files=".*doc-examples.*" />
-
-    <!-- The TCK base class exists to be extended, and its test methods are meant to be overridable
-         so that a backend can record a gap it does not yet satisfy. -->
-    <suppress checks="DesignForExtension" files=".*[\\/]bytecode[\\/]tck[\\/].*" />
 </suppressions>
