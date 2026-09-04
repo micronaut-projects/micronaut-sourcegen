@@ -59,7 +59,7 @@ class AnnotationObjectByteCodeWriterTest {
     }
 
     @Test
-    void everyMemberOfAnAnnotationTypeIsPublicAndAbstract() throws Exception {
+    void everyMemberOfAnAnnotationTypeIsPublicAndAbstract() {
         Class<?> annotationClass = define(GenerateAnnotationClassVisitor.createAnnotation("example.MyAnnotation"));
 
         for (Method member : annotationClass.getDeclaredMethods()) {

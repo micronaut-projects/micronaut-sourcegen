@@ -19,6 +19,7 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.ast.MethodElement;
+import io.micronaut.inject.ast.TypedElement;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
@@ -204,7 +205,7 @@ public final class AnnotationTargetUtils {
         }
         try {
             return annotationType.getMethod(member).getReturnType().isArray();
-        } catch (NoSuchMethodException | LinkageError e) {
+        } catch (NoSuchMethodException | LinkageError _) {
             return false;
         }
     }
@@ -214,8 +215,8 @@ public final class AnnotationTargetUtils {
             return classElement.getEnclosedElements(ElementQuery.ALL_METHODS).stream()
                 .filter(method -> method.getName().equals(member))
                 .map(MethodElement::getReturnType)
-                .anyMatch(returnType -> returnType.isArray());
-        } catch (RuntimeException e) {
+                .anyMatch(TypedElement::isArray);
+        } catch (RuntimeException _) {
             return false;
         }
     }

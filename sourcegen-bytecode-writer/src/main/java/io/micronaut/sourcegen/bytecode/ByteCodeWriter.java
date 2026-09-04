@@ -1030,25 +1030,10 @@ public final class ByteCodeWriter {
         annotationVisitor.visitEnd();
     }
 
-    private void visitAnnotation(AnnotationVisitor annotationVisitor, @Nullable String name, Object value) {
-        if (value instanceof ExpressionDef.Constant constant) {
-            Object constantValue = constant.value();
-            if (constantValue == null) {
-                throw new IllegalArgumentException("An annotation value cannot be null: " + name);
-            }
-            visitAnnotation(annotationVisitor, name, constantValue);
-            return;
-        }
+    private void visitAnnotation(AnnotationVisitor annotationVisitor, @Nullable String name, Object annotationValue) {
+        Object value = unwrapConstant(annotationValue, name);
         if (value instanceof VariableDef.StaticField staticField) {
-            if (staticField.name().equals("class") && staticField.type().equals(TypeDef.CLASS)) {
-                annotationVisitor.visit(name, TypeUtils.getType(staticField.ownerType(), null));
-            } else {
-                annotationVisitor.visitEnum(
-                    name,
-                    TypeUtils.getType(staticField.ownerType(), null).getDescriptor(),
-                    staticField.name()
-                );
-            }
+            visitStaticField(annotationVisitor, name, staticField);
         } else if (value instanceof ClassTypeDef classTypeDef) {
             annotationVisitor.visit(name, TypeUtils.getType(classTypeDef, null));
         } else if (value instanceof Class<?> type) {
@@ -1069,6 +1054,36 @@ public final class ByteCodeWriter {
         } else {
             annotationVisitor.visit(name, value);
         }
+    }
+
+    /**
+     * A static field is a class literal when it is the synthetic {@code class} field of a type, and the
+     * constant of an enum otherwise.
+     */
+    private static void visitStaticField(AnnotationVisitor annotationVisitor, @Nullable String name, VariableDef.StaticField staticField) {
+        if (staticField.name().equals("class") && staticField.type().equals(TypeDef.CLASS)) {
+            annotationVisitor.visit(name, TypeUtils.getType(staticField.ownerType(), null));
+        } else {
+            annotationVisitor.visitEnum(
+                name,
+                TypeUtils.getType(staticField.ownerType(), null).getDescriptor(),
+                staticField.name()
+            );
+        }
+    }
+
+    /**
+     * The value a constant expression stands for. An annotation value is never null.
+     */
+    private static Object unwrapConstant(Object value, @Nullable String name) {
+        if (value instanceof ExpressionDef.Constant constant) {
+            Object constantValue = constant.value();
+            if (constantValue == null) {
+                throw new IllegalArgumentException("An annotation value cannot be null: " + name);
+            }
+            return constantValue;
+        }
+        return value;
     }
 
     /**
