@@ -35,11 +35,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
+import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.List;
 import java.util.Map;
 
+import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -89,6 +91,45 @@ class JdkExpressionLoweringTest {
         assertEquals(1, generated.getMethod("rank", String.class).invoke(null, "red"));
         assertEquals(2, generated.getMethod("rank", String.class).invoke(null, "blue"));
         assertEquals(0, generated.getMethod("rank", String.class).invoke(null, "green"));
+    }
+
+    @Test
+    void yieldsToTheSwitchWhenTheSwitchIsAnArgument() throws Exception {
+        // A switch yield case yields the value of its block to the switch, so a switch that is not
+        // itself what the method returns - here it is an argument - must not return from the method
+        Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
+        cases.put(ExpressionDef.constant(0), ExpressionDef.constant("10"));
+        ClassDef definition = ClassDef.builder("example.JdkSwitchYield")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("size")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("count", TypeDef.Primitive.INT)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> ClassTypeDef.of(Integer.class).invokeStatic(
+                    "parseInt",
+                    TypeDef.Primitive.INT,
+                    parameters.get(0).asExpressionSwitch(
+                        TypeDef.STRING,
+                        cases,
+                        // An early yield and a final one; were either written as a method return,
+                        // the class would not verify - size returns an int, not a string
+                        new ExpressionDef.SwitchYieldCase(
+                            TypeDef.STRING,
+                            StatementDef.multi(
+                                parameters.get(0).compare(EQUAL_TO, TypeDef.Primitive.INT.constant(1))
+                                    .ifTrue(ExpressionDef.constant("20").returning()),
+                                ExpressionDef.constant("30").returning()
+                            )
+                        )
+                    )
+                ).returning()))
+            .build();
+
+        Method size = define(definition).getMethod("size", int.class);
+
+        assertEquals(10, size.invoke(null, 0));
+        assertEquals(20, size.invoke(null, 1));
+        assertEquals(30, size.invoke(null, 2));
     }
 
     @Test

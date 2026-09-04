@@ -23,3 +23,16 @@ afterEvaluate {
         }
     }
 }
+
+
+// The bytecode writer TCK is test code that ships as a jar so that every backend can run it. Sonar
+// applies its Gradle plugin only to the root project, so a module cannot declare its own sources as
+// tests; without this the TCK is analysed as production code and reports rules that do not hold for
+// test code, such as assertions not belonging in production code.
+plugins.withId("org.sonarqube") {
+    extensions.findByName("sonar")?.withGroovyBuilder {
+        "properties" {
+            "property"("sonar.exclusions", "**/io/micronaut/sourcegen/bytecode/tck/**")
+        }
+    }
+}

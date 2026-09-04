@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.bytecode.statement;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.bytecode.expression.ExpressionWriter;
+import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.jspecify.annotations.Nullable;
@@ -33,6 +34,11 @@ final class ReturnStatementWriter implements StatementWriter {
 
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock) {
+        MethodContext.YieldTarget yieldTarget = context.currentYieldTarget();
+        if (yieldTarget != null) {
+            writeYield(generatorAdapter, context, finallyBlock, yieldTarget);
+            return;
+        }
         aReturn.validate(context.methodDef());
         if (aReturn.expression() != null) {
             ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aReturn.expression(), context.methodDef().getReturnType());
@@ -43,6 +49,26 @@ final class ReturnStatementWriter implements StatementWriter {
             }
         }
         generatorAdapter.returnValue();
+    }
+
+    /**
+     * Writes a return that is the value of the switch yield case being written: the value is held in
+     * the local of the case and control jumps to its end, where the case loads it.
+     */
+    private void writeYield(GeneratorAdapter generatorAdapter,
+                            MethodContext context,
+                            @Nullable Runnable finallyBlock,
+                            MethodContext.YieldTarget yieldTarget) {
+        ExpressionDef expression = aReturn.expression();
+        if (expression == null) {
+            throw new IllegalStateException("Switch yield return has no value");
+        }
+        ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, expression, yieldTarget.type());
+        generatorAdapter.storeLocal(yieldTarget.slot(), TypeUtils.getType(yieldTarget.type(), context.objectDef()));
+        if (finallyBlock != null) {
+            finallyBlock.run();
+        }
+        generatorAdapter.goTo(yieldTarget.end());
     }
 
     private void pushFinallyStatement(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock, TypeDef expTypeDef) {
