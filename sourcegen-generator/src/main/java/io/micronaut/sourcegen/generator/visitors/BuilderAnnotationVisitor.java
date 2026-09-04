@@ -772,7 +772,8 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                     .newLocal(field.name() + "Iterator", iteratorVar ->
                         iteratorVar.invoke("hasNext", TypeDef.primitive(boolean.class)).whileLoop(
                             iteratorVar.invoke("next", TypeDef.OBJECT).cast(Map.Entry.class).newLocal(field.name() + "Entry", entryVar ->
-                                mapVar.invoke("put", TypeDef.of(boolean.class),
+                                // Map.put returns the previous value, not a boolean like Collection.add
+                                mapVar.invoke("put", TypeDef.OBJECT,
                                     entryVar.invoke("getKey", TypeDef.OBJECT).cast(keyType),
                                     entryVar.invoke("getValue", TypeDef.OBJECT).cast(valueType)
                                 ))

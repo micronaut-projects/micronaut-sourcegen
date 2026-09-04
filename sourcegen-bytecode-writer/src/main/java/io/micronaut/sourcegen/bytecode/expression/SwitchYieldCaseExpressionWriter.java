@@ -16,8 +16,11 @@
 package io.micronaut.sourcegen.bytecode.expression;
 
 import io.micronaut.sourcegen.bytecode.MethodContext;
+import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.bytecode.statement.StatementWriter;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 final class SwitchYieldCaseExpressionWriter implements ExpressionWriter {
@@ -29,6 +32,18 @@ final class SwitchYieldCaseExpressionWriter implements ExpressionWriter {
 
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
-        StatementWriter.of(switchYieldCase.statement()).write(generatorAdapter, context, null);
+        // The case is a statement block that yields its value with a return statement, so the returns
+        // it contains hold the value in a local and jump here instead of returning from the method
+        Type type = TypeUtils.getType(switchYieldCase.type(), context.objectDef());
+        Label end = new Label();
+        int slot = generatorAdapter.newLocal(type);
+        context.yieldTargets().push(new MethodContext.YieldTarget(switchYieldCase.type(), slot, end));
+        try {
+            StatementWriter.of(switchYieldCase.statement()).write(generatorAdapter, context, null);
+        } finally {
+            context.yieldTargets().pop();
+        }
+        generatorAdapter.visitLabel(end);
+        generatorAdapter.loadLocal(slot, type);
     }
 }
