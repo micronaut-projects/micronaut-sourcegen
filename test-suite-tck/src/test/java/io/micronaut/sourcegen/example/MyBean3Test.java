@@ -17,7 +17,6 @@ package io.micronaut.sourcegen.example;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -43,9 +42,6 @@ class MyBean3Test {
     }
 
     @Test
-    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode.*",
-        disabledReason = "The bytecode backends write a TYPE_USE-only annotation as a plain "
-            + "parameter annotation, so it is not on the parameter's annotated type")
     void nullableOnAParameterIsWrittenAsATypeAnnotation() throws Exception {
         // org.jspecify.annotations.Nullable is @Target(TYPE_USE) only, so it belongs to the
         // parameter's type rather than to the parameter itself

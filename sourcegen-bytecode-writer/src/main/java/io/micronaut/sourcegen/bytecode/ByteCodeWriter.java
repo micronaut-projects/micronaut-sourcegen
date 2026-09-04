@@ -16,9 +16,9 @@
 package io.micronaut.sourcegen.bytecode;
 
 import org.jspecify.annotations.Nullable;
-import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.core.util.CollectionUtils;
+import io.micronaut.sourcegen.bytecode.core.AnnotationTargetUtils;
 import io.micronaut.sourcegen.bytecode.statement.StatementWriter;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
@@ -50,11 +50,8 @@ import org.objectweb.asm.TypeReference;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.util.CheckClassAdapter;
 
-import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
-import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.ArrayList;
@@ -243,11 +240,11 @@ public final class ByteCodeWriter {
             SignatureWriterUtils.getFieldSignature(objectDef, fieldDef),
             null
         );
-        for (AnnotationDef annotation : fieldDef.getAnnotations()) {
+        for (AnnotationDef annotation : declarationAnnotations(fieldDef.getAnnotations(), ElementType.FIELD)) {
             writeAnnotation(annotation, fieldVisitor::visitAnnotation);
         }
         writeTypeAnnotations(
-            fieldDef.getType(),
+            annotatedType(fieldDef.getType(), fieldDef.getAnnotations()),
             TypeReference.newTypeReference(TypeReference.FIELD).getValue(),
             fieldVisitor::visitTypeAnnotation
         );
@@ -362,53 +359,10 @@ public final class ByteCodeWriter {
     }
 
     private static FieldDef toComponentField(PropertyDef component) {
-        return FieldDef.builder(component.getName(), componentType(component))
+        return FieldDef.builder(component.getName(), component.getType())
             .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
             .addAnnotations(annotationsFor(component, ElementType.FIELD))
             .build();
-    }
-
-    /**
-     * The type of a record component, carrying the annotations of the component that are type use ones. A
-     * compiler writes those on the type of every member the component expands to, not on the members
-     * themselves.
-     *
-     * @param component The record component
-     * @return Its type
-     */
-    private static TypeDef componentType(PropertyDef component) {
-        List<AnnotationDef> typeAnnotations = component.getAnnotations().stream()
-            .filter(annotation -> targetsOf(annotation).map(t -> t.contains(ElementType.TYPE_USE)).orElse(false))
-            .toList();
-        return typeAnnotations.isEmpty() ? component.getType() : annotateComponentType(component.getType(), typeAnnotations);
-    }
-
-    /**
-     * An annotation written before the type of a component annotates what an array holds and not the array
-     * itself - {@code @Nullable String[]} is an array of annotated strings, which is how a compiler reads it
-     * and how the source generators render it. Any other type is annotated as it stands.
-     *
-     * @param typeDef     The type of the component
-     * @param annotations The type use annotations of the component
-     * @return The annotated type
-     */
-    private static TypeDef annotateComponentType(TypeDef typeDef, List<AnnotationDef> annotations) {
-        // An annotation already on the type wraps it, and only this wrapper can be hiding an array - the one
-        // for a class type cannot. Descend through it and put it back, so what it annotates stays the same
-        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
-            return new TypeDef.AnnotatedTypeDef(
-                annotateComponentType(annotated.typeDef(), annotations),
-                annotated.annotations()
-            );
-        }
-        if (typeDef instanceof TypeDef.Array array) {
-            return new TypeDef.Array(
-                annotateComponentType(array.componentType(), annotations),
-                array.dimensions(),
-                array.nullable()
-            );
-        }
-        return typeDef.annotated(annotations);
     }
 
     /**
@@ -418,208 +372,67 @@ public final class ByteCodeWriter {
      * it. An annotation that declares no target is applicable in every one of those contexts, and so is one
      * whose type cannot be resolved here - it is written everywhere rather than dropped.
      *
+     * <p>A type use annotation is kept for every member, whether or not it also targets the member itself:
+     * the member is written with it on the type it declares, which is where the annotation belongs.</p>
+     *
      * @param component   The record component
      * @param elementType The context the annotations are written in
      * @return The annotations that belong there
      */
     private static List<AnnotationDef> annotationsFor(PropertyDef component, ElementType elementType) {
         return component.getAnnotations().stream()
-            .filter(annotation -> targetsOf(annotation).map(t -> t.contains(elementType)).orElse(true))
+            .filter(annotation -> targetsOf(annotation)
+                .map(t -> t.contains(elementType) || t.contains(ElementType.TYPE_USE))
+                .orElse(true))
+            .toList();
+    }
+
+    /**
+     * The annotations of a record component that belong on the component itself, where a type use annotation
+     * is written against the component's type instead and so is not among them.
+     *
+     * @param component The record component
+     * @return The annotations of the record component attribute
+     */
+    private static List<AnnotationDef> componentAnnotations(PropertyDef component) {
+        return component.getAnnotations().stream()
+            .filter(annotation -> targetsOf(annotation)
+                .map(t -> t.contains(ElementType.RECORD_COMPONENT))
+                .orElse(true))
             .toList();
     }
 
     /**
      * The contexts an annotation declares as its targets, or empty when it declares none and is therefore
-     * applicable in all of them. The targets are read from the class the definition carries, from the
-     * definition of an annotation type being generated alongside, or from the class loaded by name.
+     * applicable in all of them.
      *
      * @param annotation The annotation
      * @return Its targets, or empty when it declares none or its type cannot be resolved here
      */
     private static Optional<Set<ElementType>> targetsOf(AnnotationDef annotation) {
-        ClassTypeDef typeDef = annotation.getType();
-        if (typeDef instanceof ClassTypeDef.ClassDefType classDefType) {
-            return declaredTargetsOf(classDefType.objectDef());
-        }
-        if (typeDef instanceof ClassTypeDef.ClassElementType classElementType) {
-            Target target = sourceTargetOf(classElementType.classElement());
-            if (target != null) {
-                return Optional.of(Set.of(target.value()));
-            }
-        }
-        Class<?> annotationType = resolveAnnotationType(typeDef);
-        if (annotationType == null) {
-            return Optional.empty();
-        }
-        Target target = annotationType.getAnnotation(Target.class);
-        return target == null ? Optional.empty() : Optional.of(Set.of(target.value()));
+        return AnnotationTargetUtils.targetsOf(annotation, ByteCodeWriter.class.getClassLoader());
+    }
+
+    /**
+     * @param annotations The annotations of a declaration
+     * @param elementType The kind of declaration they are written on
+     * @return Those of them that belong among the declaration annotations
+     */
+    private static List<AnnotationDef> declarationAnnotations(List<AnnotationDef> annotations, ElementType elementType) {
+        return AnnotationTargetUtils.declarationAnnotations(annotations, elementType, ByteCodeWriter.class.getClassLoader());
+    }
+
+    /**
+     * @param typeDef     The declared type
+     * @param annotations The annotations of the declaration
+     * @return The type, carrying those of the annotations that annotate a type use
+     */
+    private static TypeDef annotatedType(TypeDef typeDef, List<AnnotationDef> annotations) {
+        return AnnotationTargetUtils.annotatedType(typeDef, annotations, ByteCodeWriter.class.getClassLoader());
     }
 
     private static RetentionPolicy retentionOf(AnnotationDef annotation) {
-        ClassTypeDef typeDef = annotation.getType();
-        if (typeDef instanceof ClassTypeDef.ClassDefType classDefType) {
-            return declaredRetentionOf(classDefType.objectDef()).orElse(RetentionPolicy.CLASS);
-        }
-        if (typeDef instanceof ClassTypeDef.ClassElementType classElementType) {
-            Retention retention = sourceAnnotation(classElementType.classElement(), Retention.class);
-            if (retention != null) {
-                return retention.value();
-            }
-        }
-        Class<?> annotationType = resolveAnnotationType(typeDef);
-        if (annotationType == null) {
-            if (typeDef instanceof ClassTypeDef.ClassElementType) {
-                return RetentionPolicy.CLASS;
-            }
-            // The annotation type is not on the generator's own class path, which is the normal case for
-            // an annotation processor writing annotations of the project it is processing. Nothing here can
-            // read its retention, so keep the runtime visibility every annotation had before retention was
-            // honoured at all - downgrading to CLASS would hide these from the frameworks that read them.
-            return RetentionPolicy.RUNTIME;
-        }
-        Retention retention = annotationType.getAnnotation(Retention.class);
-        return retention == null ? RetentionPolicy.CLASS : retention.value();
-    }
-
-    /**
-     * The {@link Target} of an annotation type that is being compiled, read from the compiler's own element.
-     * Its class cannot be loaded, and the annotation metadata of a {@link io.micronaut.inject.ast.ClassElement}
-     * cannot answer either: {@code Target} is one of the annotations
-     * {@code io.micronaut.core.annotation.AnnotationUtil#INTERNAL_ANNOTATION_NAMES} strips while the metadata
-     * is built. The compiler's element is reached through the native type, which only a Java element carries.
-     *
-     * @param classElement The annotation type
-     * @return Its target, or {@code null} when the element is not one of a Java compilation or declares none
-     */
-    @Nullable
-    private static Target sourceTargetOf(io.micronaut.inject.ast.ClassElement classElement) {
-        return sourceAnnotation(classElement, Target.class);
-    }
-
-    @Nullable
-    private static <A extends Annotation> A sourceAnnotation(io.micronaut.inject.ast.ClassElement classElement,
-                                                             Class<A> annotationType) {
-        Object nativeType = classElement.getNativeType();
-        Element element = null;
-        if (nativeType instanceof Element nativeElement) {
-            element = nativeElement;
-        } else if (nativeType != null) {
-            try {
-                // A JavaNativeElement wraps the compiler's element, and lives in a module this one cannot see
-                Object unwrapped = nativeType.getClass().getMethod("element").invoke(nativeType);
-                if (unwrapped instanceof Element unwrappedElement) {
-                    element = unwrappedElement;
-                }
-            } catch (ReflectiveOperationException | RuntimeException e) {
-                return null;
-            }
-        }
-        return element == null ? null : element.getAnnotation(annotationType);
-    }
-
-    /**
-     * The targets of an annotation type that is itself being generated, read off its {@link Target}
-     * definition - the class is not loadable, so nothing else can answer for it.
-     *
-     * @param objectDef The definition of the annotation type
-     * @return Its targets, empty when it declares no {@link Target} or nothing in the member is
-     * recognisable, and an empty set when it explicitly targets nothing
-     */
-    private static Optional<Set<ElementType>> declaredTargetsOf(ObjectDef objectDef) {
-        return objectDef.getAnnotations().stream()
-            .filter(a -> a.getType().getName().equals(Target.class.getName()))
-            .findFirst()
-            .flatMap(a -> declaredTargets(a.getValues().get(AnnotationMetadata.VALUE_MEMBER)));
-    }
-
-    /**
-     * The targets a {@link Target} member names. An explicitly empty member targets nothing and drops the
-     * annotation from every context, but nothing recognisable in a member that is not empty leaves the
-     * annotation untargeted rather than targeting nothing at all, which would drop it from every member a
-     * record component expands to.
-     *
-     * @param value The member of the {@link Target}
-     * @return The targets it names, or empty when it names none that can be recognised
-     */
-    private static Optional<Set<ElementType>> declaredTargets(@Nullable Object value) {
-        if (isEmptyMember(value)) {
-            return Optional.of(Set.of());
-        }
-        Set<ElementType> targets = toElementTypes(value);
-        return targets.isEmpty() ? Optional.empty() : Optional.of(targets);
-    }
-
-    /**
-     * @param value An annotation member
-     * @return True when the member is an array that holds nothing
-     */
-    private static boolean isEmptyMember(@Nullable Object value) {
-        if (value instanceof Collection<?> collection) {
-            return collection.isEmpty();
-        }
-        return value instanceof Object[] array && array.length == 0;
-    }
-
-    private static Optional<RetentionPolicy> declaredRetentionOf(ObjectDef objectDef) {
-        return objectDef.getAnnotations().stream()
-            .filter(a -> a.getType().getName().equals(Retention.class.getName()))
-            .findFirst()
-            .flatMap(a -> toRetentionPolicy(a.getValues().get(AnnotationMetadata.VALUE_MEMBER)));
-    }
-
-    private static Optional<RetentionPolicy> toRetentionPolicy(@Nullable Object value) {
-        if (value instanceof RetentionPolicy retentionPolicy) {
-            return Optional.of(retentionPolicy);
-        }
-        String name = value instanceof VariableDef.StaticField staticField ? staticField.name() : Objects.toString(value, "");
-        try {
-            return Optional.of(RetentionPolicy.valueOf(name));
-        } catch (IllegalArgumentException e) {
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * @param value A member of a {@link Target}, however a definition happens to hold an enum constant: the
-     *              constant itself, a static field reference to it, its name, or several of those
-     * @return The element types it names
-     */
-    private static Set<ElementType> toElementTypes(@Nullable Object value) {
-        if (value == null) {
-            return Set.of();
-        }
-        if (value instanceof Collection<?> collection) {
-            return collection.stream().flatMap(v -> toElementTypes(v).stream()).collect(Collectors.toSet());
-        }
-        if (value instanceof Object[] array) {
-            return Arrays.stream(array).flatMap(v -> toElementTypes(v).stream()).collect(Collectors.toSet());
-        }
-        if (value instanceof ElementType elementType) {
-            return Set.of(elementType);
-        }
-        String name = value instanceof VariableDef.StaticField staticField ? staticField.name() : value.toString();
-        try {
-            return Set.of(ElementType.valueOf(name));
-        } catch (IllegalArgumentException e) {
-            return Set.of();
-        }
-    }
-
-    /**
-     * @param typeDef The annotation type
-     * @return The annotation class, or {@code null} when the definition carries no class for it and none
-     * can be loaded by name
-     */
-    @Nullable
-    private static Class<?> resolveAnnotationType(ClassTypeDef typeDef) {
-        if (typeDef instanceof ClassTypeDef.JavaClass javaClass) {
-            return javaClass.type();
-        }
-        try {
-            return Class.forName(typeDef.getName(), false, ByteCodeWriter.class.getClassLoader());
-        } catch (ClassNotFoundException | LinkageError e) {
-            return null;
-        }
+        return AnnotationTargetUtils.retentionOf(annotation, ByteCodeWriter.class.getClassLoader());
     }
 
     private void writeRecordComponent(ClassVisitor classVisitor, RecordDef recordDef, PropertyDef component, FieldDef componentField) {
@@ -628,11 +441,11 @@ public final class ByteCodeWriter {
             TypeUtils.getType(component.getType(), recordDef).getDescriptor(),
             SignatureWriterUtils.getFieldSignature(recordDef, componentField)
         );
-        for (AnnotationDef annotation : annotationsFor(component, ElementType.RECORD_COMPONENT)) {
+        for (AnnotationDef annotation : componentAnnotations(component)) {
             writeAnnotation(annotation, recordComponentVisitor::visitAnnotation);
         }
         writeTypeAnnotations(
-            componentField.getType(),
+            annotatedType(componentField.getType(), component.getAnnotations()),
             TypeReference.newTypeReference(TypeReference.FIELD).getValue(),
             recordComponentVisitor::visitTypeAnnotation
         );
@@ -1086,17 +899,21 @@ public final class ByteCodeWriter {
     }
 
     private void writeMethodAnnotations(GeneratorAdapter generatorAdapter, MethodDef methodDef) {
-        for (AnnotationDef annotation : methodDef.getAnnotations()) {
+        ElementType declaration = methodDef.isConstructor() ? ElementType.CONSTRUCTOR : ElementType.METHOD;
+        for (AnnotationDef annotation : declarationAnnotations(methodDef.getAnnotations(), declaration)) {
             writeAnnotation(annotation, generatorAdapter::visitAnnotation);
         }
-        if (!methodDef.isConstructor()) {
-            writeTypeAnnotations(
-                methodDef.getReturnType(),
-                TypeReference.newTypeReference(TypeReference.METHOD_RETURN).getValue(),
-                generatorAdapter::visitTypeAnnotation
-            );
-        }
-        if (methodDef.getParameters().stream().anyMatch(p -> !p.getAnnotations().isEmpty())) {
+        // A type use annotation written on a method is an annotation of the type it returns, and one written
+        // on a constructor is an annotation of the type being constructed - both of which the class file
+        // reaches through METHOD_RETURN. The definition of a constructor carries no return type of its own
+        TypeDef returnType = methodDef.isConstructor() ? TypeDef.VOID : methodDef.getReturnType();
+        writeTypeAnnotations(
+            annotatedType(returnType, methodDef.getAnnotations()),
+            TypeReference.newTypeReference(TypeReference.METHOD_RETURN).getValue(),
+            generatorAdapter::visitTypeAnnotation
+        );
+        if (methodDef.getParameters().stream()
+            .anyMatch(p -> !declarationAnnotations(p.getAnnotations(), ElementType.PARAMETER).isEmpty())) {
             generatorAdapter.visitAnnotableParameterCount(methodDef.getParameters().size(), true);
         }
     }
@@ -1155,12 +972,12 @@ public final class ByteCodeWriter {
             if (startMethod == null) {
                 startMethod = new Label();
             }
-            for (AnnotationDef annotation : parameter.getAnnotations()) {
+            for (AnnotationDef annotation : declarationAnnotations(parameter.getAnnotations(), ElementType.PARAMETER)) {
                 int index = parameterIndex;
                 writeAnnotation(annotation, (descriptor, visible) -> generatorAdapter.visitParameterAnnotation(index, descriptor, visible));
             }
             writeTypeAnnotations(
-                parameter.getType(),
+                annotatedType(parameter.getType(), parameter.getAnnotations()),
                 TypeReference.newFormalParameterReference(parameterIndex).getValue(),
                 generatorAdapter::visitTypeAnnotation
             );

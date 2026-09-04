@@ -29,6 +29,8 @@ import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
 import java.util.Set;
@@ -111,6 +113,53 @@ class EnumAndAnnotationCoreTest {
         // An annotation with no target declaration, and one that cannot be resolved at all
         AnnotationDef unknown = AnnotationDef.builder(ClassTypeDef.of("example.NotOnTheClassPath")).build();
         assertTrue(AnnotationTargetUtils.targetsOf(unknown, getClass().getClassLoader()).isEmpty());
+    }
+
+    @Test
+    void placesAnAnnotationByTheTargetsItDeclares() {
+        ClassLoader loader = getClass().getClassLoader();
+        AnnotationDef typeUseOnly = AnnotationDef.builder(ClassTypeDef.of(TypeUseOnly.class)).build();
+        AnnotationDef typeUseAndField = AnnotationDef.builder(ClassTypeDef.of(TypeUseAndField.class)).build();
+        AnnotationDef methodOnly = AnnotationDef.builder(ClassTypeDef.of(Override.class)).build();
+        List<AnnotationDef> annotations = List.of(typeUseOnly, typeUseAndField, methodOnly);
+
+        // Targeting a type use only, an annotation is written on the type of the declaration and nowhere else;
+        // one targeting the declaration as well is written in both places, and one targeting neither is left
+        // where it was put rather than dropped
+        assertEquals(List.of(typeUseAndField, methodOnly),
+            AnnotationTargetUtils.declarationAnnotations(annotations, ElementType.FIELD, loader));
+        assertEquals(List.of(typeUseOnly, typeUseAndField),
+            AnnotationTargetUtils.typeUseAnnotations(annotations, loader));
+
+        assertEquals(new ClassTypeDef.AnnotatedClassTypeDef(TypeDef.STRING, List.of(typeUseOnly, typeUseAndField)),
+            AnnotationTargetUtils.annotatedType(TypeDef.STRING, annotations, loader));
+        // Nothing to move leaves the type as it was
+        assertEquals(TypeDef.STRING,
+            AnnotationTargetUtils.annotatedType(TypeDef.STRING, List.of(methodOnly), loader));
+        // An annotation written before an array type annotates what the array holds (JLS 9.7.4)
+        assertEquals(new TypeDef.Array(
+                new ClassTypeDef.AnnotatedClassTypeDef(TypeDef.STRING, List.of(typeUseOnly)), 2, false),
+            AnnotationTargetUtils.annotatedType(new TypeDef.Array(TypeDef.STRING, 2, false),
+                List.of(typeUseOnly), loader));
+    }
+
+    @Test
+    void readsAnAnnotationTypeThatExplicitlyTargetsNothing() {
+        AnnotationDef target = AnnotationDef.builder(ClassTypeDef.of(Target.class))
+            .addMember("value", List.of())
+            .build();
+        ClassDef annotation = ClassDef.builder("example.TargetsNothing").addAnnotation(target).build();
+        assertEquals(Set.of(), AnnotationTargetUtils.declaredTargetsOf(annotation).orElseThrow());
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE_USE)
+    private @interface TypeUseOnly {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE_USE, ElementType.FIELD})
+    private @interface TypeUseAndField {
     }
 
     @Test

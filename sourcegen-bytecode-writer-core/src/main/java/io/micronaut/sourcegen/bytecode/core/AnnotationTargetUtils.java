@@ -20,6 +20,7 @@ import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 
@@ -31,6 +32,7 @@ import java.lang.annotation.Target;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -81,8 +83,30 @@ public final class AnnotationTargetUtils {
         return objectDef.getAnnotations().stream()
             .filter(annotation -> annotation.getType().getName().equals(Target.class.getName()))
             .findFirst()
-            .map(annotation -> toElementTypes(annotation.getValues().get("value")))
-            .filter(targets -> !targets.isEmpty());
+            .flatMap(annotation -> declaredTargets(annotation.getValues().get("value")));
+    }
+
+    /**
+     * The targets a {@link Target} member names. An explicitly empty member targets nothing and drops the
+     * annotation from every context, but nothing recognisable in a member that is not empty leaves the
+     * annotation untargeted rather than targeting nothing at all, which would drop it everywhere.
+     *
+     * @param value The member of the {@link Target}
+     * @return The targets it names, or empty when it names none that can be recognised
+     */
+    private static Optional<Set<ElementType>> declaredTargets(@Nullable Object value) {
+        if (isEmptyMember(value)) {
+            return Optional.of(Set.of());
+        }
+        Set<ElementType> targets = toElementTypes(value);
+        return targets.isEmpty() ? Optional.empty() : Optional.of(targets);
+    }
+
+    private static boolean isEmptyMember(@Nullable Object value) {
+        if (value instanceof Collection<?> collection) {
+            return collection.isEmpty();
+        }
+        return value instanceof Object[] array && array.length == 0;
     }
 
     /**
@@ -114,6 +138,93 @@ public final class AnnotationTargetUtils {
         } catch (IllegalArgumentException e) {
             return Set.of();
         }
+    }
+
+    /**
+     * The annotations of a declaration that belong among its declaration annotations, which is every one of
+     * them but those a compiler writes as type annotations instead. An annotation whose {@link Target} names
+     * {@link ElementType#TYPE_USE} but not the declaration itself annotates the type of the declaration and
+     * nothing else, the way {@code org.jspecify.annotations.Nullable} does; one that names both is written
+     * in both places, and one that names neither is left where it was put rather than dropped.
+     *
+     * @param annotations The annotations of the declaration
+     * @param elementType The kind of declaration they are written on
+     * @param classLoader The fallback class loader
+     * @return The annotations that belong among the declaration annotations
+     */
+    public static List<AnnotationDef> declarationAnnotations(List<AnnotationDef> annotations,
+                                                             ElementType elementType,
+                                                             @Nullable ClassLoader classLoader) {
+        return annotations.stream()
+            .filter(annotation -> targetsOf(annotation, classLoader)
+                .map(targets -> targets.contains(elementType) || !targets.contains(ElementType.TYPE_USE))
+                .orElse(true))
+            .toList();
+    }
+
+    /**
+     * @param annotations The annotations of a declaration
+     * @param classLoader The fallback class loader
+     * @return Those of them that annotate a type use
+     */
+    public static List<AnnotationDef> typeUseAnnotations(List<AnnotationDef> annotations,
+                                                         @Nullable ClassLoader classLoader) {
+        return annotations.stream()
+            .filter(annotation -> targetsOf(annotation, classLoader)
+                .map(targets -> targets.contains(ElementType.TYPE_USE))
+                .orElse(false))
+            .toList();
+    }
+
+    /**
+     * The type of a declaration, carrying those of the declaration's annotations that annotate a type use. A
+     * compiler writes such an annotation against the type of the declaration and not against the declaration
+     * itself, so that a reader finds it on the annotated type.
+     *
+     * @param typeDef     The declared type
+     * @param annotations The annotations of the declaration
+     * @param classLoader The fallback class loader
+     * @return The type, annotated when any of them belongs on it
+     */
+    public static TypeDef annotatedType(TypeDef typeDef,
+                                        List<AnnotationDef> annotations,
+                                        @Nullable ClassLoader classLoader) {
+        List<AnnotationDef> typeUse = typeUseAnnotations(annotations, classLoader);
+        return typeUse.isEmpty() ? typeDef : annotateDeclaredType(typeDef, typeUse);
+    }
+
+    /**
+     * An annotation written before the type of a declaration annotates what an array holds and not the array
+     * itself - {@code @Nullable String[]} is an array of annotated strings (JLS 9.7.4), which is how a
+     * compiler reads it and how the source generators render it. Any other type is annotated as it stands.
+     *
+     * @param typeDef     The declared type
+     * @param annotations The type use annotations of the declaration
+     * @return The annotated type
+     */
+    private static TypeDef annotateDeclaredType(TypeDef typeDef, List<AnnotationDef> annotations) {
+        // An annotation already on the type wraps it, and only this wrapper can be hiding an array - the one
+        // for a class type cannot. Descend through it and put it back, so what it annotates stays the same
+        if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
+            return new TypeDef.AnnotatedTypeDef(
+                annotateDeclaredType(annotated.typeDef(), annotations),
+                annotated.annotations()
+            );
+        }
+        if (typeDef instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
+            return new ClassTypeDef.AnnotatedClassTypeDef(
+                (ClassTypeDef) annotateDeclaredType(annotated.typeDef(), annotations),
+                annotated.annotations()
+            );
+        }
+        if (typeDef instanceof TypeDef.Array array) {
+            return new TypeDef.Array(
+                annotateDeclaredType(array.componentType(), annotations),
+                array.dimensions(),
+                array.nullable()
+            );
+        }
+        return typeDef.annotated(annotations);
     }
 
     /**

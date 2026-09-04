@@ -57,6 +57,7 @@ import java.lang.classfile.attribute.RuntimeInvisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeInvisibleParameterAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleParameterAnnotationsAttribute;
+import java.lang.classfile.attribute.RuntimeInvisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.RecordAttribute;
 import java.lang.classfile.attribute.RecordComponentInfo;
@@ -74,6 +75,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Emits class structure and delegates method bodies to the direct JDK method writer.
@@ -249,12 +251,12 @@ final class JdkClassFileWriter {
         for (PropertyDef property : recordDef.getProperties()) {
             TypeDef componentType = componentType(property);
             ClassDesc type = classDesc(componentType, recordDef);
-            FieldDef field = FieldDef.builder(property.getName(), componentType)
+            FieldDef field = FieldDef.builder(property.getName(), property.getType())
                 .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
                 .addAnnotations(annotationsFor(property, ElementType.FIELD))
                 .build();
             List<java.lang.classfile.Attribute<?>> attributes = new ArrayList<>();
-            List<AnnotationDef> componentAnnotations = annotationsFor(property, ElementType.RECORD_COMPONENT);
+            List<AnnotationDef> componentAnnotations = componentAnnotations(property);
             List<Annotation> visibleComponent = retained(componentAnnotations, RetentionPolicy.RUNTIME);
             if (!visibleComponent.isEmpty()) {
                 attributes.add(RuntimeVisibleAnnotationsAttribute.of(visibleComponent));
@@ -267,10 +269,15 @@ final class JdkClassFileWriter {
             if (signature != null) {
                 attributes.add(SignatureAttribute.of(builder.constantPool().utf8Entry(signature)));
             }
-            if (!typeAnnotations(componentType, TypeAnnotation.TargetInfo.ofField()).isEmpty()) {
-                attributes.add(RuntimeVisibleTypeAnnotationsAttribute.of(
-                    typeAnnotations(componentType, TypeAnnotation.TargetInfo.ofField())
-                ));
+            List<TypeAnnotation> visibleComponentType = typeAnnotations(
+                componentType, TypeAnnotation.TargetInfo.ofField(), RetentionPolicy.RUNTIME);
+            if (!visibleComponentType.isEmpty()) {
+                attributes.add(RuntimeVisibleTypeAnnotationsAttribute.of(visibleComponentType));
+            }
+            List<TypeAnnotation> invisibleComponentType = typeAnnotations(
+                componentType, TypeAnnotation.TargetInfo.ofField(), RetentionPolicy.CLASS);
+            if (!invisibleComponentType.isEmpty()) {
+                attributes.add(RuntimeInvisibleTypeAnnotationsAttribute.of(invisibleComponentType));
             }
             components.add(RecordComponentInfo.of(property.getName(), type, attributes));
             writeField(builder, recordDef, field);
@@ -288,12 +295,12 @@ final class JdkClassFileWriter {
         }
         for (PropertyDef property : recordDef.getProperties()) {
             if (!hasDeclared(recordDef, property.getName(), List.of())) {
-                FieldDef field = FieldDef.builder(property.getName(), componentType(property))
+                FieldDef field = FieldDef.builder(property.getName(), property.getType())
                     .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
                     .build();
                 MethodDef accessor = MethodDef.builder(property.getName())
                     .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                    .returns(componentType(property))
+                    .returns(property.getType())
                     .addAnnotations(annotationsFor(property, ElementType.METHOD))
                     .build((aThis, ignored) -> aThis.field(field).returning());
                 writeMethod(builder, recordDef, accessor, owner);
@@ -324,17 +331,11 @@ final class JdkClassFileWriter {
             constructorFlags(recordDef), methodBuilder -> {
                 MethodDef.MethodDefBuilder canonicalBuilder = MethodDef.constructor();
                 properties.forEach(property -> canonicalBuilder.addParameter(ParameterDef.builder(
-                    property.getName(), componentType(property)
+                    property.getName(), property.getType()
                 ).addAnnotations(annotationsFor(property, ElementType.PARAMETER)).build()));
                 MethodDef canonical = canonicalBuilder.build();
                 addMethodMetadata(methodBuilder, recordDef, canonical);
-                List<TypeAnnotation> typeAnnotations = new ArrayList<>();
-                for (int i = 0; i < properties.size(); i++) {
-                    typeAnnotations.addAll(typeAnnotations(
-                        componentType(properties.get(i)), TypeAnnotation.TargetInfo.ofMethodFormalParameter(i)
-                    ));
-                }
-                addTypeAnnotations(methodBuilder, typeAnnotations);
+                addTypeAnnotations(methodBuilder, canonical);
                 methodBuilder.withCode(code -> {
                     code.aload(0).invokespecial(ClassDesc.of("java.lang.Record"), MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void);
                     for (int i = 0; i < properties.size(); i++) {
@@ -490,7 +491,7 @@ final class JdkClassFileWriter {
         MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(objectDef, method));
         builder.withMethod(method.getName(), type, methodFlags(method), methodBuilder -> {
             addMethodMetadata(methodBuilder, objectDef, method);
-            addTypeAnnotations(methodBuilder, parameterTypeAnnotations(method));
+            addTypeAnnotations(methodBuilder, method);
             methodBuilder.withCode(code -> {
                 JdkMethodWriter writer = JdkMethodWriter.create(code, objectDef, method, owner);
                 // Mirror the ASM writer. Field initializers run straight after the constructor
@@ -534,26 +535,13 @@ final class JdkClassFileWriter {
         writeMethod(builder, objectDef, method, owner, 0);
     }
 
-    private void writeMethod(ClassBuilder builder, ObjectDef objectDef, MethodDef method, ClassDesc owner, int extraFlags) {
-        writeMethod(builder, objectDef, method, owner, extraFlags, List.of());
-    }
-
     private void writeMethod(ClassBuilder builder, ObjectDef objectDef, MethodDef method, ClassDesc owner,
-                             int extraFlags, List<TypeAnnotation> typeAnnotations) {
+                             int extraFlags) {
         MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(objectDef, method));
         int flags = methodFlags(method) | extraFlags;
         builder.withMethod(method.getName(), type, flags, methodBuilder -> {
             addMethodMetadata(methodBuilder, objectDef, method, (extraFlags & ModifierUtils.ACC_BRIDGE) == 0);
-            List<TypeAnnotation> methodTypeAnnotations = new ArrayList<>(typeAnnotations);
-            if (!method.isConstructor()) {
-                methodTypeAnnotations.addAll(typeAnnotations(method.getReturnType(), TypeAnnotation.TargetInfo.ofMethodReturn()));
-            }
-            for (int i = 0; i < method.getParameters().size(); i++) {
-                methodTypeAnnotations.addAll(typeAnnotations(
-                    method.getParameters().get(i).getType(), TypeAnnotation.TargetInfo.ofMethodFormalParameter(i)
-                ));
-            }
-            addTypeAnnotations(methodBuilder, methodTypeAnnotations);
+            addTypeAnnotations(methodBuilder, method);
             methodBuilder.withCode(code -> {
                 if (method.getStatements().isEmpty()) {
                     code.return_();
@@ -583,7 +571,7 @@ final class JdkClassFileWriter {
         }
         builder.withMethod(method.getName(), type, flags, methodBuilder -> {
             addMethodMetadata(methodBuilder, objectDef, method, (extraFlags & ModifierUtils.ACC_BRIDGE) == 0);
-            addTypeAnnotations(methodBuilder, methodTypeAnnotations(method));
+            addTypeAnnotations(methodBuilder, method);
         });
     }
 
@@ -617,8 +605,8 @@ final class JdkClassFileWriter {
                 flags |= ModifierUtils.ACC_ENUM;
             }
             fieldBuilder.withFlags(flags);
-            addAnnotations(fieldBuilder, field.getAnnotations());
-            addTypeAnnotations(fieldBuilder, typeAnnotations(field.getType(), TypeAnnotation.TargetInfo.ofField()));
+            addAnnotations(fieldBuilder, declarationAnnotations(field.getAnnotations(), ElementType.FIELD));
+            addTypeAnnotations(fieldBuilder, annotatedType(field.getType(), field.getAnnotations()));
             addSignature(fieldBuilder, SignatureUtils.getFieldSignature(objectDef, field));
         });
     }
@@ -677,7 +665,8 @@ final class JdkClassFileWriter {
 
     private static void addMethodMetadata(MethodBuilder builder, ObjectDef objectDef, MethodDef method,
                                           boolean addGenericSignature) {
-        addAnnotations(builder, method.getAnnotations());
+        addAnnotations(builder, declarationAnnotations(method.getAnnotations(),
+            method.isConstructor() ? ElementType.CONSTRUCTOR : ElementType.METHOD));
         if (!method.getParameters().isEmpty()) {
             builder.with(MethodParametersAttribute.of(method.getParameters().stream()
                 .map(parameter -> MethodParameterInfo.of(Optional.of(parameter.getName())))
@@ -699,7 +688,9 @@ final class JdkClassFileWriter {
      */
     private static void addParameterAnnotations(MethodBuilder builder, MethodDef method, RetentionPolicy retention) {
         List<List<Annotation>> parameters = method.getParameters().stream()
-            .map(parameter -> retained(parameter.getAnnotations(), retention))
+            .map(parameter -> retained(
+                declarationAnnotations(parameter.getAnnotations(), ElementType.PARAMETER), retention
+            ))
             .toList();
         if (parameters.stream().allMatch(List::isEmpty)) {
             return;
@@ -715,72 +706,100 @@ final class JdkClassFileWriter {
         builder.with(ExceptionsAttribute.ofSymbols(types.stream().map(type -> classDesc(type, objectDef)).toList()));
     }
 
-    private static void addTypeAnnotations(MethodBuilder builder, List<TypeAnnotation> annotations) {
-        if (!annotations.isEmpty()) {
-            builder.with(RuntimeVisibleTypeAnnotationsAttribute.of(annotations));
+    private static void addTypeAnnotations(MethodBuilder builder, MethodDef method) {
+        List<TypeAnnotation> visible = methodTypeAnnotations(method, RetentionPolicy.RUNTIME);
+        if (!visible.isEmpty()) {
+            builder.with(RuntimeVisibleTypeAnnotationsAttribute.of(visible));
+        }
+        List<TypeAnnotation> invisible = methodTypeAnnotations(method, RetentionPolicy.CLASS);
+        if (!invisible.isEmpty()) {
+            builder.with(RuntimeInvisibleTypeAnnotationsAttribute.of(invisible));
         }
     }
 
-    private static void addTypeAnnotations(FieldBuilder builder, List<TypeAnnotation> annotations) {
-        if (!annotations.isEmpty()) {
-            builder.with(RuntimeVisibleTypeAnnotationsAttribute.of(annotations));
+    private static void addTypeAnnotations(FieldBuilder builder, TypeDef type) {
+        List<TypeAnnotation> visible = typeAnnotations(type, TypeAnnotation.TargetInfo.ofField(), RetentionPolicy.RUNTIME);
+        if (!visible.isEmpty()) {
+            builder.with(RuntimeVisibleTypeAnnotationsAttribute.of(visible));
+        }
+        List<TypeAnnotation> invisible = typeAnnotations(type, TypeAnnotation.TargetInfo.ofField(), RetentionPolicy.CLASS);
+        if (!invisible.isEmpty()) {
+            builder.with(RuntimeInvisibleTypeAnnotationsAttribute.of(invisible));
         }
     }
 
-    private static List<TypeAnnotation> methodTypeAnnotations(MethodDef method) {
+    /**
+     * A type use annotation written on a method is an annotation of the type it returns, and one written on
+     * a constructor is an annotation of the type being constructed - both of which the class file reaches
+     * through the method return target. The definition of a constructor carries no return type of its own.
+     */
+    private static List<TypeAnnotation> methodTypeAnnotations(MethodDef method, RetentionPolicy retention) {
         List<TypeAnnotation> annotations = new ArrayList<>();
-        if (!method.isConstructor()) {
-            annotations.addAll(typeAnnotations(method.getReturnType(), TypeAnnotation.TargetInfo.ofMethodReturn()));
-        }
-        annotations.addAll(parameterTypeAnnotations(method));
-        return annotations;
-    }
-
-    private static List<TypeAnnotation> parameterTypeAnnotations(MethodDef method) {
-        List<TypeAnnotation> annotations = new ArrayList<>();
+        TypeDef returnType = method.isConstructor() ? TypeDef.VOID : method.getReturnType();
+        annotations.addAll(typeAnnotations(
+            annotatedType(returnType, method.getAnnotations()), TypeAnnotation.TargetInfo.ofMethodReturn(), retention
+        ));
         for (int i = 0; i < method.getParameters().size(); i++) {
+            ParameterDef parameter = method.getParameters().get(i);
             annotations.addAll(typeAnnotations(
-                method.getParameters().get(i).getType(), TypeAnnotation.TargetInfo.ofMethodFormalParameter(i)
+                annotatedType(parameter.getType(), parameter.getAnnotations()),
+                TypeAnnotation.TargetInfo.ofMethodFormalParameter(i),
+                retention
             ));
         }
         return annotations;
     }
 
-    private static List<TypeAnnotation> typeAnnotations(TypeDef type, TypeAnnotation.TargetInfo targetInfo) {
+    private static List<TypeAnnotation> typeAnnotations(TypeDef type, TypeAnnotation.TargetInfo targetInfo,
+                                                        RetentionPolicy retention) {
         List<TypeAnnotation> annotations = new ArrayList<>();
-        collectTypeAnnotations(type, targetInfo, List.of(), annotations);
+        collectTypeAnnotations(type, targetInfo, List.of(), annotations, retention);
         return annotations;
     }
 
+    /**
+     * Collects the annotations of the given retention that the type carries, against the path that reaches
+     * the part of the type each of them annotates. A {@code SOURCE} annotation belongs in no class file and
+     * so is collected under neither retention.
+     */
     private static void collectTypeAnnotations(TypeDef type,
                                                TypeAnnotation.TargetInfo targetInfo,
                                                List<TypeAnnotation.TypePathComponent> path,
-                                               List<TypeAnnotation> result) {
+                                               List<TypeAnnotation> result,
+                                               RetentionPolicy retention) {
         switch (type) {
             case TypeDef.AnnotatedTypeDef annotated -> {
-                for (AnnotationDef annotation : annotated.annotations()) {
-                    result.add(TypeAnnotation.of(targetInfo, path, ByteCodeWriter.toAnnotation(annotation)));
-                }
-                collectTypeAnnotations(annotated.typeDef(), targetInfo, path, result);
+                addTypeAnnotations(annotated.annotations(), targetInfo, path, result, retention);
+                collectTypeAnnotations(annotated.typeDef(), targetInfo, path, result, retention);
             }
             case ClassTypeDef.AnnotatedClassTypeDef annotated -> {
-                for (AnnotationDef annotation : annotated.annotations()) {
-                    result.add(TypeAnnotation.of(targetInfo, path, ByteCodeWriter.toAnnotation(annotation)));
-                }
-                collectTypeAnnotations(annotated.typeDef(), targetInfo, path, result);
+                addTypeAnnotations(annotated.annotations(), targetInfo, path, result, retention);
+                collectTypeAnnotations(annotated.typeDef(), targetInfo, path, result, retention);
             }
             case TypeDef.Array array -> collectTypeAnnotations(array.componentType(), targetInfo,
-                appendPath(path, TypeAnnotation.TypePathComponent.ARRAY, array.dimensions()), result);
+                appendPath(path, TypeAnnotation.TypePathComponent.ARRAY, array.dimensions()), result, retention);
             case ClassTypeDef.Parameterized parameterized -> {
-                collectTypeAnnotations(parameterized.rawType(), targetInfo, path, result);
+                collectTypeAnnotations(parameterized.rawType(), targetInfo, path, result, retention);
                 for (int i = 0; i < parameterized.typeArguments().size(); i++) {
                     collectTypeAnnotations(parameterized.typeArguments().get(i), targetInfo,
                         appendPath(path, TypeAnnotation.TypePathComponent.of(
                             TypeAnnotation.TypePathComponent.Kind.TYPE_ARGUMENT, i
-                        ), 1), result);
+                        ), 1), result, retention);
                 }
             }
             case ClassTypeDef _, TypeDef.Primitive _, TypeDef.TypeVariable _, TypeDef.Wildcard _ -> {
+            }
+        }
+    }
+
+    private static void addTypeAnnotations(List<AnnotationDef> annotations,
+                                           TypeAnnotation.TargetInfo targetInfo,
+                                           List<TypeAnnotation.TypePathComponent> path,
+                                           List<TypeAnnotation> result,
+                                           RetentionPolicy retention) {
+        for (AnnotationDef annotation : annotations) {
+            if (retentionOf(annotation) == retention) {
+                result.add(TypeAnnotation.of(targetInfo, path, ByteCodeWriter.toAnnotation(annotation)));
             }
         }
     }
@@ -795,34 +814,50 @@ final class JdkClassFileWriter {
         return result;
     }
 
+    /**
+     * The type of a record component, carrying the annotations of the component that are type use ones.
+     */
     private static TypeDef componentType(PropertyDef property) {
-        List<AnnotationDef> typeAnnotations = property.getAnnotations().stream()
-            .filter(annotation -> AnnotationTargetUtils.targetsOf(annotation, JdkClassFileWriter.class.getClassLoader())
-                .map(targets -> targets.contains(ElementType.TYPE_USE)).orElse(false))
-            .toList();
-        return typeAnnotations.isEmpty() ? property.getType() : annotateComponentType(property.getType(), typeAnnotations);
+        return annotatedType(property.getType(), property.getAnnotations());
     }
 
-    private static TypeDef annotateComponentType(TypeDef type, List<AnnotationDef> annotations) {
-        if (type instanceof TypeDef.AnnotatedTypeDef annotated) {
-            return new TypeDef.AnnotatedTypeDef(annotateComponentType(annotated.typeDef(), annotations), annotated.annotations());
-        }
-        if (type instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
-            return new ClassTypeDef.AnnotatedClassTypeDef(
-                (ClassTypeDef) annotateComponentType(annotated.typeDef(), annotations), annotated.annotations()
-            );
-        }
-        if (type instanceof TypeDef.Array array) {
-            return new TypeDef.Array(annotateComponentType(array.componentType(), annotations), array.dimensions(), array.nullable());
-        }
-        return type.annotated(annotations);
-    }
-
+    /**
+     * The annotations of a record component that belong on one of the members it expands to - the field
+     * backing it, its accessor and the canonical constructor's parameter. A type use annotation is kept for
+     * every one of them, whether or not it also targets the member itself: the member is written with it on
+     * the type it declares, which is where the annotation belongs.
+     */
     private static List<AnnotationDef> annotationsFor(PropertyDef property, ElementType elementType) {
         return property.getAnnotations().stream()
-            .filter(annotation -> AnnotationTargetUtils.targetsOf(annotation, JdkClassFileWriter.class.getClassLoader())
-                .map(targets -> targets.contains(elementType)).orElse(true))
+            .filter(annotation -> targetsOf(annotation)
+                .map(targets -> targets.contains(elementType) || targets.contains(ElementType.TYPE_USE))
+                .orElse(true))
             .toList();
+    }
+
+    /**
+     * The annotations of a record component that belong on the component itself, where a type use annotation
+     * is written against the component's type instead and so is not among them.
+     */
+    private static List<AnnotationDef> componentAnnotations(PropertyDef property) {
+        return property.getAnnotations().stream()
+            .filter(annotation -> targetsOf(annotation)
+                .map(targets -> targets.contains(ElementType.RECORD_COMPONENT))
+                .orElse(true))
+            .toList();
+    }
+
+    private static Optional<Set<ElementType>> targetsOf(AnnotationDef annotation) {
+        return AnnotationTargetUtils.targetsOf(annotation, JdkClassFileWriter.class.getClassLoader());
+    }
+
+    private static List<AnnotationDef> declarationAnnotations(List<AnnotationDef> annotations, ElementType elementType) {
+        return AnnotationTargetUtils.declarationAnnotations(annotations, elementType,
+            JdkClassFileWriter.class.getClassLoader());
+    }
+
+    private static TypeDef annotatedType(TypeDef type, List<AnnotationDef> annotations) {
+        return AnnotationTargetUtils.annotatedType(type, annotations, JdkClassFileWriter.class.getClassLoader());
     }
 
     private static boolean isConstructorInvocation(StatementDef statement) {
