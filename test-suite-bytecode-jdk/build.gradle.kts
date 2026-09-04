@@ -2,12 +2,14 @@ plugins {
     id("io.micronaut.build.internal.sourcegen-testsuite")
 }
 
+// The shared backend TCK plus the ASM suite's own sources, which this backend must satisfy too.
+// See test-suite-tck/README.md.
 sourceSets {
     named("main") {
-        java.srcDirs("../test-suite-bytecode/src/main/java")
+        java.srcDirs("../test-suite-tck/src/main/java", "../test-suite-bytecode/src/main/java")
     }
     named("test") {
-        java.srcDirs("../test-suite-bytecode/src/test/java")
+        java.srcDirs("../test-suite-tck/src/test/java", "../test-suite-bytecode/src/test/java")
     }
 }
 
@@ -27,10 +29,16 @@ dependencies {
 // The shared source sets live outside this project directory, so javac needs them on the
 // generator's source path to resolve types that are still being compiled.
 val sharedSourceRoots = listOf(
+    layout.projectDirectory.dir("../test-suite-tck/src/main/java"),
+    layout.projectDirectory.dir("../test-suite-tck/src/test/java"),
     layout.projectDirectory.dir("../test-suite-bytecode/src/main/java"),
     layout.projectDirectory.dir("../test-suite-bytecode/src/test/java")
 ).joinToString(File.pathSeparator) { it.asFile.canonicalPath }
 
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.add("-Amicronaut.sourcegen.bytecode.jdk.sourcepath=$sharedSourceRoots")
+}
+
+tasks.withType<Test>().configureEach {
+    systemProperty("sourcegen.backend", "bytecode-jdk")
 }

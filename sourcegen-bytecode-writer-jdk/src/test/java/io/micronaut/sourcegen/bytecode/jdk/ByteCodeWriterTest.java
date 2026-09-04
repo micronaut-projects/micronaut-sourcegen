@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import javax.lang.model.element.Modifier;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassHierarchyResolver.ClassHierarchyInfo;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Field;
 import java.io.IOException;
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -204,6 +206,57 @@ class ByteCodeWriterTest {
     }
 
     @Test
+    void writesTypeUseDeclarationAnnotationsOnTheDeclaredType() throws Exception {
+        ClassDef definition = ClassDef.builder("example.JdkTypeUseDeclarations")
+            .addModifiers(Modifier.PUBLIC)
+            .addField(FieldDef.builder("name", TypeDef.STRING)
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(TypeUseOnly.class)).build())
+                .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(TypeUseAndField.class)).build())
+                .build())
+            .addMethod(MethodDef.builder("name")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.STRING)
+                .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(TypeUseOnly.class)).build())
+                .build((aThis, parameters) -> ExpressionDef.constant("name").returning()))
+            .addMethod(MethodDef.constructor()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(ParameterDef.builder("value", TypeDef.STRING)
+                    .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(TypeUseOnly.class)).build())
+                    .addAnnotation(AnnotationDef.builder(ClassTypeDef.of(TypeUseAndParameter.class)).build())
+                    .build())
+                .build())
+            .build();
+
+        byte[] bytes = writeDirect(definition);
+        assertTrue(ClassFile.of().verify(bytes).isEmpty());
+        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
+            Class<?> define() {
+                return defineClass(definition.getName(), bytes, 0, bytes.length);
+            }
+        }.define();
+
+        Field field = generated.getDeclaredField("name");
+        Method method = generated.getMethod("name");
+        Constructor<?> constructor = generated.getConstructor(String.class);
+
+        // Targeting a type use only, the annotation belongs to the type of the declaration and to nothing else
+        assertFalse(field.isAnnotationPresent(TypeUseOnly.class));
+        assertTrue(field.getAnnotatedType().isAnnotationPresent(TypeUseOnly.class));
+        assertFalse(method.isAnnotationPresent(TypeUseOnly.class));
+        assertTrue(method.getAnnotatedReturnType().isAnnotationPresent(TypeUseOnly.class));
+        assertFalse(Stream.of(constructor.getParameterAnnotations()[0]).anyMatch(TypeUseOnly.class::isInstance));
+        assertTrue(constructor.getAnnotatedParameterTypes()[0].isAnnotationPresent(TypeUseOnly.class));
+
+        // Targeting the declaration as well, it is written in both places, the way a compiler writes it
+        assertTrue(field.isAnnotationPresent(TypeUseAndField.class));
+        assertTrue(field.getAnnotatedType().isAnnotationPresent(TypeUseAndField.class));
+        assertTrue(Stream.of(constructor.getParameterAnnotations()[0])
+            .anyMatch(TypeUseAndParameter.class::isInstance));
+        assertTrue(constructor.getAnnotatedParameterTypes()[0].isAnnotationPresent(TypeUseAndParameter.class));
+    }
+
+    @Test
     void writesLambdaWithCapturedLocalAndMethodReference() throws Exception {
         ClassTypeDef function = TypeDef.parameterized(Function.class, String.class, String.class);
         VariableDef.Local prefix = new VariableDef.Local("prefix", TypeDef.STRING);
@@ -255,6 +308,16 @@ class ByteCodeWriterTest {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE_USE)
     private @interface TypeUseOnly {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE_USE, ElementType.FIELD})
+    private @interface TypeUseAndField {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE_USE, ElementType.PARAMETER})
+    private @interface TypeUseAndParameter {
     }
 
     @Test

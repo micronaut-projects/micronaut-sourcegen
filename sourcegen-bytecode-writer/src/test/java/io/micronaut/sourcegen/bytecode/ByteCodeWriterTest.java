@@ -18,6 +18,7 @@ import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
@@ -6212,6 +6213,53 @@ public final class example/Outer$Inner extends java/lang/Record {
     }
 
     @Test
+    void testTypeUseDeclarationAnnotationsAreWrittenOnTheDeclaredType() throws Exception {
+        ClassDef classDef = ClassDef.builder("example.TypeUseDeclarations")
+            .addModifiers(Modifier.PUBLIC)
+            .addField(FieldDef.builder("name", TypeDef.STRING)
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(TypeUseOnly.class)
+                .addAnnotation(TypeUseAndField.class)
+                .build())
+            .addMethod(MethodDef.builder("name")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.STRING)
+                .addAnnotation(TypeUseOnly.class)
+                .build((aThis, parameters) -> ExpressionDef.constant("name").returning()))
+            .addMethod(MethodDef.constructor()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(ParameterDef.builder("value", TypeDef.STRING)
+                    .addAnnotation(TypeUseOnly.class)
+                    .addAnnotation(TypeUseAndParameter.class)
+                    .build())
+                .build())
+            .build();
+
+        Class<?> generated = defineClass("example.TypeUseDeclarations",
+            generateFile(classDef, new StringWriter()));
+        var field = generated.getDeclaredField("name");
+        var method = generated.getMethod("name");
+        var constructor = generated.getConstructor(String.class);
+
+        // Targeting a type use only, the annotation belongs to the type of the declaration and to nothing else
+        Assertions.assertNull(field.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(field.getAnnotatedType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertNull(method.getAnnotation(TypeUseOnly.class));
+        Assertions.assertNotNull(method.getAnnotatedReturnType().getAnnotation(TypeUseOnly.class));
+        Assertions.assertFalse(Stream.of(constructor.getParameterAnnotations()[0])
+            .anyMatch(TypeUseOnly.class::isInstance));
+        Assertions.assertNotNull(constructor.getAnnotatedParameterTypes()[0].getAnnotation(TypeUseOnly.class));
+
+        // Targeting the declaration as well, it is written in both places, the way a compiler writes it
+        Assertions.assertNotNull(field.getAnnotation(TypeUseAndField.class));
+        Assertions.assertNotNull(field.getAnnotatedType().getAnnotation(TypeUseAndField.class));
+        Assertions.assertTrue(Stream.of(constructor.getParameterAnnotations()[0])
+            .anyMatch(TypeUseAndParameter.class::isInstance));
+        Assertions.assertNotNull(constructor.getAnnotatedParameterTypes()[0]
+            .getAnnotation(TypeUseAndParameter.class));
+    }
+
+    @Test
     void testTypeUseComponentAnnotationsAreWrittenOnTheType() throws Exception {
         RecordDef recordDef = RecordDef.builder("example.MyRecord")
             .addModifiers(Modifier.PUBLIC)
@@ -6589,6 +6637,11 @@ public final class example/MyRecord extends java/lang/Record {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE_USE, ElementType.FIELD})
     @interface TypeUseAndField {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE_USE, ElementType.PARAMETER})
+    @interface TypeUseAndParameter {
     }
 
     static class MyAbstractClass {
