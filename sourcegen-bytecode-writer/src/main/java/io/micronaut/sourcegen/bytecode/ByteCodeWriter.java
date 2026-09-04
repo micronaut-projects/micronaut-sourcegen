@@ -19,8 +19,11 @@ import org.jspecify.annotations.Nullable;
 import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.core.util.CollectionUtils;
+import io.micronaut.sourcegen.bytecode.core.AnnotationTargetUtils;
 import io.micronaut.sourcegen.bytecode.statement.StatementWriter;
 import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.AnnotationObjectDef;
+import io.micronaut.sourcegen.model.AnnotationObjectDef.AnnotationMemberDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -69,6 +72,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.objectweb.asm.Opcodes.ACC_ABSTRACT;
+import static org.objectweb.asm.Opcodes.ACC_ANNOTATION;
 import static org.objectweb.asm.Opcodes.ACC_BRIDGE;
 import static org.objectweb.asm.Opcodes.ACC_ENUM;
 import static org.objectweb.asm.Opcodes.ACC_FINAL;
@@ -148,6 +152,8 @@ public final class ByteCodeWriter {
             writeInterface(classVisitor, interfaceDef, outerType);
         } else if (objectDef instanceof EnumDef enumDef) {
             writeClass(classVisitor, EnumGenUtils.toClassDef(enumDef), outerType);
+        } else if (objectDef instanceof AnnotationObjectDef annotationObjectDef) {
+            writeAnnotationObject(classVisitor, annotationObjectDef, outerType);
         } else {
             throw new UnsupportedOperationException("Unknown object definition: " + objectDef);
         }
@@ -284,6 +290,96 @@ public final class ByteCodeWriter {
         for (PropertyDef property : interfaceDef.getProperties()) {
             writeProperty(classVisitor, interfaceDef, property, emittedBridges);
         }
+    }
+
+    /**
+     * Write an annotation type.
+     *
+     * <p>An annotation type is emitted the way a compiler emits it: an interface flagged
+     * {@code ACC_ANNOTATION} that extends {@link Annotation}, with one abstract accessor per member and
+     * the member's default, when it has one, in that accessor's {@code AnnotationDefault} attribute.</p>
+     *
+     * @param classVisitor  The class visitor
+     * @param annotationDef The annotation definition
+     * @param outerType     The outer type
+     */
+    public void writeAnnotationObject(ClassVisitor classVisitor, AnnotationObjectDef annotationDef, @Nullable ClassTypeDef outerType) {
+        int modifiersFlag = ACC_ANNOTATION | ACC_INTERFACE | ACC_ABSTRACT
+            | getClassModifiersFlag(annotationDef.getModifiers(), outerType);
+        if (annotationDef.isSynthetic()) {
+            modifiersFlag |= ACC_SYNTHETIC;
+        }
+        ClassTypeDef typeDef = annotationDef.asTypeDef();
+        classVisitor.visit(V17,
+            modifiersFlag,
+            TypeUtils.getType(typeDef).getInternalName(),
+            null,
+            TypeUtils.OBJECT_TYPE.getInternalName(),
+            new String[]{Type.getType(Annotation.class).getInternalName()}
+        );
+        writeOuterInner(classVisitor, typeDef, annotationDef, outerType);
+        for (AnnotationDef annotation : annotationDef.getAnnotations()) {
+            writeAnnotation(annotation, classVisitor::visitAnnotation);
+        }
+        List<StatementDef> staticInitStatements = new ArrayList<>();
+        for (FieldDef field : annotationDef.getFields()) {
+            writeField(classVisitor, annotationDef, field);
+            // A constant of an annotation type is implicitly static, wherever it is assigned from
+            field.getInitializer().ifPresent(initializer ->
+                staticInitStatements.add(typeDef.getStaticField(field).put(initializer)));
+        }
+        if (!staticInitStatements.isEmpty()) {
+            writeMethod(classVisitor, annotationDef,
+                createStaticInitializer(StatementDef.multi(staticInitStatements)), new HashSet<>());
+        }
+        for (AnnotationMemberDef member : annotationDef.getMembers()) {
+            writeAnnotationMember(classVisitor, annotationDef, member);
+        }
+    }
+
+    /**
+     * Write a member of an annotation type as the abstract accessor it is, followed by its default value.
+     * A default is a single value written with no name, which is what the {@code AnnotationDefault}
+     * attribute holds.
+     */
+    private void writeAnnotationMember(ClassVisitor classVisitor, AnnotationObjectDef annotationDef, AnnotationMemberDef member) {
+        MethodDef accessor = MethodDef.builder(member.getName())
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addAnnotations(member.getAnnotations())
+            .returns(member.getType())
+            .build();
+        MethodVisitor methodVisitor = visitMethodHeader(
+            classVisitor,
+            annotationDef,
+            accessor,
+            ACC_PUBLIC | ACC_ABSTRACT,
+            accessor.getName(),
+            TypeUtils.getMethodDescriptor(annotationDef, accessor)
+        );
+        for (AnnotationDef annotation : member.getAnnotations()) {
+            writeAnnotation(annotation, methodVisitor::visitAnnotation);
+        }
+        writeTypeAnnotations(
+            member.getType(),
+            TypeReference.newTypeReference(TypeReference.METHOD_RETURN).getValue(),
+            methodVisitor::visitTypeAnnotation
+        );
+        Object defaultValue = member.getAnnotationDefaultValue() != null
+            ? member.getAnnotationDefaultValue()
+            : member.getDefaultValue();
+        if (defaultValue != null) {
+            AnnotationVisitor annotationVisitor = methodVisitor.visitAnnotationDefault();
+            if (annotationVisitor != null) {
+                if (member.getType() instanceof TypeDef.Array && isSingleValue(defaultValue)) {
+                    // A single value is the source shorthand for a one element array
+                    visitAnnotationArray(annotationVisitor, null, List.of(defaultValue));
+                } else {
+                    visitAnnotation(annotationVisitor, null, defaultValue);
+                }
+                annotationVisitor.visitEnd();
+            }
+        }
+        methodVisitor.visitEnd();
     }
 
     /**
@@ -900,6 +996,9 @@ public final class ByteCodeWriter {
             // A record is always final; ACC_RECORD is not among the flags an inner class entry may carry
             return ACC_FINAL | getModifiersFlag(recordDef.getModifiers());
         }
+        if (objectDef instanceof AnnotationObjectDef annotationObjectDef) {
+            return ACC_ANNOTATION | ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(annotationObjectDef.getModifiers());
+        }
         return getModifiersFlag(objectDef.getModifiers());
     }
 
@@ -921,12 +1020,25 @@ public final class ByteCodeWriter {
         for (Map.Entry<String, Object> entry : annotation.getValues().entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
-            visitAnnotation(annotationVisitor, key, value);
+            if (isSingleValue(value) && AnnotationTargetUtils.isArrayMember(annotation, key, getClass().getClassLoader())) {
+                // A single value is the source shorthand for a one element array; a class file has no shorthand
+                visitAnnotationArray(annotationVisitor, key, List.of(value));
+            } else {
+                visitAnnotation(annotationVisitor, key, value);
+            }
         }
         annotationVisitor.visitEnd();
     }
 
     private void visitAnnotation(AnnotationVisitor annotationVisitor, @Nullable String name, Object value) {
+        if (value instanceof ExpressionDef.Constant constant) {
+            Object constantValue = constant.value();
+            if (constantValue == null) {
+                throw new IllegalArgumentException("An annotation value cannot be null: " + name);
+            }
+            visitAnnotation(annotationVisitor, name, constantValue);
+            return;
+        }
         if (value instanceof VariableDef.StaticField staticField) {
             if (staticField.name().equals("class") && staticField.type().equals(TypeDef.CLASS)) {
                 annotationVisitor.visit(name, TypeUtils.getType(staticField.ownerType(), null));
@@ -952,9 +1064,19 @@ public final class ByteCodeWriter {
             visitAnnotationArray(annotationVisitor, name, coll);
         } else if (value instanceof Object[] array) {
             visitAnnotationArray(annotationVisitor, name, Arrays.asList(array));
+        } else if (value instanceof Enum<?> anEnum) {
+            annotationVisitor.visitEnum(name, Type.getDescriptor(anEnum.getDeclaringClass()), anEnum.name());
         } else {
             annotationVisitor.visit(name, value);
         }
+    }
+
+    /**
+     * Whether a value stands for one element rather than for a whole array member.
+     */
+    private static boolean isSingleValue(Object value) {
+        Object actual = value instanceof ExpressionDef.Constant constant ? constant.value() : value;
+        return actual != null && !(actual instanceof Collection<?>) && !actual.getClass().isArray();
     }
 
     private void visitAnnotationArray(AnnotationVisitor annotationVisitor, @Nullable String name, Collection<?> values) {

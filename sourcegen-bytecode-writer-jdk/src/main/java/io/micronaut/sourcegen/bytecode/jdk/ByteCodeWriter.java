@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.bytecode.jdk;
 import io.micronaut.core.annotation.Experimental;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.sourcegen.JavaPoetSourceGenerator;
+import io.micronaut.sourcegen.bytecode.core.AnnotationTargetUtils;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -528,9 +529,47 @@ public final class ByteCodeWriter {
 
     static Annotation toAnnotation(io.micronaut.sourcegen.model.AnnotationDef annotation) {
         List<AnnotationElement> elements = annotation.getValues().entrySet().stream()
-            .map(entry -> AnnotationElement.of(entry.getKey(), toAnnotationValue(entry.getValue())))
+            .map(entry -> AnnotationElement.of(entry.getKey(), toMemberValue(annotation, entry.getKey(), entry.getValue())))
             .toList();
         return Annotation.of(ClassDesc.of(annotation.getType().getName()), elements);
+    }
+
+    /**
+     * The value of one member of an annotation. A single value is the source shorthand for a one
+     * element array - {@code @Target(TYPE)} means {@code @Target({TYPE})} - and a class file has no
+     * such shorthand, so it is wrapped when the member is declared as an array.
+     */
+    private static AnnotationValue toMemberValue(io.micronaut.sourcegen.model.AnnotationDef annotation,
+                                                 String member, Object value) {
+        if (isSingleValue(value)
+            && AnnotationTargetUtils.isArrayMember(annotation, member, ByteCodeWriter.class.getClassLoader())) {
+            return AnnotationValue.ofArray(List.of(toAnnotationValue(value)));
+        }
+        return toAnnotationValue(value);
+    }
+
+    /**
+     * An annotation value, wrapped into a one element array when it stands for a single element of a
+     * member declared with the given array type.
+     *
+     * @param value The value
+     * @param declaredType The declared type of what the value belongs to
+     * @return The annotation value
+     */
+    static AnnotationValue toAnnotationValue(Object value, TypeDef declaredType) {
+        if (declaredType instanceof TypeDef.Array && isSingleValue(value)) {
+            return AnnotationValue.ofArray(List.of(toAnnotationValue(value)));
+        }
+        return toAnnotationValue(value);
+    }
+
+    /**
+     * Whether a value stands for one element rather than for a whole array member.
+     */
+    private static boolean isSingleValue(Object value) {
+        Object actual = value instanceof io.micronaut.sourcegen.model.ExpressionDef.Constant constant
+            ? constant.value() : value;
+        return actual != null && !(actual instanceof Collection<?>) && !actual.getClass().isArray();
     }
 
     static AnnotationValue toAnnotationValue(Object value) {
