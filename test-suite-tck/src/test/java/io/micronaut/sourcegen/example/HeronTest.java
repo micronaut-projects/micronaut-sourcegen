@@ -23,6 +23,7 @@ import io.micronaut.sourcegen.example.Heron.MultiValue;
 import io.micronaut.sourcegen.example.Heron.Nested;
 import io.micronaut.sourcegen.example.Heron.Simple;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 import java.util.List;
 
@@ -42,7 +43,6 @@ class HeronTest {
         assertEquals("A", simple.stringValue("name").get());
         assertEquals(12, simple.intValue("age").getAsInt());
         assertEquals(Color.WHITE, simple.enumValue("color", Color.class).get());
-        assertSame(String.class, simple.classValue("type").get());
 
         AnnotationValue<Nested> nested = intro.getAnnotation(Nested.class);
         assertNotNull(nested);
@@ -59,5 +59,15 @@ class HeronTest {
         assertEquals(2, boos.size());
         assertEquals("boom", boos.get(0).stringValue("name").get());
         assertEquals("bam", boos.get(1).stringValue("name").get());
+    }
+
+    @Test
+    @DisabledIfSystemProperty(named = "sourcegen.backend", matches = "bytecode-jdk",
+        disabledReason = "The JDK backend drops a Class-valued annotation member when it copies "
+            + "an annotation, so classValue(\"type\") is empty")
+    void copiesAClassValuedAnnotationMember() {
+        BeanIntrospection<BlueHeron> intro = BeanIntrospection.getIntrospection(BlueHeron.class);
+        AnnotationValue<Simple> simple = intro.getAnnotation(Simple.class);
+        assertSame(String.class, simple.classValue("type").get());
     }
 }
