@@ -3,6 +3,16 @@ plugins {
     id("io.micronaut.minimal.application")
 }
 
+// The shared backend TCK: fixtures and tests every backend must satisfy. See test-suite-tck/README.md.
+sourceSets {
+    named("main") {
+        java.srcDir("../test-suite-tck/src/main/java")
+    }
+    named("test") {
+        java.srcDir("../test-suite-tck/src/test/java")
+    }
+}
+
 micronaut {
     version.set(libs.versions.micronaut.platform)
     processing {
@@ -35,3 +45,7 @@ dependencies {
 //        options.forkOptions.jvmArgs = listOf("-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005")
 //    }
 //}
+
+tasks.withType<Test>().configureEach {
+    systemProperty("sourcegen.backend", "java")
+}
