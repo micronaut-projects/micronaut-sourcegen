@@ -2,12 +2,12 @@ If you annotate a Java interface with `@Delegate`, a `<type>Delegate` abstract c
 
 [source,java]
 ----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/delegate/Worker.java[tags=clazz,indent=0]
+include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/delegate/Worker.java[tags=clazz,indent=0]
 ----
 
 [source,java]
 ----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/delegate/SimpleWorker.java[tags=clazz,indent=0]
+include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/delegate/SimpleWorker.java[tags=clazz,indent=0]
 ----
 
 You can use a delegate pattern to change the behavior of a Worker delegatee:
@@ -21,5 +21,5 @@ The delegate will delegate the behavior to inner object except for changed metho
 
 [source,java]
 ----
-include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/delegate/DelegateWorkerTest.java[tags=test,indent=0]
+include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/delegate/DelegateWorkerTest.java[tags=test,indent=0]
 ----
