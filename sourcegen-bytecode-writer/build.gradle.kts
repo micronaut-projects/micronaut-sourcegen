@@ -19,6 +19,7 @@ dependencies {
         exclude("io.micronaut.sourcegen")
     }
 
+    testImplementation(projects.sourcegenBytecodeWriterTck)
     testImplementation(projects.sourcegenAnnotations)
     testImplementation(projects.sourcegenGenerator)
     testImplementation(mn.micronaut.core.reactive)

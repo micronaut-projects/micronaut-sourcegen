@@ -21,6 +21,7 @@ include("sourcegen-generator-bytecode-jdk")
 include("sourcegen-bytecode-writer")
 include("sourcegen-bytecode-writer-core")
 include("sourcegen-bytecode-writer-jdk")
+include("sourcegen-bytecode-writer-tck")
 include("sourcegen-bom")
 
 include("test-suite-java")
