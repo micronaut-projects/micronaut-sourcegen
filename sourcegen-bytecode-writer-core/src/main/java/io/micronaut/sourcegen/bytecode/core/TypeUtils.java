@@ -86,7 +86,7 @@ public final class TypeUtils {
             return getDescriptor(parameterized.rawType(), objectDef);
         }
         if (typeDef instanceof ClassTypeDef classTypeDef) {
-            return getDescriptor(classTypeDef.getName());
+            return getDescriptor(getBinaryName(classTypeDef, objectDef));
         }
         if (typeDef instanceof TypeDef.Primitive primitive) {
             return primitiveDescriptor(primitive.name());
@@ -116,6 +116,41 @@ public final class TypeUtils {
             }
         }
         return objectDescriptor;
+    }
+
+    /**
+     * Returns the binary name a reference to a type resolves to in the scope of the type being written.
+     *
+     * <p>The model is immutable, so {@link io.micronaut.sourcegen.model.ObjectDefBuilder#addInnerType} can
+     * only qualify the copy of a member type it stores; the definition the caller holds on to keeps the
+     * simple name it was built with, and a reference taken from it reads as {@code Inner} rather than
+     * {@code com.example.Outer$Inner}. Java source has scoping that makes such a reference resolve anyway -
+     * javac reads {@code Inner} inside {@code Outer} as its member type - while a class file has none: every
+     * name in it is a binary name. This applies the same scoping the source generator relies on, so that
+     * both generators accept the same definition.</p>
+     *
+     * <p>An unqualified name is resolved against the type being written and the member types it declares,
+     * which is the scope a definition knows about. A name that is already qualified, and one that matches
+     * nothing in scope, is left as it is.</p>
+     *
+     * @param classTypeDef The referenced type
+     * @param objectDef    The contextual object, if any
+     * @return The binary name to write
+     */
+    public static String getBinaryName(ClassTypeDef classTypeDef, @Nullable ObjectDef objectDef) {
+        String name = classTypeDef.getName();
+        if (objectDef == null || name.indexOf('.') != -1 || name.indexOf('$') != -1) {
+            return name;
+        }
+        if (name.equals(objectDef.getSimpleName())) {
+            return objectDef.asTypeDef().getName();
+        }
+        for (ObjectDef innerType : objectDef.getInnerTypes()) {
+            if (name.equals(innerType.getSimpleName())) {
+                return innerType.asTypeDef().getName();
+            }
+        }
+        return name;
     }
 
     /**

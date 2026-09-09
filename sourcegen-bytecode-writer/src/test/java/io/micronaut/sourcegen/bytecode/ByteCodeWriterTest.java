@@ -3837,6 +3837,68 @@ class MyClass {
     }
 
     @Test
+    void testReferenceToInnerClassIsQualified() throws Exception {
+        ClassDef inner = ClassDef.builder("Inner")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .build();
+        ClassDef classDef = ClassDef.builder("example.Outer")
+            .addModifiers(Modifier.PUBLIC)
+            .addInnerType(inner)
+            .addMethod(MethodDef.builder("make")
+                .addModifiers(Modifier.PUBLIC)
+                // The caller's own definition still carries the simple name it was built with
+                .returns(inner.asTypeDef())
+                .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning()))
+            .build();
+
+        StringWriter bytecodeWriter = new StringWriter();
+        byte[] bytes = generateFile(classDef, bytecodeWriter);
+
+        assertEquals("""
+// class version 61.0 (61)
+// access flags 0x1
+// signature Ljava/lang/Object;
+// declaration: example/Outer
+public class example/Outer {
+
+  // access flags 0x9
+  public static INNERCLASS example/Outer$Inner example/Outer Inner
+  NESTMEMBER example/Outer$Inner
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+
+  // access flags 0x1
+  public make()Lexample/Outer$Inner;
+    ACONST_NULL
+    ARETURN
+}
+""", bytecodeWriter.toString());
+
+        StringWriter innerWriter = new StringWriter();
+        byte[] innerBytes = generateFile(classDef.getInnerTypes().get(0), classDef.asTypeDef(), innerWriter);
+
+        // Both have to load through one loader for the outer class to resolve the type it names
+        Map<String, byte[]> generated = Map.of("example.Outer", bytes, "example.Outer$Inner", innerBytes);
+        ClassLoader classLoader = new ClassLoader(getClass().getClassLoader()) {
+            @Override
+            protected Class<?> findClass(String name) throws ClassNotFoundException {
+                byte[] classBytes = generated.get(name);
+                if (classBytes == null) {
+                    return super.findClass(name);
+                }
+                return defineClass(name, classBytes, 0, classBytes.length);
+            }
+        };
+        Class<?> outerClass = classLoader.loadClass("example.Outer");
+        assertEquals(classLoader.loadClass("example.Outer$Inner"),
+            outerClass.getDeclaredMethod("make").getReturnType());
+    }
+
+    @Test
     void testInnerEnum() {
         EnumDef enumDef = GenerateInnerTypeInEnumVisitor.getEnumDef("example", VisitorContext.Language.JAVA);
 
