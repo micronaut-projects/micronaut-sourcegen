@@ -201,7 +201,7 @@ final class JdkClassFileWriter {
             ModifierUtils.ACC_PUBLIC | ModifierUtils.ACC_ABSTRACT,
             methodBuilder -> {
                 addMethodMetadata(methodBuilder, annotationDef, accessor);
-                addTypeAnnotations(methodBuilder, methodTypeAnnotations(accessor));
+                addTypeAnnotations(methodBuilder, accessor);
                 if (defaultValue != null) {
                     methodBuilder.with(AnnotationDefaultAttribute.of(
                         ByteCodeWriter.toAnnotationValue(defaultValue, member.getType())));
