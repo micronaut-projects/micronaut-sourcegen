@@ -68,6 +68,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#writeObject(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)" tabindex="0">writeObject(ClassVisitor, ObjectDef, ClassTypeDef)</a></li>
 <li><a href="#writeField(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef)" tabindex="0">writeField(ClassVisitor, ObjectDef, FieldDef)</a></li>
 <li><a href="#writeInterface(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.InterfaceDef,io.micronaut.sourcegen.model.ClassTypeDef)" tabindex="0">writeInterface(ClassVisitor, InterfaceDef, ClassTypeDef)</a></li>
+<li><a href="#writeAnnotationObject(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.AnnotationObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)" tabindex="0">writeAnnotationObject(ClassVisitor, AnnotationObjectDef, ClassTypeDef)</a></li>
 <li><a href="#writeRecord(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.RecordDef)" tabindex="0">writeRecord(ClassVisitor, RecordDef)</a></li>
 <li><a href="#writeRecord(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.RecordDef,io.micronaut.sourcegen.model.ClassTypeDef)" tabindex="0">writeRecord(ClassVisitor, RecordDef, ClassTypeDef)</a></li>
 <li><a href="#writeClass(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ClassDef)" tabindex="0">writeClass(ClassVisitor, ClassDef)</a></li>
@@ -149,56 +150,63 @@ it, and calls through its erased signatures may fail with an <a href="https://do
 <div class="block">Writes the bytecode of generated class.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeClass(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ClassDef)" class="member-name-link">writeClass</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
- <a href="../model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a>&nbsp;classDef)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeAnnotationObject(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.AnnotationObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeAnnotationObject</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
+ <a href="../model/AnnotationObjectDef.html" title="class in io.micronaut.sourcegen.model">AnnotationObjectDef</a>&nbsp;annotationDef,
+ @Nullable <a href="../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Write an interface.</div>
+<div class="block">Write an annotation type.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeClass(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ClassDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeClass</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeClass(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ClassDef)" class="member-name-link">writeClass</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
+ <a href="../model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a>&nbsp;classDef)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Write an interface.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeClass(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ClassDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeClass</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a>&nbsp;classDef,
  @Nullable <a href="../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Write an interface.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeField(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef)" class="member-name-link">writeField</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeField(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef)" class="member-name-link">writeField</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../model/FieldDef.html" title="class in io.micronaut.sourcegen.model">FieldDef</a>&nbsp;fieldDef)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Write an enum.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeInterface(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.InterfaceDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeInterface</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeInterface(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.InterfaceDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeInterface</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/InterfaceDef.html" title="class in io.micronaut.sourcegen.model">InterfaceDef</a>&nbsp;interfaceDef,
  @Nullable <a href="../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Write an interface.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeObject(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">writeObject</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeObject(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">writeObject</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Write an object.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeObject(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeObject</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeObject(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeObject</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  @Nullable <a href="../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Write an object.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeRecord(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.RecordDef)" class="member-name-link">writeRecord</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeRecord(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.RecordDef)" class="member-name-link">writeRecord</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Write a record.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeRecord(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.RecordDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeRecord</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writeRecord(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.RecordDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeRecord</a><wbr>(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
  <a href="../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef,
  @Nullable <a href="../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Write a record.</div>
 </div>
 </div>
@@ -304,6 +312,27 @@ it, and calls through its erased signatures may fail with an <a href="https://do
 <dt>Parameters:</dt>
 <dd><code>classVisitor</code> - The class visitor</dd>
 <dd><code>interfaceDef</code> - The interface definition</dd>
+<dd><code>outerType</code> - The outer type</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="writeAnnotationObject(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.AnnotationObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)">
+<h3>writeAnnotationObject</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writeAnnotationObject</span><wbr><span class="parameters">(org.objectweb.asm.ClassVisitor&nbsp;classVisitor,
+ <a href="../model/AnnotationObjectDef.html" title="class in io.micronaut.sourcegen.model">AnnotationObjectDef</a>&nbsp;annotationDef,
+ @Nullable <a href="../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</span></div>
+<div class="block">Write an annotation type.
+
+<p>An annotation type is emitted the way a compiler emits it: an interface flagged
+<code>ACC_ANNOTATION</code> that extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/Annotation.html" title="class or interface in java.lang.annotation" class="external-link"><code>Annotation</code></a>, with one abstract accessor per member and
+the member's default, when it has one, in that accessor's <code>AnnotationDefault</code> attribute.</p></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>classVisitor</code> - The class visitor</dd>
+<dd><code>annotationDef</code> - The annotation definition</dd>
 <dd><code>outerType</code> - The outer type</dd>
 </dl>
 </div>

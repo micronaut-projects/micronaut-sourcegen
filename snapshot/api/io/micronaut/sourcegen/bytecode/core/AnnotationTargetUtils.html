@@ -60,8 +60,12 @@ loadScripts(document, 'script');</script>
 <li><a href="#targetsOf(io.micronaut.sourcegen.model.AnnotationDef,java.lang.ClassLoader)" tabindex="0">targetsOf(AnnotationDef, ClassLoader)</a></li>
 <li><a href="#declaredTargetsOf(io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">declaredTargetsOf(ObjectDef)</a></li>
 <li><a href="#toElementTypes(java.lang.Object)" tabindex="0">toElementTypes(Object)</a></li>
+<li><a href="#declarationAnnotations(java.util.List,java.lang.annotation.ElementType,java.lang.ClassLoader)" tabindex="0">declarationAnnotations(List, ElementType, ClassLoader)</a></li>
+<li><a href="#typeUseAnnotations(java.util.List,java.lang.ClassLoader)" tabindex="0">typeUseAnnotations(List, ClassLoader)</a></li>
+<li><a href="#annotatedType(io.micronaut.sourcegen.model.TypeDef,java.util.List,java.lang.ClassLoader)" tabindex="0">annotatedType(TypeDef, List, ClassLoader)</a></li>
 <li><a href="#retentionOf(io.micronaut.sourcegen.model.AnnotationDef,java.lang.ClassLoader)" tabindex="0">retentionOf(AnnotationDef, ClassLoader)</a></li>
 <li><a href="#declaredRetentionOf(io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">declaredRetentionOf(ObjectDef)</a></li>
+<li><a href="#isArrayMember(io.micronaut.sourcegen.model.AnnotationDef,java.lang.String,java.lang.ClassLoader)" tabindex="0">isArrayMember(AnnotationDef, String, ClassLoader)</a></li>
 </ol>
 </li>
 </ol>
@@ -103,27 +107,53 @@ type may be one of the source files currently being compiled.</p></div>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#annotatedType(io.micronaut.sourcegen.model.TypeDef,java.util.List,java.lang.ClassLoader)" class="member-name-link">annotatedType</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&gt;&nbsp;annotations,
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassLoader.html" title="class or interface in java.lang" class="external-link">ClassLoader</a>&nbsp;classLoader)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The type of a declaration, carrying those of the declaration's annotations that annotate a type use.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#declarationAnnotations(java.util.List,java.lang.annotation.ElementType,java.lang.ClassLoader)" class="member-name-link">declarationAnnotations</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&gt;&nbsp;annotations,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/ElementType.html" title="class or interface in java.lang.annotation" class="external-link">ElementType</a>&nbsp;elementType,
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassLoader.html" title="class or interface in java.lang" class="external-link">ClassLoader</a>&nbsp;classLoader)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The annotations of a declaration that belong among its declaration annotations, which is every one of
+them but those a compiler writes as type annotations instead.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/RetentionPolicy.html" title="class or interface in java.lang.annotation" class="external-link">RetentionPolicy</a>&gt;</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#declaredRetentionOf(io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">declaredRetentionOf</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/ElementType.html" title="class or interface in java.lang.annotation" class="external-link">ElementType</a>&gt;&gt;</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#declaredTargetsOf(io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">declaredTargetsOf</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/RetentionPolicy.html" title="class or interface in java.lang.annotation" class="external-link">RetentionPolicy</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#retentionOf(io.micronaut.sourcegen.model.AnnotationDef,java.lang.ClassLoader)" class="member-name-link">retentionOf</a><wbr>(<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&nbsp;annotation,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#isArrayMember(io.micronaut.sourcegen.model.AnnotationDef,java.lang.String,java.lang.ClassLoader)" class="member-name-link">isArrayMember</a><wbr>(<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&nbsp;annotation,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;member,
  @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassLoader.html" title="class or interface in java.lang" class="external-link">ClassLoader</a>&nbsp;classLoader)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Whether a member of an annotation is declared with an array type.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/RetentionPolicy.html" title="class or interface in java.lang.annotation" class="external-link">RetentionPolicy</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#retentionOf(io.micronaut.sourcegen.model.AnnotationDef,java.lang.ClassLoader)" class="member-name-link">retentionOf</a><wbr>(<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&nbsp;annotation,
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassLoader.html" title="class or interface in java.lang" class="external-link">ClassLoader</a>&nbsp;classLoader)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">The retention of an annotation, resolved the way the ASM backend resolves it.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/ElementType.html" title="class or interface in java.lang.annotation" class="external-link">ElementType</a>&gt;&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#targetsOf(io.micronaut.sourcegen.model.AnnotationDef,java.lang.ClassLoader)" class="member-name-link">targetsOf</a><wbr>(<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&nbsp;annotation,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/ElementType.html" title="class or interface in java.lang.annotation" class="external-link">ElementType</a>&gt;&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#targetsOf(io.micronaut.sourcegen.model.AnnotationDef,java.lang.ClassLoader)" class="member-name-link">targetsOf</a><wbr>(<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&nbsp;annotation,
  @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassLoader.html" title="class or interface in java.lang" class="external-link">ClassLoader</a>&nbsp;classLoader)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/ElementType.html" title="class or interface in java.lang.annotation" class="external-link">ElementType</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#toElementTypes(java.lang.Object)" class="member-name-link">toElementTypes</a><wbr>(@Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;value)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/ElementType.html" title="class or interface in java.lang.annotation" class="external-link">ElementType</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#toElementTypes(java.lang.Object)" class="member-name-link">toElementTypes</a><wbr>(@Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;value)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Converts the model's representation of a <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/Target.html#value()" title="class or interface in java.lang.annotation" class="external-link"><code>Target.value()</code></a> member.</div>
 </div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#typeUseAnnotations(java.util.List,java.lang.ClassLoader)" class="member-name-link">typeUseAnnotations</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&gt;&nbsp;annotations,
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassLoader.html" title="class or interface in java.lang" class="external-link">ClassLoader</a>&nbsp;classLoader)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
 </div>
@@ -187,6 +217,66 @@ type may be one of the source files currently being compiled.</p></div>
 </section>
 </li>
 <li>
+<section class="detail" id="declarationAnnotations(java.util.List,java.lang.annotation.ElementType,java.lang.ClassLoader)">
+<h3>declarationAnnotations</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&gt;</span>&nbsp;<span class="element-name">declarationAnnotations</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&gt;&nbsp;annotations,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/ElementType.html" title="class or interface in java.lang.annotation" class="external-link">ElementType</a>&nbsp;elementType,
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassLoader.html" title="class or interface in java.lang" class="external-link">ClassLoader</a>&nbsp;classLoader)</span></div>
+<div class="block">The annotations of a declaration that belong among its declaration annotations, which is every one of
+them but those a compiler writes as type annotations instead. An annotation whose <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/Target.html" title="class or interface in java.lang.annotation" class="external-link"><code>Target</code></a> names
+<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/annotation/ElementType.html#TYPE_USE" title="class or interface in java.lang.annotation" class="external-link"><code>ElementType.TYPE_USE</code></a> but not the declaration itself annotates the type of the declaration and
+nothing else, the way <code>org.jspecify.annotations.Nullable</code> does; one that names both is written
+in both places, and one that names neither is left where it was put rather than dropped.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>annotations</code> - The annotations of the declaration</dd>
+<dd><code>elementType</code> - The kind of declaration they are written on</dd>
+<dd><code>classLoader</code> - The fallback class loader</dd>
+<dt>Returns:</dt>
+<dd>The annotations that belong among the declaration annotations</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="typeUseAnnotations(java.util.List,java.lang.ClassLoader)">
+<h3>typeUseAnnotations</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&gt;</span>&nbsp;<span class="element-name">typeUseAnnotations</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&gt;&nbsp;annotations,
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassLoader.html" title="class or interface in java.lang" class="external-link">ClassLoader</a>&nbsp;classLoader)</span></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>annotations</code> - The annotations of a declaration</dd>
+<dd><code>classLoader</code> - The fallback class loader</dd>
+<dt>Returns:</dt>
+<dd>Those of them that annotate a type use</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="annotatedType(io.micronaut.sourcegen.model.TypeDef,java.util.List,java.lang.ClassLoader)">
+<h3>annotatedType</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></span>&nbsp;<span class="element-name">annotatedType</span><wbr><span class="parameters">(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&gt;&nbsp;annotations,
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassLoader.html" title="class or interface in java.lang" class="external-link">ClassLoader</a>&nbsp;classLoader)</span></div>
+<div class="block">The type of a declaration, carrying those of the declaration's annotations that annotate a type use. A
+compiler writes such an annotation against the type of the declaration and not against the declaration
+itself, so that a reader finds it on the annotated type.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>typeDef</code> - The declared type</dd>
+<dd><code>annotations</code> - The annotations of the declaration</dd>
+<dd><code>classLoader</code> - The fallback class loader</dd>
+<dt>Returns:</dt>
+<dd>The type, annotated when any of them belongs on it</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
 <section class="detail" id="retentionOf(io.micronaut.sourcegen.model.AnnotationDef,java.lang.ClassLoader)">
 <h3>retentionOf</h3>
 <div class="horizontal-scroll">
@@ -213,6 +303,31 @@ type may be one of the source files currently being compiled.</p></div>
 <dd><code>objectDef</code> - An annotation definition</dd>
 <dt>Returns:</dt>
 <dd>The retention it declares, or empty when it declares none</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="isArrayMember(io.micronaut.sourcegen.model.AnnotationDef,java.lang.String,java.lang.ClassLoader)">
+<h3>isArrayMember</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isArrayMember</span><wbr><span class="parameters">(<a href="../../model/AnnotationDef.html" title="class in io.micronaut.sourcegen.model">AnnotationDef</a>&nbsp;annotation,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;member,
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassLoader.html" title="class or interface in java.lang" class="external-link">ClassLoader</a>&nbsp;classLoader)</span></div>
+<div class="block">Whether a member of an annotation is declared with an array type.
+
+<p>A single value is a legal source form for an array member - <code>@Target(TYPE)</code> means
+<code>@Target({TYPE})</code> - but a class file has no such shorthand, so a writer has to know the
+declared type to wrap the value. The declaration is read from the definition of an annotation
+type generated in this same round, from the source element of one still being compiled, and
+otherwise from the loaded class.</p></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>annotation</code> - The annotation</dd>
+<dd><code>member</code> - The name of the member</dd>
+<dd><code>classLoader</code> - The fallback class loader</dd>
+<dt>Returns:</dt>
+<dd>Whether the member is declared as an array</dd>
 </dl>
 </div>
 </section>

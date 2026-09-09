@@ -5,6 +5,7 @@ io.micronaut.sourcegen.bytecode.core
 io.micronaut.sourcegen.bytecode.expression
 io.micronaut.sourcegen.bytecode.jdk
 io.micronaut.sourcegen.bytecode.statement
+io.micronaut.sourcegen.bytecode.tck
 io.micronaut.sourcegen.generator
 io.micronaut.sourcegen.generator.bytecode
 io.micronaut.sourcegen.generator.bytecode.jdk

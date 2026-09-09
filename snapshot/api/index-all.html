@@ -50,7 +50,7 @@ loadScripts(document, 'script');</script>
 <div class="header">
 <h1>Index</h1>
 </div>
-<a href="#I:A">A</a>&nbsp;<a href="#I:B">B</a>&nbsp;<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:F">F</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:H">H</a>&nbsp;<a href="#I:I">I</a>&nbsp;<a href="#I:J">J</a>&nbsp;<a href="#I:K">K</a>&nbsp;<a href="#I:L">L</a>&nbsp;<a href="#I:M">M</a>&nbsp;<a href="#I:N">N</a>&nbsp;<a href="#I:O">O</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:S">S</a>&nbsp;<a href="#I:T">T</a>&nbsp;<a href="#I:U">U</a>&nbsp;<a href="#I:V">V</a>&nbsp;<a href="#I:W">W</a>&nbsp;<br><a href="allclasses-index.html">All&nbsp;Classes&nbsp;and&nbsp;Interfaces</a><span class="vertical-separator">|</span><a href="allpackages-index.html">All&nbsp;Packages</a><span class="vertical-separator">|</span><a href="constant-values.html">Constant&nbsp;Field&nbsp;Values</a>
+<a href="#I:A">A</a>&nbsp;<a href="#I:B">B</a>&nbsp;<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:F">F</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:H">H</a>&nbsp;<a href="#I:I">I</a>&nbsp;<a href="#I:J">J</a>&nbsp;<a href="#I:K">K</a>&nbsp;<a href="#I:L">L</a>&nbsp;<a href="#I:M">M</a>&nbsp;<a href="#I:N">N</a>&nbsp;<a href="#I:O">O</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:S">S</a>&nbsp;<a href="#I:T">T</a>&nbsp;<a href="#I:U">U</a>&nbsp;<a href="#I:V">V</a>&nbsp;<a href="#I:W">W</a>&nbsp;<a href="#I:Y">Y</a>&nbsp;<br><a href="allclasses-index.html">All&nbsp;Classes&nbsp;and&nbsp;Interfaces</a><span class="vertical-separator">|</span><a href="allpackages-index.html">All&nbsp;Packages</a><span class="vertical-separator">|</span><a href="constant-values.html">Constant&nbsp;Field&nbsp;Values</a>
 <h2 class="title" id="I:A">A</h2>
 <dl class="index">
 <dt><a href="io/micronaut/sourcegen/generator/AbstractByteCodeGenerator.html" class="type-name-link" title="class in io.micronaut.sourcegen.generator">AbstractByteCodeGenerator</a> - Class in <a href="io/micronaut/sourcegen/generator/package-summary.html">io.micronaut.sourcegen.generator</a></dt>
@@ -539,6 +539,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Creates an instance of a <code>AnnotatedClassTypeDef</code> record class.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html#annotatedType(io.micronaut.sourcegen.model.TypeDef,java.util.List,java.lang.ClassLoader)" class="member-name-link">annotatedType(TypeDef, List, ClassLoader)</a> - Static method in class io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">AnnotationTargetUtils</a></dt>
+<dd>
+<div class="block">The type of a declaration, carrying those of the declaration's annotations that annotate a type use.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/TypeDef.AnnotatedTypeDef.html#%3Cinit%3E(io.micronaut.sourcegen.model.TypeDef,java.util.List)" class="member-name-link">AnnotatedTypeDef(TypeDef, List)</a> - Constructor for record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.AnnotatedTypeDef.html" title="class in io.micronaut.sourcegen.model">TypeDef.AnnotatedTypeDef</a></dt>
 <dd>
 <div class="block">Creates an instance of a <code>AnnotatedTypeDef</code> record class.</div>
@@ -1025,6 +1029,13 @@ this <code>typeElement</code>.</div>
 <dd>
 <div class="block">Creates a writer that can resolve types of the compilation it is running in.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a> - Class in <a href="io/micronaut/sourcegen/bytecode/tck/package-summary.html">io.micronaut.sourcegen.bytecode.tck</a></dt>
+<dd>
+<div class="block">The behaviour every bytecode backend must provide, asserted through the classes a backend writes
+rather than through the bytecode it emits, so that the same tests hold for any backend.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#%3Cinit%3E()" class="member-name-link">ByteCodeWriterTck()</a> - Constructor for class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
 </dl>
 <h2 class="title" id="I:C">C</h2>
 <dl class="index">
@@ -1312,9 +1323,19 @@ this <code>typeElement</code>.</div>
 <dd>
 <div class="block">Builds a wither interface for the given arguments.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.html#currentYieldTarget()" class="member-name-link">currentYieldTarget()</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext</a></dt>
+<dd>
+<div class="block">The switch yield case a return statement contributes its value to, instead of returning
+from the method.</div>
+</dd>
 </dl>
 <h2 class="title" id="I:D">D</h2>
 <dl class="index">
+<dt><a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html#declarationAnnotations(java.util.List,java.lang.annotation.ElementType,java.lang.ClassLoader)" class="member-name-link">declarationAnnotations(List, ElementType, ClassLoader)</a> - Static method in class io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">AnnotationTargetUtils</a></dt>
+<dd>
+<div class="block">The annotations of a declaration that belong among its declaration annotations, which is every one of
+them but those a compiler writes as type annotations instead.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html#declaredRetentionOf(io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">declaredRetentionOf(ObjectDef)</a> - Static method in class io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">AnnotationTargetUtils</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html#declaredTargetsOf(io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">declaredTargetsOf(ObjectDef)</a> - Static method in class io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">AnnotationTargetUtils</a></dt>
@@ -1347,6 +1368,10 @@ this <code>typeElement</code>.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/MethodSpec.Builder.html#defaultValue(java.lang.String,java.lang.Object...)" class="member-name-link">defaultValue(String, Object...)</a> - Method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/MethodSpec.Builder.html" title="class in io.micronaut.sourcegen.javapoet">MethodSpec.Builder</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#define(io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">define(ObjectDef)</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>
+<div class="block">Loads a definition written by <a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#write(io.micronaut.sourcegen.model.ObjectDef)"><code>ByteCodeWriterTck.write(ObjectDef)</code></a>.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/VariableDef.Local.html#defineAndAssign(io.micronaut.sourcegen.model.ExpressionDef)" class="member-name-link">defineAndAssign(ExpressionDef)</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/VariableDef.Local.html" title="class in io.micronaut.sourcegen.model">VariableDef.Local</a></dt>
 <dd>
 <div class="block">Define and assign the variable.</div>
@@ -1422,6 +1447,10 @@ this <code>typeElement</code>.</div>
 <dd>
 <div class="block">Returns the enclosing class, like <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link"><code>Map</code></a> for <code>Map.Entry</code>.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html#end()" class="member-name-link">end()</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a></dt>
+<dd>
+<div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html#param-end"><code>end</code></a> record component.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/CodeBlock.Builder.html#endControlFlow()" class="member-name-link">endControlFlow()</a> - Method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/CodeBlock.Builder.html" title="class in io.micronaut.sourcegen.javapoet">CodeBlock.Builder</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/MethodSpec.Builder.html#endControlFlow()" class="member-name-link">endControlFlow()</a> - Method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/MethodSpec.Builder.html" title="class in io.micronaut.sourcegen.javapoet">MethodSpec.Builder</a></dt>
@@ -1485,6 +1514,10 @@ this <code>typeElement</code>.</div>
 <div class="block">Indicates whether some other object is "equal to" this one.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a></dt>
+<dd>
+<div class="block">Indicates whether some other object is "equal to" this one.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a></dt>
 <dd>
 <div class="block">Indicates whether some other object is "equal to" this one.</div>
 </dd>
@@ -2630,6 +2663,10 @@ target, variable arity included.</div>
 <dd>
 <div class="block">Returns a hash code value for this object.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html#hashCode()" class="member-name-link">hashCode()</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a></dt>
+<dd>
+<div class="block">Returns a hash code value for this object.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html#hashCode()" class="member-name-link">hashCode()</a> - Method in record class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a></dt>
 <dd>
 <div class="block">Returns a hash code value for this object.</div>
@@ -3283,6 +3320,8 @@ target, variable arity included.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/model/ExpressionDef.InvokeInstanceMethod.html#%3Cinit%3E(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.MethodDef,java.util.List)" class="member-name-link">InvokeInstanceMethod(ExpressionDef, MethodDef, List)</a> - Constructor for record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ExpressionDef.InvokeInstanceMethod.html" title="class in io.micronaut.sourcegen.model">ExpressionDef.InvokeInstanceMethod</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#invokesMethodsThroughInterfaceBoundTypeVariables()" class="member-name-link">invokesMethodsThroughInterfaceBoundTypeVariables()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.html#invokeStatic(io.micronaut.inject.ast.MethodElement,io.micronaut.sourcegen.model.ExpressionDef...)" class="member-name-link">invokeStatic(MethodElement, ExpressionDef...)</a> - Method in interface io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a></dt>
 <dd>
 <div class="block">Invoke static method.</div>
@@ -3389,6 +3428,10 @@ target, variable arity included.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/statement/package-summary.html">io.micronaut.sourcegen.bytecode.statement</a> - package io.micronaut.sourcegen.bytecode.statement</dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/package-summary.html">io.micronaut.sourcegen.bytecode.tck</a> - package io.micronaut.sourcegen.bytecode.tck</dt>
+<dd>
+<div class="block">The behaviour every bytecode backend must provide.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/generator/package-summary.html">io.micronaut.sourcegen.generator</a> - package io.micronaut.sourcegen.generator</dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/bytecode/package-summary.html">io.micronaut.sourcegen.generator.bytecode</a> - package io.micronaut.sourcegen.generator.bytecode</dt>
@@ -3421,6 +3464,10 @@ target, variable arity included.</div>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/model/TypeDef.Wildcard.html#isArray()" class="member-name-link">isArray()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/TypeDef.Wildcard.html" title="class in io.micronaut.sourcegen.model">TypeDef.Wildcard</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html#isArrayMember(io.micronaut.sourcegen.model.AnnotationDef,java.lang.String,java.lang.ClassLoader)" class="member-name-link">isArrayMember(AnnotationDef, String, ClassLoader)</a> - Static method in class io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">AnnotationTargetUtils</a></dt>
+<dd>
+<div class="block">Whether a member of an annotation is declared with an array type.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/TypeName.html#isBoxedPrimitive()" class="member-name-link">isBoxedPrimitive()</a> - Method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/TypeName.html" title="class in io.micronaut.sourcegen.javapoet">TypeName</a></dt>
 <dd>
 <div class="block">Returns true if this is a boxed primitive type like <code>Integer</code>.</div>
@@ -3798,12 +3845,18 @@ separated by <code>separator</code>.</div>
 <dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.html#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,boolean)" class="member-name-link">MethodContext(ObjectDef, MethodDef, boolean)</a> - Constructor for record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.html#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map,java.util.List,boolean)" class="member-name-link">MethodContext(ObjectDef, MethodDef, Map, List, boolean)</a> - Constructor for record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.html#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map,java.util.List,boolean,java.util.Deque)" class="member-name-link">MethodContext(ObjectDef, MethodDef, Map, List, boolean, Deque)</a> - Constructor for record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext</a></dt>
 <dd>
 <div class="block">Creates an instance of a <code>MethodContext</code> record class.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a> - Record Class in <a href="io/micronaut/sourcegen/bytecode/package-summary.html">io.micronaut.sourcegen.bytecode</a></dt>
 <dd>
 <div class="block">The local data.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a> - Record Class in <a href="io/micronaut/sourcegen/bytecode/package-summary.html">io.micronaut.sourcegen.bytecode</a></dt>
+<dd>
+<div class="block">A switch yield case being written.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.html#methodDef()" class="member-name-link">methodDef()</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext</a></dt>
 <dd>
@@ -3875,6 +3928,10 @@ e.g.</div>
 <dt><a href="io/micronaut/sourcegen/info/MicronautSourcegenBytecodeWriterModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenBytecodeWriterModuleInfo</a> - Class in <a href="io/micronaut/sourcegen/info/package-summary.html">io.micronaut.sourcegen.info</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/info/MicronautSourcegenBytecodeWriterModuleInfo.html#%3Cinit%3E()" class="member-name-link">MicronautSourcegenBytecodeWriterModuleInfo()</a> - Constructor for class io.micronaut.sourcegen.info.<a href="io/micronaut/sourcegen/info/MicronautSourcegenBytecodeWriterModuleInfo.html" title="class in io.micronaut.sourcegen.info">MicronautSourcegenBytecodeWriterModuleInfo</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/info/MicronautSourcegenBytecodeWriterTckModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenBytecodeWriterTckModuleInfo</a> - Class in <a href="io/micronaut/sourcegen/info/package-summary.html">io.micronaut.sourcegen.info</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/info/MicronautSourcegenBytecodeWriterTckModuleInfo.html#%3Cinit%3E()" class="member-name-link">MicronautSourcegenBytecodeWriterTckModuleInfo()</a> - Constructor for class io.micronaut.sourcegen.info.<a href="io/micronaut/sourcegen/info/MicronautSourcegenBytecodeWriterTckModuleInfo.html" title="class in io.micronaut.sourcegen.info">MicronautSourcegenBytecodeWriterTckModuleInfo</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/info/MicronautSourcegenGeneratorBytecodeJdkModuleInfo.html" class="type-name-link" title="class in io.micronaut.sourcegen.info">MicronautSourcegenGeneratorBytecodeJdkModuleInfo</a> - Class in <a href="io/micronaut/sourcegen/info/package-summary.html">io.micronaut.sourcegen.info</a></dt>
 <dd>&nbsp;</dd>
@@ -4771,6 +4828,10 @@ a single element method for filling a collection.</div>
 <dd>
 <div class="block">Call this to omit imports for classes in <code>java.lang</code>, such as <code>java.lang.String</code>.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html#slot()" class="member-name-link">slot()</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a></dt>
+<dd>
+<div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html#param-slot"><code>slot</code></a> record component.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/generator/bytecode/jdk/ByteCodeGenerator.html#SOURCE_PATH_OPTION" class="member-name-link">SOURCE_PATH_OPTION</a> - Static variable in class io.micronaut.sourcegen.generator.bytecode.jdk.<a href="io/micronaut/sourcegen/generator/bytecode/jdk/ByteCodeGenerator.html" title="class in io.micronaut.sourcegen.generator.bytecode.jdk">ByteCodeGenerator</a></dt>
 <dd>
 <div class="block">Annotation-processor option holding additional source roots, separated by <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/io/File.html#pathSeparator" title="class or interface in java.io" class="external-link"><code>File.pathSeparator</code></a>,
@@ -5124,6 +5185,10 @@ properties in stages.</div>
 <dd>
 <div class="block">Returns a string representation of this record class.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html#toString()" class="member-name-link">toString()</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a></dt>
+<dd>
+<div class="block">Returns a string representation of this record class.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html#toString()" class="member-name-link">toString()</a> - Method in record class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderGenerator.BuildContext.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderGenerator.BuildContext</a></dt>
 <dd>
 <div class="block">Returns a string representation of this record class.</div>
@@ -5452,6 +5517,10 @@ properties in stages.</div>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/bytecode/MethodContext.LocalData.html#param-type"><code>type</code></a> record component.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html#type()" class="member-name-link">type()</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a></dt>
+<dd>
+<div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html#param-type"><code>type</code></a> record component.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/model/ClassTypeDef.JavaClass.html#type()" class="member-name-link">type()</a> - Method in record class io.micronaut.sourcegen.model.<a href="io/micronaut/sourcegen/model/ClassTypeDef.JavaClass.html" title="class in io.micronaut.sourcegen.model">ClassTypeDef.JavaClass</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/model/ClassTypeDef.JavaClass.html#param-type"><code>type</code></a> record component.</div>
@@ -5611,6 +5680,8 @@ properties in stages.</div>
 <dt><a href="io/micronaut/sourcegen/javapoet/TypeSpec.Builder.html#typeSpecs" class="member-name-link">typeSpecs</a> - Variable in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/TypeSpec.Builder.html" title="class in io.micronaut.sourcegen.javapoet">TypeSpec.Builder</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/TypeSpec.html#typeSpecs" class="member-name-link">typeSpecs</a> - Variable in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/TypeSpec.html" title="class in io.micronaut.sourcegen.javapoet">TypeSpec</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html#typeUseAnnotations(java.util.List,java.lang.ClassLoader)" class="member-name-link">typeUseAnnotations(List, ClassLoader)</a> - Static method in class io.micronaut.sourcegen.bytecode.core.<a href="io/micronaut/sourcegen/bytecode/core/AnnotationTargetUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">AnnotationTargetUtils</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/core/TypeUtils.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">TypeUtils</a> - Class in <a href="io/micronaut/sourcegen/bytecode/core/package-summary.html">io.micronaut.sourcegen.bytecode.core</a></dt>
 <dd>
@@ -5793,6 +5864,8 @@ the order they are declared.</div>
 <dd>
 <div class="block">The variable of `this`.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#verifiesHierarchyFromGeneratedModelDefinitions()" class="member-name-link">verifiesHierarchyFromGeneratedModelDefinitions()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.html#visitClass(io.micronaut.inject.ast.ClassElement,io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">visitClass(ClassElement, VisitorContext)</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/BuilderAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">BuilderAnnotationVisitor</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/visitors/DelegateAnnotationVisitor.html#visitClass(io.micronaut.inject.ast.ClassElement,io.micronaut.inject.visitor.VisitorContext)" class="member-name-link">visitClass(ClassElement, VisitorContext)</a> - Method in class io.micronaut.sourcegen.generator.visitors.<a href="io/micronaut/sourcegen/generator/visitors/DelegateAnnotationVisitor.html" title="class in io.micronaut.sourcegen.generator.visitors">DelegateAnnotationVisitor</a></dt>
@@ -5912,6 +5985,10 @@ the order they are declared.</div>
 <dd>
 <div class="block">Writes a top-level definition.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#write(io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">write(ObjectDef)</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>
+<div class="block">Writes one definition to class file bytes with the backend under test.</div>
+</dd>
 <dt><a href="io/micronaut/sourcegen/generator/AbstractByteCodeGenerator.html#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element...)" class="member-name-link">write(ObjectDef, VisitorContext, Element...)</a> - Method in class io.micronaut.sourcegen.generator.<a href="io/micronaut/sourcegen/generator/AbstractByteCodeGenerator.html" title="class in io.micronaut.sourcegen.generator">AbstractByteCodeGenerator</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/generator/SourceGenerator.html#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element...)" class="member-name-link">write(ObjectDef, VisitorContext, Element...)</a> - Method in interface io.micronaut.sourcegen.generator.<a href="io/micronaut/sourcegen/generator/SourceGenerator.html" title="interface in io.micronaut.sourcegen.generator">SourceGenerator</a></dt>
@@ -5951,6 +6028,10 @@ the order they are declared.</div>
 <dt><a href="io/micronaut/sourcegen/bytecode/jdk/ByteCodeWriter.html#writeAll(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeAll(ObjectDef, ClassTypeDef)</a> - Method in class io.micronaut.sourcegen.bytecode.jdk.<a href="io/micronaut/sourcegen/bytecode/jdk/ByteCodeWriter.html" title="class in io.micronaut.sourcegen.bytecode.jdk">ByteCodeWriter</a></dt>
 <dd>
 <div class="block">Writes a definition and all member classes produced for it.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/ByteCodeWriter.html#writeAnnotationObject(org.objectweb.asm.ClassVisitor,io.micronaut.sourcegen.model.AnnotationObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">writeAnnotationObject(ClassVisitor, AnnotationObjectDef, ClassTypeDef)</a> - Method in class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/ByteCodeWriter.html" title="class in io.micronaut.sourcegen.bytecode">ByteCodeWriter</a></dt>
+<dd>
+<div class="block">Write an annotation type.</div>
 </dd>
 <dt><a href="io/micronaut/sourcegen/generator/AbstractByteCodeGenerator.html#writeClass(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element%5B%5D)" class="member-name-link">writeClass(ObjectDef, ClassTypeDef, VisitorContext, Element[])</a> - Method in class io.micronaut.sourcegen.generator.<a href="io/micronaut/sourcegen/generator/AbstractByteCodeGenerator.html" title="class in io.micronaut.sourcegen.generator">AbstractByteCodeGenerator</a></dt>
 <dd>
@@ -5996,10 +6077,56 @@ the order they are declared.</div>
 <dd>
 <div class="block">Write a record.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesAllComparisonsForIntegralAndFloatingPointValues()" class="member-name-link">writesAllComparisonsForIntegralAndFloatingPointValues()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesArrayConstantsAndMultiDimensionalArrays()" class="member-name-link">writesArrayConstantsAndMultiDimensionalArrays()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesBooleanCompositionConditionalExpressionsAndArraySizes()" class="member-name-link">writesBooleanCompositionConditionalExpressionsAndArraySizes()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesBoxedConstantsSmallPrimitivesAndPrimitiveHashCodes()" class="member-name-link">writesBoxedConstantsSmallPrimitivesAndPrimitiveHashCodes()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesCastsBoxingNullChecksEqualityInstanceOfAndArrays()" class="member-name-link">writesCastsBoxingNullChecksEqualityInstanceOfAndArrays()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesCatchVariablesThrowsAndDeclarationMetadata()" class="member-name-link">writesCatchVariablesThrowsAndDeclarationMetadata()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesConstructorDelegationWithoutRepeatingFieldInitializers()" class="member-name-link">writesConstructorDelegationWithoutRepeatingFieldInitializers()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesConstructorsWhoseSuperCallUsesAnEarlierLocal()" class="member-name-link">writesConstructorsWhoseSuperCallUsesAnEarlierLocal()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/bytecode/statement/StatementWriter.html#writeScoped(org.objectweb.asm.commons.GeneratorAdapter,io.micronaut.sourcegen.bytecode.MethodContext,java.lang.Runnable)" class="member-name-link">writeScoped(GeneratorAdapter, MethodContext, Runnable)</a> - Method in interface io.micronaut.sourcegen.bytecode.statement.<a href="io/micronaut/sourcegen/bytecode/statement/StatementWriter.html" title="interface in io.micronaut.sourcegen.bytecode.statement">StatementWriter</a></dt>
 <dd>
 <div class="block">Write the statement with scoped locals.</div>
 </dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface()" class="member-name-link">writesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesEmptyWideGenericAndBridgedRecords()" class="member-name-link">writesEmptyWideGenericAndBridgedRecords()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesEnums()" class="member-name-link">writesEnums()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesEveryIntegerMathOperationAndWidePrimitiveOperations()" class="member-name-link">writesEveryIntegerMathOperationAndWidePrimitiveOperations()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesExplicitSuperConstructorsAndObjectCreation()" class="member-name-link">writesExplicitSuperConstructorsAndObjectCreation()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesGenericRecordSignaturesAndRecordsWithAnAdditionalConstructor()" class="member-name-link">writesGenericRecordSignaturesAndRecordsWithAnAdditionalConstructor()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesInterfacesWithAbstractDefaultAndStaticMethods()" class="member-name-link">writesInterfacesWithAbstractDefaultAndStaticMethods()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesNestedCastsWithoutUnboxingAndReboxingAReference()" class="member-name-link">writesNestedCastsWithoutUnboxingAndReboxingAReference()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesReflectedGenericBridgeAndGenericSignatures()" class="member-name-link">writesReflectedGenericBridgeAndGenericSignatures()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesSuperCallsAndSuperConstructorDelegation()" class="member-name-link">writesSuperCallsAndSuperConstructorDelegation()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesSwitchesSharingOneBodyAcrossManyKeys()" class="member-name-link">writesSwitchesSharingOneBodyAcrossManyKeys()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesTryWhoseCatchCompletesInsideAnIfBranch()" class="member-name-link">writesTryWhoseCatchCompletesInsideAnIfBranch()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes()" class="member-name-link">writesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesVoidMethodsThatReturnAnExpression()" class="member-name-link">writesVoidMethodsThatReturnAnExpression()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html#writesWhileLoopsAndFinallyOnReturnAndThrow()" class="member-name-link">writesWhileLoopsAndFinallyOnReturnAndThrow()</a> - Method in class io.micronaut.sourcegen.bytecode.tck.<a href="io/micronaut/sourcegen/bytecode/tck/ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/micronaut/sourcegen/javapoet/JavaFile.html#writeTo(java.io.File)" class="member-name-link">writeTo(File)</a> - Method in class io.micronaut.sourcegen.javapoet.<a href="io/micronaut/sourcegen/javapoet/JavaFile.html" title="class in io.micronaut.sourcegen.javapoet">JavaFile</a></dt>
 <dd>
 <div class="block">Writes this to <code>directory</code> as UTF-8 using the standard directory structure.</div>
@@ -6033,7 +6160,18 @@ structure.</div>
 structure.</div>
 </dd>
 </dl>
-<a href="#I:A">A</a>&nbsp;<a href="#I:B">B</a>&nbsp;<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:F">F</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:H">H</a>&nbsp;<a href="#I:I">I</a>&nbsp;<a href="#I:J">J</a>&nbsp;<a href="#I:K">K</a>&nbsp;<a href="#I:L">L</a>&nbsp;<a href="#I:M">M</a>&nbsp;<a href="#I:N">N</a>&nbsp;<a href="#I:O">O</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:S">S</a>&nbsp;<a href="#I:T">T</a>&nbsp;<a href="#I:U">U</a>&nbsp;<a href="#I:V">V</a>&nbsp;<a href="#I:W">W</a>&nbsp;<br><a href="allclasses-index.html">All&nbsp;Classes&nbsp;and&nbsp;Interfaces</a><span class="vertical-separator">|</span><a href="allpackages-index.html">All&nbsp;Packages</a><span class="vertical-separator">|</span><a href="constant-values.html">Constant&nbsp;Field&nbsp;Values</a></main>
+<h2 class="title" id="I:Y">Y</h2>
+<dl class="index">
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html#%3Cinit%3E(io.micronaut.sourcegen.model.TypeDef,int,org.objectweb.asm.Label)" class="member-name-link">YieldTarget(TypeDef, int, Label)</a> - Constructor for record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a></dt>
+<dd>
+<div class="block">Creates an instance of a <code>YieldTarget</code> record class.</div>
+</dd>
+<dt><a href="io/micronaut/sourcegen/bytecode/MethodContext.html#yieldTargets()" class="member-name-link">yieldTargets()</a> - Method in record class io.micronaut.sourcegen.bytecode.<a href="io/micronaut/sourcegen/bytecode/MethodContext.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext</a></dt>
+<dd>
+<div class="block">Returns the value of the <a href="./io/micronaut/sourcegen/bytecode/MethodContext.html#param-yieldTargets"><code>yieldTargets</code></a> record component.</div>
+</dd>
+</dl>
+<a href="#I:A">A</a>&nbsp;<a href="#I:B">B</a>&nbsp;<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:F">F</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:H">H</a>&nbsp;<a href="#I:I">I</a>&nbsp;<a href="#I:J">J</a>&nbsp;<a href="#I:K">K</a>&nbsp;<a href="#I:L">L</a>&nbsp;<a href="#I:M">M</a>&nbsp;<a href="#I:N">N</a>&nbsp;<a href="#I:O">O</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:S">S</a>&nbsp;<a href="#I:T">T</a>&nbsp;<a href="#I:U">U</a>&nbsp;<a href="#I:V">V</a>&nbsp;<a href="#I:W">W</a>&nbsp;<a href="#I:Y">Y</a>&nbsp;<br><a href="allclasses-index.html">All&nbsp;Classes&nbsp;and&nbsp;Interfaces</a><span class="vertical-separator">|</span><a href="allpackages-index.html">All&nbsp;Packages</a><span class="vertical-separator">|</span><a href="constant-values.html">Constant&nbsp;Field&nbsp;Values</a></main>
 </div>
 </body>
 </html>

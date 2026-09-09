@@ -59,12 +59,14 @@ loadScripts(document, 'script');</script>
 <li><a href="#method-summary" tabindex="0">Method Summary</a></li>
 <li><a href="#constructor-detail" tabindex="0">Constructor Details</a>
 <ol class="toc-list">
-<li><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,boolean)" tabindex="0">MethodContext(ObjectDef, MethodDef, boolean)</a></li>
 <li><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map,java.util.List,boolean)" tabindex="0">MethodContext(ObjectDef, MethodDef, Map, List, boolean)</a></li>
+<li><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,boolean)" tabindex="0">MethodContext(ObjectDef, MethodDef, boolean)</a></li>
+<li><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map,java.util.List,boolean,java.util.Deque)" tabindex="0">MethodContext(ObjectDef, MethodDef, Map, List, boolean, Deque)</a></li>
 </ol>
 </li>
 <li><a href="#method-detail" tabindex="0">Method Details</a>
 <ol class="toc-list">
+<li><a href="#currentYieldTarget()" tabindex="0">currentYieldTarget()</a></li>
 <li><a href="#toString()" tabindex="0">toString()</a></li>
 <li><a href="#hashCode()" tabindex="0">hashCode()</a></li>
 <li><a href="#equals(java.lang.Object)" tabindex="0">equals(Object)</a></li>
@@ -73,6 +75,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#locals()" tabindex="0">locals()</a></li>
 <li><a href="#lambdaMethods()" tabindex="0">lambdaMethods()</a></li>
 <li><a href="#isLambda()" tabindex="0">isLambda()</a></li>
+<li><a href="#yieldTargets()" tabindex="0">yieldTargets()</a></li>
 </ol>
 </li>
 </ol>
@@ -95,11 +98,12 @@ loadScripts(document, 'script');</script>
 <dd><code><span id="param-locals">locals</span></code> - The locals</dd>
 <dd><code><span id="param-lambdaMethods">lambdaMethods</span></code> - Lambda methods created by this method</dd>
 <dd><code><span id="param-isLambda">isLambda</span></code> - Whether this method is a lambda</dd>
+<dd><code><span id="param-yieldTargets">yieldTargets</span></code> - The switch yield cases being written, innermost last</dd>
 </dl>
 <hr>
 <div class="horizontal-scroll">
 <div class="type-signature"><span class="annotations">@Internal
-</span><span class="modifiers">public record </span><span class="element-name type-name-label">MethodContext</span>(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef, <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, <a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;&nbsp;lambdaMethods, boolean&nbsp;isLambda)
+</span><span class="modifiers">public record </span><span class="element-name type-name-label">MethodContext</span>(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef, <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, <a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;&nbsp;lambdaMethods, boolean&nbsp;isLambda, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Deque.html" title="class or interface in java.util" class="external-link">Deque</a>&lt;<a href="MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a>&gt;&nbsp;yieldTargets)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a></span></div>
 <div class="block">The statement context.</div>
 <dl class="notes">
@@ -124,6 +128,11 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">The local data.</div>
 </div>
+<div class="col-first odd-row-color"><code>static final record&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="MethodContext.YieldTarget.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">A switch yield case being written.</div>
+</div>
 </div>
 </section>
 </li>
@@ -144,7 +153,14 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, <a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals,
  <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;&nbsp;lambdaMethods,
  boolean&nbsp;isLambda)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map,java.util.List,boolean,java.util.Deque)" class="member-name-link">MethodContext</a><wbr>(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, <a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;&nbsp;lambdaMethods,
+ boolean&nbsp;isLambda,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Deque.html" title="class or interface in java.util" class="external-link">Deque</a>&lt;<a href="MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a>&gt;&nbsp;yieldTargets)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Creates an instance of a <code>MethodContext</code> record class.</div>
 </div>
 </div>
@@ -161,45 +177,56 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#equals(java.lang.Object)" class="member-name-link">equals</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;o)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>@Nullable <a href="MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#currentYieldTarget()" class="member-name-link">currentYieldTarget</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">The switch yield case a return statement contributes its value to, instead of returning
+from the method.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#equals(java.lang.Object)" class="member-name-link">equals</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;o)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Indicates whether some other object is "equal to" this one.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hashCode()" class="member-name-link">hashCode</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hashCode()" class="member-name-link">hashCode</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a hash code value for this object.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isLambda()" class="member-name-link">isLambda</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isLambda()" class="member-name-link">isLambda</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-isLambda"><code>isLambda</code></a> record component.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#lambdaMethods()" class="member-name-link">lambdaMethods</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#lambdaMethods()" class="member-name-link">lambdaMethods</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-lambdaMethods"><code>lambdaMethods</code></a> record component.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, <a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#locals()" class="member-name-link">locals</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, <a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#locals()" class="member-name-link">locals</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-locals"><code>locals</code></a> record component.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#methodDef()" class="member-name-link">methodDef</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#methodDef()" class="member-name-link">methodDef</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-methodDef"><code>methodDef</code></a> record component.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#objectDef()" class="member-name-link">objectDef</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#objectDef()" class="member-name-link">objectDef</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-objectDef"><code>objectDef</code></a> record component.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a string representation of this record class.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Deque.html" title="class or interface in java.util" class="external-link">Deque</a><wbr>&lt;<a href="MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#yieldTargets()" class="member-name-link">yieldTargets</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns the value of the <a href="#param-yieldTargets"><code>yieldTargets</code></a> record component.</div>
 </div>
 </div>
 </div>
@@ -219,6 +246,18 @@ loadScripts(document, 'script');</script>
 <h2>Constructor Details</h2>
 <ul class="member-list">
 <li>
+<section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map,java.util.List,boolean)">
+<h3>MethodContext</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">MethodContext</span><wbr><span class="parameters">(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, <a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;&nbsp;lambdaMethods,
+ boolean&nbsp;isLambda)</span></div>
+</div>
+</section>
+</li>
+<li>
 <section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,boolean)">
 <h3>MethodContext</h3>
 <div class="horizontal-scroll">
@@ -229,14 +268,15 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map,java.util.List,boolean)">
+<section class="detail" id="&lt;init&gt;(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,java.util.Map,java.util.List,boolean,java.util.Deque)">
 <h3>MethodContext</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">MethodContext</span><wbr><span class="parameters">(@Nullable <a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
  <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>, <a href="MethodContext.LocalData.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.LocalData</a>&gt;&nbsp;locals,
  <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&gt;&nbsp;lambdaMethods,
- boolean&nbsp;isLambda)</span></div>
+ boolean&nbsp;isLambda,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Deque.html" title="class or interface in java.util" class="external-link">Deque</a>&lt;<a href="MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a>&gt;&nbsp;yieldTargets)</span></div>
 <div class="block">Creates an instance of a <code>MethodContext</code> record class.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -245,6 +285,7 @@ loadScripts(document, 'script');</script>
 <dd><code>locals</code> - the value for the <a href="#param-locals"><code>locals</code></a> record component</dd>
 <dd><code>lambdaMethods</code> - the value for the <a href="#param-lambdaMethods"><code>lambdaMethods</code></a> record component</dd>
 <dd><code>isLambda</code> - the value for the <a href="#param-isLambda"><code>isLambda</code></a> record component</dd>
+<dd><code>yieldTargets</code> - the value for the <a href="#param-yieldTargets"><code>yieldTargets</code></a> record component</dd>
 </dl>
 </div>
 </section>
@@ -257,6 +298,20 @@ loadScripts(document, 'script');</script>
 <section class="method-details" id="method-detail">
 <h2>Method Details</h2>
 <ul class="member-list">
+<li>
+<section class="detail" id="currentYieldTarget()">
+<h3>currentYieldTarget</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">@Nullable <a href="MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a></span>&nbsp;<span class="element-name">currentYieldTarget</span>()</div>
+<div class="block">The switch yield case a return statement contributes its value to, instead of returning
+from the method.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>The innermost yield case being written, or null when a return is a method return</dd>
+</dl>
+</div>
+</section>
+</li>
 <li>
 <section class="detail" id="toString()">
 <h3>toString</h3>
@@ -365,6 +420,19 @@ loadScripts(document, 'script');</script>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>the value of the <a href="#param-isLambda"><code>isLambda</code></a> record component</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="yieldTargets()">
+<h3>yieldTargets</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Deque.html" title="class or interface in java.util" class="external-link">Deque</a>&lt;<a href="MethodContext.YieldTarget.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext.YieldTarget</a>&gt;</span>&nbsp;<span class="element-name">yieldTargets</span>()</div>
+<div class="block">Returns the value of the <a href="#param-yieldTargets"><code>yieldTargets</code></a> record component.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>the value of the <a href="#param-yieldTargets"><code>yieldTargets</code></a> record component</dd>
 </dl>
 </div>
 </section>
