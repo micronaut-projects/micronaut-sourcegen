@@ -187,7 +187,7 @@ public final class SignatureUtils {
         } else if (typeDef instanceof TypeDef.TypeVariable variable) {
             writeTypeVariable(signature, objectDef, methodDef, variable, definition);
         } else if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
-            appendClassStart(signature, parameterized.rawType().getName());
+            appendClassStart(signature, TypeUtils.getBinaryName(parameterized.rawType(), objectDef));
             if (!parameterized.typeArguments().isEmpty()) {
                 signature.append('<');
                 for (TypeDef argument : parameterized.typeArguments()) {
@@ -197,7 +197,7 @@ public final class SignatureUtils {
             }
             signature.append(';');
         } else if (typeDef instanceof ClassTypeDef classDef) {
-            appendClass(signature, classDef.getName());
+            appendClass(signature, TypeUtils.getBinaryName(classDef, objectDef));
         } else if (typeDef instanceof TypeDef.Wildcard) {
             appendClass(signature, Object.class.getName());
         } else if (typeDef instanceof TypeDef.Array array) {

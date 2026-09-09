@@ -348,6 +348,56 @@ public abstract class ByteCodeWriterTck {
     }
 
     @Test
+    public void writesReferencesToAMemberTypeByItsBinaryName() throws Exception {
+        // A member type is named when it is built, before it knows what it will be declared in, and the
+        // model is immutable - so the definition the caller holds on to keeps the simple name while the
+        // copy `addInnerType` stores carries the qualified one. A reference taken from the caller's
+        // definition therefore reads as `Inner`, which Java source resolves through scoping and a class
+        // file cannot: every name it carries is a binary name.
+        ClassDef inner = ClassDef.builder("Inner")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addMethod(MethodDef.builder("name")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> ExpressionDef.constant("inner").returning()))
+            .addMethod(MethodDef.builder("self")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(ClassTypeDef.of("Inner"))
+                .build((ignored, parameters) -> ExpressionDef.nullValue().returning()))
+            .build();
+        ClassDef outer = ClassDef.builder("example.TckMemberTypeOuter")
+            .addModifiers(Modifier.PUBLIC)
+            .addInnerType(inner)
+            .addMethod(MethodDef.builder("make")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(inner.asTypeDef())
+                .build((ignored, parameters) -> ExpressionDef.nullValue().returning()))
+            .addMethod(MethodDef.builder("all")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.parameterized(ClassTypeDef.of(List.class), inner.asTypeDef()))
+                .build((ignored, parameters) -> ExpressionDef.nullValue().returning()))
+            .build();
+
+        ObjectDef member = outer.getInnerTypes().get(0);
+        assertEquals("example.TckMemberTypeOuter$Inner", member.getName());
+
+        MapClassLoader loader = new MapClassLoader(Map.of(
+            outer.getName(), write(outer),
+            member.getName(), write(member)
+        ));
+        Class<?> outerClass = loader.loadClass(outer.getName());
+        Class<?> memberClass = loader.loadClass(member.getName());
+
+        assertSame(memberClass, outerClass.getMethod("make").getReturnType());
+        assertEquals("java.util.List<example.TckMemberTypeOuter$Inner>",
+            outerClass.getMethod("all").getGenericReturnType().toString());
+        // The member type resolves a reference to itself the same way, without seeing its enclosing type
+        assertSame(memberClass, memberClass.getMethod("self").getReturnType());
+        assertEquals("inner", memberClass.getMethod("name").invoke(memberClass.getConstructor().newInstance()));
+        assertNull(outerClass.getMethod("make").invoke(outerClass.getConstructor().newInstance()));
+    }
+
+    @Test
     public void writesEmptyWideGenericAndBridgedRecords() throws Exception {
         RecordDef empty = RecordDef.builder("example.TckEmptyRecord")
             .addModifiers(Modifier.PUBLIC)

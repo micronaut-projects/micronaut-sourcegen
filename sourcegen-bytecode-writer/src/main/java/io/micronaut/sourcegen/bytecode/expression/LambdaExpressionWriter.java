@@ -91,7 +91,7 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
             dynamicDescriptor.append(TypeUtils.getType(variable.type(), objectDef));
         }
         dynamicDescriptor.append(")");
-        dynamicDescriptor.append(TypeUtils.getType(lambda.type()).getDescriptor());
+        dynamicDescriptor.append(TypeUtils.getType(lambda.type(), objectDef).getDescriptor());
         return dynamicDescriptor.toString();
     }
 
