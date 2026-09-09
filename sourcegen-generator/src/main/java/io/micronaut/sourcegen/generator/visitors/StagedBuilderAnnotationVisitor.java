@@ -243,7 +243,7 @@ public final class StagedBuilderAnnotationVisitor implements TypeElementVisitor<
 
     private static boolean isAssignable(PropertyElement property, List<ParameterElement> constructorParameters) {
         return property.getWriteMethod().isPresent()
-            || constructorParameters.stream().anyMatch(parameter -> parameter.getName().equals(property.getName()));
+            || constructorParameters.stream().anyMatch(parameter -> BuilderAnnotationVisitor.isAssignedFrom(property, parameter));
     }
 
     private static String stagedBuilderClassName(String packageName, ClassTypeDef elementType) {

@@ -272,4 +272,41 @@ class StagedBuilderAnnotationVisitorSpec extends AbstractTypeElementSpec {
         classLoader.loadClass("test.WalrusStagedBuilder\$Builder")
                 .getAnnotation(io.micronaut.core.annotation.Introspected) != null
     }
+
+    void "test a property whose accessor the JavaBeans rules do not decapitalize is required"() {
+        given: "a bean whose accessor gives a property name that differs from the constructor parameter behind it"
+        var classLoader = buildClassLoader("test.Walrus", """
+        package test;
+        import io.micronaut.sourcegen.annotations.StagedBuilder;
+
+        @StagedBuilder(annotatedWith = {})
+        public class Walrus {
+
+            private final String aBC;
+
+            public Walrus(String aBC) {
+                this.aBC = aBC;
+            }
+
+            public String getABC() {
+                return aBC;
+            }
+        }
+        """)
+        var stagedBuilderClass = classLoader.loadClass("test.WalrusStagedBuilder")
+        var abcStage = classLoader.loadClass("test.WalrusStagedBuilder\$ABCBuildStage")
+        var buildFinal = classLoader.loadClass("test.WalrusStagedBuilder\$BuildFinal")
+
+        when:
+        var walrus = stagedBuilderClass.builder()
+                .ABC("Ted the Walrus")
+                .build()
+
+        then: "the property is recognised as one the constructor takes, so it gets a stage of its own"
+        stagedBuilderClass.getMethod("builder").returnType == abcStage
+        abcStage.getMethod("ABC", String).returnType == buildFinal
+
+        and:
+        walrus.getABC() == "Ted the Walrus"
+    }
 }
