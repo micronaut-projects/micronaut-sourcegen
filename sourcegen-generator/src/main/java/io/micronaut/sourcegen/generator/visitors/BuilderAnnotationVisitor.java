@@ -255,7 +255,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         int index = 0;
         for (PropertyElement parameter : properties) {
             int parameterIndex = index++;
-            builder.addParameter(ParameterDef.of(parameter.getName(), TypeDef.of(parameter.getType())));
+            builder.addParameter(ParameterDef.of(builderFieldName(parameter), TypeDef.of(parameter.getType())));
             builder.addStatement((aThis, methodParameters) -> {
                 VariableDef.MethodParameter methodParameter = methodParameters.get(parameterIndex);
                 VariableDef.Field propertyField = aThis.field(methodParameter.name(), builderFieldType(parameter));
@@ -400,6 +400,74 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
     }
 
     /**
+     * The name of the field the builder keeps a property in. It is derived from the property alone, so
+     * that the field declaration, the setter that assigns it and every read of it in the build method
+     * agree by construction. A name derived from anything else can disagree with it: the name of a
+     * property read through an accessor is decapitalized by the JavaBeans rules, which leave a name
+     * whose first two characters are upper case alone, so a field {@code aBC} read through
+     * {@code getABC()} gives the property name {@code ABC} while the field and the constructor
+     * parameter backing it are still called {@code aBC}.
+     *
+     * @param beanProperty The property
+     * @return The name of the field backing it
+     */
+    static String builderFieldName(PropertyElement beanProperty) {
+        return beanProperty.getSimpleName();
+    }
+
+    /**
+     * Find the property a constructor parameter is assigned from. A property is normally named after the
+     * parameter, but a property read through an accessor can be named differently from the field and the
+     * constructor parameter backing it: the JavaBeans rules leave a name whose first two characters are
+     * upper case undecapitalized, so {@code getABC()} gives the property name {@code ABC} for a field
+     * {@code aBC}. Such a property is matched to its parameter through its backing field, when there is
+     * one, or through its own name with the first character lower cased.
+     *
+     * @param properties The properties
+     * @param parameter  The constructor parameter
+     * @return The property the parameter takes its value from, or null if there is none
+     */
+    @Nullable
+    static PropertyElement findProperty(List<PropertyElement> properties, ParameterElement parameter) {
+        // A property named after the parameter always wins, so that a property matched only through its
+        // accessor cannot take a parameter belonging to one named after it.
+        for (PropertyElement property : properties) {
+            if (property.getName().equals(parameter.getName())) {
+                return property;
+            }
+        }
+        for (PropertyElement property : properties) {
+            if (matchesThroughAccessor(property, parameter)) {
+                return property;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether a constructor parameter is assigned from the given property. See {@link #findProperty}.
+     *
+     * @param property  The property
+     * @param parameter The constructor parameter
+     * @return True if the parameter takes its value from the property
+     */
+    static boolean isAssignedFrom(PropertyElement property, ParameterElement parameter) {
+        return property.getName().equals(parameter.getName()) || matchesThroughAccessor(property, parameter);
+    }
+
+    private static boolean matchesThroughAccessor(PropertyElement property, ParameterElement parameter) {
+        return property.getField().filter(field -> field.getName().equals(parameter.getName())).isPresent()
+            || decapitalizeFirstCharacter(property.getName()).equals(parameter.getName());
+    }
+
+    private static String decapitalizeFirstCharacter(String name) {
+        if (name.isEmpty() || Character.isLowerCase(name.charAt(0))) {
+            return name;
+        }
+        return Character.toLowerCase(name.charAt(0)) + name.substring(1);
+    }
+
+    /**
      * The type of the field the builder keeps a property in. It is nullable, so a property that was never set
      * can be told apart from one set to the type's default, and an {@link ArrayList} for a singular property,
      * which the builder accumulates into. A field has to be referred to by this type: a field access carries
@@ -446,7 +514,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         if (!fieldType.isNullable()) {
             throw new IllegalStateException("Could not make the field nullable");
         }
-        FieldDef.FieldDefBuilder fieldDef = FieldDef.builder(beanProperty.getSimpleName())
+        FieldDef.FieldDefBuilder fieldDef = FieldDef.builder(builderFieldName(beanProperty))
             .ofType(fieldType)
             .addModifiers(Modifier.PROTECTED);
         try {
@@ -627,14 +695,15 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                                                          List<ParameterElement> constructorParameters) {
         List<ExpressionDef> values = new ArrayList<>();
         for (ParameterElement parameter : constructorParameters) {
-            PropertyElement propertyElement = properties.stream().filter(p -> p.getName().equals(parameter.getName())).findFirst().orElse(null);
+            PropertyElement propertyElement = findProperty(properties, parameter);
             if (propertyElement != null) {
                 properties.remove(propertyElement);
             }
             // We need to convert it for the correct type in Kotlin
             TypeDef parameterType = TypeDef.of(parameter.getType());
             TypeDef nullableFieldType = propertyElement == null ? parameterType.makeNullable() : builderFieldType(propertyElement);
-            VariableDef.Field field = self.field(parameter.getName(), nullableFieldType);
+            String fieldName = propertyElement == null ? parameter.getName() : builderFieldName(propertyElement);
+            VariableDef.Field field = self.field(fieldName, nullableFieldType);
             values.add(!parameterType.isPrimitive() ?
                 valueExpression(propertyElement, field).cast(parameterType) :
                 field.ifNull(TypeDef.Primitive.defaultValue(parameter.getType().getName()), valueExpression(propertyElement, field)).cast(parameterType));
@@ -658,7 +727,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                                                MethodElement writeMethod) {
         TypeDef propertyType = TypeDef.of(beanProperty.getType());
         TypeDef fieldType = builderFieldType(beanProperty);
-        VariableDef.Field field = self.field(beanProperty.getSimpleName(), fieldType);
+        VariableDef.Field field = self.field(builderFieldName(beanProperty), fieldType);
         StatementDef assign = instanceVar.invoke(
             writeMethod,
             valueExpression(beanProperty, field).cast(propertyType)
