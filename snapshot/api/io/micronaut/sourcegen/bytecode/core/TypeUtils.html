@@ -59,6 +59,7 @@ loadScripts(document, 'script');</script>
 <ol class="toc-list">
 <li><a href="#getMethodDescriptor(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">getMethodDescriptor(ObjectDef, MethodDef)</a></li>
 <li><a href="#getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">getDescriptor(TypeDef, ObjectDef)</a></li>
+<li><a href="#getBinaryName(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">getBinaryName(ClassTypeDef, ObjectDef)</a></li>
 <li><a href="#getDescriptor(java.lang.String)" tabindex="0">getDescriptor(String)</a></li>
 <li><a href="#getInternalName(java.lang.String)" tabindex="0">getInternalName(String)</a></li>
 </ol>
@@ -103,25 +104,31 @@ descriptors into the representation their emitter needs.</p></div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">getDescriptor</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getBinaryName(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">getBinaryName</a><wbr>(<a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;classTypeDef,
  @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Returns the binary name a reference to a type resolves to in the scope of the type being written.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">getDescriptor</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Returns the erased JVM descriptor of a Sourcegen type.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getDescriptor(java.lang.String)" class="member-name-link">getDescriptor</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;className)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getDescriptor(java.lang.String)" class="member-name-link">getDescriptor</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;className)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Returns a descriptor for a binary class name or a source-style array name.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getInternalName(java.lang.String)" class="member-name-link">getInternalName</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;className)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getInternalName(java.lang.String)" class="member-name-link">getInternalName</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;className)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Returns the internal JVM name of a class.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getMethodDescriptor(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">getMethodDescriptor</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getMethodDescriptor(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">getMethodDescriptor</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Returns the descriptor of a method.</div>
 </div>
 </div>
@@ -171,6 +178,35 @@ descriptors into the representation their emitter needs.</p></div>
 <dd><code>objectDef</code> - The contextual object, if any</dd>
 <dt>Returns:</dt>
 <dd>The JVM descriptor</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="getBinaryName(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.ObjectDef)">
+<h3>getBinaryName</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getBinaryName</span><wbr><span class="parameters">(<a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;classTypeDef,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</span></div>
+<div class="block">Returns the binary name a reference to a type resolves to in the scope of the type being written.
+
+<p>The model is immutable, so <a href="../../model/ObjectDefBuilder.html#addInnerType(io.micronaut.sourcegen.model.ObjectDef)"><code>ObjectDefBuilder.addInnerType(ObjectDef)</code></a> can
+only qualify the copy of a member type it stores; the definition the caller holds on to keeps the
+simple name it was built with, and a reference taken from it reads as <code>Inner</code> rather than
+<code>com.example.Outer$Inner</code>. Java source has scoping that makes such a reference resolve anyway -
+javac reads <code>Inner</code> inside <code>Outer</code> as its member type - while a class file has none: every
+name in it is a binary name. This applies the same scoping the source generator relies on, so that
+both generators accept the same definition.</p>
+
+<p>An unqualified name is resolved against the type being written and the member types it declares,
+which is the scope a definition knows about. A name that is already qualified, and one that matches
+nothing in scope, is left as it is.</p></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>classTypeDef</code> - The referenced type</dd>
+<dd><code>objectDef</code> - The contextual object, if any</dd>
+<dt>Returns:</dt>
+<dd>The binary name to write</dd>
 </dl>
 </div>
 </section>
