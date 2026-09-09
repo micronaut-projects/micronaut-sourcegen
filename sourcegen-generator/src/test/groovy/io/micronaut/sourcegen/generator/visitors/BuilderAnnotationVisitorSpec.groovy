@@ -75,4 +75,51 @@ class BuilderAnnotationVisitorSpec extends AbstractTypeElementSpec {
         walrus.name == "Ted the Walrus"
         walrus.age == 1
     }
+
+    void "test builder for properties whose accessors the JavaBeans rules do not decapitalize"() {
+        given: "a bean whose accessor gives a property name that differs from the field and the constructor parameter behind it"
+        var classLoader = buildClassLoader("test.Walrus", """
+        package test;
+        import io.micronaut.sourcegen.annotations.Builder;
+
+        @Builder(annotatedWith = {})
+        public class Walrus {
+
+            private final String aBC;
+            private final int x;
+            private final String URL;
+
+            public Walrus(String aBC, int x, String URL) {
+                this.aBC = aBC;
+                this.x = x;
+                this.URL = URL;
+            }
+
+            public String getABC() {
+                return aBC;
+            }
+
+            public int getX() {
+                return x;
+            }
+
+            public String getURL() {
+                return URL;
+            }
+        }
+        """)
+        var walrusBuilderClass = classLoader.loadClass("test.WalrusBuilder")
+
+        when: "the builder assigns every property"
+        var walrus = walrusBuilderClass.builder()
+                .ABC("Ted the Walrus")
+                .x(1)
+                .URL("https://example.com")
+                .build()
+
+        then: "the constructor is given the value the setter assigned, so the two agree on the field behind the property"
+        walrus.getABC() == "Ted the Walrus"
+        walrus.getX() == 1
+        walrus.getURL() == "https://example.com"
+    }
 }
