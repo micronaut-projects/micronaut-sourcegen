@@ -60,9 +60,8 @@ class HeronTest {
         val boos = intro.getAnnotationValuesByType(
             Heron.Boo::class.java
         )
-        // There should actually be 2 Boo annotations
-        Assertions.assertEquals(1, boos.size)
+        Assertions.assertEquals(2, boos.size)
         Assertions.assertEquals("boom", boos[0].stringValue("name").get())
-        //Assertions.assertEquals("bam", boos[1].stringValue("name").get())
+        Assertions.assertEquals("bam", boos[1].stringValue("name").get())
     }
 }
