@@ -154,6 +154,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 asMethodSpec(interfaceDef, method)
             );
         }
+        customizeTypeBuilder(interfaceDef, interfaceBuilder);
         return interfaceBuilder;
     }
 
@@ -200,6 +201,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             );
         }
         addInnerTypes(enumDef.getInnerTypes(), enumBuilder, false);
+        customizeTypeBuilder(enumDef, enumBuilder);
         return enumBuilder;
     }
 
@@ -291,6 +293,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             CodeBlock staticBlock = renderStatementCodeBlock(classDef, null, RenderScope.root(null), staticInitializer);
             classBuilder.addStaticBlock(staticBlock);
         }
+        customizeTypeBuilder(classDef, classBuilder);
         return classBuilder;
     }
 
@@ -332,7 +335,19 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 asMethodSpec(recordDef, method)
             );
         }
+        customizeTypeBuilder(recordDef, classBuilder);
         return classBuilder;
+    }
+
+    /**
+     * Hook for subclasses to customize the type builder of a class, record, enum or interface
+     * before it is built. Annotation definitions are not passed through this hook.
+     *
+     * @param objectDef   The object definition
+     * @param typeBuilder The type builder
+     */
+    protected void customizeTypeBuilder(ObjectDef objectDef, TypeSpec.Builder typeBuilder) {
+        // no-op by default
     }
 
     private void addInnerTypes(List<ObjectDef> innerTypes, TypeSpec.Builder classBuilder, boolean isInterface) {

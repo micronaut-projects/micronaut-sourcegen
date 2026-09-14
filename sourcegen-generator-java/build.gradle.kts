@@ -10,6 +10,8 @@ dependencies {
     testImplementation(libs.google.compile.testing)
     testImplementation(libs.google.jimfs)
     testImplementation(mnTest.mockito.core)
+    testImplementation(mn.groovy)
+    testImplementation(mn.asm)
 }
 micronautBuild {
     testFramework = io.micronaut.build.TestFramework.JUNIT6
