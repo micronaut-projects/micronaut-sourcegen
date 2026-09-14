@@ -43,6 +43,10 @@ import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,6 +55,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GroovyPoetSourceGeneratorTest {
 
+    private static final Set<String> NESTED_CLASS_NAMES = Set.of(
+        "example.PersonBuilder$Helper",
+        "example.PersonBuilder$Pair",
+        "example.PersonBuilder$Kind",
+        "example.PersonBuilder$Named"
+    );
+    private static final Map<String, List<String>> DECLARED_METHODS = Map.of(
+        "example.PersonBuilder", List.of("name", "upperName", "getName"),
+        "example.PersonBuilder$Helper", List.of("upper"),
+        "example.PersonBuilder$Pair", List.of("upper"),
+        "example.PersonBuilder$Kind", List.of("upper"),
+        "example.PersonBuilder$Named", List.of("name")
+    );
     private static final String COMPILE_STATIC_IMPORT = "import groovy.transform.CompileStatic;";
     private static final String COMPILE_STATIC = "@CompileStatic\n";
 
@@ -94,39 +111,68 @@ class GroovyPoetSourceGeneratorTest {
 
     @Test
     void groovyOutputCompilesStatically() {
-        ClassShape shape = compilePersonBuilder(groovyGenerator);
-        assertTrue(shape.methodNames.contains("upperName"), shape.methodNames.toString());
-        // Static compilation dispatches calls with invokevirtual, dynamic Groovy uses invokedynamic call sites
-        assertEquals(List.of(), shape.invokeDynamicMethods, "Dynamically dispatched call sites found");
-        assertTrue(shape.annotationDescriptors.stream().noneMatch(a -> a.contains("CompileStatic")),
-            "CompileStatic is a source-only transformation: " + shape.annotationDescriptors);
+        Map<String, ClassShape> shapes = compileGroovy(groovyGenerator, personBuilder());
+        assertEquals(NESTED_CLASS_NAMES, nestedClassNames(shapes));
+        DECLARED_METHODS.forEach((className, methods) -> {
+            ClassShape shape = shapes.get(className);
+            assertTrue(shape.methodNames.containsAll(methods), () -> className + " " + shape.methodNames);
+            for (String method : methods) {
+                // A statically compiled method calls through invokevirtual, not through Groovy's indy bootstrap
+                assertEquals(List.of(), shape.groovyCallSites(method), () -> "Groovy call sites in " + className + "." + method);
+            }
+        });
+        shapes.forEach((className, shape) -> {
+            // Groovy still emits cast call sites in its own helpers (methodMissing, enum values/valueOf),
+            // but a statically compiled class has no dynamic method, property or constructor dispatch
+            assertEquals(List.of(), shape.groovyDynamicDispatch(), () -> "Dynamic dispatch in " + className);
+            assertTrue(shape.annotationDescriptors.stream().noneMatch(d -> d.contains("CompileStatic")),
+                () -> "CompileStatic is a source-only transformation: " + className + " " + shape.annotationDescriptors);
+        });
     }
 
     @Test
     void sameSourceWithoutCompileStaticCompilesDynamically() {
-        // Sanity check of the assertion above: the Java generator output has no @CompileStatic
-        ClassShape shape = compilePersonBuilder(javaGenerator);
-        assertTrue(shape.invokeDynamicMethods.contains("upperName"), shape.invokeDynamicMethods.toString());
+        // Sanity check of the assertions above: the Java generator output has no @CompileStatic.
+        // Groovy records are always compiled statically, so the record is not part of this check.
+        Map<String, ClassShape> shapes = compileGroovy(javaGenerator, personBuilder());
+        assertEquals(NESTED_CLASS_NAMES, nestedClassNames(shapes));
+        Map<String, String> dynamicMethods = Map.of(
+            "example.PersonBuilder", "upperName",
+            "example.PersonBuilder$Helper", "upper",
+            "example.PersonBuilder$Kind", "upper"
+        );
+        dynamicMethods.forEach((className, method) -> {
+            ClassShape shape = shapes.get(className);
+            assertTrue(shape.groovyCallSites(method).contains("invoke"), () -> className + "." + method + " " + shape.groovyCallSites(method));
+            assertFalse(shape.groovyDynamicDispatch().isEmpty(), className);
+        });
     }
 
-    private static ClassShape compilePersonBuilder(JavaPoetSourceGenerator generator) {
+    private static Set<String> nestedClassNames(Map<String, ClassShape> shapes) {
+        return shapes.keySet().stream().filter(n -> n.startsWith("example.PersonBuilder$")).collect(Collectors.toSet());
+    }
+
+    private static Map<String, ClassShape> compileGroovy(JavaPoetSourceGenerator generator, ObjectDef objectDef) {
         String source;
         try {
-            source = render(generator, personBuilder());
+            source = render(generator, objectDef);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        GroovyClass personBuilder = compileGroovy("PersonBuilder.groovy", source).stream()
-            .filter(c -> c.getName().equals("example.PersonBuilder"))
-            .findFirst()
-            .orElseThrow();
-        return ClassShape.of(personBuilder.getBytes());
+        Map<String, ClassShape> shapes = new TreeMap<>();
+        for (GroovyClass groovyClass : compileGroovy(objectDef.getSimpleName() + ".groovy", source)) {
+            shapes.put(groovyClass.getName(), ClassShape.of(groovyClass.getBytes()));
+        }
+        return shapes;
     }
 
     private static final class ClassShape extends ClassVisitor {
+        private static final String GROOVY_INDY_BOOTSTRAP = "org/codehaus/groovy/vmplugin/v8/IndyInterface";
+
         private final List<String> methodNames = new ArrayList<>();
-        private final List<String> invokeDynamicMethods = new ArrayList<>();
         private final List<String> annotationDescriptors = new ArrayList<>();
+        // Pairs of declaring method name and Groovy call site name (invoke, getProperty, init, cast, ...)
+        private final List<Map.Entry<String, String>> groovyCallSites = new ArrayList<>();
 
         private ClassShape() {
             super(Opcodes.ASM9);
@@ -138,14 +184,25 @@ class GroovyPoetSourceGeneratorTest {
             return shape;
         }
 
+        List<String> groovyCallSites(String method) {
+            return groovyCallSites.stream().filter(e -> e.getKey().equals(method)).map(Map.Entry::getValue).toList();
+        }
+
+        List<String> groovyDynamicDispatch() {
+            return groovyCallSites.stream()
+                .filter(e -> !e.getValue().equals("cast"))
+                .map(e -> e.getKey() + ":" + e.getValue())
+                .toList();
+        }
+
         @Override
         public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
             methodNames.add(name);
             return new MethodVisitor(Opcodes.ASM9) {
                 @Override
                 public void visitInvokeDynamicInsn(String indyName, String indyDescriptor, Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
-                    if (!invokeDynamicMethods.contains(name)) {
-                        invokeDynamicMethods.add(name);
+                    if (bootstrapMethodHandle.getOwner().equals(GROOVY_INDY_BOOTSTRAP)) {
+                        groovyCallSites.add(Map.entry(name, indyName));
                     }
                 }
             };
@@ -215,6 +272,35 @@ class GroovyPoetSourceGeneratorTest {
                 .addModifiers(Modifier.PUBLIC)
                 .returns(TypeDef.STRING)
                 .build((self, params) -> self.field(nameField).returning()))
+            .addInnerType(ClassDef.builder("Helper")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addMethod(upperMethod())
+                .build())
+            .addInnerType(RecordDef.builder("Pair")
+                .addModifiers(Modifier.PUBLIC)
+                .addProperty(PropertyDef.builder("left").ofType(TypeDef.STRING).build())
+                .addMethod(upperMethod())
+                .build())
+            .addInnerType(EnumDef.builder("Kind")
+                .addModifiers(Modifier.PUBLIC)
+                .addEnumConstant("A")
+                .addMethod(upperMethod())
+                .build())
+            .addInnerType(InterfaceDef.builder("Named")
+                .addModifiers(Modifier.PUBLIC)
+                .addMethod(MethodDef.builder("name")
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .returns(TypeDef.STRING)
+                    .build())
+                .build())
             .build();
+    }
+
+    private static MethodDef upperMethod() {
+        return MethodDef.builder("upper")
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.STRING)
+            .returns(TypeDef.STRING)
+            .build((self, params) -> params.get(0).invoke("toUpperCase", TypeDef.STRING).returning());
     }
 }
