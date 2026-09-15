@@ -24,7 +24,9 @@ import com.squareup.kotlinpoet.javapoet.toKClassName
 import com.squareup.kotlinpoet.javapoet.toKTypeName
 import io.micronaut.core.annotation.Internal
 import io.micronaut.core.reflect.ClassUtils
+import io.micronaut.inject.ast.Element
 import io.micronaut.inject.visitor.VisitorContext
+import io.micronaut.sourcegen.generator.OverrideResolver
 import io.micronaut.sourcegen.generator.SourceGenerator
 import io.micronaut.sourcegen.model.*
 import io.micronaut.sourcegen.model.EnumDef.EnumConstantDef
@@ -53,6 +55,20 @@ import kotlin.reflect.KClass
 class KotlinPoetSourceGenerator : SourceGenerator {
     override fun getLanguage(): VisitorContext.Language {
         return VisitorContext.Language.KOTLIN
+    }
+
+    override fun write(objectDef: ObjectDef, context: VisitorContext, vararg originatingElements: Element) {
+        val previous = VISITOR_CONTEXT.get()
+        VISITOR_CONTEXT.set(context)
+        try {
+            super.write(objectDef, context, *originatingElements)
+        } finally {
+            if (previous == null) {
+                VISITOR_CONTEXT.remove()
+            } else {
+                VISITOR_CONTEXT.set(previous)
+            }
+        }
     }
 
     @Throws(IOException::class)
@@ -697,7 +713,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         )
     }
 
-    private fun buildFunction(objectDef: ObjectDef?, method: MethodDef, modifiers: Set<Modifier>): FunSpec {
+    private fun buildFunction(objectDef: ObjectDef?, declaredMethod: MethodDef, modifiers: Set<Modifier>): FunSpec {
+        // A model written for the bytecode writer overrides a generic method with its erased signature, which the
+        // verifier accepts; Kotlin only overrides with the exact signature with the type arguments of the supertype.
+        // The body is rendered against the resolved signature, so a returned value is cast to its type
+        val method = OverrideResolver.resolve(objectDef, declaredMethod, VISITOR_CONTEXT.get(), true)
+            ?.apply(declaredMethod) ?: declaredMethod
         var funBuilder = if (method.name == "<init>") {
             FunSpec.constructorBuilder()
         } else {
@@ -747,6 +768,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
     companion object {
         private const val EXCEPTION_NAME = "e"
+
+        // The context of the file being written, used to look up the supertypes of an override only known by name
+        private val VISITOR_CONTEXT = ThreadLocal<VisitorContext>()
 
         private val FLOAT = ClassName("kotlin", "Float")
 

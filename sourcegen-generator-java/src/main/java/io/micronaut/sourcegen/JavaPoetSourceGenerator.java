@@ -22,6 +22,7 @@ import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.Element;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.generator.OverrideResolver;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec;
 import io.micronaut.sourcegen.javapoet.ArrayTypeName;
@@ -87,7 +88,8 @@ import static io.micronaut.sourcegen.javapoet.TypeSpec.anonymousClassBuilder;
 @SuppressWarnings("java:S6201")
 public sealed class JavaPoetSourceGenerator implements SourceGenerator permits GroovyPoetSourceGenerator {
     private static final String EXCEPTION_NAME = "$exception";
-    // The context of the file being written, used to tell a nested class from a generated top-level one by name
+    // The context of the file being written, used to tell a nested class from a generated top-level one by name and
+    // to look up the supertypes of an override that are only known by name
     private static final ThreadLocal<VisitorContext> VISITOR_CONTEXT = new ThreadLocal<>();
 
     @Override
@@ -450,19 +452,35 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private MethodSpec asMethodSpec(ObjectDef objectDef, MethodDef method) {
         String methodName = method.getName();
+        List<TypeDef> parameterTypes = method.getParameters().stream().map(ParameterDef::getType).toList();
+        TypeDef returnType = method.getReturnType();
+        MethodDef renderMethod = method;
+        // A model written for the bytecode writer overrides a generic method with its erased signature, which the
+        // verifier accepts; as source it has to take the signature with the type arguments of the supertype
+        OverrideResolver.OverriddenMethod overridden = OverrideResolver.resolve(objectDef, method, VISITOR_CONTEXT.get());
+        if (overridden != null) {
+            parameterTypes = overridden.parameterTypes();
+            returnType = overridden.returnType();
+            // The body is rendered against the resolved signature, so a returned value is cast to its type
+            renderMethod = overridden.apply(method);
+        }
+        List<TypeDef> resolvedParameterTypes = parameterTypes;
         MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(method.getModifiersArray())
             .addParameters(
-                method.getParameters().stream()
-                    .map(param -> ParameterSpec.builder(
-                        asType(param.getType(), objectDef, method),
-                        param.getName(),
-                        param.getModifiersArray()
-                    ).addAnnotations(param.getAnnotations().stream().map(this::asAnnotationSpec).toList()).build())
+                IntStream.range(0, method.getParameters().size())
+                    .mapToObj(i -> {
+                        ParameterDef param = method.getParameters().get(i);
+                        return ParameterSpec.builder(
+                            asType(resolvedParameterTypes.get(i), objectDef, method),
+                            param.getName(),
+                            param.getModifiersArray()
+                        ).addAnnotations(param.getAnnotations().stream().map(this::asAnnotationSpec).toList()).build();
+                    })
                     .toList()
             );
         if (!methodName.equals(MethodSpec.CONSTRUCTOR)) {
-            methodBuilder.returns(asType(method.getReturnType(), objectDef, method));
+            methodBuilder.returns(asType(returnType, objectDef, method));
         }
         for (TypeDef.TypeVariable typeVariable : method.getTypeVariables()) {
             methodBuilder.addTypeVariable(
@@ -478,9 +496,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         for (TypeDef type: method.getThrowTypes()) {
             methodBuilder.addException(asType(type, objectDef, method));
         }
-        RenderScope methodScope = RenderScope.root(method);
+        RenderScope methodScope = RenderScope.root(renderMethod);
         for (StatementDef statement : method.getStatements()) {
-            methodBuilder.addCode(renderStatementCodeBlock(objectDef, method, methodScope, statement));
+            methodBuilder.addCode(renderStatementCodeBlock(objectDef, renderMethod, methodScope, statement));
             if (cannotCompleteNormally(statement)) {
                 break;
             }

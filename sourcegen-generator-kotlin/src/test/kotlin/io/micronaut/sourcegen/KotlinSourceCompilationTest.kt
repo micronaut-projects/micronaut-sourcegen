@@ -11,9 +11,14 @@ import io.micronaut.sourcegen.model.ObjectDef
 import io.micronaut.sourcegen.model.StatementDef
 import io.micronaut.sourcegen.model.TypeDef
 import io.micronaut.sourcegen.model.VariableDef
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.StringWriter
+import io.micronaut.sourcegen.model.InterfaceDef
+import java.util.Collections
+import java.util.function.Consumer
 import java.util.function.IntPredicate
+import java.util.function.Supplier
 import javax.lang.model.element.Modifier
 
 /**
@@ -210,5 +215,78 @@ class KotlinSourceCompilationTest {
             .build()
 
         assertCompiles(writeClass(classDef))
+    }
+
+    @Test
+    fun erasedOverridesOfGenericInterfacesTakeTheTypeArguments() {
+        val compareTo = Comparable::class.java.getMethod("compareTo", Any::class.java)
+        val get = Supplier::class.java.getMethod("get")
+        val classDef = ClassDef.builder("test.Typed")
+            .addSuperinterface(TypeDef.parameterized(Comparable::class.java, String::class.java))
+            .addSuperinterface(TypeDef.parameterized(Supplier::class.java, String::class.java))
+            // The erased signatures a model written for bytecode declares
+            .addMethod(MethodDef.override(compareTo)
+                .build { _, _ -> ExpressionDef.constant(0).returning() })
+            .addMethod(MethodDef.override(get)
+                .build { _, _ -> ExpressionDef.constant("value").cast(TypeDef.OBJECT).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("compareTo(arg0: String)"), source)
+        assertTrue(source.contains("`get`(): String"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun erasedOverridesWithTheTypeVariablesOfTheDeclaringType() {
+        val get = Supplier::class.java.getMethod("get")
+        val accept = Consumer::class.java.getMethod("accept", Any::class.java)
+        val variable = TypeDef.variable("T")
+        val classDef = ClassDef.builder("test.Box")
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier::class.java), variable))
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Consumer::class.java), variable))
+            // Kotlin overrides neither `Any get()` for `T get()` nor `accept(Any)` for `accept(T)`
+            .addMethod(MethodDef.override(get)
+                .build { _, _ -> ExpressionDef.nullValue().cast(variable).returning() })
+            .addMethod(MethodDef.override(accept)
+                .build { _, _ -> StatementDef.multi() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("`get`(): T"), source)
+        assertTrue(source.contains("accept(arg0: T)"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun rawOverrideOfAParameterizedReturnType() {
+        val names = InterfaceDef.builder("test.Names")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("names")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(TypeDef.parameterized(Set::class.java, String::class.java))
+                .build())
+            .build()
+        // Kotlin has no raw types: the override takes the type arguments
+        val classDef = ClassDef.builder("test.RawNames")
+            .addSuperinterface(names.asTypeDef())
+            .addMethod(MethodDef.builder("names")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(ClassTypeDef.of(Set::class.java))
+                .overrides()
+                .build { _, _ ->
+                    ClassTypeDef.of(Collections::class.java)
+                        .invokeStatic("emptySet", ClassTypeDef.of(Set::class.java))
+                        .returning()
+                })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("names(): Set<String>"), source)
+        assertCompiles(writeClass(names), source)
     }
 }

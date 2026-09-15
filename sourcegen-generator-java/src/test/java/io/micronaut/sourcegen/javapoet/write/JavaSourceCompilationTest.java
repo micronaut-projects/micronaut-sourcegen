@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.List;
 import java.util.Map;
 
@@ -215,6 +217,50 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         assertFalse(source.contains("[Ljava.lang.String;"), source);
         assertTrue(source.contains("new String[][]{"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void erasedOverridesOfGenericInterfacesTakeTheTypeArguments() throws Exception {
+        var compareTo = Comparable.class.getMethod("compareTo", Object.class);
+        var get = Supplier.class.getMethod("get");
+        ClassDef classDef = ClassDef.builder("test.Typed")
+            .addSuperinterface(TypeDef.parameterized(Comparable.class, String.class))
+            .addSuperinterface(TypeDef.parameterized(Supplier.class, String.class))
+            // The erased signatures a model written for bytecode declares
+            .addMethod(MethodDef.override(compareTo)
+                .build((aThis, methodParameters) -> ExpressionDef.constant(0).returning()))
+            .addMethod(MethodDef.override(get)
+                .build((aThis, methodParameters) -> ExpressionDef.constant("value").cast(TypeDef.OBJECT).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("compareTo(String "), source);
+        assertTrue(source.contains("String get()"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void erasedOverridesWithTheTypeVariablesOfTheDeclaringType() throws Exception {
+        var get = Supplier.class.getMethod("get");
+        var accept = Consumer.class.getMethod("accept", Object.class);
+        TypeDef.TypeVariable variable = TypeDef.variable("T");
+        ClassDef classDef = ClassDef.builder("test.Box")
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier.class), variable))
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Consumer.class), variable))
+            // `Object get()` does not implement `T get()`; an erased parameter is a valid override as is
+            .addMethod(MethodDef.override(get)
+                .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning()))
+            .addMethod(MethodDef.override(accept)
+                .build((aThis, methodParameters) -> StatementDef.multi()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("T get()"), source);
+        assertTrue(source.contains("accept(Object "), source);
         assertCompiles(source);
     }
 }
