@@ -10,6 +10,7 @@ dependencies {
 
     testImplementation(projects.testSuiteCustomGenerators)
     testImplementation(mnTest.micronaut.test.junit5)
+    testImplementation(mn.kotlin.compiler.embeddable)
 
     testRuntimeOnly(mnTest.junit.jupiter.engine)
 }

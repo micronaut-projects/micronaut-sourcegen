@@ -24,7 +24,9 @@ import com.squareup.kotlinpoet.javapoet.toKClassName
 import com.squareup.kotlinpoet.javapoet.toKTypeName
 import io.micronaut.core.annotation.Internal
 import io.micronaut.core.reflect.ClassUtils
+import io.micronaut.inject.ast.Element
 import io.micronaut.inject.visitor.VisitorContext
+import io.micronaut.sourcegen.generator.OverrideResolver
 import io.micronaut.sourcegen.generator.SourceGenerator
 import io.micronaut.sourcegen.model.*
 import io.micronaut.sourcegen.model.EnumDef.EnumConstantDef
@@ -53,6 +55,20 @@ import kotlin.reflect.KClass
 class KotlinPoetSourceGenerator : SourceGenerator {
     override fun getLanguage(): VisitorContext.Language {
         return VisitorContext.Language.KOTLIN
+    }
+
+    override fun write(objectDef: ObjectDef, context: VisitorContext, vararg originatingElements: Element) {
+        val previous = VISITOR_CONTEXT.get()
+        VISITOR_CONTEXT.set(context)
+        try {
+            super.write(objectDef, context, *originatingElements)
+        } finally {
+            if (previous == null) {
+                VISITOR_CONTEXT.remove()
+            } else {
+                VISITOR_CONTEXT.set(previous)
+            }
+        }
     }
 
     @Throws(IOException::class)
@@ -617,6 +633,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         docs: List<String>, initializer: ExpressionDef?,
         objectDef: ObjectDef?,
         staticContext: Boolean = false,
+        lateInit: Boolean = false,
     ): PropertySpec {
         val propertyBuilder = PropertySpec.builder(
             name,
@@ -625,8 +642,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         )
         docs.forEach(Consumer { format: String -> propertyBuilder.addKdoc(format) })
 
-        if (!modifiers.contains(Modifier.FINAL)) {
+        if (!modifiers.contains(Modifier.FINAL) || lateInit) {
             propertyBuilder.mutable(true)
+        }
+        if (lateInit) {
+            propertyBuilder.addModifiers(KModifier.LATEINIT)
         }
         for (annotation in annotations) {
             propertyBuilder.addAnnotation(
@@ -686,10 +706,19 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             field.initializer.orElse(null),
             objectDef,
             field.modifiers.contains(Modifier.STATIC),
+            // A Kotlin property must be initialized where it is declared; a field the model assigns
+            // later, possibly more than once as in a try and its catch, is a lateinit var
+            field.initializer.isEmpty && !field.type.isNullable
+                && field.type !is TypeDef.Primitive && field.type !is TypeDef.TypeVariable,
         )
     }
 
-    private fun buildFunction(objectDef: ObjectDef?, method: MethodDef, modifiers: Set<Modifier>): FunSpec {
+    private fun buildFunction(objectDef: ObjectDef?, declaredMethod: MethodDef, modifiers: Set<Modifier>): FunSpec {
+        // A model written for the bytecode writer overrides a generic method with its erased signature, which the
+        // verifier accepts; Kotlin only overrides with the exact signature with the type arguments of the supertype.
+        // The body is rendered against the resolved signature, so a returned value is cast to its type
+        val method = OverrideResolver.resolve(objectDef, declaredMethod, VISITOR_CONTEXT.get(), true)
+            ?.apply(declaredMethod) ?: declaredMethod
         var funBuilder = if (method.name == "<init>") {
             FunSpec.constructorBuilder()
         } else {
@@ -727,15 +756,21 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         }
         val scope = RenderScope.root(method)
         val renderingObjectDef = if (method.modifiers.contains(Modifier.STATIC)) null else objectDef
-        method.statements.stream()
-            .map { st: StatementDef -> renderStatementCodeBlock(renderingObjectDef, method, scope, st) }
-            .forEach(funBuilder::addCode)
+        for (statement in method.statements) {
+            funBuilder.addCode(renderStatementCodeBlock(renderingObjectDef, method, scope, statement))
+            if (cannotCompleteNormally(statement)) {
+                break
+            }
+        }
         method.javadoc.forEach(Consumer { format: String -> funBuilder.addKdoc(format) })
         return funBuilder.build()
     }
 
     companion object {
         private const val EXCEPTION_NAME = "e"
+
+        // The context of the file being written, used to look up the supertypes of an override only known by name
+        private val VISITOR_CONTEXT = ThreadLocal<VisitorContext>()
 
         private val FLOAT = ClassName("kotlin", "Float")
 
@@ -786,6 +821,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
             } else {
                 com.squareup.javapoet.ClassName.get(classType.packageName, classType.simpleName).toKClassName()
+            }.let {
+                // Only kotlin.Throwable can be caught or thrown, java.lang.Throwable is mapped onto it
+                if (it.canonicalName == "java.lang.Throwable") ClassName("kotlin", "Throwable") else it
             }
             if (result.isNullable) {
                 return asNullable(result) as ClassName
@@ -1078,6 +1116,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     CodeBlock.builder()
                 for (statement in statementDef.statements) {
                     builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement))
+                    if (cannotCompleteNormally(statement)) {
+                        // The model may append a fallback after an exhaustive statement, such as a return null
+                        break
+                    }
                 }
                 return builder.build()
             }
@@ -1232,11 +1274,20 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     .build()
             }
             if (statementDef is Return) {
+                var returned: ExpressionDef? = statementDef.expression
+                if (returned != null && returned.type() == TypeDef.VOID) {
+                    // Returning a void invocation is a plain call in source
+                    return renderExpressionCode(objectDef, methodDef, scope, returned)
+                }
+                if (returned != null && methodDef.returnType != TypeDef.VOID
+                    && requiresImplicitCast(methodDef.returnType, returned.type())) {
+                    returned = returned.cast(methodDef.returnType)
+                }
                 val codeBlock = renderExpressionWithNotNullAssertion(
                     objectDef,
                     methodDef,
                     scope,
-                    statementDef.expression,
+                    returned,
                     methodDef.returnType
                 )
                 return CodeBlock.builder()
@@ -1293,7 +1344,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
             if (statementDef is DefineAndAssign) {
                 val definition = CodeBlock.builder()
-                    .add("var %L:%T", statementDef.variable.name, asType(statementDef.variable.type, objectDef))
+                    .add("var %N:%T", statementDef.variable.name, asType(statementDef.variable.type, objectDef))
                     .add(" = ")
                     .add(
                         renderExpressionCode(
@@ -1368,12 +1419,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is NewInstance) {
                 val codeBuilder = CodeBlock.builder()
                 codeBuilder.add("%T(", asClassName(expressionDef.type))
-                for ((index, parameter) in expressionDef.values.withIndex()) {
-                    codeBuilder.add(renderExpressionCode(objectDef, methodDef, scope, parameter))
-                    if (index != expressionDef.values.size - 1) {
-                        codeBuilder.add(", ")
-                    }
-                }
+                codeBuilder.add(renderArguments(objectDef, methodDef, scope, expressionDef.parameterTypes, expressionDef.values))
                 codeBuilder.add(")")
                 return codeBuilder.build()
             }
@@ -1393,12 +1439,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     }
                     codeBuilder.add(".%N(", expressionDef.method.name)
                 }
-                for ((index, parameter) in expressionDef.values.withIndex()) {
-                    codeBuilder.add(renderExpressionCode(objectDef, methodDef, scope, parameter))
-                    if (index != expressionDef.values.size - 1) {
-                        codeBuilder.add(", ")
-                    }
-                }
+                codeBuilder.add(renderArguments(
+                    objectDef, methodDef, scope, expressionDef.method.parameters.map { it.type }, expressionDef.values
+                ))
                 codeBuilder.add(")")
                 return codeBuilder.build()
             }
@@ -1414,12 +1457,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is InvokeStaticMethod) {
                 val codeBuilder = CodeBlock.builder()
                 codeBuilder.add("%T.%N(", asStaticOwnerName(expressionDef.classDef), expressionDef.method.name)
-                for ((index, parameter) in expressionDef.values.withIndex()) {
-                    codeBuilder.add(renderExpressionCode(objectDef, methodDef, scope, parameter))
-                    if (index != expressionDef.values.size - 1) {
-                        codeBuilder.add(", ")
-                    }
-                }
+                codeBuilder.add(renderArguments(
+                    objectDef, methodDef, scope, expressionDef.method.parameters.map { it.type }, expressionDef.values
+                ))
                 codeBuilder.add(")")
                 return codeBuilder.build()
             }
@@ -1592,7 +1632,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is InstanceOf) {
                 return CodeBlock.builder()
                     .add(renderExpressionCode(objectDef, methodDef, scope, expressionDef.expression, true))
-                    .add(" is %T", asType(expressionDef.instanceType, objectDef))
+                    .add(" is %T", asTypeCheckType(expressionDef.instanceType, objectDef))
                     .build()
             }
             if (expressionDef is MathBinaryOperation) {
@@ -2210,15 +2250,21 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
             if (variableDef is VariableDef.Field) {
                 checkNotNull(objectDef) { "Field 'this' is not available" }
-                if (objectDef is ClassDef) {
-                    objectDef.getField(variableDef.name) // Check if exists
-                } else if (objectDef is EnumDef) {
-                    objectDef.getField(variableDef.name) // Check if exists
-                } else {
-                    throw IllegalStateException("Field access not supported on the object definition: $objectDef")
+                // Only a field declared by the type being written can be checked against its definition
+                if ((variableDef.declaringType as? ClassTypeDef)?.name == objectDef.asTypeDef().name) {
+                    if (objectDef is ClassDef) {
+                        objectDef.getField(variableDef.name) // Check if exists
+                    } else if (objectDef is EnumDef) {
+                        objectDef.getField(variableDef.name) // Check if exists
+                    } else {
+                        throw IllegalStateException("Field access not supported on the object definition: $objectDef")
+                    }
                 }
                 checkNotNull(methodDef) { "Accessing field is not available" }
-                val codeBlock = renderExpressionCode(objectDef, methodDef, scope, variableDef.instance)
+                var codeBlock = renderExpressionCode(objectDef, methodDef, scope, variableDef.instance)
+                if (requiresMethodCallTargetParentheses(variableDef.instance)) {
+                    codeBlock = addParentheses(codeBlock)
+                }
                 val builder = codeBlock.toBuilder()
                 if (variableDef.instance.type().isNullable) {
                     builder.add("!!")
@@ -2238,16 +2284,73 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return CodeBlock.of("this")
             }
             if (variableDef is VariableDef.Local) {
-                return CodeBlock.of("%L", variableDef.name)
+                return CodeBlock.of("%N", variableDef.name)
             }
             if (variableDef is VariableDef.Super) {
                 checkNotNull(objectDef) { "Accessing 'super' is not available" }
-                if (variableDef.type() !== TypeDef.SUPER) {
+                // The bytecode model names Object to pick the invokespecial owner, but Any is never an
+                // immediate supertype that `super<Any>` could name
+                if (variableDef.type() !== TypeDef.SUPER && variableDef.type != TypeDef.OBJECT) {
                     return CodeBlock.of("super<%T>", asType(variableDef.type, objectDef))
                 }
                 return CodeBlock.of("super");
             }
             throw IllegalStateException("Unrecognized variable: $variableDef")
+        }
+
+        /**
+         * Renders call arguments, casting an `Object` value passed to a narrower parameter: the
+         * verifier accepts it, the Kotlin compiler does not.
+         */
+        private fun renderArguments(
+            objectDef: ObjectDef?,
+            methodDef: MethodDef,
+            scope: RenderScope,
+            parameterTypes: List<TypeDef>?,
+            values: List<ExpressionDef>
+        ): CodeBlock {
+            val builder = CodeBlock.builder()
+            val sameArityTypes = parameterTypes?.takeIf { it.size == values.size }
+            for ((index, value) in values.withIndex()) {
+                if (index > 0) {
+                    builder.add(", ")
+                }
+                val parameterType = sameArityTypes?.get(index)
+                val argument = if (parameterType != null && requiresImplicitCast(parameterType, value.type())) {
+                    value.cast(parameterType)
+                } else {
+                    value
+                }
+                builder.add(renderExpressionCode(objectDef, methodDef, scope, argument))
+            }
+            return builder.build()
+        }
+
+        private fun requiresImplicitCast(targetType: TypeDef, valueType: TypeDef): Boolean =
+            valueType == TypeDef.OBJECT && targetType is ClassTypeDef && targetType != TypeDef.OBJECT
+
+        /**
+         * The type of an `is` check: Kotlin names every type argument, so a raw generic type is
+         * checked with star projections.
+         */
+        private fun asTypeCheckType(typeDef: TypeDef, objectDef: ObjectDef?): TypeName {
+            if (typeDef is ClassTypeDef.JavaClass && typeDef.type.typeParameters.isNotEmpty()) {
+                return asClassName(typeDef).parameterizedBy(typeDef.type.typeParameters.map { STAR })
+            }
+            return asType(typeDef, objectDef)
+        }
+
+        private fun cannotCompleteNormally(statementDef: StatementDef): Boolean = when (statementDef) {
+            is Return, is Throw -> true
+            is Multi -> statementDef.statements.isNotEmpty() && cannotCompleteNormally(statementDef.statements.last())
+            is StatementDef.IfElse -> cannotCompleteNormally(statementDef.statement)
+                && cannotCompleteNormally(statementDef.elseStatement)
+            is StatementDef.Switch -> statementDef.defaultCase?.let { cannotCompleteNormally(it) } == true
+                && statementDef.cases.values.all { cannotCompleteNormally(it) }
+            is StatementDef.Try -> statementDef.finallyStatement() == null
+                && cannotCompleteNormally(statementDef.statement())
+                && statementDef.catches().all { cannotCompleteNormally(it.statement()) }
+            else -> false
         }
 
         private fun renderExpressionWithNotNullAssertion(
@@ -2273,7 +2376,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     annotationDef.type.name
                 }
             var builder = AnnotationSpec.builder(ClassName.bestGuess(annName))
-            for ((memberName, value) in annotationDef.values) {
+            for ((memberName, rawValue) in annotationDef.values) {
+                // An array value is written like a collection, its toString() is not a member value
+                val value: Any = if (rawValue.javaClass.isArray) {
+                    (0 until Array.getLength(rawValue)).map { Array.get(rawValue, it) }
+                } else {
+                    rawValue
+                }
                 // Kotlin has no single value shorthand for an array member, it takes an array literal
                 val memberValue = if (value !is Collection<*> && isArrayMember(annotationDef.type, memberName)) {
                     listOf(value)

@@ -19,7 +19,10 @@ import io.micronaut.core.annotation.Internal;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.core.reflect.ClassUtils;
+import io.micronaut.inject.ast.ClassElement;
+import io.micronaut.inject.ast.Element;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.generator.OverrideResolver;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec;
 import io.micronaut.sourcegen.javapoet.ArrayTypeName;
@@ -60,8 +63,10 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Array;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -83,6 +88,24 @@ import static io.micronaut.sourcegen.javapoet.TypeSpec.anonymousClassBuilder;
 @SuppressWarnings("java:S6201")
 public sealed class JavaPoetSourceGenerator implements SourceGenerator permits GroovyPoetSourceGenerator {
     private static final String EXCEPTION_NAME = "$exception";
+    // The context of the file being written, used to tell a nested class from a generated top-level one by name and
+    // to look up the supertypes of an override that are only known by name
+    private static final ThreadLocal<VisitorContext> VISITOR_CONTEXT = new ThreadLocal<>();
+
+    @Override
+    public void write(ObjectDef objectDef, VisitorContext context, Element... originatingElements) {
+        VisitorContext previous = VISITOR_CONTEXT.get();
+        VISITOR_CONTEXT.set(context);
+        try {
+            SourceGenerator.super.write(objectDef, context, originatingElements);
+        } finally {
+            if (previous == null) {
+                VISITOR_CONTEXT.remove();
+            } else {
+                VISITOR_CONTEXT.set(previous);
+            }
+        }
+    }
 
     @Override
     public VisitorContext.Language getLanguage() {
@@ -356,10 +379,22 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private void buildFields(ObjectDef objectDef, List<FieldDef> fields, TypeSpec.Builder builder) {
         for (FieldDef field : fields) {
+            // A blank final (no inline initializer) that a static initializer assigns conditionally -
+            // e.g. one of two outcomes of a try/catch - routinely fails Java's definite-assignment
+            // checks even though the field is written exactly once at runtime; those checks don't apply
+            // to bytecode written directly, which is what this pattern was designed for. Dropping `final`
+            // for such fields keeps them internal-only (all are private/package fields of a generated
+            // class) while avoiding those source-level restrictions.
+            boolean blankFinalStaticField = field.getModifiers().contains(Modifier.STATIC)
+                && field.getModifiers().contains(Modifier.FINAL)
+                && field.getInitializer().isEmpty();
+            Modifier[] modifiers = blankFinalStaticField
+                ? field.getModifiers().stream().filter(m -> m != Modifier.FINAL).toArray(Modifier[]::new)
+                : field.getModifiersArray();
             FieldSpec.Builder fieldBuilder = FieldSpec.builder(
                 asType(field.getType(), objectDef, field.getModifiers().contains(Modifier.STATIC)),
                 field.getName()
-            ).addModifiers(field.getModifiersArray());
+            ).addModifiers(modifiers);
             field.getInitializer().ifPresent(init ->
                 fieldBuilder.initializer(renderExpression(
                     objectDef,
@@ -417,19 +452,35 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private MethodSpec asMethodSpec(ObjectDef objectDef, MethodDef method) {
         String methodName = method.getName();
+        List<TypeDef> parameterTypes = method.getParameters().stream().map(ParameterDef::getType).toList();
+        TypeDef returnType = method.getReturnType();
+        MethodDef renderMethod = method;
+        // A model written for the bytecode writer overrides a generic method with its erased signature, which the
+        // verifier accepts; as source it has to take the signature with the type arguments of the supertype
+        OverrideResolver.OverriddenMethod overridden = OverrideResolver.resolve(objectDef, method, VISITOR_CONTEXT.get());
+        if (overridden != null) {
+            parameterTypes = overridden.parameterTypes();
+            returnType = overridden.returnType();
+            // The body is rendered against the resolved signature, so a returned value is cast to its type
+            renderMethod = overridden.apply(method);
+        }
+        List<TypeDef> resolvedParameterTypes = parameterTypes;
         MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(method.getModifiersArray())
             .addParameters(
-                method.getParameters().stream()
-                    .map(param -> ParameterSpec.builder(
-                        asType(param.getType(), objectDef, method),
-                        param.getName(),
-                        param.getModifiersArray()
-                    ).addAnnotations(param.getAnnotations().stream().map(this::asAnnotationSpec).toList()).build())
+                IntStream.range(0, method.getParameters().size())
+                    .mapToObj(i -> {
+                        ParameterDef param = method.getParameters().get(i);
+                        return ParameterSpec.builder(
+                            asType(resolvedParameterTypes.get(i), objectDef, method),
+                            param.getName(),
+                            param.getModifiersArray()
+                        ).addAnnotations(param.getAnnotations().stream().map(this::asAnnotationSpec).toList()).build();
+                    })
                     .toList()
             );
         if (!methodName.equals(MethodSpec.CONSTRUCTOR)) {
-            methodBuilder.returns(asType(method.getReturnType(), objectDef, method));
+            methodBuilder.returns(asType(returnType, objectDef, method));
         }
         for (TypeDef.TypeVariable typeVariable : method.getTypeVariables()) {
             methodBuilder.addTypeVariable(
@@ -445,10 +496,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         for (TypeDef type: method.getThrowTypes()) {
             methodBuilder.addException(asType(type, objectDef, method));
         }
-        RenderScope methodScope = RenderScope.root(method);
-        method.getStatements().stream()
-            .map(st -> renderStatementCodeBlock(objectDef, method, methodScope, st))
-            .forEach(methodBuilder::addCode);
+        RenderScope methodScope = RenderScope.root(renderMethod);
+        for (StatementDef statement : method.getStatements()) {
+            methodBuilder.addCode(renderStatementCodeBlock(objectDef, renderMethod, methodScope, statement));
+            if (cannotCompleteNormally(statement)) {
+                break;
+            }
+        }
 
         return methodBuilder.build();
     }
@@ -485,7 +539,20 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 builder.addMember(memberName, "'$L'", Util.characterLiteralWithoutSingleQuotes((char) value));
             case ClassTypeDef typeDef ->
                 builder.addMember(memberName, "$L.class", typeDef.getSimpleName());
-            case null, default -> builder.addMember(memberName, "$L", value);
+            case null -> builder.addMember(memberName, "$L", value);
+            default -> {
+                if (value.getClass().isArray()) {
+                    // An array-typed annotation member (e.g. String[]) has no useful toString(); render
+                    // each element as its own member value, the same way the Collection case does -
+                    // JavaPoet merges repeated addMember calls for one name into a `{...}` initializer.
+                    int length = java.lang.reflect.Array.getLength(value);
+                    for (int i = 0; i < length; i++) {
+                        addAnnotationValue(builder, memberName, java.lang.reflect.Array.get(value, i));
+                    }
+                } else {
+                    builder.addMember(memberName, "$L", value);
+                }
+            }
         }
     }
 
@@ -665,7 +732,44 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return ClassName.get(packageNameOf(enclosing), simpleNameOf(enclosing), nested);
             }
         }
+        ClassName nested = resolveNestedClassName(classTypeDef.getName());
+        if (nested != null) {
+            return nested;
+        }
         return asClassName(classTypeDef.getCanonicalName());
+    }
+
+    /**
+     * Resolves a name known only as a string that contains a {@code $} past the first character of its
+     * simple name. Such a name is ambiguous - {@code Outer$Inner} may be a nested class or a generated
+     * top-level one such as {@code Foo$Intercepted} - so the compiler is asked.
+     *
+     * @param binaryName The binary name
+     * @return The nested class name, or {@code null} when the name does not denote a nested class
+     */
+    private static @Nullable ClassName resolveNestedClassName(String binaryName) {
+        int simpleNameStart = binaryName.lastIndexOf('.') + 1;
+        VisitorContext context = VISITOR_CONTEXT.get();
+        if (context == null || binaryName.indexOf('$', simpleNameStart + 1) == -1) {
+            return null;
+        }
+        return context.getClassElement(binaryName)
+            .filter(ClassElement::isInner)
+            .map(JavaPoetSourceGenerator::asNestedClassName)
+            .orElse(null);
+    }
+
+    private static ClassName asNestedClassName(ClassElement classElement) {
+        Deque<String> simpleNames = new ArrayDeque<>();
+        ClassElement current = classElement;
+        ClassElement enclosing = current.getEnclosingType().orElse(null);
+        while (enclosing != null) {
+            // The element's own simple name can keep the `Outer$` prefix; take what follows the enclosing binary name
+            simpleNames.addFirst(current.getName().substring(enclosing.getName().length() + 1));
+            current = enclosing;
+            enclosing = current.getEnclosingType().orElse(null);
+        }
+        return ClassName.get(current.getPackageName(), simpleNameOf(current.getName()), simpleNames.toArray(String[]::new));
     }
 
     /**
@@ -713,8 +817,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                       StatementDef statementDef) {
         switch (statementDef) {
             case StatementDef.InvokeSuperConstructor invokeConstructor -> {
+                // A super constructor call is always the unqualified `super(...)`, even when the
+                // `VariableDef.Super` carries an explicit type used only to resolve the constructor
+                // overload for bytecode generation; `Type.super(...)` is not valid Java syntax here.
                 return CodeBlock.concat(
-                    renderExpression(objectDef, methodDef, scope, invokeConstructor.superInstance()),
+                    CodeBlock.of("super"),
                     CodeBlock.of("("),
                     invokeConstructor.values()
                         .stream()
@@ -733,9 +840,19 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 if (aReturn.expression() == null) {
                     return CodeBlock.of("return");
                 }
+                if (aReturn.expression().type().equals(TypeDef.VOID)) {
+                    // Returning a void invocation is a plain call in source
+                    return renderExpression(objectDef, methodDef, scope, aReturn.expression());
+                }
+                ExpressionDef returned = aReturn.expression();
+                if (methodDef != null && !methodDef.getReturnType().equals(TypeDef.VOID)
+                    && requiresImplicitInvocationCast(methodDef.getReturnType(), returned.type())) {
+                    // e.g. an interceptor chain proceeds to Object, which the verifier accepts for a reference return
+                    returned = returned.cast(methodDef.getReturnType());
+                }
                 return CodeBlock.concat(
                     CodeBlock.of("return "),
-                    renderExpression(objectDef, methodDef, scope, aReturn.expression())
+                    renderExpression(objectDef, methodDef, scope, returned)
                 );
             }
             case StatementDef.Assign assign -> {
@@ -785,6 +902,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 CodeBlock.Builder builder = CodeBlock.builder();
                 for (StatementDef statement : statements.statements()) {
                     builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement));
+                    if (cannotCompleteNormally(statement)) {
+                        // The model may append a fallback after an exhaustive statement; javac rejects it as unreachable
+                        break;
+                    }
                 }
                 return builder.build();
             }
@@ -973,10 +1094,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             case ExpressionDef.NewInstance newInstance -> {
                 return CodeBlock.concat(
                     CodeBlock.of("new $L(", asType(newInstance.type(), objectDef)),
-                    newInstance.values()
-                        .stream()
-                        .map(exp -> renderExpression(objectDef, methodDef, scope, exp))
-                        .collect(CodeBlock.joining(", ")),
+                    renderInvocationArguments(objectDef, methodDef, scope, newInstance.parameterTypes(), newInstance.values()),
                     CodeBlock.of(")")
                 );
             }
@@ -993,11 +1111,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 );
             }
             case ExpressionDef.NewArrayOfSize newArray -> {
-                return CodeBlock.of("new $T[$L]", asType(newArray.type().componentType(), objectDef), newArray.size());
+                // The size belongs to the first dimension: `new T[size][]`
+                return CodeBlock.of("new $T[$L]$L", asType(newArray.type().componentType(), objectDef), newArray.size(),
+                    "[]".repeat(newArray.type().dimensions() - 1));
             }
             case ExpressionDef.NewArrayInitialized newArray -> {
                 CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("new $T[]{", asType(newArray.type().componentType(), objectDef));
+                builder.add("new $T{", asType(newArray.type(), objectDef));
                 for (Iterator<? extends ExpressionDef> iterator = newArray.nestedExpressionsStream().iterator(); iterator.hasNext(); ) {
                     ExpressionDef expression = iterator.next();
                     builder.add(renderExpression(objectDef, methodDef, scope, expression));
@@ -1034,27 +1154,35 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             case ExpressionDef.InvokeInstanceMethod invokeInstanceMethod -> {
                 MethodDef callMethod = invokeInstanceMethod.method();
-                CodeBlock instance = renderExpression(objectDef, methodDef, scope, invokeInstanceMethod.instance());
-                if (!callMethod.isConstructor() && requiresMethodCallTargetParentheses(invokeInstanceMethod.instance())) {
-                    instance = addParentheses(instance);
+                CodeBlock instance;
+                if (callMethod.isConstructor() && invokeInstanceMethod.instance() instanceof VariableDef.Super) {
+                    // A super constructor call is always the unqualified `super(...)`, even when the
+                    // `VariableDef.Super` carries an explicit type used only to resolve the constructor
+                    // overload for bytecode generation; `Type.super(...)` is not valid Java syntax here.
+                    instance = CodeBlock.of("super");
+                } else {
+                    instance = renderExpression(objectDef, methodDef, scope, invokeInstanceMethod.instance());
+                    if (!callMethod.isConstructor() && requiresMethodCallTargetParentheses(invokeInstanceMethod.instance())) {
+                        instance = addParentheses(instance);
+                    }
                 }
+                // The method name is rendered via `$L`, not spliced into the format string: a
+                // Micronaut-generated method name can itself contain a literal `$`, which would
+                // otherwise be misread as the start of a format placeholder.
+                CodeBlock methodNameAndOpenParen = callMethod.isConstructor()
+                    ? CodeBlock.of("(")
+                    : CodeBlock.of(".$L(", callMethod.getName());
                 return CodeBlock.concat(
                     instance,
-                    CodeBlock.of((callMethod.isConstructor() ? "" : "." + callMethod.getName()) + "("),
-                    invokeInstanceMethod.values()
-                        .stream()
-                        .map(exp -> renderExpression(objectDef, methodDef, scope, exp))
-                        .collect(CodeBlock.joining(", ")),
+                    methodNameAndOpenParen,
+                    renderInvocationArguments(objectDef, methodDef, scope, callMethod, invokeInstanceMethod.values()),
                     CodeBlock.of(")")
                 );
             }
             case ExpressionDef.InvokeStaticMethod staticMethod -> {
                 return CodeBlock.concat(
-                    CodeBlock.of("$T." + staticMethod.method().getName() + "(", asType(staticMethod.classDef(), objectDef)),
-                    staticMethod.values()
-                        .stream()
-                        .map(exp -> renderExpression(objectDef, methodDef, scope, exp))
-                        .collect(CodeBlock.joining(", ")),
+                    CodeBlock.of("$T.$L(", asType(staticMethod.classDef(), objectDef), staticMethod.method().getName()),
+                    renderInvocationArguments(objectDef, methodDef, scope, staticMethod.method(), staticMethod.values()),
                     CodeBlock.of(")")
                 );
             }
@@ -1181,16 +1309,19 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return builder.build();
             }
             case MethodReferenceExpression methodReference -> {
+                // The method name is rendered via `$L`, not spliced into the format string: a
+                // Micronaut-generated method name can itself contain a literal `$`, which would
+                // otherwise be misread as the start of a format placeholder.
                 String name = methodReference.isConstructor() ? "new" : methodReference.method().getName();
                 ExpressionDef instance = methodReference.instance();
                 if (instance == null) {
-                    return CodeBlock.of("$T::" + name, asType(methodReference.owner(), objectDef));
+                    return CodeBlock.of("$T::$L", asType(methodReference.owner(), objectDef), name);
                 }
                 CodeBlock receiver = renderExpression(objectDef, methodDef, scope, instance);
                 if (requiresMethodCallTargetParentheses(instance)) {
                     receiver = addParentheses(receiver);
                 }
-                return CodeBlock.concat(receiver, CodeBlock.of("::" + name));
+                return CodeBlock.concat(receiver, CodeBlock.of("::$L", name));
             }
             case ExpressionDef.StringConcatenation concat -> {
                 ExpressionDef left = concat.left();
@@ -1341,6 +1472,68 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             && number.toString().startsWith("-");
     }
 
+    /**
+     * Renders a method or constructor call's argument list, inserting an explicit cast wherever the
+     * declared parameter type is narrower than the argument's own static type.
+     *
+     * <p>Generated dispatch code routinely funnels every argument through a single {@code Object}
+     * parameter (e.g. reflection-free property or method dispatch); {@code ByteCodeWriter} tolerates
+     * passing such a value directly, since the JVM verifier only requires the invoked method's actual
+     * parameter slots to be populated correctly, but javac needs an explicit cast down to the real
+     * parameter type or the call does not type-check.
+     *
+     * @param objectDef      The object definition
+     * @param enclosingMethod The method definition
+     * @param scope          The render scope
+     * @param callMethod     The method or constructor being invoked
+     * @param values         The argument values
+     * @return The rendered, comma-separated argument list
+     */
+    private CodeBlock renderInvocationArguments(@Nullable ObjectDef objectDef,
+                                                @Nullable MethodDef enclosingMethod,
+                                                RenderScope scope,
+                                                MethodDef callMethod,
+                                                List<? extends ExpressionDef> values) {
+        List<ParameterDef> parameters = callMethod.getParameters();
+        List<TypeDef> parameterTypes = parameters.size() == values.size()
+            ? parameters.stream().map(ParameterDef::getType).toList()
+            : null;
+        return renderInvocationArguments(objectDef, enclosingMethod, scope, parameterTypes, values);
+    }
+
+    private CodeBlock renderInvocationArguments(@Nullable ObjectDef objectDef,
+                                                @Nullable MethodDef enclosingMethod,
+                                                RenderScope scope,
+                                                @Nullable List<TypeDef> parameterTypes,
+                                                List<? extends ExpressionDef> values) {
+        List<TypeDef> sameArityParameterTypes = parameterTypes != null && parameterTypes.size() == values.size()
+            ? parameterTypes : null;
+        return IntStream.range(0, values.size())
+            .mapToObj(i -> {
+                ExpressionDef value = values.get(i);
+                if (sameArityParameterTypes != null) {
+                    TypeDef paramType = sameArityParameterTypes.get(i);
+                    if (requiresImplicitInvocationCast(paramType, value.type())) {
+                        value = value.cast(paramType);
+                    }
+                }
+                return renderExpression(objectDef, enclosingMethod, scope, value);
+            })
+            .collect(CodeBlock.joining(", "));
+    }
+
+    private static boolean requiresImplicitInvocationCast(TypeDef paramType, TypeDef valueType) {
+        if (valueType.equals(TypeDef.OBJECT)) {
+            return !paramType.equals(TypeDef.OBJECT);
+        }
+        // A reflective signature is raw: passing a parameterized value through the raw type makes the call
+        // unchecked, where javac would otherwise reject mismatched type arguments
+        return paramType instanceof ClassTypeDef paramClass
+            && !(paramType instanceof ClassTypeDef.Parameterized)
+            && valueType instanceof ClassTypeDef.Parameterized parameterized
+            && parameterized.rawType().getName().equals(paramClass.getName());
+    }
+
     private static boolean requiresMethodCallTargetParentheses(ExpressionDef expressionDef) {
         return expressionDef instanceof ExpressionDef.Cast
             || expressionDef instanceof ExpressionDef.ConditionExpressionDef
@@ -1432,7 +1625,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return CodeBlock.concat(
                     renderExpression(objectDef, methodDef, scope, instanceOf.expression(), true),
                     CodeBlock.of(" instanceof "),
-                    CodeBlock.of(instanceOf.instanceType().getCanonicalName())
+                    // Fully qualified like before, but passed as an argument so a `$` in the name is not a placeholder
+                    CodeBlock.of("$L", asClassType(instanceOf.instanceType()).canonicalName())
                 );
             }
             case ExpressionDef.And andExpressionDef -> {
@@ -1534,6 +1728,23 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             .add(" != ")
             .add(renderExpressionWithParentheses(objectDef, methodDef, scope, right, castContext))
             .build();
+    }
+
+    private static boolean cannotCompleteNormally(StatementDef statementDef) {
+        return switch (statementDef) {
+            case StatementDef.Return _, StatementDef.Throw _ -> true;
+            case StatementDef.Multi multi ->
+                !multi.statements().isEmpty() && cannotCompleteNormally(multi.statements().getLast());
+            case StatementDef.IfElse ifElse ->
+                cannotCompleteNormally(ifElse.statement()) && cannotCompleteNormally(ifElse.elseStatement());
+            case StatementDef.Switch aSwitch -> aSwitch.defaultCase() != null
+                && cannotCompleteNormally(aSwitch.defaultCase())
+                && aSwitch.cases().values().stream().allMatch(JavaPoetSourceGenerator::cannotCompleteNormally);
+            case StatementDef.Try aTry -> aTry.finallyStatement() == null
+                && cannotCompleteNormally(aTry.statement())
+                && aTry.catches().stream().allMatch(aCatch -> cannotCompleteNormally(aCatch.statement()));
+            default -> false;
+        };
     }
 
     private static boolean hasSwitchYieldReturn(StatementDef statementDef) {
@@ -1687,10 +1898,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private CodeBlock renderVariable(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, VariableDef variableDef) {
         switch (variableDef) {
             case VariableDef.ExceptionVar _ -> {
-                return CodeBlock.of(Objects.requireNonNull(scope.resolveRename(EXCEPTION_NAME)));
+                // Names are rendered via `$L`, not as the format string itself: a Micronaut-generated
+                // name routinely contains a literal `$` (e.g. `$exception`), which `CodeBlock.of(name)`
+                // would otherwise misparse as the start of a format placeholder.
+                return CodeBlock.of("$L", Objects.requireNonNull(scope.resolveRename(EXCEPTION_NAME)));
             }
             case VariableDef.Local localVariableDef -> {
-                return CodeBlock.of(localVariableDef.name());
+                return CodeBlock.of("$L", localVariableDef.name());
             }
             case VariableDef.MethodParameter parameterVariableDef -> {
                 if (methodDef == null) {
@@ -1702,19 +1916,35 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     throw new IllegalStateException("Method: " + methodDef.getName()
                         + " doesn't have parameter: " + parameterVariableDef.name());
                 }
-                return CodeBlock.of(name);
+                return CodeBlock.of("$L", name);
             }
             case VariableDef.StaticField staticField -> {
+                // A reference to a static field declared by the class currently being rendered must use
+                // the unqualified name: a blank final static field can only be assigned this way, and
+                // `ThisClass.field = ...` is illegal even when `ThisClass` is the enclosing class itself.
+                if (objectDef != null && staticField.ownerType().getName().equals(objectDef.asTypeDef().getName())) {
+                    return CodeBlock.of("$L", staticField.name());
+                }
                 return CodeBlock.of("$T.$L", asType(staticField.ownerType(), objectDef), staticField.name());
             }
             case VariableDef.Field field -> {
                 validateFieldAccess(objectDef, field);
                 ExpressionDef instance = field.instance();
+                // Concatenated as CodeBlocks, not strings re-parsed by CodeBlock.of: a rendered
+                // instance expression or the field name can itself contain a literal `$`, which
+                // re-parsing as a format string would misread as a placeholder.
                 if (!instance.type().equals(field.declaringType())) {
-                    return CodeBlock.of(
-                        "(" + renderExpression(objectDef, methodDef, scope, instance.cast(field.declaringType())) + ")." + field.name());
+                    return CodeBlock.concat(
+                        CodeBlock.of("("),
+                        renderExpression(objectDef, methodDef, scope, instance.cast(field.declaringType())),
+                        CodeBlock.of(").$L", field.name())
+                    );
                 }
-                return CodeBlock.of(renderExpression(objectDef, methodDef, scope, instance) + "." + field.name());
+                CodeBlock renderedInstance = renderExpression(objectDef, methodDef, scope, instance);
+                if (requiresMethodCallTargetParentheses(instance)) {
+                    renderedInstance = addParentheses(renderedInstance);
+                }
+                return CodeBlock.concat(renderedInstance, CodeBlock.of(".$L", field.name()));
             }
             case VariableDef.This _ -> {
                 if (objectDef == null) {
@@ -1726,7 +1956,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 if (objectDef == null) {
                     throw new IllegalStateException("Accessing 'super' is not available");
                 }
-                if (aSuper.type() != TypeDef.SUPER) {
+                // `Type.super` is only valid for a direct superinterface; the bytecode model also names the
+                // superclass explicitly (to pick the invokespecial owner), which in source is plain `super`
+                if (aSuper.type() != TypeDef.SUPER && aSuper.type().isInterface()) {
                     return CodeBlock.of("$T.super", asType(aSuper.type(), objectDef));
                 }
                 return CodeBlock.of("super");
@@ -1736,9 +1968,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private static void validateFieldAccess(@Nullable ObjectDef objectDef, VariableDef.Field field) {
+        if (objectDef == null) {
+            throw new IllegalStateException("Accessing 'this' is not available");
+        }
+        if (!(field.declaringType() instanceof ClassTypeDef declaringType)
+            || !declaringType.getName().equals(objectDef.asTypeDef().getName())) {
+            // The field is declared by a different type than the one currently being rendered - e.g. a
+            // property accessed on an instance of some other (possibly external, already-compiled) type
+            // - so there is nothing in `objectDef` to validate the access against.
+            return;
+        }
         switch (objectDef) {
-            case null ->
-                throw new IllegalStateException("Accessing 'this' is not available");
             case ClassDef classDef when classDef.hasField(field.name()) -> {
                 return;
             }

@@ -548,23 +548,23 @@ public class Example {
   }
 
   void myMethod2() {
-    return this.myMethod1(example.Example.class);
+    this.myMethod1(example.Example.class);
   }
 
   void myMethod3() {
-    return this.myMethod1(java.lang.String.class);
+    this.myMethod1(java.lang.String.class);
   }
 
   void myMethod4() {
-    return this.myMethod1(int.class);
+    this.myMethod1(int.class);
   }
 
   void myMethod4() {
-    return this.myMethod1(int[].class);
+    this.myMethod1(int[].class);
   }
 
   void myMethod4() {
-    return this.myMethod1(java.lang.String[].class);
+    this.myMethod1(java.lang.String[].class);
   }
 }
 """, data);
