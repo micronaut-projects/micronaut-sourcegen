@@ -24,6 +24,7 @@ import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.TypeHierarchy;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
@@ -138,19 +139,7 @@ public final class TypeUtils {
      * @return The binary name to write
      */
     public static String getBinaryName(ClassTypeDef classTypeDef, @Nullable ObjectDef objectDef) {
-        String name = classTypeDef.getName();
-        if (objectDef == null || name.indexOf('.') != -1 || name.indexOf('$') != -1) {
-            return name;
-        }
-        if (name.equals(objectDef.getSimpleName())) {
-            return objectDef.asTypeDef().getName();
-        }
-        for (ObjectDef innerType : objectDef.getInnerTypes()) {
-            if (name.equals(innerType.getSimpleName())) {
-                return innerType.asTypeDef().getName();
-            }
-        }
-        return name;
+        return TypeHierarchy.binaryName(classTypeDef, objectDef);
     }
 
     /**
