@@ -175,7 +175,7 @@ class EnumWriteTest {
           DELETED,
           ;
 
-          public var strValue: String
+          public lateinit var strValue: String
 
           public fun getValue(): String {
             return "value"

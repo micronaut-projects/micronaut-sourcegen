@@ -41,6 +41,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -1024,9 +1026,258 @@ public abstract class ByteCodeWriterTck {
         assertEquals(1, generated.getField("initializations").get(null));
     }
 
+    @Test
+    public void writesSuperConstructorCallsThatNameTheSuperType() throws Exception {
+        var objectConstructor = Object.class.getConstructor();
+        ClassDef definition = ClassDef.builder("example.TckNamedSuperConstructor")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(Object.class))
+            .addMethod(MethodDef.constructor()
+                .addModifiers(Modifier.PUBLIC)
+                .build((aThis, parameters) -> aThis.superRef(ClassTypeDef.of(Object.class))
+                    .invokeConstructor(objectConstructor)))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertNotNull(generated.getConstructor().newInstance());
+    }
+
+    @Test
+    public void writesSuperCallsToASuperclassMethodAndAnInterfaceDefaultMethod() throws Exception {
+        ClassTypeDef iteratorType = ClassTypeDef.of(Iterator.class);
+        Method removeMethod = Iterator.class.getMethod("remove");
+        Method toStringMethod = Object.class.getMethod("toString");
+        ClassDef definition = ClassDef.builder("example.TckNamedSuperMethods")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(iteratorType)
+            .addMethod(MethodDef.builder("hasNext").addModifiers(Modifier.PUBLIC).returns(boolean.class)
+                .build((aThis, parameters) -> ExpressionDef.constant(false).returning()))
+            .addMethod(MethodDef.builder("next").addModifiers(Modifier.PUBLIC).returns(Object.class)
+                .build((aThis, parameters) -> ExpressionDef.nullValue().returning()))
+            .addMethod(MethodDef.builder("remove").addModifiers(Modifier.PUBLIC)
+                .build((aThis, parameters) -> aThis.superRef(iteratorType)
+                    .invoke(removeMethod)))
+            .addMethod(MethodDef.builder("toString").addModifiers(Modifier.PUBLIC).returns(String.class)
+                // Dispatched virtually, super.toString() would recurse
+                .build((aThis, parameters) -> aThis.superRef(ClassTypeDef.of(Object.class))
+                    .invoke(toStringMethod).returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+        Iterator<?> instance = (Iterator<?>) generated.getConstructor().newInstance();
+
+        // The default Iterator.remove() throws
+        assertThrows(UnsupportedOperationException.class, instance::remove);
+        assertTrue(instance.toString().startsWith(generated.getName() + "@"), instance.toString());
+    }
+
+    @Test
+    public void writesStaticFinalFieldsAssignedInTryAndCatch() throws Exception {
+        ClassTypeDef type = ClassTypeDef.of("example.TckStaticFinalInTryCatch");
+        FieldDef value = FieldDef.builder("VALUE", String.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .build();
+        FieldDef failure = FieldDef.builder("FAILURE", Throwable.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .build();
+        ClassDef definition = ClassDef.builder(type.getName())
+            .addModifiers(Modifier.PUBLIC)
+            .addField(value)
+            .addField(failure)
+            .addStaticInitializer(StatementDef.multi(
+                StatementDef.doTry(type.getStaticField(value).put(ExpressionDef.constant("a")))
+                    .doCatch(Throwable.class, exceptionVar -> type.getStaticField(failure).put(exceptionVar)),
+                StatementDef.doTry(type.getStaticField(value).put(ExpressionDef.constant("b")))
+                    .doCatch(Throwable.class, exceptionVar -> type.getStaticField(value).put(ExpressionDef.constant("c")))
+            ))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertEquals("b", generated.getField("VALUE").get(null));
+        assertNull(generated.getField("FAILURE").get(null));
+    }
+
+    @Test
+    public void writesNamesContainingDollarSigns() throws Exception {
+        FieldDef field = FieldDef.builder("$field", String.class).addModifiers(Modifier.PRIVATE).build();
+        MethodDef getter = MethodDef.builder("$get").addModifiers(Modifier.PUBLIC).returns(String.class)
+            .build((aThis, parameters) -> aThis.field(field).returning());
+        ClassDef definition = ClassDef.builder("example.$TckHolder$Definition")
+            .addModifiers(Modifier.PUBLIC)
+            .addField(field)
+            .addMethod(getter)
+            .addMethod(MethodDef.builder("$copy").addModifiers(Modifier.PUBLIC)
+                .addParameter("$value", String.class)
+                .returns(String.class)
+                .build((aThis, parameters) -> StatementDef.multi(
+                    aThis.field(field).put(parameters.get(0)),
+                    aThis.invoke(getter).newLocal("$local", local -> local.returning())
+                )))
+            .build();
+
+        Class<?> generated = define(definition);
+        Object instance = generated.getConstructor().newInstance();
+
+        assertEquals("copied", generated.getMethod("$copy", String.class).invoke(instance, "copied"));
+        assertEquals("copied", generated.getMethod("$get").invoke(instance));
+    }
+
+    @Test
+    public void writesObjectValuesPassedToAndReturnedAsTypedValues() throws Exception {
+        MethodDef take = MethodDef.builder("take").addModifiers(Modifier.PUBLIC)
+            .addParameter("text", String.class)
+            .returns(String.class)
+            .build((aThis, parameters) -> parameters.get(0).returning());
+        var stringBuilderConstructor = StringBuilder.class.getConstructor(String.class);
+        ClassDef definition = ClassDef.builder("example.TckObjectToTyped")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(take)
+            .addMethod(MethodDef.builder("dispatch").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Object.class)
+                .returns(String.class)
+                .build((aThis, parameters) -> aThis.invoke(take, parameters.get(0)).returning()))
+            .addMethod(MethodDef.builder("create").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Object.class)
+                .returns(StringBuilder.class)
+                .build((aThis, parameters) -> ClassTypeDef.of(StringBuilder.class)
+                    .instantiate(stringBuilderConstructor, parameters.get(0))
+                    .returning()))
+            .addMethod(MethodDef.builder("narrow").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Object.class)
+                .returns(String.class)
+                .build((aThis, parameters) -> parameters.get(0).returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+        Object instance = generated.getConstructor().newInstance();
+
+        assertEquals("a", generated.getMethod("dispatch", Object.class).invoke(instance, "a"));
+        assertEquals("b", generated.getMethod("create", Object.class).invoke(instance, "b").toString());
+        assertEquals("c", generated.getMethod("narrow", Object.class).invoke(instance, "c"));
+    }
+
+    @Test
+    public void writesReturnedVoidCallsAndFallbacksAfterExhaustiveStatements() throws Exception {
+        ClassTypeDef self = ClassTypeDef.of("example.TckUnreachableFallback");
+        FieldDef runs = FieldDef.builder("runs", TypeDef.Primitive.INT)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .build();
+        MethodDef run = MethodDef.builder("run").addModifiers(Modifier.PUBLIC)
+            .build((aThis, parameters) -> self.getStaticField(runs)
+                .put(self.getStaticField(runs).math(ExpressionDef.MathBinaryOperation.OpType.ADDITION, ExpressionDef.constant(1))));
+        ClassDef definition = ClassDef.builder(self.getName())
+            .addModifiers(Modifier.PUBLIC)
+            .addField(runs)
+            .addMethod(run)
+            .addMethod(MethodDef.builder("delegate").addModifiers(Modifier.PUBLIC)
+                .build((aThis, parameters) -> aThis.invoke(run).returning()))
+            .addMethod(MethodDef.builder("select").addModifiers(Modifier.PUBLIC)
+                .addParameter("index", int.class)
+                .returns(Object.class)
+                .build((aThis, parameters) -> StatementDef.multi(
+                    parameters.get(0).asStatementSwitch(
+                        TypeDef.OBJECT,
+                        Map.of(ExpressionDef.constant(0), ExpressionDef.constant("zero").returning()),
+                        ClassTypeDef.of(IllegalStateException.class).instantiate().doThrow()
+                    ),
+                    ExpressionDef.nullValue().returning()
+                )))
+            .addMethod(MethodDef.builder("guarded").addModifiers(Modifier.PUBLIC)
+                .returns(Object.class)
+                .build((aThis, parameters) -> StatementDef.multi(
+                    StatementDef.doTry(ExpressionDef.constant("value").returning())
+                        .doCatch(Throwable.class, exceptionVar -> ClassTypeDef.of(IllegalStateException.class).instantiate().doThrow()),
+                    ExpressionDef.nullValue().returning()
+                )))
+            .build();
+
+        Class<?> generated = define(definition);
+        Object instance = generated.getConstructor().newInstance();
+
+        generated.getMethod("delegate").invoke(instance);
+        assertEquals(1, generated.getField("runs").get(null));
+        assertEquals("zero", generated.getMethod("select", int.class).invoke(instance, 0));
+        InvocationTargetException thrown = assertThrows(InvocationTargetException.class,
+            () -> generated.getMethod("select", int.class).invoke(instance, 1));
+        assertInstanceOf(IllegalStateException.class, thrown.getCause());
+        assertEquals("value", generated.getMethod("guarded").invoke(instance));
+    }
+
+    @Test
+    public void writesInstanceOfANestedType() throws Exception {
+        ClassDef definition = ClassDef.builder("example.TckInstanceOfNested")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("isEntry").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", Object.class)
+                .returns(boolean.class)
+                .build((ignored, parameters) ->
+                    new ExpressionDef.InstanceOf(parameters.get(0), ClassTypeDef.of(Map.Entry.class)).returning()))
+            .build();
+
+        Method isEntry = define(definition).getMethod("isEntry", Object.class);
+
+        assertEquals(true, isEntry.invoke(null, Map.entry("key", "value")));
+        assertEquals(false, isEntry.invoke(null, "value"));
+    }
+
+    @Test
+    public void writesAccessToAFieldOfAnotherType() throws Exception {
+        ClassTypeDef otherType = ClassTypeDef.of("example.TckFieldOwner");
+        ClassDef other = ClassDef.builder(otherType.getName())
+            .addModifiers(Modifier.PUBLIC)
+            .addField(FieldDef.builder("name", String.class).addModifiers(Modifier.PUBLIC).build())
+            .build();
+        ClassDef accessor = ClassDef.builder("example.TckFieldAccessor")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("read").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", Object.class)
+                .returns(String.class)
+                .build((ignored, parameters) -> new VariableDef.Field(
+                    parameters.get(0).cast(otherType), otherType, "name", TypeDef.STRING).returning()))
+            .build();
+
+        MapClassLoader loader = new MapClassLoader(Map.of(
+            other.getName(), write(other),
+            accessor.getName(), write(accessor)
+        ));
+        Class<?> otherClass = loader.loadClass(other.getName());
+        Object owner = otherClass.getConstructor().newInstance();
+        otherClass.getField("name").set(owner, "owned");
+
+        assertEquals("owned", loader.loadClass(accessor.getName()).getMethod("read", Object.class).invoke(null, owner));
+    }
+
+    @Test
+    public void writesArrayAnnotationMembersAndNestedArrayInitializers() throws Exception {
+        ClassDef definition = ClassDef.builder("example.TckArrayMembers")
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationDef.builder(TypeMarker.class)
+                .addMember("value", new String[] {"unchecked", "rawtypes"})
+                .build())
+            .addMethod(MethodDef.builder("matrix").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.STRING.array(2))
+                .build((ignored, parameters) -> TypeDef.STRING.array(2).instantiate(List.of(
+                    TypeDef.STRING.array().instantiate(List.of(ExpressionDef.constant("a")))
+                )).returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertArrayEquals(new String[] {"unchecked", "rawtypes"}, generated.getAnnotation(TypeMarker.class).value());
+        assertArrayEquals(new String[][] {{"a"}}, (String[][]) generated.getMethod("matrix").invoke(null));
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     private @interface ParameterMarker {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    private @interface TypeMarker {
+        String[] value();
     }
 
     private static MethodDef binaryMethod(String name,

@@ -246,7 +246,7 @@ class InnerTypesWriteTest {
 
             public class InnerClass {
               private class Inner {
-                public var name: String
+                public lateinit var name: String
 
                 public constructor(name: String) {
                   this. name = name
