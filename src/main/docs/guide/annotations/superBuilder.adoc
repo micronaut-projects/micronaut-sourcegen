@@ -1,19 +1,13 @@
-To use a builder pattern with types that are using inheritance you annotate a Java bean with `@SuperBuilder`:
+To use a builder pattern with types that are using inheritance you annotate a bean with `@SuperBuilder`:
 
-[source,java]
-----
-include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/Animal.java[tags=clazz,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.superbuilder.Animal[tags="clazz", indent=0, project-base="test-suite", source="main", languages="java,groovy,python"]
 
-[source,java]
-----
-include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/Cat.java[tags=clazz,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.superbuilder.Cat[tags="clazz", indent=0, project-base="test-suite", source="main", languages="java,groovy,python"]
 
-[source,java]
-----
-include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/Dog.java[tags=clazz,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.superbuilder.Dog[tags="clazz", indent=0, project-base="test-suite", source="main", languages="java,groovy,python"]
+
+[.lang-kotlin]
+NOTE: `@SuperBuilder` is not supported for Kotlin classes yet: the Kotlin source generator fails to generate the abstract builder of the super-class (`doesn't have a field: name`). Use `@Builder` on each class instead.
 
 For every class annotated with `@SuperBuilder` there going to be two builders generated at compilation-time, an abstract one intended to be inherited and second one to constructor the bean.
 
@@ -29,7 +23,7 @@ NOTE: `@SuperBuilder` requires every super-class to be annotated with `@SuperBui
 
 You can use a builder to create an instance:
 
-[source,java]
-----
-include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/AnimalSuperBuilderTest.java[tags=test,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.superbuilder.AnimalSuperBuilderTest[tags="test", indent=0, project-base="test-suite", languages="java,groovy,python"]
+
+[.lang-python]
+NOTE: The no-argument constructor of the generated builder is package-private, so Python code uses the public static `builder()` factory method.
