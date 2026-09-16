@@ -789,10 +789,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return CodeBlock.concat(
                     CodeBlock.of("super"),
                     CodeBlock.of("("),
-                    invokeConstructor.values()
-                        .stream()
-                        .map(exp -> renderExpression(objectDef, methodDef, scope, exp))
-                        .collect(CodeBlock.joining(", ")),
+                    renderInvocationArguments(objectDef, methodDef, scope,
+                        invokeConstructor.superInstance().type() instanceof ClassTypeDef superType ? superType : null,
+                        invokeConstructor.method(), invokeConstructor.values()),
                     CodeBlock.of(")")
                 );
             }
@@ -1268,6 +1267,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 List<StatementDef> statements = implementation.getStatements();
                 ExpressionDef body = singleExpressionBody(lambda);
                 if (body != null) {
+                    TypeDef lambdaReturnType = implementation.getReturnType();
+                    if (!TypeDef.VOID.equals(lambdaReturnType)
+                        && requiresImplicitReturnCast(lambdaReturnType, body.type())) {
+                        body = body.cast(lambdaReturnType);
+                    }
                     builder.add(renderExpression(objectDef, implementation, lambdaScope, body));
                 } else {
                     builder.add("{\n").indent();
@@ -1397,6 +1401,16 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 ExpressionDef value = values.get(i);
                 if (sameArityParameterTypes != null) {
                     TypeDef paramType = sameArityParameterTypes.get(i);
+                    TypeDef sourceType = sourceTypeOf(value, enclosingMethod);
+                    if (!sourceType.equals(value.type()) && !paramType.equals(sourceType)) {
+                        // An override narrowed the parameter the value names - `Object value` to `String value` -
+                        // which would select another overload than the one the model calls: keep its type. Written
+                        // out, since in the model the cast is to the type the value already has, which is dropped
+                        return CodeBlock.concat(
+                            CodeBlock.of("($T) ", asType(paramType, objectDef, enclosingMethod)),
+                            renderExpression(objectDef, enclosingMethod, scope, value)
+                        );
+                    }
                     boolean vararg = varargs && i == values.size() - 1
                         && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array
                         && !(TypeHierarchy.unwrap(value.type()) instanceof TypeDef.Array);
@@ -1416,6 +1430,21 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return renderExpression(objectDef, enclosingMethod, scope, value);
             })
             .collect(CodeBlock.joining(", "));
+    }
+
+    /**
+     * The type a value has in the source: that of the parameter it names, which an override can have narrowed
+     * from the type the model built the value with.
+     */
+    private static TypeDef sourceTypeOf(ExpressionDef value, @Nullable MethodDef enclosingMethod) {
+        if (value instanceof VariableDef.MethodParameter parameter && enclosingMethod != null) {
+            for (ParameterDef declared : enclosingMethod.getParameters()) {
+                if (declared.getName().equals(parameter.name())) {
+                    return declared.getType();
+                }
+            }
+        }
+        return value.type();
     }
 
     private CodeBlock addParentheses(CodeBlock rendered) {

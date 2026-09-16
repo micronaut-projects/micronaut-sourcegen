@@ -2385,7 +2385,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         }
 
         private fun requiresImplicitCast(targetType: TypeDef, valueType: TypeDef): Boolean =
-            valueType == TypeDef.OBJECT && targetType is ClassTypeDef && targetType != TypeDef.OBJECT
+            valueType == TypeDef.OBJECT && targetType != TypeDef.OBJECT
+                && (targetType is ClassTypeDef || targetType is TypeDef.Primitive && targetType != TypeDef.VOID)
 
         /**
          * Whether a returned value needs a cast to the return type. Unlike an argument - where an array parameter

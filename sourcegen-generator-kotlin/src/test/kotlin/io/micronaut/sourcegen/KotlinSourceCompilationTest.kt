@@ -651,4 +651,24 @@ class KotlinSourceCompilationTest {
         assertTrue(!source.contains("lateinit"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun anyValueOfAPrimitiveTarget() {
+        val take = MethodDef.builder("take").addModifiers(Modifier.PRIVATE)
+            .addParameter("count", TypeDef.Primitive.INT)
+            .build { _, _ -> StatementDef.multi() }
+        // An Any value is passed to an Int parameter, and returned from an Int method
+        val classDef = ClassDef.builder("test.Unboxed")
+            .addMethod(take)
+            .addMethod(MethodDef.builder("pass").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Any::class.java)
+                .build { aThis, parameters -> aThis.invoke(take, parameters[0]) })
+            .addMethod(MethodDef.builder("count").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Any::class.java)
+                .returns(TypeDef.Primitive.INT)
+                .build { _, parameters -> parameters[0].returning() })
+            .build()
+
+        assertCompiles(writeClass(classDef))
+    }
 }

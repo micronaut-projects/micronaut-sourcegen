@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.List;
 import java.util.Map;
@@ -902,5 +903,66 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertTrue(source.contains("String[] get()"), source);
         assertTrue(source.contains("(String[])"), source);
         assertCompiles(writeSource(bounded), source);
+    }
+
+    @Test
+    void narrowedParameterKeepsTheOverloadTheModelCalls() throws Exception {
+        MethodDef chooseObject = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", Object.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("object").returning());
+        MethodDef chooseString = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", String.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("string").returning());
+        var apply = Function.class.getMethod("apply", Object.class);
+        // `apply(Object value)` becomes `apply(String value)`, where `choose(value)` would call `choose(String)`
+        ClassDef classDef = ClassDef.builder("test.Chooser")
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(chooseObject)
+            .addMethod(chooseString)
+            .addMethod(MethodDef.override(apply)
+                .build((aThis, methodParameters) -> aThis.invoke(chooseObject, methodParameters.get(0)).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("String apply(String "), source);
+        assertTrue(source.contains("choose((Object) "), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void expressionBodiedLambdaCastsItsValue() throws Exception {
+        // The model's lambda returns its Object parameter where the implemented method returns String
+        ExpressionDef.Lambda lambda = TypeDef.parameterized(Function.class, Object.class, String.class)
+            .getLambda()
+            .implement((aThis, parameters) -> parameters.get(0).returning());
+        ClassDef classDef = ClassDef.builder("test.Lambdas")
+            .addMethod(MethodDef.builder("identity").addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.parameterized(Function.class, Object.class, String.class))
+                .build((aThis, methodParameters) -> lambda.returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertCompiles(source);
+    }
+
+    @Test
+    void superConstructorArgumentIsCast() throws Exception {
+        // `Exception(String)` is selected, which an Object value does not match as it is
+        ClassDef classDef = ClassDef.builder("test.Failure")
+            .superclass(ClassTypeDef.of(Exception.class))
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Object.class)
+                .build((aThis, methodParameters) -> aThis.superRef(ClassTypeDef.of(Exception.class))
+                    .invokeSuperConstructor(List.of(TypeDef.STRING), methodParameters.get(0))))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("super((String) value)"), source);
+        assertCompiles(source);
     }
 }
