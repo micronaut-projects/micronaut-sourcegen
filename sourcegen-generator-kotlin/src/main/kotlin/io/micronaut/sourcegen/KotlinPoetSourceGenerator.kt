@@ -2414,9 +2414,37 @@ class KotlinPoetSourceGenerator : SourceGenerator {
          */
         private fun isAssignedByEveryConstructor(objectDef: ObjectDef?, field: FieldDef): Boolean {
             val constructors = objectDef?.methods?.filter { it.isConstructor } ?: return false
-            return constructors.isNotEmpty() && constructors.all { constructor ->
-                constructor.statements.any { assignsDefinitely(it, field.name) }
+            return constructors.isNotEmpty() && constructors.all { assignsBeforeReturning(it.statements, field.name) }
+        }
+
+        /**
+         * Whether a sequence of statements assigns the field before anything in it may return - a return ends the
+         * constructor with the property unassigned, and the statements after one are not even rendered.
+         */
+        private fun assignsBeforeReturning(statements: List<StatementDef>, name: String): Boolean {
+            for (statement in statements) {
+                if (mayReturn(statement)) {
+                    return false
+                }
+                if (assignsDefinitely(statement, name)) {
+                    return true
+                }
             }
+            return false
+        }
+
+        private fun mayReturn(statement: StatementDef?): Boolean = when (statement) {
+            null -> false
+            is Return -> true
+            is Multi -> statement.statements.any { mayReturn(it) }
+            is StatementDef.If -> mayReturn(statement.statement)
+            is StatementDef.IfElse -> mayReturn(statement.statement) || mayReturn(statement.elseStatement)
+            is StatementDef.Switch -> mayReturn(statement.defaultCase) || statement.cases.values.any { mayReturn(it) }
+            is StatementDef.While -> mayReturn(statement.statement)
+            is StatementDef.Synchronized -> mayReturn(statement.statement())
+            is StatementDef.Try -> mayReturn(statement.statement()) || mayReturn(statement.finallyStatement())
+                || statement.catches().any { mayReturn(it.statement()) }
+            else -> false
         }
 
         /**
@@ -2426,7 +2454,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private fun assignsDefinitely(statement: StatementDef?, name: String): Boolean = when (statement) {
             null -> false
             is StatementDef.PutField -> statement.field.name == name && statement.field.instance is VariableDef.This
-            is Multi -> statement.statements.any { assignsDefinitely(it, name) }
+            is Multi -> assignsBeforeReturning(statement.statements, name)
             is StatementDef.IfElse -> assignsDefinitely(statement.statement, name)
                 && assignsDefinitely(statement.elseStatement, name)
             is StatementDef.Switch -> statement.defaultCase != null

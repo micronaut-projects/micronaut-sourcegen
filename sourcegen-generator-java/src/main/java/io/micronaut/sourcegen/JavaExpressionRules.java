@@ -168,6 +168,14 @@ final class JavaExpressionRules {
             return true;
         }
         TypeDef target = TypeHierarchy.unwrap(returnType);
+        if (target instanceof TypeDef.Array targetArray
+            && TypeHierarchy.unwrap(valueType) instanceof TypeDef.Array valueArray
+            && targetArray.dimensions() == valueArray.dimensions()
+            && !targetArray.componentType().equals(valueArray.componentType())) {
+            // An array of the erased bound, returned where the override narrows it: `CharSequence[]` as `String[]`
+            return targetArray.componentType() instanceof TypeDef.TypeVariable
+                || requiresImplicitInvocationCast(targetArray.componentType(), valueArray.componentType());
+        }
         return target instanceof TypeDef.TypeVariable
             && !target.equals(TypeHierarchy.unwrap(valueType))
             && (valueType instanceof ClassTypeDef || valueType instanceof TypeDef.Array);

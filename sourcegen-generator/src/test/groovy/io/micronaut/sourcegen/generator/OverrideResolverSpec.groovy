@@ -374,8 +374,11 @@ class OverrideResolverSpec extends Specification {
         OverrideResolver.resolve(classDef, erased, null).returnType() == narrow
 
         where:
-        wide                                          | narrow
-        TypeDef.parameterized(Collection, String)     | TypeDef.parameterized(List, String)
-        TypeDef.OBJECT.array()                        | TypeDef.STRING.array()
+        wide                                                                         | narrow
+        TypeDef.parameterized(Collection, String)                                    | TypeDef.parameterized(List, String)
+        TypeDef.OBJECT.array()                                                       | TypeDef.STRING.array()
+        TypeDef.parameterized(ClassTypeDef.of(List), TypeDef.wildcardSubtypeOf(TypeDef.of(CharSequence))) | TypeDef.parameterized(List, String)
+        ClassTypeDef.of(Cloneable)                                                   | TypeDef.STRING.array()
+        ClassDef.builder("example.Parent").build().asTypeDef()                       | ClassDef.builder("example.Child").superclass(ClassDef.builder("example.Parent").build().asTypeDef()).build().asTypeDef()
     }
 }

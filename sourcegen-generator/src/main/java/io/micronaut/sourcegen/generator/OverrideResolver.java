@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.generator;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.reflect.ClassUtils;
+import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -35,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Resolves the signature a declared method takes as source when it overrides a generic inherited method with that
@@ -51,6 +53,8 @@ import java.util.Set;
  */
 @Internal
 public final class OverrideResolver {
+
+    private static final Set<String> ARRAY_SUPERTYPES = Set.of(Cloneable.class.getName(), java.io.Serializable.class.getName());
 
     private OverrideResolver() {
     }
@@ -103,8 +107,9 @@ public final class OverrideResolver {
         Declared declared = new Declared(objectDef, methodDef, parameterErasures, returnErasure, declaringType,
             new HashSet<>(declaringType.getTypeParameters()), exact);
         List<OverriddenMethod> found = new ArrayList<>();
-        TypeHierarchy.visitInheritedMethods(objectDef,
-            context == null ? null : name -> context.getClassElement(name).orElse(null),
+        Function<String, @Nullable ClassElement> lookup = context == null ? null
+            : name -> context.getClassElement(name).orElse(null);
+        TypeHierarchy.visitInheritedMethods(objectDef, lookup,
             (type, inherited) -> {
                 OverriddenMethod overridden = overriddenBy(declared, type, inherited);
                 if (overridden != null) {
@@ -112,7 +117,7 @@ public final class OverrideResolver {
                 }
                 return true;
             });
-        return mostSpecific(found);
+        return mostSpecific(found, lookup);
     }
 
     /**
@@ -123,10 +128,11 @@ public final class OverrideResolver {
      * @return The one whose return type is a subtype of all the others, or {@code null} where there is none
      */
     @Nullable
-    private static OverriddenMethod mostSpecific(List<OverriddenMethod> found) {
+    private static OverriddenMethod mostSpecific(List<OverriddenMethod> found,
+                                                 @Nullable Function<String, @Nullable ClassElement> lookup) {
         OverriddenMethod best = null;
         for (OverriddenMethod candidate : found) {
-            if (best == null || isSubtype(candidate.returnType(), best.returnType())) {
+            if (best == null || isSubtype(candidate.returnType(), best.returnType(), lookup)) {
                 best = candidate;
             }
         }
@@ -134,29 +140,36 @@ public final class OverrideResolver {
             return null;
         }
         for (OverriddenMethod other : found) {
-            if (!isSubtype(best.returnType(), other.returnType())) {
+            if (!isSubtype(best.returnType(), other.returnType(), lookup)) {
                 return null;
             }
         }
         return best;
     }
 
-    private static boolean isSubtype(TypeDef subtype, TypeDef supertype) {
+    private static boolean isSubtype(TypeDef subtype,
+                                     TypeDef supertype,
+                                     @Nullable Function<String, @Nullable ClassElement> lookup) {
         TypeDef sub = TypeHierarchy.unwrap(subtype);
         TypeDef sup = TypeHierarchy.unwrap(supertype);
         if (sub.equals(sup) || TypeDef.OBJECT.equals(sup)) {
             return true;
         }
-        if (sub instanceof TypeDef.Array subArray && sup instanceof TypeDef.Array supArray) {
-            // Arrays of references are covariant: `String[]` is an `Object[]`, and `String[][]` is too
-            if (subArray.dimensions() == supArray.dimensions()) {
-                TypeDef subComponent = subArray.componentType();
-                TypeDef supComponent = supArray.componentType();
-                return subComponent.isPrimitive() || supComponent.isPrimitive()
-                    ? subComponent.equals(supComponent)
-                    : isSubtype(subComponent, supComponent);
+        if (sub instanceof TypeDef.Array subArray) {
+            if (sup instanceof TypeDef.Array supArray) {
+                // Arrays of references are covariant: `String[]` is an `Object[]`, and `String[][]` is too
+                if (subArray.dimensions() == supArray.dimensions()) {
+                    TypeDef subComponent = subArray.componentType();
+                    TypeDef supComponent = supArray.componentType();
+                    return subComponent.isPrimitive() || supComponent.isPrimitive()
+                        ? subComponent.equals(supComponent)
+                        : isSubtype(subComponent, supComponent, lookup);
+                }
+                return subArray.dimensions() > supArray.dimensions() && TypeDef.OBJECT.equals(supArray.componentType());
             }
-            return subArray.dimensions() > supArray.dimensions() && TypeDef.OBJECT.equals(supArray.componentType());
+            // Every array is Cloneable and Serializable as well
+            return sup instanceof ClassTypeDef supClass && !(sup instanceof ClassTypeDef.Parameterized)
+                && ARRAY_SUPERTYPES.contains(supClass.getName());
         }
         if (!(sub instanceof ClassTypeDef subClassType) || !(sup instanceof ClassTypeDef supClassType)) {
             // Type variables are only known to relate where they are the same
@@ -164,16 +177,69 @@ public final class OverrideResolver {
         }
         Class<?> subClass = loaded(sub);
         Class<?> supClass = loaded(sup);
-        if (subClass == null || supClass == null || !supClass.isAssignableFrom(subClass)) {
+        if (subClass != null && supClass != null) {
+            if (!supClass.isAssignableFrom(subClass)) {
+                return false;
+            }
+            if (!(supClassType instanceof ClassTypeDef.Parameterized supParameterized)) {
+                return true;
+            }
+            // A parameterized supertype contains the type arguments the subtype inherits it with:
+            // `List<String>` is a `Collection<String>` and a `List<? extends CharSequence>`
+            TypeDef asSupertype = asSupertype(subClassType, subClass, supClass);
+            return asSupertype instanceof ClassTypeDef.Parameterized parameterized
+                && containsArguments(supParameterized.typeArguments(), parameterized.typeArguments(), lookup);
+        }
+        // A type generated in this round cannot be loaded: its model or its element says what it inherits
+        String supName = TypeHierarchy.erasedName(sup);
+        if (!TypeHierarchy.inherits(subClassType, supName, lookup)) {
             return false;
         }
         if (!(supClassType instanceof ClassTypeDef.Parameterized supParameterized)) {
             return true;
         }
-        // A parameterized supertype needs the same type arguments: `List<String>` is a `Collection<String>`
-        TypeDef asSupertype = asSupertype(subClassType, subClass, supClass);
-        return asSupertype instanceof ClassTypeDef.Parameterized parameterized
-            && parameterized.typeArguments().equals(supParameterized.typeArguments());
+        // The type arguments of such a type are only known where it names the supertype itself
+        return subClassType instanceof ClassTypeDef.Parameterized subParameterized
+            && TypeHierarchy.erasedName(subParameterized).equals(supName)
+            && containsArguments(supParameterized.typeArguments(), subParameterized.typeArguments(), lookup);
+    }
+
+    private static boolean containsArguments(List<TypeDef> declared,
+                                             List<TypeDef> arguments,
+                                             @Nullable Function<String, @Nullable ClassElement> lookup) {
+        if (declared.size() != arguments.size()) {
+            return false;
+        }
+        for (int i = 0; i < declared.size(); i++) {
+            if (!containsArgument(declared.get(i), arguments.get(i), lookup)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Whether a type argument lies within the declared one: the same type, or one within the bounds of a wildcard.
+     */
+    private static boolean containsArgument(TypeDef declared,
+                                            TypeDef argument,
+                                            @Nullable Function<String, @Nullable ClassElement> lookup) {
+        if (declared.equals(argument)) {
+            return true;
+        }
+        if (!(declared instanceof TypeDef.Wildcard wildcard)) {
+            return false;
+        }
+        if (argument instanceof TypeDef.Wildcard argumentWildcard) {
+            List<TypeDef> upperBounds = argumentWildcard.upperBounds().isEmpty()
+                ? List.of(TypeDef.OBJECT) : argumentWildcard.upperBounds();
+            return wildcard.upperBounds().stream().allMatch(bound ->
+                    upperBounds.stream().anyMatch(upper -> isSubtype(upper, bound, lookup)))
+                && (wildcard.lowerBounds().isEmpty() || wildcard.lowerBounds().stream().allMatch(bound ->
+                    argumentWildcard.lowerBounds().stream().anyMatch(lower -> isSubtype(bound, lower, lookup))));
+        }
+        return wildcard.upperBounds().stream().allMatch(bound -> isSubtype(argument, bound, lookup))
+            && wildcard.lowerBounds().stream().allMatch(bound -> isSubtype(bound, argument, lookup));
     }
 
     /**

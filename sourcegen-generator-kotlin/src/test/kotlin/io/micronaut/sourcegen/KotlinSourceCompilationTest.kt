@@ -482,4 +482,30 @@ class KotlinSourceCompilationTest {
         assertTrue(!source.contains("lateinit"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun assignmentAfterAReturnOfTheConstructor() {
+        val run = MethodDef.builder("run").addModifiers(Modifier.PRIVATE)
+            .build { _, _ -> StatementDef.multi() }
+        val name = FieldDef.builder("name", String::class.java)
+            .addModifiers(Modifier.PUBLIC)
+            .build()
+        // The assignment after the return is never reached, and not rendered: the property stays lateinit
+        val classDef = ClassDef.builder("test.EarlyReturn")
+            .addField(name)
+            .addMethod(run)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .build { aThis, _ ->
+                    StatementDef.multi(
+                        aThis.invoke(run).returning(),
+                        aThis.field(name).put(ExpressionDef.constant("value"))
+                    )
+                })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("lateinit var name"), source)
+        assertCompiles(source)
+    }
 }

@@ -872,4 +872,35 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertFalse(source.contains("Exception e0") || source.contains("Exception e1"), source);
         assertCompiles(source);
     }
+
+    @Test
+    void erasedOverrideNarrowingAnArrayReturnCastsIt() throws Exception {
+        TypeDef.TypeVariable variable = TypeDef.variable("T", TypeDef.of(CharSequence.class));
+        InterfaceDef bounded = InterfaceDef.builder("test.BoundedArray")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(variable)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(variable.array())
+                .build())
+            .build();
+        TypeDef sequences = TypeDef.of(CharSequence.class).array();
+        FieldDef values = FieldDef.builder("values", sequences)
+            .addModifiers(Modifier.PRIVATE)
+            .initializer(TypeDef.STRING.array().instantiate(List.of(ExpressionDef.constant("a"))))
+            .build();
+        // The model declares the erasure, `CharSequence[] get()`, which as source is `String[] get()`
+        ClassDef classDef = ClassDef.builder("test.Strings")
+            .addField(values)
+            .addSuperinterface(TypeDef.parameterized(bounded.asTypeDef(), TypeDef.STRING))
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC).overrides()
+                .returns(sequences)
+                .build((aThis, methodParameters) -> aThis.field(values).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("String[] get()"), source);
+        assertTrue(source.contains("(String[])"), source);
+        assertCompiles(writeSource(bounded), source);
+    }
 }

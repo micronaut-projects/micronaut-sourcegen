@@ -239,6 +239,53 @@ public final class TypeHierarchy {
     }
 
     /**
+     * Whether a type has the other among its supertypes, from the model, reflection or annotation-processing type
+     * of each - so that a type generated in the same round, which cannot be loaded, is known as well.
+     *
+     * @param type               The type
+     * @param supertypeName      The binary name of the supertype
+     * @param classElementLookup Looks up the element of a type only known by name, or {@code null}
+     * @return true if the type is the supertype or inherits it
+     */
+    public static boolean inherits(ClassTypeDef type,
+                                   String supertypeName,
+                                   @Nullable Function<String, @Nullable ClassElement> classElementLookup) {
+        if (TypeDef.OBJECT.getName().equals(supertypeName)) {
+            return true;
+        }
+        Deque<ClassTypeDef> queue = new ArrayDeque<>();
+        Set<String> visited = new HashSet<>();
+        queue.add(rawTypeOf(type));
+        while (!queue.isEmpty()) {
+            ClassTypeDef current = queue.removeFirst();
+            if (current.getName().equals(supertypeName)) {
+                return true;
+            }
+            if (!visited.add(current.getName())) {
+                continue;
+            }
+            TypeInfo info = typeInfoOf(current, classElementLookup);
+            if (info == null) {
+                continue;
+            }
+            for (TypeDef superType : info.superTypes()) {
+                if (unwrap(superType) instanceof ClassTypeDef superClassType) {
+                    queue.addLast(rawTypeOf(superClassType));
+                }
+            }
+        }
+        return false;
+    }
+
+    private static ClassTypeDef rawTypeOf(ClassTypeDef type) {
+        ClassTypeDef raw = type;
+        while (raw instanceof ClassTypeDef.Parameterized parameterized) {
+            raw = parameterized.rawType();
+        }
+        return raw;
+    }
+
+    /**
      * Converts a reflective type, keeping the type arguments of a parameterized one.
      *
      * @param type The type
