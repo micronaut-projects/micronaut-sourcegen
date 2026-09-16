@@ -625,4 +625,30 @@ class KotlinSourceCompilationTest {
         assertTrue(source.contains("lateinit var name"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun jvmFieldAssignedInATryWhoseFinallyReturns() {
+        val run = MethodDef.builder("run").addModifiers(Modifier.PRIVATE)
+            .build { _, _ -> StatementDef.multi() }
+        val name = FieldDef.builder("name", String::class.java)
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationDef.builder(JvmField::class.java).build())
+            .build()
+        // The try assigns the property on the path that reaches the finally's return
+        val classDef = ClassDef.builder("test.TryAssigns")
+            .addField(name)
+            .addMethod(run)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .build { aThis, _ ->
+                    StatementDef
+                        .doTry(aThis.field(name).put(ExpressionDef.constant("value")))
+                        .doFinally(StatementDef.multi(aThis.invoke(run), aThis.invoke(run).returning()))
+                })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(!source.contains("lateinit"), source)
+        assertCompiles(source)
+    }
 }

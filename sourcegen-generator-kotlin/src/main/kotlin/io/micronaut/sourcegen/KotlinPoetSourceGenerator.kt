@@ -2430,41 +2430,52 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         /**
          * How a statement assigns the field of this instance - not one of another object that shares its name.
          *
-         * @param assigned          Whether the field is assigned by the time the statement is reached
-         * @property assigned       Whether it is on every path that completes the statement normally
+         * @property assigned          Whether the field is assigned on every path that completes the statement
+         *                             normally - vacuously where none does
          * @property returnsUnassigned Whether a path returns from the constructor before assigning it
+         * @property completes         Whether some path completes the statement normally
          */
-        private data class Assignment(val assigned: Boolean, val returnsUnassigned: Boolean)
+        private data class Assignment(val assigned: Boolean, val returnsUnassigned: Boolean, val completes: Boolean)
 
+        /**
+         * @param assigned Whether the field is assigned by the time the statement is reached
+         */
         private fun assignmentOf(statement: StatementDef?, name: String, assigned: Boolean): Assignment = when (statement) {
-            null -> Assignment(assigned, false)
-            is StatementDef.PutField ->
-                Assignment(assigned || statement.field.name == name && statement.field.instance is VariableDef.This, false)
+            null -> Assignment(assigned, false, true)
+            is StatementDef.PutField -> Assignment(
+                assigned || statement.field.name == name && statement.field.instance is VariableDef.This, false, true
+            )
             // Nothing completes past either; a return ends the constructor with the field as it is
-            is Return -> Assignment(true, !assigned)
-            is Throw -> Assignment(true, false)
+            is Return -> Assignment(true, !assigned, false)
+            is Throw -> Assignment(true, false, false)
             is Multi -> {
                 var current = assigned
                 var returnsUnassigned = false
+                var completes = true
                 for (child in statement.statements) {
                     val assignment = assignmentOf(child, name, current)
                     current = assignment.assigned
                     returnsUnassigned = returnsUnassigned || assignment.returnsUnassigned
-                    if (cannotCompleteNormally(child)) {
+                    if (!assignment.completes || cannotCompleteNormally(child)) {
                         // The statements after it are not rendered
+                        completes = false
                         break
                     }
                 }
-                Assignment(current, returnsUnassigned)
+                Assignment(current, returnsUnassigned, completes)
             }
             is StatementDef.If -> {
                 val then = assignmentOf(statement.statement, name, assigned)
-                Assignment(assigned, then.returnsUnassigned)
+                Assignment(assigned, then.returnsUnassigned, true)
             }
             is StatementDef.IfElse -> {
                 val then = assignmentOf(statement.statement, name, assigned)
                 val otherwise = assignmentOf(statement.elseStatement, name, assigned)
-                Assignment(then.assigned && otherwise.assigned, then.returnsUnassigned || otherwise.returnsUnassigned)
+                Assignment(
+                    then.assigned && otherwise.assigned,
+                    then.returnsUnassigned || otherwise.returnsUnassigned,
+                    then.completes || otherwise.completes
+                )
             }
             is StatementDef.Switch -> {
                 val cases = statement.cases.values.map { assignmentOf(it, name, assigned) }
@@ -2472,28 +2483,33 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 // Without a default, the path no case matches continues with the state it came in with
                 Assignment(
                     (default?.assigned ?: assigned) && cases.all { it.assigned },
-                    cases.any { it.returnsUnassigned } || default?.returnsUnassigned == true
+                    cases.any { it.returnsUnassigned } || default?.returnsUnassigned == true,
+                    default == null || default.completes || cases.any { it.completes }
                 )
             }
-            is StatementDef.While -> Assignment(assigned, assignmentOf(statement.statement, name, assigned).returnsUnassigned)
+            is StatementDef.While ->
+                Assignment(assigned, assignmentOf(statement.statement, name, assigned).returnsUnassigned, true)
             is StatementDef.Synchronized -> assignmentOf(statement.statement(), name, assigned)
             is StatementDef.Try -> {
                 val body = assignmentOf(statement.statement(), name, assigned)
                 val catches = statement.catches().map { assignmentOf(it.statement(), name, assigned) }
                 val completed = body.assigned && catches.all { it.assigned }
-                // A finally is reached from any point of the try, including before anything in it assigned the
-                // field - a body that only throws completes vacuously, but does not assign
-                val finallyAssignment = assignmentOf(statement.finallyStatement(), name, assigned)
+                // The finally follows the paths of the try and its catches that complete, with what they assigned;
+                // where none does - a body that only throws - it starts with the state before the try
+                val completing = (listOf(body) + catches).filter { it.completes }
+                val entering = if (completing.isEmpty()) assigned else completing.all { it.assigned }
+                val finallyAssignment = assignmentOf(statement.finallyStatement(), name, entering)
                 // A return in the try or a catch runs the finally before it leaves
                 val returnsInside = body.returnsUnassigned || catches.any { it.returnsUnassigned }
                 val finallyAssigns = statement.finallyStatement() != null
                     && assignmentOf(statement.finallyStatement(), name, false).assigned
                 Assignment(
                     completed || finallyAssignment.assigned,
-                    returnsInside && !finallyAssigns || finallyAssignment.returnsUnassigned
+                    returnsInside && !finallyAssigns || finallyAssignment.returnsUnassigned,
+                    completing.isNotEmpty() && finallyAssignment.completes
                 )
             }
-            else -> Assignment(assigned, false)
+            else -> Assignment(assigned, false, true)
         }
 
         /**

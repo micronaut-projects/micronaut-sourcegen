@@ -154,6 +154,11 @@ public final class OverrideResolver {
         if (sub.equals(sup) || TypeDef.OBJECT.equals(sup)) {
             return true;
         }
+        if (sub instanceof TypeDef.TypeVariable subVariable && sup instanceof TypeDef.TypeVariable supVariable
+            && subVariable.name().equals(supVariable.name())) {
+            // One variable of the declaring type, whether a reference carries its bounds or not
+            return true;
+        }
         if (depth > MAX_DEPTH) {
             // A bound that refers to its own variable, `T extends Comparable<T>`, is not followed any further
             return false;
