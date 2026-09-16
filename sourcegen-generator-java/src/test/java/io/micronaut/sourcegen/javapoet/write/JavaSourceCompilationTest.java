@@ -680,4 +680,46 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertTrue(source.contains("(List) numbers"), source);
         assertCompiles(source);
     }
+
+    @Test
+    void wildcardArgumentWithinTheDeclaredWildcard() throws Exception {
+        var unmodifiableList = Collections.class.getMethod("unmodifiableList", List.class);
+        var get = List.class.getMethod("get", int.class);
+        // `? extends String` lies within `? extends T`, which infers `T` as String
+        ClassDef classDef = ClassDef.builder("test.Wildcards")
+            .addMethod(MethodDef.builder("first").addModifiers(Modifier.PUBLIC)
+                .addParameter("values", TypeDef.parameterized(ClassTypeDef.of(List.class),
+                    TypeDef.wildcardSubtypeOf(TypeDef.STRING)))
+                .returns(String.class)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(Collections.class)
+                    .invokeStatic(unmodifiableList, methodParameters.get(0))
+                    .invoke(get, ExpressionDef.constant(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertFalse(source.contains("(List) values"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void wildcardArgumentOutsideTheDeclaredWildcard() throws Exception {
+        var firstSize = CompilationSignatures.class.getMethod("firstSize", List.class);
+        TypeDef lists = TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.wildcard());
+        // `?` stands for any list, which `? extends List<String>` does not contain
+        ClassDef classDef = ClassDef.builder("test.Unbounded")
+            .addMethod(MethodDef.builder("size").addModifiers(Modifier.PUBLIC)
+                .addParameter("lists", TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.wildcardSubtypeOf(lists)))
+                .returns(int.class)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(CompilationSignatures.class)
+                    .invokeStatic(firstSize, methodParameters.get(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(List) lists"), source);
+        assertCompiles(source);
+    }
 }

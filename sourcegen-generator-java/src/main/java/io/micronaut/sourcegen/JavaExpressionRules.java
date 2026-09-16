@@ -307,10 +307,10 @@ final class JavaExpressionRules {
             return true;
         }
         if (declaredArgument instanceof TypeDef.Wildcard wildcard) {
-            return wildcard.upperBounds().stream().allMatch(bound -> valueArgument instanceof TypeDef.Wildcard
-                    ? bound.equals(TypeDef.OBJECT)
-                    : accepts(bound, valueArgument) && !(bound instanceof ClassTypeDef.Parameterized
-                        && !(valueArgument instanceof ClassTypeDef.Parameterized)))
+            if (valueArgument instanceof TypeDef.Wildcard value) {
+                return containsWildcard(wildcard, value);
+            }
+            return wildcard.upperBounds().stream().allMatch(bound -> withinBound(bound, valueArgument))
                 && wildcard.lowerBounds().stream().allMatch(bound -> isAssignable(valueArgument, bound));
         }
         if (declaredArgument instanceof ClassTypeDef.Parameterized declared) {
@@ -330,6 +330,31 @@ final class JavaExpressionRules {
             && valueArgument instanceof ClassTypeDef value
             && !(value instanceof ClassTypeDef.Parameterized)
             && declared.getName().equals(value.getName());
+    }
+
+    /**
+     * Whether a declared wildcard contains a wildcard argument: the range of types the value stands for lies
+     * within the declared one - `? extends String` within `? extends T` or `? extends CharSequence`.
+     */
+    private static boolean containsWildcard(TypeDef.Wildcard declared, TypeDef.Wildcard value) {
+        List<TypeDef> valueUpperBounds = value.upperBounds().isEmpty() ? List.of(TypeDef.OBJECT) : value.upperBounds();
+        boolean upper = declared.upperBounds().stream().allMatch(bound ->
+            valueUpperBounds.stream().anyMatch(valueBound -> withinBound(bound, valueBound)));
+        // A lower bound needs one on the value that is its supertype: `? super Integer` within `? super Number`
+        // does not hold, `? super Number` within `? super Integer` does
+        boolean lower = declared.lowerBounds().isEmpty()
+            || !value.lowerBounds().isEmpty() && declared.lowerBounds().stream().allMatch(bound ->
+                value.lowerBounds().stream().anyMatch(valueBound -> isAssignable(valueBound, bound)));
+        return upper && lower;
+    }
+
+    /**
+     * Whether a type lies within the upper bound of a wildcard: a subtype of it, where a parameterized bound
+     * needs a parameterized type - a raw one is only an unchecked conversion.
+     */
+    private static boolean withinBound(TypeDef bound, TypeDef type) {
+        return accepts(bound, type)
+            && !(bound instanceof ClassTypeDef.Parameterized && !(type instanceof ClassTypeDef.Parameterized));
     }
 
     /**
