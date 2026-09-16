@@ -831,4 +831,45 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertFalse(source.contains("catch (Exception e0)"), source);
         assertCompiles(source);
     }
+
+    @Test
+    void objectValueOfAGeneratedArrayParameter() throws Exception {
+        // A generated method is not known to take varargs: its array parameter takes the value as an array
+        MethodDef take = MethodDef.builder("take").addModifiers(Modifier.PUBLIC)
+            .addParameter("values", TypeDef.STRING.array())
+            .build((aThis, methodParameters) -> StatementDef.multi());
+        ClassDef classDef = ClassDef.builder("test.Takes")
+            .addMethod(take)
+            .addMethod(MethodDef.builder("dispatch").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Object.class)
+                .build((aThis, methodParameters) -> aThis.invoke(take, methodParameters.get(0))))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(String[]) value"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void catchParameterAvoidsTheNamesInScope() throws Exception {
+        FieldDef e0 = FieldDef.builder("e0", TypeDef.STRING)
+            .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+            .initializer(ExpressionDef.constant("field"))
+            .build();
+        // The field takes `e0` and the parameter `e1`, so the catch parameter is neither
+        ClassDef classDef = ClassDef.builder("test.Scoped")
+            .addField(e0)
+            .addMethod(MethodDef.builder("run").addModifiers(Modifier.PUBLIC)
+                .addParameter("e1", String.class)
+                .build((aThis, methodParameters) -> StatementDef
+                    .doTry(ClassTypeDef.of(IllegalStateException.class).instantiate().doThrow())
+                    .doCatch(Exception.class, exception -> StatementDef.multi())))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertFalse(source.contains("Exception e0") || source.contains("Exception e1"), source);
+        assertCompiles(source);
+    }
 }

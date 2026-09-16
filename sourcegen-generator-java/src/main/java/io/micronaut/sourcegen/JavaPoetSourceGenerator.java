@@ -907,8 +907,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 int i = 0;
                 for (StatementDef.Try.Catch aCatch : tryStatement.catches()) {
                     String exceptionLocal = "e" + i++;
-                    while (declaresField(objectDef, exceptionLocal)) {
-                        // An unqualified assignment of that field would otherwise write the parameter
+                    while (declaresField(objectDef, exceptionLocal) || scope.isTaken(exceptionLocal)) {
+                        // A parameter or local of that name clashes with it, and an unqualified assignment of a
+                        // field of that name would write the parameter instead
                         exceptionLocal = "e" + i++;
                     }
                     builder.add(CodeBlock.of("} catch ($T $L) {\n", asType(aCatch.exception(), objectDef), exceptionLocal));
@@ -1388,8 +1389,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         JavaExpressionRules.DeclaredSignature signature = methodName == null || sameArityParameterTypes == null ? null
             : declaredSignature(owner, methodName, sameArityParameterTypes);
         List<TypeDef> declaredTypes = signature == null ? null : signature.parameterTypes();
-        // Where the method is unknown, a trailing array parameter may take varargs: a value is passed as it is
-        boolean varargs = signature == null || signature.varargs();
+        // Only a method whose signature says so takes varargs: an unresolved one - such as a generated method - is
+        // taken as declared, with its array parameter an array
+        boolean varargs = signature != null && signature.varargs();
         return IntStream.range(0, values.size())
             .mapToObj(i -> {
                 ExpressionDef value = values.get(i);

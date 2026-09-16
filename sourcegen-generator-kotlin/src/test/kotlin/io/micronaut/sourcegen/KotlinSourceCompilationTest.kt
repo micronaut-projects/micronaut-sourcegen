@@ -437,4 +437,49 @@ class KotlinSourceCompilationTest {
 
         assertCompiles(writeClass(bounded), writeClass(classDef))
     }
+
+    @Test
+    fun constructorAssigningTheFieldOfAnotherInstance() {
+        val name = FieldDef.builder("name", String::class.java)
+            .addModifiers(Modifier.PUBLIC)
+            .build()
+        val type = ClassTypeDef.of("test.Other")
+        // `other.name` leaves `this.name` unassigned, which needs lateinit
+        val classDef = ClassDef.builder("test.Other")
+            .addField(name)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .addParameter("other", type)
+                .build { _, parameters -> parameters[0].field(name).put(ExpressionDef.constant("value")) })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("lateinit var name"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun jvmFieldAssignedInEachBranchOfTheConstructor() {
+        val name = FieldDef.builder("name", String::class.java)
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationDef.builder(JvmField::class.java).build())
+            .build()
+        // Both branches assign the property, which needs no lateinit - and @JvmField allows none
+        val classDef = ClassDef.builder("test.Branched")
+            .addField(name)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .addParameter("flag", TypeDef.primitive(Boolean::class.javaPrimitiveType!!))
+                .build { aThis, parameters ->
+                    parameters[0].isTrue().doIfElse(
+                        aThis.field(name).put(ExpressionDef.constant("yes")),
+                        aThis.field(name).put(ExpressionDef.constant("no"))
+                    )
+                })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(!source.contains("lateinit"), source)
+        assertCompiles(source)
+    }
 }

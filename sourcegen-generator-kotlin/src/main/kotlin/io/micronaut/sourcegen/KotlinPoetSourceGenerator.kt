@@ -2415,14 +2415,29 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private fun isAssignedByEveryConstructor(objectDef: ObjectDef?, field: FieldDef): Boolean {
             val constructors = objectDef?.methods?.filter { it.isConstructor } ?: return false
             return constructors.isNotEmpty() && constructors.all { constructor ->
-                constructor.statements.any { assignsField(it, field.name) }
+                constructor.statements.any { assignsDefinitely(it, field.name) }
             }
         }
 
-        private fun assignsField(statement: StatementDef?, name: String): Boolean = when (statement) {
+        /**
+         * Whether every path through the statement that completes normally assigns the field of this instance -
+         * not one of another object that shares its name.
+         */
+        private fun assignsDefinitely(statement: StatementDef?, name: String): Boolean = when (statement) {
             null -> false
-            is StatementDef.PutField -> statement.field.name == name
-            is Multi -> statement.statements.any { assignsField(it, name) }
+            is StatementDef.PutField -> statement.field.name == name && statement.field.instance is VariableDef.This
+            is Multi -> statement.statements.any { assignsDefinitely(it, name) }
+            is StatementDef.IfElse -> assignsDefinitely(statement.statement, name)
+                && assignsDefinitely(statement.elseStatement, name)
+            is StatementDef.Switch -> statement.defaultCase != null
+                && assignsDefinitely(statement.defaultCase, name)
+                && statement.cases.values.all { assignsDefinitely(it, name) }
+            is StatementDef.Synchronized -> assignsDefinitely(statement.statement(), name)
+            is StatementDef.Try -> assignsDefinitely(statement.finallyStatement(), name)
+                || assignsDefinitely(statement.statement(), name)
+                && statement.catches().all { assignsDefinitely(it.statement(), name) }
+            // No path completes normally past it
+            is Throw -> true
             else -> false
         }
 

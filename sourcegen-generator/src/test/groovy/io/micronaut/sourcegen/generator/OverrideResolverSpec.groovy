@@ -345,4 +345,37 @@ class OverrideResolverSpec extends Specification {
         expect:
         OverrideResolver.resolve(classDef, erased, null).returnType() == TypeDef.of(Integer)
     }
+
+    void "resolves a covariant generic or array return across inherited methods"() {
+        given:
+        def a = TypeDef.variable("T")
+        def first = InterfaceDef.builder("example.Wide")
+            .addTypeVariable(a)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(a).build())
+            .build()
+        def b = TypeDef.variable("T")
+        def second = InterfaceDef.builder("example.Narrow")
+            .addTypeVariable(b)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(b).build())
+            .build()
+        def erased = MethodDef.builder("get")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        // The wider supertype first: its return type is accepted by the narrower one's
+        def classDef = ClassDef.builder("example.Covariant")
+            .addSuperinterface(TypeDef.parameterized(first.asTypeDef(), wide))
+            .addSuperinterface(TypeDef.parameterized(second.asTypeDef(), narrow))
+            .addMethod(erased)
+            .build()
+
+        expect:
+        OverrideResolver.resolve(classDef, erased, null).returnType() == narrow
+
+        where:
+        wide                                          | narrow
+        TypeDef.parameterized(Collection, String)     | TypeDef.parameterized(List, String)
+        TypeDef.OBJECT.array()                        | TypeDef.STRING.array()
+    }
 }

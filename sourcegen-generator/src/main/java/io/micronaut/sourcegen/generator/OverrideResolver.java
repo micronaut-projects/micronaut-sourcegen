@@ -27,9 +27,13 @@ import io.micronaut.sourcegen.model.TypeHierarchy;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -143,17 +147,73 @@ public final class OverrideResolver {
         if (sub.equals(sup) || TypeDef.OBJECT.equals(sup)) {
             return true;
         }
-        if (sup instanceof ClassTypeDef.Parameterized || !(sub instanceof ClassTypeDef) || !(sup instanceof ClassTypeDef)) {
-            // Type arguments and variables are only known to relate where they are the same
+        if (sub instanceof TypeDef.Array subArray && sup instanceof TypeDef.Array supArray) {
+            // Arrays of references are covariant: `String[]` is an `Object[]`, and `String[][]` is too
+            if (subArray.dimensions() == supArray.dimensions()) {
+                TypeDef subComponent = subArray.componentType();
+                TypeDef supComponent = supArray.componentType();
+                return subComponent.isPrimitive() || supComponent.isPrimitive()
+                    ? subComponent.equals(supComponent)
+                    : isSubtype(subComponent, supComponent);
+            }
+            return subArray.dimensions() > supArray.dimensions() && TypeDef.OBJECT.equals(supArray.componentType());
+        }
+        if (!(sub instanceof ClassTypeDef subClassType) || !(sup instanceof ClassTypeDef supClassType)) {
+            // Type variables are only known to relate where they are the same
             return false;
         }
         Class<?> subClass = loaded(sub);
         Class<?> supClass = loaded(sup);
-        return subClass != null && supClass != null && supClass.isAssignableFrom(subClass);
+        if (subClass == null || supClass == null || !supClass.isAssignableFrom(subClass)) {
+            return false;
+        }
+        if (!(supClassType instanceof ClassTypeDef.Parameterized supParameterized)) {
+            return true;
+        }
+        // A parameterized supertype needs the same type arguments: `List<String>` is a `Collection<String>`
+        TypeDef asSupertype = asSupertype(subClassType, subClass, supClass);
+        return asSupertype instanceof ClassTypeDef.Parameterized parameterized
+            && parameterized.typeArguments().equals(supParameterized.typeArguments());
+    }
+
+    /**
+     * A type as one of its supertypes, with the type arguments it inherits that supertype with.
+     */
+    @Nullable
+    private static TypeDef asSupertype(ClassTypeDef type, Class<?> typeClass, Class<?> supertypeClass) {
+        Map<String, TypeDef> substitution = new HashMap<>();
+        if (type instanceof ClassTypeDef.Parameterized parameterized) {
+            java.lang.reflect.TypeVariable<?>[] variables = typeClass.getTypeParameters();
+            for (int i = 0; i < variables.length && i < parameterized.typeArguments().size(); i++) {
+                substitution.put(variables[i].getName(), parameterized.typeArguments().get(i));
+            }
+        }
+        if (typeClass.equals(supertypeClass)) {
+            return type;
+        }
+        List<Type> superTypes = new ArrayList<>();
+        if (typeClass.getGenericSuperclass() != null) {
+            superTypes.add(typeClass.getGenericSuperclass());
+        }
+        superTypes.addAll(Arrays.asList(typeClass.getGenericInterfaces()));
+        for (Type superType : superTypes) {
+            TypeDef converted = TypeHierarchy.substituted(TypeHierarchy.typeDefOf(superType), substitution);
+            Class<?> raw = loaded(converted);
+            if (converted instanceof ClassTypeDef superClassType && raw != null && supertypeClass.isAssignableFrom(raw)) {
+                TypeDef found = asSupertype(superClassType, raw, supertypeClass);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     @Nullable
     private static Class<?> loaded(TypeDef type) {
+        if (type instanceof ClassTypeDef.Parameterized parameterized) {
+            return loaded(parameterized.rawType());
+        }
         if (type instanceof ClassTypeDef.JavaClass javaClass) {
             return javaClass.type();
         }
