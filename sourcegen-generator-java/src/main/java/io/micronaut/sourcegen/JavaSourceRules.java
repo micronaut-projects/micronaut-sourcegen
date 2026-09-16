@@ -99,7 +99,7 @@ final class JavaSourceRules {
         if (declaresLocal(classDef.getStaticInitializer(), fieldName)) {
             return false;
         }
-        Assignment assignment = assignmentOf(classDef.getStaticInitializer(), fieldName);
+        Assignment assignment = assignmentOf(classDef.getStaticInitializer(), classDef.asTypeDef().getName(), fieldName);
         return assignment.definite() && !assignment.repeatable();
     }
 
@@ -122,17 +122,19 @@ final class JavaSourceRules {
         };
     }
 
-    private static Assignment assignmentOf(@Nullable StatementDef statement, String fieldName) {
+    private static Assignment assignmentOf(@Nullable StatementDef statement, String ownerName, String fieldName) {
         return switch (statement) {
             case null -> Assignment.NONE;
             case StatementDef.PutStaticField put ->
-                put.field().name().equals(fieldName) ? Assignment.ONCE : Assignment.NONE;
+                // A field of another type shares nothing with this one but its name
+                put.field().name().equals(fieldName) && put.field().ownerType().getName().equals(ownerName)
+                    ? Assignment.ONCE : Assignment.NONE;
             case StatementDef.Multi multi -> {
                 boolean definite = false;
                 boolean possible = false;
                 boolean repeatable = false;
                 for (StatementDef child : multi.statements()) {
-                    Assignment assignment = assignmentOf(child, fieldName);
+                    Assignment assignment = assignmentOf(child, ownerName, fieldName);
                     repeatable |= assignment.repeatable() || (possible && assignment.possible());
                     definite |= assignment.definite();
                     possible |= assignment.possible();
@@ -140,23 +142,23 @@ final class JavaSourceRules {
                 yield new Assignment(definite, possible, repeatable);
             }
             case StatementDef.If anIf -> {
-                Assignment assignment = assignmentOf(anIf.statement(), fieldName);
+                Assignment assignment = assignmentOf(anIf.statement(), ownerName, fieldName);
                 yield new Assignment(false, assignment.possible(), assignment.repeatable());
             }
             case StatementDef.IfElse ifElse -> {
                 // The branches are mutually exclusive: assigning in each of them assigns the field exactly once
-                Assignment then = assignmentOf(ifElse.statement(), fieldName);
-                Assignment otherwise = assignmentOf(ifElse.elseStatement(), fieldName);
+                Assignment then = assignmentOf(ifElse.statement(), ownerName, fieldName);
+                Assignment otherwise = assignmentOf(ifElse.elseStatement(), ownerName, fieldName);
                 yield new Assignment(then.definite() && otherwise.definite(), then.possible() || otherwise.possible(),
                     then.repeatable() || otherwise.repeatable());
             }
             case StatementDef.Switch aSwitch -> {
                 boolean definite = aSwitch.defaultCase() != null
-                    && assignmentOf(aSwitch.defaultCase(), fieldName).definite();
-                boolean possible = assignmentOf(aSwitch.defaultCase(), fieldName).possible();
-                boolean repeatable = assignmentOf(aSwitch.defaultCase(), fieldName).repeatable();
+                    && assignmentOf(aSwitch.defaultCase(), ownerName, fieldName).definite();
+                boolean possible = assignmentOf(aSwitch.defaultCase(), ownerName, fieldName).possible();
+                boolean repeatable = assignmentOf(aSwitch.defaultCase(), ownerName, fieldName).repeatable();
                 for (StatementDef aCase : aSwitch.cases().values()) {
-                    Assignment assignment = assignmentOf(aCase, fieldName);
+                    Assignment assignment = assignmentOf(aCase, ownerName, fieldName);
                     definite &= assignment.definite();
                     possible |= assignment.possible();
                     repeatable |= assignment.repeatable();
@@ -165,25 +167,26 @@ final class JavaSourceRules {
             }
             case StatementDef.While aWhile -> {
                 // An iteration could assign what the one before it did
-                Assignment assignment = assignmentOf(aWhile.statement(), fieldName);
+                Assignment assignment = assignmentOf(aWhile.statement(), ownerName, fieldName);
                 yield new Assignment(false, assignment.possible(), assignment.possible() || assignment.repeatable());
             }
-            case StatementDef.Synchronized aSynchronized -> assignmentOf(aSynchronized.statement(), fieldName);
+            case StatementDef.Synchronized aSynchronized -> assignmentOf(aSynchronized.statement(), ownerName, fieldName);
             case StatementDef.Try aTry -> {
-                Assignment body = assignmentOf(aTry.statement(), fieldName);
-                Assignment aFinally = assignmentOf(aTry.finallyStatement(), fieldName);
+                Assignment body = assignmentOf(aTry.statement(), ownerName, fieldName);
+                Assignment aFinally = assignmentOf(aTry.finallyStatement(), ownerName, fieldName);
                 boolean catchesPossible = false;
                 boolean catchesDefinite = true;
                 boolean repeatable = body.repeatable() || aFinally.repeatable();
                 for (StatementDef.Try.Catch aCatch : aTry.catches()) {
-                    Assignment assignment = assignmentOf(aCatch.statement(), fieldName);
+                    Assignment assignment = assignmentOf(aCatch.statement(), ownerName, fieldName);
                     catchesPossible |= assignment.possible();
                     catchesDefinite &= assignment.definite();
                     repeatable |= assignment.repeatable();
                 }
-                // The body may have assigned the field before it threw, so a catch or a finally assigning it again
-                // is what Java reports as possibly already assigned
-                repeatable |= body.possible() && (catchesPossible || aFinally.possible());
+                // A path through the body, or through a catch, may have assigned the field before reaching the
+                // next one, which is what Java reports as possibly already assigned
+                repeatable |= (body.possible() || catchesPossible) && aFinally.possible()
+                    || body.possible() && catchesPossible;
                 boolean definite = aFinally.definite() || (body.definite() && catchesDefinite);
                 yield new Assignment(definite, body.possible() || catchesPossible || aFinally.possible(), repeatable);
             }

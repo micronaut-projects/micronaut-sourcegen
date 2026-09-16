@@ -409,4 +409,49 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertTrue(source.contains("public static final String VALUE;"), source);
         assertCompiles(source);
     }
+
+    @Test
+    void blankFinalStaticFieldAssignedInACatchAndAFinally() throws Exception {
+        FieldDef value = FieldDef.builder("VALUE", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .build();
+        ClassTypeDef type = ClassTypeDef.of("test.CatchAndFinally");
+        // The catch may have assigned the field before the finally does, which definite assignment rejects
+        ClassDef classDef = ClassDef.builder("test.CatchAndFinally")
+            .addField(value)
+            .addStaticInitializer(StatementDef
+                .doTry(ClassTypeDef.of(IllegalStateException.class).instantiate().doThrow())
+                .doCatch(Throwable.class, exception -> type.getStaticField(value).put(ExpressionDef.constant("a")))
+                .doFinally(type.getStaticField(value).put(ExpressionDef.constant("b"))))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("public static String VALUE;"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void assignmentOfTheSameFieldNameOfAnotherType() throws Exception {
+        FieldDef external = FieldDef.builder("VALUE", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .build();
+        ClassDef other = ClassDef.builder("test.External")
+            .addModifiers(Modifier.PUBLIC)
+            .addField(external)
+            .build();
+        FieldDef value = FieldDef.builder("VALUE", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .build();
+        // The static initializer assigns the field of the other type, leaving this one uninitialized
+        ClassDef classDef = ClassDef.builder("test.Owner")
+            .addField(value)
+            .addStaticInitializer(other.asTypeDef().getStaticField(external).put(ExpressionDef.constant("a")))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("public static String VALUE;"), source);
+        assertCompiles(writeClass(other), source);
+    }
 }
