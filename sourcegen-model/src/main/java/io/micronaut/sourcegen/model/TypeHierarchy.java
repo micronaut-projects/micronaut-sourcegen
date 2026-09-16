@@ -238,6 +238,16 @@ public final class TypeHierarchy {
         return bounds.isEmpty() ? null : bounds.get(0);
     }
 
+    /**
+     * Converts a reflective type, keeping the type arguments of a parameterized one.
+     *
+     * @param type The type
+     * @return The type
+     */
+    public static TypeDef typeDefOf(Type type) {
+        return ReflectionInfo.convert(type);
+    }
+
     private static void enqueue(Deque<InheritedType> queue,
                                 Set<String> visited,
                                 TypeDef edge,

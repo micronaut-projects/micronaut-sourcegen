@@ -21,6 +21,8 @@ import static io.micronaut.sourcegen.JavaExpressionRules.CastContext;
 import static io.micronaut.sourcegen.JavaExpressionRules.arePrimitiveReferenceEqualityOperands;
 import static io.micronaut.sourcegen.JavaExpressionRules.canEliminateCastToObject;
 import static io.micronaut.sourcegen.JavaExpressionRules.collapseNestedCasts;
+import static io.micronaut.sourcegen.JavaExpressionRules.declaredParameterTypes;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawCast;
 import static io.micronaut.sourcegen.JavaExpressionRules.getMathOp;
 import static io.micronaut.sourcegen.JavaExpressionRules.getOpType;
 import static io.micronaut.sourcegen.JavaExpressionRules.isNullLiteral;
@@ -1042,7 +1044,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             case ExpressionDef.NewInstance newInstance -> {
                 return CodeBlock.concat(
                     CodeBlock.of("new $L(", asType(newInstance.type(), objectDef)),
-                    renderInvocationArguments(objectDef, methodDef, scope, newInstance.parameterTypes(), newInstance.values()),
+                    renderInvocationArguments(objectDef, methodDef, scope, newInstance.type(), MethodDef.CONSTRUCTOR,
+                        newInstance.parameterTypes(), newInstance.values()),
                     CodeBlock.of(")")
                 );
             }
@@ -1123,14 +1126,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return CodeBlock.concat(
                     instance,
                     methodNameAndOpenParen,
-                    renderInvocationArguments(objectDef, methodDef, scope, callMethod, invokeInstanceMethod.values()),
+                    renderInvocationArguments(objectDef, methodDef, scope,
+                        invokeInstanceMethod.instance().type() instanceof ClassTypeDef instanceType ? instanceType : null,
+                        callMethod, invokeInstanceMethod.values()),
                     CodeBlock.of(")")
                 );
             }
             case ExpressionDef.InvokeStaticMethod staticMethod -> {
                 return CodeBlock.concat(
                     CodeBlock.of("$T.$L(", asType(staticMethod.classDef(), objectDef), staticMethod.method().getName()),
-                    renderInvocationArguments(objectDef, methodDef, scope, staticMethod.method(), staticMethod.values()),
+                    renderInvocationArguments(objectDef, methodDef, scope, staticMethod.classDef(),
+                        staticMethod.method(), staticMethod.values()),
                     CodeBlock.of(")")
                 );
             }
@@ -1343,22 +1349,29 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     private CodeBlock renderInvocationArguments(@Nullable ObjectDef objectDef,
                                                 @Nullable MethodDef enclosingMethod,
                                                 RenderScope scope,
+                                                @Nullable ClassTypeDef owner,
                                                 MethodDef callMethod,
                                                 List<? extends ExpressionDef> values) {
         List<ParameterDef> parameters = callMethod.getParameters();
         List<TypeDef> parameterTypes = parameters.size() == values.size()
             ? parameters.stream().map(ParameterDef::getType).toList()
             : null;
-        return renderInvocationArguments(objectDef, enclosingMethod, scope, parameterTypes, values);
+        return renderInvocationArguments(objectDef, enclosingMethod, scope, owner, callMethod.getName(),
+            parameterTypes, values);
     }
 
     private CodeBlock renderInvocationArguments(@Nullable ObjectDef objectDef,
                                                 @Nullable MethodDef enclosingMethod,
                                                 RenderScope scope,
+                                                @Nullable ClassTypeDef owner,
+                                                @Nullable String methodName,
                                                 @Nullable List<TypeDef> parameterTypes,
                                                 List<? extends ExpressionDef> values) {
         List<TypeDef> sameArityParameterTypes = parameterTypes != null && parameterTypes.size() == values.size()
             ? parameterTypes : null;
+        // The types the invoked method declares, which carry the type arguments the erased model does not
+        List<TypeDef> declaredTypes = methodName == null || sameArityParameterTypes == null ? null
+            : declaredParameterTypes(owner, methodName, sameArityParameterTypes);
         return IntStream.range(0, values.size())
             .mapToObj(i -> {
                 ExpressionDef value = values.get(i);
@@ -1366,6 +1379,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     TypeDef paramType = sameArityParameterTypes.get(i);
                     if (requiresImplicitInvocationCast(paramType, value.type())) {
                         value = value.cast(paramType);
+                    } else if (declaredTypes != null && declaredTypes.size() == values.size()
+                        && requiresRawCast(declaredTypes.get(i), value.type())) {
+                        // Only an unchecked conversion accepts the value, which a cast to the declared raw type is
+                        value = value.cast(paramType instanceof ClassTypeDef.Parameterized parameterized
+                            ? parameterized.rawType() : paramType);
                     }
                 }
                 return renderExpression(objectDef, enclosingMethod, scope, value);

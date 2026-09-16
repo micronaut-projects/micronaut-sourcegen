@@ -17,12 +17,21 @@ package io.micronaut.sourcegen;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.reflect.ClassUtils;
+import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.TypeHierarchy;
 import io.micronaut.sourcegen.model.VariableDef;
+import org.jspecify.annotations.Nullable;
+
+import java.lang.reflect.Executable;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 
 /**
  * What an expression reads as in Java source: where it needs parentheses of its own, where a cast is implicit in
@@ -151,66 +160,148 @@ final class JavaExpressionRules {
             && valueType instanceof ClassTypeDef.JavaClass valueClass) {
             return !paramClass.type().isAssignableFrom(valueClass.type());
         }
-        // A reflective signature is erased, so a parameterized value is passed through the raw type - which only an
-        // unchecked conversion accepts when the value uses a generic type raw, as `List<BeanRegistration<Interceptor>>`
-        // does for a parameter declared `List<BeanRegistration<Interceptor<?, ?>>>`. A well formed value is passed
-        // as it is, since erasing it would erase the type arguments of the result as well
-        return paramType instanceof ClassTypeDef paramClass
-            && !(paramType instanceof ClassTypeDef.Parameterized)
-            && valueType instanceof ClassTypeDef.Parameterized parameterized
-            && parameterized.rawType().getName().equals(paramClass.getName())
-            && usesAGenericTypeRaw(parameterized);
+        return false;
     }
 
     /**
-     * Whether a type declares type variables, which a type argument naming it leaves unbound.
+     * The generic parameter types the invoked method declares, which the erased signature of the model does not
+     * carry. Resolved by loading the type, and failing that through the compiler.
      *
-     * <p>The model says so for a type it carries the declaration or the element of; otherwise the class is
-     * loaded, and failing that the compiler is asked. A type that none of them knows is taken as not generic:
-     * an argument naming an ordinary class is what it usually is.</p>
-     *
-     * @param classTypeDef The type
-     * @return true if the type is generic
+     * @param owner      The type declaring the method, or {@code null}
+     * @param methodName The method name
+     * @param arity      The number of parameters
+     * @return The declared types, or {@code null} where the method cannot be resolved
      */
-    private static boolean isGeneric(ClassTypeDef classTypeDef) {
-        if (!classTypeDef.getTypeVariableNames().isEmpty()) {
-            return true;
+    @Nullable
+    static List<TypeDef> declaredParameterTypes(@Nullable ClassTypeDef owner,
+                                                String methodName,
+                                                List<TypeDef> parameterTypes) {
+        if (owner == null) {
+            return null;
         }
-        if (classTypeDef instanceof ClassTypeDef.JavaClass javaClass) {
-            return javaClass.type().getTypeParameters().length > 0;
-        }
-        if (classTypeDef instanceof ClassTypeDef.ClassDefType || classTypeDef instanceof ClassTypeDef.ClassElementType) {
-            // Both report the variables they declare, so an empty list is an answer
-            return false;
-        }
-        Class<?> loaded = ClassUtils.forName(classTypeDef.getName(), JavaExpressionRules.class.getClassLoader())
-            .orElse(null);
+        List<String> erasures = parameterTypes.stream().map(TypeHierarchy::erasedName).toList();
+        Class<?> loaded = owner instanceof ClassTypeDef.JavaClass javaClass ? javaClass.type()
+            : ClassUtils.forName(owner.getName(), JavaExpressionRules.class.getClassLoader()).orElse(null);
         if (loaded != null) {
-            return loaded.getTypeParameters().length > 0;
+            Executable executable = findExecutable(loaded, methodName, erasures);
+            return executable == null ? null
+                : Arrays.stream(executable.getGenericParameterTypes()).map(TypeHierarchy::typeDefOf).toList();
         }
         VisitorContext context = JavaPoetNames.context();
-        return context != null && context.getClassElement(classTypeDef.getName())
-            .map(element -> !element.getDeclaredGenericPlaceholders().isEmpty())
-            .orElse(false);
+        if (context == null) {
+            return null;
+        }
+        return context.getClassElement(owner.getName())
+            .flatMap(element -> element.getEnclosedElements(ElementQuery.ALL_METHODS.named(methodName)).stream()
+                .filter(method -> erasures.equals(Arrays.stream(method.getParameters())
+                    .map(parameter -> parameter.getType().getName()).toList()))
+                .findFirst())
+            .map(method -> Arrays.stream(method.getParameters())
+                .map(parameter -> TypeDef.of(parameter.getGenericType(), ignore -> null, false))
+                .toList())
+            .orElse(null);
+    }
+
+    @Nullable
+    private static Executable findExecutable(Class<?> type, String methodName, List<String> erasures) {
+        if (MethodDef.CONSTRUCTOR.equals(methodName)) {
+            return Arrays.stream(type.getDeclaredConstructors())
+                .filter(constructor -> matches(constructor, erasures)).findFirst().orElse(null);
+        }
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+            Executable found = Arrays.stream(current.getDeclaredMethods())
+                .filter(method -> method.getName().equals(methodName) && matches(method, erasures))
+                .findFirst().orElse(null);
+            if (found != null) {
+                return found;
+            }
+            for (Class<?> interfaceType : current.getInterfaces()) {
+                found = findExecutable(interfaceType, methodName, erasures);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     /**
-     * Whether a type argument of the type, at any depth, is a generic type used without its arguments.
-     *
-     * @param parameterized The type
-     * @return true if it does
+     * Whether the erased parameter types name the same overload, so that a method with several of them is not
+     * read from the wrong one.
      */
-    private static boolean usesAGenericTypeRaw(ClassTypeDef.Parameterized parameterized) {
-        for (TypeDef argument : parameterized.typeArguments()) {
-            if (argument instanceof ClassTypeDef.Parameterized nested) {
-                if (usesAGenericTypeRaw(nested)) {
-                    return true;
-                }
-            } else if (argument instanceof ClassTypeDef classTypeDef && isGeneric(classTypeDef)) {
-                return true;
-            }
+    private static boolean matches(Executable executable, List<String> erasures) {
+        return Arrays.stream(executable.getParameterTypes()).map(Class::getName).toList().equals(erasures);
+    }
+
+    /**
+     * Whether a value has to be passed through the raw type, which only an unchecked conversion accepts: the
+     * declared type is parameterized and the value does not fit it - as
+     * {@code List<BeanRegistration<Interceptor>>} does not fit {@code List<BeanRegistration<Interceptor<?, ?>>>}.
+     *
+     * @param declaredType The type the method declares, or {@code null} where it is unknown
+     * @param valueType    The type of the value
+     * @return true if the value is cast to the raw type
+     */
+    static boolean requiresRawCast(@Nullable TypeDef declaredType, TypeDef valueType) {
+        return declaredType instanceof ClassTypeDef.Parameterized declared
+            && valueType instanceof ClassTypeDef.Parameterized
+            && !accepts(declared, valueType);
+    }
+
+    /**
+     * Whether a value of one type can be passed where the other is declared, without an unchecked conversion.
+     */
+    private static boolean accepts(TypeDef declaredType, TypeDef valueType) {
+        if (declaredType.equals(valueType)) {
+            return true;
         }
-        return false;
+        if (declaredType instanceof TypeDef.TypeVariable) {
+            // Inferred from the value, or bound by the caller - either way the value is what it is
+            return true;
+        }
+        if (declaredType instanceof TypeDef.Wildcard wildcard) {
+            return wildcard.upperBounds().stream().allMatch(bound -> isAssignable(bound, valueType))
+                && wildcard.lowerBounds().stream().allMatch(bound -> isAssignable(valueType, bound));
+        }
+        if (declaredType instanceof ClassTypeDef.Parameterized declared) {
+            if (!(valueType instanceof ClassTypeDef.Parameterized value)
+                || !declared.rawType().getName().equals(value.rawType().getName())
+                || declared.typeArguments().size() != value.typeArguments().size()) {
+                return false;
+            }
+            for (int i = 0; i < declared.typeArguments().size(); i++) {
+                if (!accepts(declared.typeArguments().get(i), value.typeArguments().get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return isAssignable(declaredType, valueType);
+    }
+
+    private static boolean isAssignable(TypeDef declaredType, TypeDef valueType) {
+        if (declaredType.equals(valueType) || TypeDef.OBJECT.equals(declaredType)) {
+            return true;
+        }
+        Class<?> declared = loaded(declaredType);
+        Class<?> value = loaded(valueType);
+        // Unresolvable types are taken as compatible: the value is written as it is, rather than erased
+        return declared == null || value == null || declared.isAssignableFrom(value);
+    }
+
+    @Nullable
+    private static Class<?> loaded(TypeDef typeDef) {
+        TypeDef unwrapped = TypeHierarchy.unwrap(typeDef);
+        if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
+            return loaded(parameterized.rawType());
+        }
+        if (unwrapped instanceof ClassTypeDef.JavaClass javaClass) {
+            return javaClass.type();
+        }
+        if (unwrapped instanceof ClassTypeDef classTypeDef) {
+            return ClassUtils.forName(classTypeDef.getName(), JavaExpressionRules.class.getClassLoader()).orElse(null);
+        }
+        return null;
     }
 
     static boolean requiresMethodCallTargetParentheses(ExpressionDef expressionDef) {

@@ -538,4 +538,26 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertFalse(source.contains("(List) items"), source);
         assertCompiles(writeClass(item), source);
     }
+
+    @Test
+    void parameterizedArgumentOfARawElementType() throws Exception {
+        var unmodifiableList = Collections.class.getMethod("unmodifiableList", List.class);
+        var get = List.class.getMethod("get", int.class);
+        ClassTypeDef rawList = ClassTypeDef.of(List.class);
+        // `List<List>` is inferred by `unmodifiableList(List<? extends T>)`, raw element type and all
+        ClassDef classDef = ClassDef.builder("test.Items3")
+            .addMethod(MethodDef.builder("first").addModifiers(Modifier.PUBLIC)
+                .addParameter("items", TypeDef.parameterized(rawList, rawList))
+                .returns(rawList)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(Collections.class)
+                    .invokeStatic(unmodifiableList, methodParameters.get(0))
+                    .invoke(get, ExpressionDef.constant(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertFalse(source.contains("(List) items"), source);
+        assertCompiles(source);
+    }
 }
