@@ -403,6 +403,17 @@ class OverrideResolverSpec extends Specification {
         OverrideResolver.resolve(classDef, classDef.methods[0], null).returnType() == variable
     }
 
+    void "resolves a type variable within every bound its declaration has"() {
+        given:
+        def declared = TypeDef.variable("V", TypeDef.of(CharSequence), TypeDef.of(Serializable))
+        // The reference names the variable without its bounds; the declaring type has both
+        def reference = TypeDef.variable("V")
+        def classDef = implementing(TypeDef.of(Serializable), reference, declared)
+
+        expect:
+        OverrideResolver.resolve(classDef, classDef.methods[0], null).returnType() == reference
+    }
+
     /**
      * A class implementing two generic interfaces whose `get()` returns the given types.
      */

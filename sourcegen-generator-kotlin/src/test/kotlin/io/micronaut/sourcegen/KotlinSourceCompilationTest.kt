@@ -569,4 +569,60 @@ class KotlinSourceCompilationTest {
 
         assertCompiles(writeClass(bounded), writeClass(classDef))
     }
+
+    @Test
+    fun jvmFieldAssignedBeforeASwitchWithoutADefault() {
+        val run = MethodDef.builder("run").addModifiers(Modifier.PRIVATE)
+            .build { _, _ -> StatementDef.multi() }
+        val name = FieldDef.builder("name", String::class.java)
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationDef.builder(JvmField::class.java).build())
+            .build()
+        // The path no case matches keeps the assignment made before the switch
+        val classDef = ClassDef.builder("test.BeforeSwitch")
+            .addField(name)
+            .addMethod(run)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .addParameter("index", TypeDef.Primitive.INT)
+                .build { aThis, parameters ->
+                    StatementDef.multi(
+                        aThis.field(name).put(ExpressionDef.constant("value")),
+                        parameters[0].asStatementSwitch(
+                            TypeDef.OBJECT,
+                            mapOf(ExpressionDef.constant(0) to aThis.invoke(run))
+                        )
+                    )
+                })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(!source.contains("lateinit"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun finallyReturningAfterATryThatOnlyThrows() {
+        val run = MethodDef.builder("run").addModifiers(Modifier.PRIVATE)
+            .build { _, _ -> StatementDef.multi() }
+        val name = FieldDef.builder("name", String::class.java)
+            .addModifiers(Modifier.PUBLIC)
+            .build()
+        // The try only throws, which assigns nothing; the finally returns with the property unassigned
+        val classDef = ClassDef.builder("test.FinallyReturns")
+            .addField(name)
+            .addMethod(run)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .build { aThis, _ ->
+                    StatementDef
+                        .doTry(ClassTypeDef.of(IllegalStateException::class.java).instantiate().doThrow())
+                        .doFinally(StatementDef.multi(aThis.invoke(run), aThis.invoke(run).returning()))
+                })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("lateinit var name"), source)
+        assertCompiles(source)
+    }
 }

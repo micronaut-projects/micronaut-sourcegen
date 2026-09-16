@@ -541,6 +541,15 @@ public final class TypeHierarchy {
         }
 
         /**
+         * @param variableName The name of a type variable the type declares
+         * @return All the bounds it is declared with - `CharSequence` and `Serializable` for
+         * `V extends CharSequence & Serializable` - or none
+         */
+        public List<TypeDef> getBounds(String variableName) {
+            return info.variableBounds(variableName);
+        }
+
+        /**
          * Substitutes the type arguments this type is inherited with.
          *
          * @param type A type in the scope of this type
@@ -581,6 +590,8 @@ public final class TypeHierarchy {
         @Nullable
         TypeDef variableBound(String name);
 
+        List<TypeDef> variableBounds(String name);
+
         List<InheritedMethod> methods();
 
         List<TypeDef> superTypes();
@@ -607,6 +618,12 @@ public final class TypeHierarchy {
         public TypeDef variableBound(String name) {
             return variables().stream().filter(variable -> variable.name().equals(name))
                 .map(variable -> erasureBound(variable.bounds())).filter(Objects::nonNull).findFirst().orElse(null);
+        }
+
+        @Override
+        public List<TypeDef> variableBounds(String name) {
+            return variables().stream().filter(variable -> variable.name().equals(name))
+                .findFirst().map(TypeDef.TypeVariable::bounds).orElse(List.of());
         }
 
         @Override
@@ -656,6 +673,13 @@ public final class TypeHierarchy {
         public TypeDef variableBound(String name) {
             return Arrays.stream(type.getTypeParameters()).filter(variable -> variable.getName().equals(name))
                 .findFirst().map(variable -> convert(variable.getBounds()[0])).orElse(null);
+        }
+
+        @Override
+        public List<TypeDef> variableBounds(String name) {
+            return Arrays.stream(type.getTypeParameters()).filter(variable -> variable.getName().equals(name))
+                .findFirst().map(variable -> Arrays.stream(variable.getBounds()).map(ReflectionInfo::convert).toList())
+                .orElse(List.of());
         }
 
         @Override
@@ -727,6 +751,17 @@ public final class TypeHierarchy {
                 }
             }
             return null;
+        }
+
+        @Override
+        public List<TypeDef> variableBounds(String name) {
+            for (GenericPlaceholderElement placeholder : placeholders()) {
+                if (placeholder.getVariableName().equals(name)) {
+                    return placeholder.getBounds().stream()
+                        .map(bound -> TypeDef.of(bound, ignore -> null, false)).toList();
+                }
+            }
+            return List.of();
         }
 
         /**

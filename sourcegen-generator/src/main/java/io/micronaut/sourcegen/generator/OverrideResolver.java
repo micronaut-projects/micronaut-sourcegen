@@ -160,8 +160,10 @@ public final class OverrideResolver {
         }
         if (sub instanceof TypeDef.TypeVariable variable) {
             // A variable is a subtype of whatever its bound is: `V extends CharSequence` is a CharSequence
+            // A reference names the variable without its bounds: the declaring type has all of them, where the
+            // erasure keeps only the first - `V extends CharSequence & Serializable` is a Serializable too
             List<TypeDef> bounds = variable.bounds().isEmpty()
-                ? List.of(hierarchy.declaringType().erase(variable)) : variable.bounds();
+                ? hierarchy.declaringType().getBounds(variable.name()) : variable.bounds();
             return bounds.stream().anyMatch(bound -> isSubtype(bound, sup, hierarchy, depth + 1));
         }
         if (sub instanceof TypeDef.Array subArray) {

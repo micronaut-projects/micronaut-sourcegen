@@ -2469,8 +2469,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             is StatementDef.Switch -> {
                 val cases = statement.cases.values.map { assignmentOf(it, name, assigned) }
                 val default = statement.defaultCase?.let { assignmentOf(it, name, assigned) }
+                // Without a default, the path no case matches continues with the state it came in with
                 Assignment(
-                    default != null && default.assigned && cases.all { it.assigned },
+                    (default?.assigned ?: assigned) && cases.all { it.assigned },
                     cases.any { it.returnsUnassigned } || default?.returnsUnassigned == true
                 )
             }
@@ -2480,7 +2481,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 val body = assignmentOf(statement.statement(), name, assigned)
                 val catches = statement.catches().map { assignmentOf(it.statement(), name, assigned) }
                 val completed = body.assigned && catches.all { it.assigned }
-                val finallyAssignment = assignmentOf(statement.finallyStatement(), name, completed)
+                // A finally is reached from any point of the try, including before anything in it assigned the
+                // field - a body that only throws completes vacuously, but does not assign
+                val finallyAssignment = assignmentOf(statement.finallyStatement(), name, assigned)
                 // A return in the try or a catch runs the finally before it leaves
                 val returnsInside = body.returnsUnassigned || catches.any { it.returnsUnassigned }
                 val finallyAssigns = statement.finallyStatement() != null
