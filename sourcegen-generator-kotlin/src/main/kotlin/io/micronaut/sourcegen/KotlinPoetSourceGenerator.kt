@@ -703,13 +703,15 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             modifiers,
             field.annotations,
             docs,
-            field.initializer.orElse(null),
+            field.initializer.orElse(defaultOf(field)),
             objectDef,
             field.modifiers.contains(Modifier.STATIC),
             // A Kotlin property must be initialized where it is declared; a field the model assigns
-            // later, possibly more than once as in a try and its catch, is a lateinit var
+            // later, possibly more than once as in a try and its catch, is a lateinit var. A primitive cannot be
+            // one - including a boxed type, which Kotlin maps to its primitive - so it takes a default instead
             field.initializer.isEmpty && !field.type.isNullable
-                && field.type !is TypeDef.Primitive && field.type !is TypeDef.TypeVariable,
+                && field.type !is TypeDef.Primitive && field.type !is TypeDef.TypeVariable
+                && !isKotlinPrimitive(field.type),
         )
     }
 
@@ -776,6 +778,39 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private val FLOAT = ClassName("kotlin", "Float")
 
         private val DOUBLE = ClassName("kotlin", "Double")
+
+        private val BOXED_PRIMITIVES = mapOf(
+            "java.lang.Byte" to TypeDef.Primitive.BYTE,
+            "java.lang.Short" to TypeDef.Primitive.SHORT,
+            "java.lang.Character" to TypeDef.Primitive.CHAR,
+            "java.lang.Integer" to TypeDef.Primitive.INT,
+            "java.lang.Long" to TypeDef.Primitive.LONG,
+            "java.lang.Float" to TypeDef.Primitive.FLOAT,
+            "java.lang.Double" to TypeDef.Primitive.DOUBLE,
+            "java.lang.Boolean" to TypeDef.Primitive.BOOLEAN
+        )
+
+        /**
+         * Whether the type is one Kotlin maps to a primitive, which cannot be a lateinit property.
+         */
+        private fun isKotlinPrimitive(typeDef: TypeDef): Boolean {
+            return typeDef is ClassTypeDef && BOXED_PRIMITIVES.containsKey(typeDef.name)
+        }
+
+        /**
+         * The value a property of a primitive type is declared with, where the model assigns the field later.
+         */
+        private fun defaultOf(field: FieldDef): ExpressionDef? {
+            // An instance property is assigned by the constructor the model writes; a static one has none
+            if (!field.initializer.isEmpty || field.type.isNullable
+                || !field.modifiers.contains(Modifier.STATIC)) {
+                return null
+            }
+            val primitive = (field.type as? ClassTypeDef)?.let { BOXED_PRIMITIVES[it.name] }
+                ?: field.type as? TypeDef.Primitive
+                ?: return null
+            return TypeDef.Primitive.defaultValue(primitive.name())
+        }
 
         private val BOXED_NUMBERS = setOf(
             "java.lang.Byte",

@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen;
 
 import io.micronaut.core.annotation.Internal;
+import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.StatementDef;
@@ -143,12 +144,46 @@ final class JavaExpressionRules {
         if (valueType.equals(TypeDef.OBJECT)) {
             return !paramType.equals(TypeDef.OBJECT);
         }
-        // A reflective signature is raw: passing a parameterized value through the raw type makes the call
-        // unchecked, where javac would otherwise reject mismatched type arguments
+        // A value of a supertype of the declared one, as the erasure of a bounded type variable is - `Number` for
+        // `N extends Number`: the verifier accepts it, source needs the cast
+        if (paramType instanceof ClassTypeDef.JavaClass paramClass
+            && valueType instanceof ClassTypeDef.JavaClass valueClass) {
+            return !paramClass.type().isAssignableFrom(valueClass.type());
+        }
+        // A reflective signature is erased, so a parameterized value is passed through the raw type - which only an
+        // unchecked conversion accepts when the value uses a generic type raw, as `List<BeanRegistration<Interceptor>>`
+        // does for a parameter declared `List<BeanRegistration<Interceptor<?, ?>>>`. A well formed value is passed
+        // as it is, since erasing it would erase the type arguments of the result as well
         return paramType instanceof ClassTypeDef paramClass
             && !(paramType instanceof ClassTypeDef.Parameterized)
             && valueType instanceof ClassTypeDef.Parameterized parameterized
-            && parameterized.rawType().getName().equals(paramClass.getName());
+            && parameterized.rawType().getName().equals(paramClass.getName())
+            && usesAGenericTypeRaw(parameterized);
+    }
+
+    /**
+     * Whether a type argument of the type, at any depth, is a generic type used without its arguments.
+     *
+     * @param parameterized The type
+     * @return true if it does
+     */
+    private static boolean usesAGenericTypeRaw(ClassTypeDef.Parameterized parameterized) {
+        for (TypeDef argument : parameterized.typeArguments()) {
+            if (argument instanceof ClassTypeDef.Parameterized nested) {
+                if (usesAGenericTypeRaw(nested)) {
+                    return true;
+                }
+            } else if (argument instanceof ClassTypeDef classTypeDef) {
+                Class<?> resolved = classTypeDef instanceof ClassTypeDef.JavaClass javaClass ? javaClass.type()
+                    : ClassUtils.forName(classTypeDef.getName(), JavaExpressionRules.class.getClassLoader()).orElse(null);
+                // A type that cannot be loaded here is taken to be generic: the cast is unchecked either way, while
+                // leaving it out fails to compile where the argument does not match
+                if (resolved == null || resolved.getTypeParameters().length > 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     static boolean requiresMethodCallTargetParentheses(ExpressionDef expressionDef) {

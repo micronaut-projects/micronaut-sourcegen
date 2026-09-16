@@ -1,11 +1,14 @@
 package io.micronaut.sourcegen.javapoet.write;
 
+import io.micronaut.sourcegen.JavaPoetSourceGenerator;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
+import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -13,6 +16,8 @@ import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
+import java.io.StringWriter;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -27,6 +32,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Models shaped like the ones written for bytecode, rendered as Java source that has to compile.
  */
 class JavaSourceCompilationTest extends AbstractWriteTest {
+
+    private static String writeSource(ObjectDef objectDef) throws IOException {
+        try (StringWriter writer = new StringWriter()) {
+            new JavaPoetSourceGenerator().write(objectDef, writer);
+            return writer.toString();
+        }
+    }
 
     @Test
     void superConstructorWithExplicitSuperType() throws Exception {
@@ -453,5 +465,54 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         assertTrue(source.contains("public static String VALUE;"), source);
         assertCompiles(writeClass(other), source);
+    }
+
+    @Test
+    void parameterizedArgumentOfARawParameterKeepsItsTypeArguments() throws Exception {
+        var unmodifiableList = Collections.class.getMethod("unmodifiableList", List.class);
+        var get = List.class.getMethod("get", int.class);
+        // A cast to the raw type would make `get` return Object, which does not fit the declared return type
+        ClassDef classDef = ClassDef.builder("test.Items")
+            .addMethod(MethodDef.builder("first").addModifiers(Modifier.PUBLIC)
+                .addParameter("items", TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.STRING))
+                .returns(String.class)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(Collections.class)
+                    .invokeStatic(unmodifiableList, methodParameters.get(0))
+                    .invoke(get, ExpressionDef.constant(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertFalse(source.contains("(List) items"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void erasedOverrideOfABoundedTypeVariableCastsTheReturn() throws Exception {
+        TypeDef.TypeVariable variable = TypeDef.variable("N", TypeDef.of(Number.class));
+        InterfaceDef numeric = InterfaceDef.builder("test.Numeric")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(variable)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(variable)
+                .build())
+            .build();
+        var valueOf = Integer.class.getMethod("valueOf", int.class);
+        // The model declares the erasure of the bound, `Number get()`, which as source has to be `Integer get()`
+        ClassDef classDef = ClassDef.builder("test.Count")
+            .addSuperinterface(TypeDef.parameterized(numeric.asTypeDef(), TypeDef.of(Integer.class)))
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC).overrides()
+                .returns(Number.class)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(Integer.class)
+                    .invokeStatic(valueOf, ExpressionDef.constant(1))
+                    .cast(TypeDef.of(Number.class))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("Integer get()"), source);
+        assertCompiles(writeSource(numeric), source);
     }
 }

@@ -333,4 +333,22 @@ class KotlinSourceCompilationTest {
         assertTrue(source.contains("return\n"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun blankFieldOfABoxedPrimitiveType() {
+        val type = ClassTypeDef.of("test.Counter")
+        val count = FieldDef.builder("count", Integer::class.java)
+            .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
+            .build()
+        // Kotlin maps the boxed type to its primitive, which cannot be a lateinit property
+        val classDef = ClassDef.builder("test.Counter")
+            .addField(count)
+            .addStaticInitializer(type.getStaticField(count).put(ExpressionDef.constant(1)))
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(!source.contains("lateinit"), source)
+        assertCompiles(source)
+    }
 }
