@@ -125,6 +125,8 @@ final class JavaSourceRules {
     private static Assignment assignmentOf(@Nullable StatementDef statement, String ownerName, String fieldName) {
         return switch (statement) {
             case null -> Assignment.NONE;
+            // No path completes normally past it, so the field is as assigned as it needs to be there
+            case StatementDef.Throw aThrow -> Assignment.VACUOUS;
             case StatementDef.PutStaticField put ->
                 // A field of another type shares nothing with this one but its name
                 put.field().name().equals(fieldName) && put.field().ownerType().getName().equals(ownerName)
@@ -235,5 +237,6 @@ final class JavaSourceRules {
     private record Assignment(boolean definite, boolean possible, boolean repeatable) {
         private static final Assignment NONE = new Assignment(false, false, false);
         private static final Assignment ONCE = new Assignment(true, true, false);
+        private static final Assignment VACUOUS = new Assignment(true, false, false);
     }
 }

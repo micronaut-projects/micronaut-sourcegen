@@ -351,4 +351,47 @@ class KotlinSourceCompilationTest {
         assertTrue(!source.contains("lateinit"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun finalFieldAssignedByTheConstructorIsAVal() {
+        val name = FieldDef.builder("name", String::class.java)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .build()
+        val classDef = ClassDef.builder("test.Named")
+            .addField(name)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .addParameter("name", String::class.java)
+                .build { aThis, parameters -> aThis.field(name).put(parameters[0]) })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("val name: String"), source)
+        assertTrue(!source.contains("lateinit"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun anyReturnedAsATypeVariableOrAnArray() {
+        val get = Supplier::class.java.getMethod("get")
+        val variable = TypeDef.variable("T")
+        // The resolved `T get()` and `Array<String> get()` return a value the model types as Any
+        val box = ClassDef.builder("test.AnyBox")
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier::class.java), variable))
+            .addMethod(MethodDef.override(get)
+                .build { _, _ -> ExpressionDef.constant("value").cast(TypeDef.OBJECT).returning() })
+            .build()
+        val strings = ClassDef.builder("test.AnyStrings")
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier::class.java), TypeDef.STRING.array()))
+            .addMethod(MethodDef.override(get)
+                .build { _, _ ->
+                    TypeDef.STRING.array().instantiate(listOf(ExpressionDef.constant("a")))
+                        .cast(TypeDef.OBJECT)
+                        .returning()
+                })
+            .build()
+
+        assertCompiles(writeClass(box), writeClass(strings))
+    }
 }

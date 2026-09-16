@@ -17,6 +17,7 @@ package io.micronaut.sourcegen;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.reflect.ClassUtils;
+import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.model.ClassTypeDef;
@@ -197,7 +198,7 @@ final class JavaExpressionRules {
         return context.getClassElement(owner.getName())
             .flatMap(element -> element.getEnclosedElements(ElementQuery.ALL_METHODS.named(methodName)).stream()
                 .filter(method -> erasures.equals(Arrays.stream(method.getParameters())
-                    .map(parameter -> parameter.getType().getName()).toList()))
+                    .map(parameter -> erasedNameOf(parameter.getType())).toList()))
                 .findFirst())
             .map(method -> Arrays.stream(method.getParameters())
                 .map(parameter -> TypeDef.of(parameter.getGenericType(), ignore -> null, false))
@@ -233,7 +234,17 @@ final class JavaExpressionRules {
      * read from the wrong one.
      */
     private static boolean matches(Executable executable, List<String> erasures) {
-        return Arrays.stream(executable.getParameterTypes()).map(Class::getName).toList().equals(erasures);
+        // `getTypeName` writes an array as `java.lang.String[]`, the form the erasures are in, where `getName` does not
+        return Arrays.stream(executable.getParameterTypes()).map(Class::getTypeName).toList().equals(erasures);
+    }
+
+    /**
+     * The erased name of a compiler type in the form {@link TypeHierarchy#erasedName(TypeDef)} writes it: the
+     * element of an array names its component, and counts its dimensions apart.
+     */
+    private static String erasedNameOf(ClassElement type) {
+        String name = type.getName();
+        return type.isArray() && !name.endsWith("[]") ? name + "[]".repeat(type.getArrayDimensions()) : name;
     }
 
     /**
@@ -252,42 +263,73 @@ final class JavaExpressionRules {
     }
 
     /**
-     * Whether a value of one type can be passed where the other is declared, without an unchecked conversion.
+     * Whether a value of one type can be passed where the other is declared, without an unchecked conversion: a
+     * subtype is, with the type arguments the declared type sees it with.
      */
     private static boolean accepts(TypeDef declaredType, TypeDef valueType) {
-        if (declaredType.equals(valueType)) {
+        if (declaredType.equals(valueType) || declaredType instanceof TypeDef.TypeVariable) {
+            // A variable is inferred from the value, or bound by the caller - either way the value is what it is
             return true;
-        }
-        if (declaredType instanceof TypeDef.TypeVariable) {
-            // Inferred from the value, or bound by the caller - either way the value is what it is
-            return true;
-        }
-        if (declaredType instanceof TypeDef.Wildcard wildcard) {
-            return wildcard.upperBounds().stream().allMatch(bound -> isAssignable(bound, valueType))
-                && wildcard.lowerBounds().stream().allMatch(bound -> isAssignable(valueType, bound));
         }
         if (declaredType instanceof ClassTypeDef.Parameterized declared) {
             if (!(valueType instanceof ClassTypeDef.Parameterized value)) {
-                return false;
+                // A raw value is an unchecked conversion without a cast
+                return true;
             }
+            ClassTypeDef.Parameterized asDeclared = value;
             if (!declared.rawType().getName().equals(value.rawType().getName())) {
-                // The value of a subtype is compared as the declared type sees it: `ArrayList<String>` is the
-                // `List<String>` a `List<? extends T>` accepts. A supertype that cannot be resolved is taken to fit,
-                // rather than erasing the value
-                ClassTypeDef.Parameterized asDeclared = asSupertype(value, declared.rawType().getName());
-                return asDeclared == null || accepts(declared, asDeclared);
+                // `ArrayList<String>` is the `List<String>` a `List<? extends T>` accepts. A supertype that cannot be
+                // resolved is taken to fit, rather than erasing the value
+                asDeclared = asSupertype(value, declared.rawType().getName());
+                if (asDeclared == null) {
+                    return true;
+                }
             }
-            if (declared.typeArguments().size() != value.typeArguments().size()) {
+            if (declared.typeArguments().size() != asDeclared.typeArguments().size()) {
                 return false;
             }
             for (int i = 0; i < declared.typeArguments().size(); i++) {
-                if (!accepts(declared.typeArguments().get(i), value.typeArguments().get(i))) {
+                if (!acceptsArgument(declared.typeArguments().get(i), asDeclared.typeArguments().get(i))) {
                     return false;
                 }
             }
             return true;
         }
         return isAssignable(declaredType, valueType);
+    }
+
+    /**
+     * Whether a type argument fits the declared one. Arguments are invariant - `List<Integer>` is not a
+     * `List<Number>` - unless the declared one is a wildcard, whose bounds are compared with their own arguments.
+     */
+    private static boolean acceptsArgument(TypeDef declaredArgument, TypeDef valueArgument) {
+        if (declaredArgument.equals(valueArgument) || declaredArgument instanceof TypeDef.TypeVariable) {
+            return true;
+        }
+        if (declaredArgument instanceof TypeDef.Wildcard wildcard) {
+            return wildcard.upperBounds().stream().allMatch(bound -> valueArgument instanceof TypeDef.Wildcard
+                    ? bound.equals(TypeDef.OBJECT)
+                    : accepts(bound, valueArgument) && !(bound instanceof ClassTypeDef.Parameterized
+                        && !(valueArgument instanceof ClassTypeDef.Parameterized)))
+                && wildcard.lowerBounds().stream().allMatch(bound -> isAssignable(valueArgument, bound));
+        }
+        if (declaredArgument instanceof ClassTypeDef.Parameterized declared) {
+            if (!(valueArgument instanceof ClassTypeDef.Parameterized value)
+                || !declared.rawType().getName().equals(value.rawType().getName())
+                || declared.typeArguments().size() != value.typeArguments().size()) {
+                return false;
+            }
+            for (int i = 0; i < declared.typeArguments().size(); i++) {
+                if (!acceptsArgument(declared.typeArguments().get(i), value.typeArguments().get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return declaredArgument instanceof ClassTypeDef declared
+            && valueArgument instanceof ClassTypeDef value
+            && !(value instanceof ClassTypeDef.Parameterized)
+            && declared.getName().equals(value.getName());
     }
 
     /**

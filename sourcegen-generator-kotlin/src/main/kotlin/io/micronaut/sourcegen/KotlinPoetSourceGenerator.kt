@@ -707,9 +707,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             objectDef,
             field.modifiers.contains(Modifier.STATIC),
             // A Kotlin property must be initialized where it is declared; a field the model assigns
-            // later, possibly more than once as in a try and its catch, is a lateinit var. A primitive cannot be
-            // one - including a boxed type, which Kotlin maps to its primitive - so it takes a default instead
+            // later, possibly more than once as in a try and its catch, is a lateinit var. A final instance field is
+            // assigned by every constructor, which a val allows. A primitive cannot be lateinit - including a boxed
+            // type, which Kotlin maps to its primitive - so it takes a default instead
             field.initializer.isEmpty && !field.type.isNullable
+                && (field.modifiers.contains(Modifier.STATIC) || !field.modifiers.contains(Modifier.FINAL))
                 && field.type !is TypeDef.Primitive && field.type !is TypeDef.TypeVariable
                 && !isKotlinPrimitive(field.type),
         )
@@ -1335,7 +1337,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     return renderExpressionCode(objectDef, methodDef, scope, returned)
                 }
                 if (returned != null && methodDef.returnType != TypeDef.VOID
-                    && requiresImplicitCast(methodDef.returnType, returned.type())) {
+                    && requiresImplicitReturnCast(methodDef.returnType, returned.type())) {
                     returned = returned.cast(methodDef.returnType)
                 }
                 val codeBlock = renderExpressionWithNotNullAssertion(
@@ -2383,6 +2385,15 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
         private fun requiresImplicitCast(targetType: TypeDef, valueType: TypeDef): Boolean =
             valueType == TypeDef.OBJECT && targetType is ClassTypeDef && targetType != TypeDef.OBJECT
+
+        /**
+         * Whether a returned value needs a cast to the return type. Unlike an argument - where an array parameter
+         * may be a vararg, which takes the value as an element - an array return type is cast to as well, as is a
+         * type variable an override is resolved to.
+         */
+        private fun requiresImplicitReturnCast(returnType: TypeDef, valueType: TypeDef): Boolean =
+            requiresImplicitCast(returnType, valueType)
+                || valueType == TypeDef.OBJECT && (returnType is TypeDef.Array || returnType is TypeDef.TypeVariable)
 
         /**
          * The type of an `is` check: Kotlin names every type argument, so a raw generic type is

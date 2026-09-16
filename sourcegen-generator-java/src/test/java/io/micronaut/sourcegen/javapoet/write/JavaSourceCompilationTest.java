@@ -582,4 +582,102 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertFalse(source.contains("(List) items"), source);
         assertCompiles(source);
     }
+
+    @Test
+    void rawSupertypeLeavesTheErasedOverride() throws Exception {
+        var get = Supplier.class.getMethod("get");
+        // A raw `Supplier` has an erased `get`; its `T` is not the `T` the implementing class declares
+        ClassDef classDef = ClassDef.builder("test.RawSupplier")
+            .addTypeVariable(TypeDef.variable("T", TypeDef.of(Number.class)))
+            .addSuperinterface(ClassTypeDef.of(Supplier.class))
+            .addMethod(MethodDef.override(get)
+                .build((aThis, methodParameters) -> ExpressionDef.constant("text").returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("Object get()"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void blankFinalStaticFieldAssignedOrThrowingKeepsFinal() throws Exception {
+        FieldDef value = FieldDef.builder("VALUE", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .build();
+        ClassTypeDef type = ClassTypeDef.of("test.OrThrow");
+        // The throwing branch does not complete, so every path that does has assigned the field
+        ClassDef classDef = ClassDef.builder("test.OrThrow")
+            .addField(value)
+            .addStaticInitializer(ClassTypeDef.of(Boolean.class)
+                .invokeStatic("getBoolean", TypeDef.Primitive.BOOLEAN, ExpressionDef.constant("flag"))
+                .isTrue()
+                .doIfElse(
+                    type.getStaticField(value).put(ExpressionDef.constant("yes")),
+                    ClassTypeDef.of(IllegalStateException.class).instantiate().doThrow()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("public static final String VALUE;"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void typeArgumentsAreInvariant() throws Exception {
+        var sum = CompilationSignatures.class.getMethod("sum", List.class);
+        // `List<Integer>` is not a `List<Number>`: only the unchecked conversion accepts it
+        ClassDef classDef = ClassDef.builder("test.Invariant")
+            .addMethod(MethodDef.builder("total").addModifiers(Modifier.PUBLIC)
+                .addParameter("numbers", TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.of(Integer.class)))
+                .returns(int.class)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(CompilationSignatures.class)
+                    .invokeStatic(sum, methodParameters.get(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(List) numbers"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void wildcardBoundKeepsItsTypeArguments() throws Exception {
+        var firstSize = CompilationSignatures.class.getMethod("firstSize", List.class);
+        TypeDef integers = TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.of(Integer.class));
+        // `List<Integer>` is not within `? extends List<String>`
+        ClassDef classDef = ClassDef.builder("test.Bounded")
+            .addMethod(MethodDef.builder("size").addModifiers(Modifier.PUBLIC)
+                .addParameter("lists", TypeDef.parameterized(ClassTypeDef.of(List.class), integers))
+                .returns(int.class)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(CompilationSignatures.class)
+                    .invokeStatic(firstSize, methodParameters.get(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(List) lists"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void arrayParameterDoesNotHideTheSignature() throws Exception {
+        var join = CompilationSignatures.class.getMethod("join", String[].class, List.class);
+        ClassDef classDef = ClassDef.builder("test.WithArray")
+            .addMethod(MethodDef.builder("joined").addModifiers(Modifier.PUBLIC)
+                .addParameter("parts", TypeDef.STRING.array())
+                .addParameter("numbers", TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.of(Integer.class)))
+                .returns(String.class)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(CompilationSignatures.class)
+                    .invokeStatic(join, methodParameters.get(0), methodParameters.get(1))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(List) numbers"), source);
+        assertCompiles(source);
+    }
 }

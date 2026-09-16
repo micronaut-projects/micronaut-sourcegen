@@ -268,4 +268,53 @@ class OverrideResolverSpec extends Specification {
         applied.returnType == TypeDef.of(Integer)
         applied.statements == erased.statements
     }
+
+    void "resolves nothing through a raw supertype whose variable the declaring type names too"() {
+        given:
+        def erased = MethodDef.builder("get")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        // The `T` of the raw `Supplier` is bound to nothing; the class's own `T` is another variable
+        def classDef = ClassDef.builder("example.RawSupplier")
+            .addTypeVariable(TypeDef.variable("T", TypeDef.of(Number)))
+            .addSuperinterface(ClassTypeDef.of(Supplier))
+            .addMethod(erased)
+            .build()
+
+        expect:
+        OverrideResolver.resolve(classDef, erased, null) == null
+        OverrideResolver.resolve(classDef, erased, null, true) == null
+    }
+
+    void "keeps a raw parameter where only the return type changes"() {
+        given:
+        def variable = TypeDef.variable("T")
+        def function = InterfaceDef.builder("example.Fn")
+            .addTypeVariable(variable)
+            .addMethod(MethodDef.builder("apply")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter("values", TypeDef.parameterized(ClassTypeDef.of(List), variable))
+                .returns(variable)
+                .build())
+            .build()
+        def erased = MethodDef.builder("apply")
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("values", ClassTypeDef.of(List))
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        def classDef = ClassDef.builder("example.StringFn")
+            .addSuperinterface(TypeDef.parameterized(function.asTypeDef(), TypeDef.STRING))
+            .addMethod(erased)
+            .build()
+
+        when:
+        def overridden = OverrideResolver.resolve(classDef, erased, null)
+
+        then: 'the raw List is a valid Java override, and the body is written against it'
+        overridden.returnType() == TypeDef.STRING
+        overridden.parameterTypes() == [ClassTypeDef.of(List)]
+    }
 }

@@ -70,7 +70,7 @@ public final class TypeHierarchy {
         Deque<InheritedType> queue = new ArrayDeque<>();
         Set<String> visited = new HashSet<>();
         for (TypeDef superType : superTypesOf(objectDef)) {
-            enqueue(queue, visited, superType, Map.of(), classElementLookup);
+            enqueue(queue, visited, superType, Map.of(), false, classElementLookup);
         }
         while (!queue.isEmpty()) {
             InheritedType type = queue.removeFirst();
@@ -80,7 +80,7 @@ public final class TypeHierarchy {
                 }
             }
             for (TypeDef superType : type.info.superTypes()) {
-                enqueue(queue, visited, type.substitute(superType), type.substitution, classElementLookup);
+                enqueue(queue, visited, type.substitute(superType), type.substitution, type.raw, classElementLookup);
             }
         }
     }
@@ -92,7 +92,7 @@ public final class TypeHierarchy {
      * @return The type
      */
     public static InheritedType declaring(ObjectDef objectDef) {
-        return new InheritedType(new ModelInfo(objectDef), Map.of());
+        return new InheritedType(new ModelInfo(objectDef), Map.of(), false);
     }
 
     /**
@@ -252,6 +252,7 @@ public final class TypeHierarchy {
                                 Set<String> visited,
                                 TypeDef edge,
                                 Map<String, TypeDef> outerSubstitution,
+                                boolean outerRaw,
                                 @Nullable Function<String, @Nullable ClassElement> classElementLookup) {
         TypeDef unwrapped = unwrap(edge);
         ClassTypeDef rawType;
@@ -278,11 +279,13 @@ public final class TypeHierarchy {
         for (int i = 0; i < variables.size() && i < arguments.size(); i++) {
             substitution.put(variables.get(i), arguments.get(i));
         }
+        // A generic type named without its arguments is raw, and so are the supertypes it is inherited with
+        boolean raw = outerRaw || !variables.isEmpty() && arguments.isEmpty();
         String key = info.typeName() + arguments.stream()
             .map(argument -> erasedName(erase(argument, null, info)))
-            .collect(Collectors.joining(",", "<", ">"));
+            .collect(Collectors.joining(",", "<", ">")) + (raw ? "raw" : "");
         if (visited.add(key)) {
-            queue.addLast(new InheritedType(info, substitution));
+            queue.addLast(new InheritedType(info, substitution, raw));
         }
     }
 
@@ -323,14 +326,19 @@ public final class TypeHierarchy {
     private static TypeDef substitute(TypeDef type, Map<String, TypeDef> substitution) {
         TypeDef unwrapped = unwrap(type);
         if (unwrapped instanceof TypeDef.TypeVariable variable) {
-            return substitution.getOrDefault(variable.name(), variable);
+            TypeDef replacement = substitution.get(variable.name());
+            if (replacement == null) {
+                return variable;
+            }
+            return variable.isNullable() ? replacement.makeNullable() : replacement;
         }
         if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
             return new ClassTypeDef.Parameterized(parameterized.rawType(), parameterized.typeArguments().stream()
                 .map(argument -> substitute(argument, substitution)).toList());
         }
         if (unwrapped instanceof TypeDef.Array array) {
-            return TypeDef.array(substitute(array.componentType(), substitution), array.dimensions());
+            TypeDef substituted = TypeDef.array(substitute(array.componentType(), substitution), array.dimensions());
+            return array.isNullable() ? substituted.makeNullable() : substituted;
         }
         if (unwrapped instanceof TypeDef.Wildcard wildcard) {
             return new TypeDef.Wildcard(wildcard.upperBounds().stream()
@@ -358,7 +366,8 @@ public final class TypeHierarchy {
                 : erase(wildcard.upperBounds().get(0), boundOwner, owner);
         }
         if (unwrapped instanceof TypeDef.Array array) {
-            return TypeDef.array(erase(array.componentType(), boundOwner, owner), array.dimensions());
+            TypeDef erased = TypeDef.array(erase(array.componentType(), boundOwner, owner), array.dimensions());
+            return array.isNullable() ? erased.makeNullable() : erased;
         }
         return unwrapped;
     }
@@ -402,10 +411,20 @@ public final class TypeHierarchy {
     public static final class InheritedType {
         private final TypeInfo info;
         private final Map<String, TypeDef> substitution;
+        private final boolean raw;
 
-        private InheritedType(TypeInfo info, Map<String, TypeDef> substitution) {
+        private InheritedType(TypeInfo info, Map<String, TypeDef> substitution, boolean raw) {
             this.info = info;
             this.substitution = substitution;
+            this.raw = raw;
+        }
+
+        /**
+         * @return Whether the type is inherited raw, directly or through a raw supertype: its members are erased,
+         * and its type variables are bound to nothing
+         */
+        public boolean isRaw() {
+            return raw;
         }
 
         /**

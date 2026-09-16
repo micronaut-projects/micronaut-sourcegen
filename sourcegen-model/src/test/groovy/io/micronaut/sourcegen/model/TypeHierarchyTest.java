@@ -6,10 +6,12 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TypeHierarchyTest {
 
@@ -70,6 +72,16 @@ class TypeHierarchyTest {
         assertEquals("example.Outer$Key", TypeHierarchy.erasedName(ClassTypeDef.of("Key"), outer));
         assertEquals("example.Outer$Key[]", TypeHierarchy.erasedName(ClassTypeDef.of("Key").array(), outer));
         assertEquals("Key", TypeHierarchy.erasedName(ClassTypeDef.of("Key")));
+    }
+
+    @Test
+    void substitutionKeepsTheNullabilityOfAnArrayAndOfAVariable() {
+        TypeDef nullableArray = TypeDef.array(TypeDef.variable("T")).makeNullable();
+        TypeDef nullableVariable = TypeDef.variable("T").makeNullable();
+
+        assertTrue(TypeHierarchy.substituted(nullableArray, Map.of("T", TypeDef.STRING)).isNullable());
+        assertTrue(TypeHierarchy.substituted(nullableVariable, Map.of("T", TypeDef.STRING)).isNullable());
+        assertEquals(TypeDef.STRING, TypeHierarchy.substituted(TypeDef.variable("T"), Map.of("T", TypeDef.STRING)));
     }
 
     private static ClassElement element(String name, List<?> placeholders) {

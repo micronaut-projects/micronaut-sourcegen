@@ -111,6 +111,11 @@ public final class OverrideResolver {
                                                  TypeHierarchy.InheritedType type,
                                                  TypeHierarchy.InheritedMethod inherited) {
         MethodDef methodDef = declared.methodDef();
+        // A raw supertype has erased members, which the declared erased method already overrides; its variables are
+        // bound to nothing, however the declaring type names its own
+        if (type.isRaw()) {
+            return null;
+        }
         if (!inherited.name().equals(methodDef.getName())
             || inherited.overrideParameters().size() != declared.parameterErasures().size()
             || inherited.finalMethod()
@@ -135,10 +140,13 @@ public final class OverrideResolver {
                 return null;
             }
             TypeDef declaredType = methodDef.getParameters().get(i).getType();
-            changed |= declared.exact()
+            boolean parameterChanged = declared.exact()
                 ? !sameType(substituted, declaredType)
                 : !TypeHierarchy.erasedName(type.erase(substituted, declared.declaringType())).equals(declarationErasure.get(i));
-            parameterTypes.add(substituted);
+            changed |= parameterChanged;
+            // A Java parameter of the same erasure is a valid override as declared - a raw `List` for `List<T>` -
+            // and the body is written against it; only a changed erasure takes the substituted type
+            parameterTypes.add(parameterChanged ? substituted : declaredType);
         }
         TypeDef returnType = methodDef.getReturnType();
         String declarationReturnErasure = TypeHierarchy.erasedName(type.erase(inherited.returnType()));
