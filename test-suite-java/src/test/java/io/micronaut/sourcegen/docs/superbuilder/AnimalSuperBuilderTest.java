@@ -1,0 +1,62 @@
+/*
+ * Copyright 2017-2026 original authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.micronaut.sourcegen.docs.superbuilder;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class AnimalSuperBuilderTest {
+
+    //tag::test[]
+    @Test
+    public void testCat() {
+        Cat cat = new CatSuperBuilder()
+            .name("MrPurr")
+            .age(2)
+            .bread("British")
+            .meowLevel(100)
+            .color("Red")
+            .build();
+
+        assertEquals("MrPurr", cat.getName());
+        assertEquals(2, cat.getAge());
+        assertEquals("British", cat.getBread());
+        assertEquals(100, cat.getMeowLevel());
+        assertEquals("Red", cat.getColor());
+    }
+
+    @Test
+    public void testDog() {
+        Dog dog = new DogSuperBuilder()
+            .name("MrDog")
+            .age(3)
+            .bread("JackR")
+            .barkLevel(20)
+            .color("Blue")
+            .big(true)
+            .build();
+
+        assertEquals("MrDog", dog.getName());
+        assertEquals(3, dog.getAge());
+        assertEquals("JackR", dog.getBread());
+        assertEquals(20, dog.getBarkLevel());
+        assertEquals("Blue", dog.getColor());
+        assertTrue(dog.isBig());
+    }
+//end::test[]
+}
