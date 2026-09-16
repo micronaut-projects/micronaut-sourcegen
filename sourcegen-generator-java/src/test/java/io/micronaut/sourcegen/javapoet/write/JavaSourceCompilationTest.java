@@ -515,4 +515,27 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertTrue(source.contains("Integer get()"), source);
         assertCompiles(writeSource(numeric), source);
     }
+
+    @Test
+    void parameterizedArgumentOfATypeOnlyTheCompilerKnows() throws Exception {
+        var unmodifiableList = Collections.class.getMethod("unmodifiableList", List.class);
+        var get = List.class.getMethod("get", int.class);
+        ClassDef item = ClassDef.builder("test.Item").addModifiers(Modifier.PUBLIC).build();
+        ClassTypeDef itemType = ClassTypeDef.of("test.Item");
+        // The generator cannot load `test.Item`, which does not make it a generic type used raw
+        ClassDef classDef = ClassDef.builder("test.Items2")
+            .addMethod(MethodDef.builder("first").addModifiers(Modifier.PUBLIC)
+                .addParameter("items", TypeDef.parameterized(ClassTypeDef.of(List.class), itemType))
+                .returns(itemType)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(Collections.class)
+                    .invokeStatic(unmodifiableList, methodParameters.get(0))
+                    .invoke(get, ExpressionDef.constant(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertFalse(source.contains("(List) items"), source);
+        assertCompiles(writeClass(item), source);
+    }
 }

@@ -17,6 +17,7 @@ package io.micronaut.sourcegen;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.reflect.ClassUtils;
+import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.StatementDef;
@@ -162,6 +163,38 @@ final class JavaExpressionRules {
     }
 
     /**
+     * Whether a type declares type variables, which a type argument naming it leaves unbound.
+     *
+     * <p>The model says so for a type it carries the declaration or the element of; otherwise the class is
+     * loaded, and failing that the compiler is asked. A type that none of them knows is taken as not generic:
+     * an argument naming an ordinary class is what it usually is.</p>
+     *
+     * @param classTypeDef The type
+     * @return true if the type is generic
+     */
+    private static boolean isGeneric(ClassTypeDef classTypeDef) {
+        if (!classTypeDef.getTypeVariableNames().isEmpty()) {
+            return true;
+        }
+        if (classTypeDef instanceof ClassTypeDef.JavaClass javaClass) {
+            return javaClass.type().getTypeParameters().length > 0;
+        }
+        if (classTypeDef instanceof ClassTypeDef.ClassDefType || classTypeDef instanceof ClassTypeDef.ClassElementType) {
+            // Both report the variables they declare, so an empty list is an answer
+            return false;
+        }
+        Class<?> loaded = ClassUtils.forName(classTypeDef.getName(), JavaExpressionRules.class.getClassLoader())
+            .orElse(null);
+        if (loaded != null) {
+            return loaded.getTypeParameters().length > 0;
+        }
+        VisitorContext context = JavaPoetNames.context();
+        return context != null && context.getClassElement(classTypeDef.getName())
+            .map(element -> !element.getDeclaredGenericPlaceholders().isEmpty())
+            .orElse(false);
+    }
+
+    /**
      * Whether a type argument of the type, at any depth, is a generic type used without its arguments.
      *
      * @param parameterized The type
@@ -173,14 +206,8 @@ final class JavaExpressionRules {
                 if (usesAGenericTypeRaw(nested)) {
                     return true;
                 }
-            } else if (argument instanceof ClassTypeDef classTypeDef) {
-                Class<?> resolved = classTypeDef instanceof ClassTypeDef.JavaClass javaClass ? javaClass.type()
-                    : ClassUtils.forName(classTypeDef.getName(), JavaExpressionRules.class.getClassLoader()).orElse(null);
-                // A type that cannot be loaded here is taken to be generic: the cast is unchecked either way, while
-                // leaving it out fails to compile where the argument does not match
-                if (resolved == null || resolved.getTypeParameters().length > 0) {
-                    return true;
-                }
+            } else if (argument instanceof ClassTypeDef classTypeDef && isGeneric(classTypeDef)) {
+                return true;
             }
         }
         return false;
