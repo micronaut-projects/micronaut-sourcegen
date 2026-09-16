@@ -16,10 +16,34 @@
 package io.micronaut.sourcegen;
 
 import io.micronaut.core.annotation.Internal;
+
+import static io.micronaut.sourcegen.JavaExpressionRules.CastContext;
+import static io.micronaut.sourcegen.JavaExpressionRules.arePrimitiveReferenceEqualityOperands;
+import static io.micronaut.sourcegen.JavaExpressionRules.canEliminateCastToObject;
+import static io.micronaut.sourcegen.JavaExpressionRules.collapseNestedCasts;
+import static io.micronaut.sourcegen.JavaExpressionRules.getMathOp;
+import static io.micronaut.sourcegen.JavaExpressionRules.getOpType;
+import static io.micronaut.sourcegen.JavaExpressionRules.isNullLiteral;
+import static io.micronaut.sourcegen.JavaExpressionRules.isOrCondition;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresCastOperandParentheses;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresImplicitInvocationCast;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresMathParentheses;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresMethodCallTargetParentheses;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresParentheses;
+import static io.micronaut.sourcegen.JavaExpressionRules.unwrapCasts;
+import static io.micronaut.sourcegen.JavaPoetNames.asClassName;
+import static io.micronaut.sourcegen.JavaPoetNames.packageNameOf;
+import static io.micronaut.sourcegen.JavaPoetNames.resolveNestedClassName;
+import static io.micronaut.sourcegen.JavaPoetNames.simpleNameOf;
+import static io.micronaut.sourcegen.JavaSourceRules.cannotCompleteNormally;
+import static io.micronaut.sourcegen.JavaSourceRules.containsBlockBodyLambda;
+import static io.micronaut.sourcegen.JavaSourceRules.containsSwitchExpression;
+import static io.micronaut.sourcegen.JavaSourceRules.hasSwitchYieldReturn;
+import static io.micronaut.sourcegen.JavaSourceRules.isAssignedOnceInStaticInitializer;
+import static io.micronaut.sourcegen.JavaSourceRules.singleExpressionBody;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.core.reflect.ClassUtils;
-import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.Element;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.OverrideResolver;
@@ -63,10 +87,7 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Array;
-import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -88,22 +109,14 @@ import static io.micronaut.sourcegen.javapoet.TypeSpec.anonymousClassBuilder;
 @SuppressWarnings("java:S6201")
 public sealed class JavaPoetSourceGenerator implements SourceGenerator permits GroovyPoetSourceGenerator {
     private static final String EXCEPTION_NAME = "$exception";
-    // The context of the file being written, used to tell a nested class from a generated top-level one by name and
-    // to look up the supertypes of an override that are only known by name
-    private static final ThreadLocal<VisitorContext> VISITOR_CONTEXT = new ThreadLocal<>();
 
     @Override
     public void write(ObjectDef objectDef, VisitorContext context, Element... originatingElements) {
-        VisitorContext previous = VISITOR_CONTEXT.get();
-        VISITOR_CONTEXT.set(context);
+        VisitorContext previous = JavaPoetNames.enter(context);
         try {
             SourceGenerator.super.write(objectDef, context, originatingElements);
         } finally {
-            if (previous == null) {
-                VISITOR_CONTEXT.remove();
-            } else {
-                VISITOR_CONTEXT.set(previous);
-            }
+            JavaPoetNames.exit(previous);
         }
     }
 
@@ -311,7 +324,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
         StatementDef staticInitializer = classDef.getStaticInitializer();
         if (staticInitializer != null) {
-            CodeBlock staticBlock = renderStatementCodeBlock(classDef, null, RenderScope.root(null), staticInitializer);
+            CodeBlock staticBlock = renderStatementCodeBlock(classDef, null, RenderScope.root(null), staticInitializer, true);
             classBuilder.addStaticBlock(staticBlock);
         }
         return classBuilder;
@@ -379,15 +392,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private void buildFields(ObjectDef objectDef, List<FieldDef> fields, TypeSpec.Builder builder) {
         for (FieldDef field : fields) {
-            // A blank final (no inline initializer) that a static initializer assigns conditionally -
-            // e.g. one of two outcomes of a try/catch - routinely fails Java's definite-assignment
-            // checks even though the field is written exactly once at runtime; those checks don't apply
-            // to bytecode written directly, which is what this pattern was designed for. Dropping `final`
-            // for such fields keeps them internal-only (all are private/package fields of a generated
-            // class) while avoiding those source-level restrictions.
+            // A blank final (no inline initializer) that a static initializer assigns conditionally - e.g. one of
+            // two outcomes of a try/catch - or not at all fails Java's definite-assignment checks even though the
+            // field is written exactly once at runtime; those checks don't apply to bytecode written directly,
+            // which is what this pattern was designed for. `final` is kept wherever the initializer does assign
+            // the field exactly once and unconditionally, which those checks accept.
             boolean blankFinalStaticField = field.getModifiers().contains(Modifier.STATIC)
                 && field.getModifiers().contains(Modifier.FINAL)
-                && field.getInitializer().isEmpty();
+                && field.getInitializer().isEmpty()
+                && !isAssignedOnceInStaticInitializer(objectDef, field.getName());
             Modifier[] modifiers = blankFinalStaticField
                 ? field.getModifiers().stream().filter(m -> m != Modifier.FINAL).toArray(Modifier[]::new)
                 : field.getModifiersArray();
@@ -457,7 +470,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         MethodDef renderMethod = method;
         // A model written for the bytecode writer overrides a generic method with its erased signature, which the
         // verifier accepts; as source it has to take the signature with the type arguments of the supertype
-        OverrideResolver.OverriddenMethod overridden = OverrideResolver.resolve(objectDef, method, VISITOR_CONTEXT.get());
+        OverrideResolver.OverriddenMethod overridden = OverrideResolver.resolve(objectDef, method, JavaPoetNames.context());
         if (overridden != null) {
             parameterTypes = overridden.parameterTypes();
             returnType = overridden.returnType();
@@ -497,8 +510,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             methodBuilder.addException(asType(type, objectDef, method));
         }
         RenderScope methodScope = RenderScope.root(renderMethod);
-        for (StatementDef statement : method.getStatements()) {
-            methodBuilder.addCode(renderStatementCodeBlock(objectDef, renderMethod, methodScope, statement));
+        List<StatementDef> statements = method.getStatements();
+        for (int i = 0; i < statements.size(); i++) {
+            StatementDef statement = statements.get(i);
+            methodBuilder.addCode(renderStatementCodeBlock(objectDef, renderMethod, methodScope, statement,
+                i == statements.size() - 1));
             if (cannotCompleteNormally(statement)) {
                 break;
             }
@@ -524,8 +540,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
     private void addAnnotationValue(AnnotationSpec.Builder builder, String memberName, Object value) {
         switch (value) {
-            case Collection<?> collection ->
-                collection.forEach(v -> addAnnotationValue(builder, memberName, v));
+            case Collection<?> collection -> {
+                if (collection.isEmpty()) {
+                    // Without a value the member is omitted, which reads as its default, or as none at all
+                    builder.addMember(memberName, "{}");
+                } else {
+                    collection.forEach(v -> addAnnotationValue(builder, memberName, v));
+                }
+            }
             case AnnotationDef annotationValue ->
                 builder.addMember(memberName, asAnnotationSpec(annotationValue));
             case VariableDef variableDef ->
@@ -546,6 +568,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     // each element as its own member value, the same way the Collection case does -
                     // JavaPoet merges repeated addMember calls for one name into a `{...}` initializer.
                     int length = java.lang.reflect.Array.getLength(value);
+                    if (length == 0) {
+                        builder.addMember(memberName, "{}");
+                    }
                     for (int i = 0; i < length; i++) {
                         addAnnotationValue(builder, memberName, java.lang.reflect.Array.get(value, i));
                     }
@@ -739,78 +764,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         return asClassName(classTypeDef.getCanonicalName());
     }
 
-    /**
-     * Resolves a name known only as a string that contains a {@code $} past the first character of its
-     * simple name. Such a name is ambiguous - {@code Outer$Inner} may be a nested class or a generated
-     * top-level one such as {@code Foo$Intercepted} - so the compiler is asked.
-     *
-     * @param binaryName The binary name
-     * @return The nested class name, or {@code null} when the name does not denote a nested class
-     */
-    private static @Nullable ClassName resolveNestedClassName(String binaryName) {
-        int simpleNameStart = binaryName.lastIndexOf('.') + 1;
-        VisitorContext context = VISITOR_CONTEXT.get();
-        if (context == null || binaryName.indexOf('$', simpleNameStart + 1) == -1) {
-            return null;
-        }
-        return context.getClassElement(binaryName)
-            .filter(ClassElement::isInner)
-            .map(JavaPoetSourceGenerator::asNestedClassName)
-            .orElse(null);
-    }
-
-    private static ClassName asNestedClassName(ClassElement classElement) {
-        Deque<String> simpleNames = new ArrayDeque<>();
-        ClassElement current = classElement;
-        ClassElement enclosing = current.getEnclosingType().orElse(null);
-        while (enclosing != null) {
-            // The element's own simple name can keep the `Outer$` prefix; take what follows the enclosing binary name
-            simpleNames.addFirst(current.getName().substring(enclosing.getName().length() + 1));
-            current = enclosing;
-            enclosing = current.getEnclosingType().orElse(null);
-        }
-        return ClassName.get(current.getPackageName(), simpleNameOf(current.getName()), simpleNames.toArray(String[]::new));
-    }
-
-    /**
-     * A lenient variant of {@link ClassName#bestGuess(String)}.
-     *
-     * <p>It infers the package the same way - by consuming the leading lower-case segments - but it
-     * does not require the remaining simple names to start with an upper-case letter, so generated
-     * names following the {@code $Foo$Bar} convention are supported, and it does not fail when the
-     * name has no package at all.
-     *
-     * @param name The fully qualified name
-     * @return The class name
-     */
-    private static ClassName asClassName(String name) {
-        int p = 0;
-        while (p < name.length() && Character.isLowerCase(name.codePointAt(p))) {
-            int dot = name.indexOf('.', p);
-            if (dot == -1) {
-                break;
-            }
-            p = dot + 1;
-        }
-        String packageName = p == 0 ? "" : name.substring(0, p - 1);
-        String[] simpleNames = name.substring(p).split("\\.", -1);
-        return ClassName.get(
-            packageName,
-            simpleNames[0],
-            Arrays.copyOfRange(simpleNames, 1, simpleNames.length)
-        );
-    }
-
-    private static String packageNameOf(String binaryName) {
-        int i = binaryName.lastIndexOf('.');
-        return i == -1 ? "" : binaryName.substring(0, i);
-    }
-
-    private static String simpleNameOf(String binaryName) {
-        int i = binaryName.lastIndexOf('.');
-        return i == -1 ? binaryName : binaryName.substring(i + 1);
-    }
-
     private CodeBlock renderStatement(@Nullable ObjectDef objectDef,
                                       @Nullable MethodDef methodDef,
                                       RenderScope scope,
@@ -870,8 +823,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 );
             }
             case StatementDef.PutStaticField putStaticField -> {
+                // A blank final static field can only be assigned by its unqualified name, and
+                // `ThisClass.field = ...` is illegal even where `ThisClass` is the class being written. Only in a
+                // static initializer, where no parameter and no local of that name can shadow the field
+                CodeBlock target = methodDef == null && objectDef != null
+                    && putStaticField.field().ownerType().getName().equals(objectDef.asTypeDef().getName())
+                    ? CodeBlock.of("$L", putStaticField.field().name())
+                    : renderExpression(objectDef, methodDef, scope, putStaticField.field());
                 return CodeBlock.concat(
-                    renderExpression(objectDef, methodDef, scope, putStaticField.field()),
+                    target,
                     CodeBlock.of(" = "),
                     renderExpression(objectDef, methodDef, scope, putStaticField.expression())
                 );
@@ -897,11 +857,26 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                                @Nullable MethodDef methodDef,
                                                RenderScope scope,
                                                StatementDef statementDef) {
+        return renderStatementCodeBlock(objectDef, methodDef, scope, statementDef, false);
+    }
+
+    /**
+     * @param tailPosition Whether nothing follows the statement in the body being rendered, so that returning is
+     *                     what falling out of it does anyway
+     */
+    private CodeBlock renderStatementCodeBlock(@Nullable ObjectDef objectDef,
+                                               @Nullable MethodDef methodDef,
+                                               RenderScope scope,
+                                               StatementDef statementDef,
+                                               boolean tailPosition) {
         switch (statementDef) {
             case StatementDef.Multi statements -> {
                 CodeBlock.Builder builder = CodeBlock.builder();
-                for (StatementDef statement : statements.statements()) {
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement));
+                List<StatementDef> children = statements.statements();
+                for (int i = 0; i < children.size(); i++) {
+                    StatementDef statement = children.get(i);
+                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement,
+                        tailPosition && i == children.size() - 1));
                     if (cannotCompleteNormally(statement)) {
                         // The model may append a fallback after an exhaustive statement; javac rejects it as unreachable
                         break;
@@ -913,7 +888,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 CodeBlock.Builder builder = CodeBlock.builder();
                 builder.add("try {\n");
                 builder.indent();
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, tryStatement.statement()));
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, tryStatement.statement(), tailPosition));
                 builder.unindent();
                 int i = 0;
                 for (StatementDef.Try.Catch aCatch : tryStatement.catches()) {
@@ -922,13 +897,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     builder.indent();
                     RenderScope catchScope = scope.nested(null);
                     catchScope.rename(EXCEPTION_NAME, exceptionLocal);
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, catchScope, aCatch.statement()));
+                    builder.add(renderStatementCodeBlock(objectDef, methodDef, catchScope, aCatch.statement(), tailPosition));
                     builder.unindent();
                 }
                 if (tryStatement.finallyStatement() != null) {
                     builder.add("} finally {\n");
                     builder.indent();
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, tryStatement.finallyStatement()));
+                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, tryStatement.finallyStatement(), tailPosition));
                     builder.unindent();
                 }
                 builder.add("}\n");
@@ -940,7 +915,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 builder.add(renderExpression(objectDef, methodDef, scope, s.monitor(), true));
                 builder.add(") {\n");
                 builder.indent();
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, s.statement()));
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, s.statement(), tailPosition));
                 builder.unindent();
                 builder.add("}\n");
                 return builder.build();
@@ -951,7 +926,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 builder.add(renderExpression(objectDef, methodDef, scope, ifStatement.condition()));
                 builder.add(") {\n");
                 builder.indent();
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, ifStatement.statement()));
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, ifStatement.statement(), tailPosition));
                 builder.unindent();
                 builder.add("}\n");
                 return builder.build();
@@ -962,11 +937,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 builder.add(renderExpression(objectDef, methodDef, scope, ifStatement.condition()));
                 builder.add(") {\n");
                 builder.indent();
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, ifStatement.statement()));
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, ifStatement.statement(), tailPosition));
                 builder.unindent();
                 builder.add("} else {\n");
                 builder.indent();
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, ifStatement.elseStatement()));
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, ifStatement.elseStatement(), tailPosition));
                 builder.unindent();
                 builder.add("}\n");
                 return builder.build();
@@ -982,14 +957,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     builder.add(renderConstantExpression(scope, e.getKey()));
                     builder.add(" -> {\n");
                     builder.indent();
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, e.getValue()));
+                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, e.getValue(), tailPosition));
                     builder.unindent();
                     builder.add("}\n");
                 }
                 if (aSwitch.defaultCase() != null) {
                     builder.add("default -> {\n");
                     builder.indent();
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, aSwitch.defaultCase()));
+                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, aSwitch.defaultCase(), tailPosition));
                     builder.unindent();
                     builder.add("}\n");
                 }
@@ -1006,6 +981,18 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, aWhile.statement()));
                 builder.unindent();
                 builder.add("}\n");
+                return builder.build();
+            }
+            case StatementDef.Return aReturn when aReturn.expression() != null
+                && TypeDef.VOID.equals(aReturn.expression().type()) -> {
+                // A void invocation cannot be returned in source. Where the statement is not in tail position - a
+                // branch of a conditional, say - the call is followed by the return it stands for, which execution
+                // would otherwise fall through
+                CodeBlock.Builder builder = CodeBlock.builder()
+                    .addStatement(renderExpression(objectDef, methodDef, scope, aReturn.expression()));
+                if (!tailPosition) {
+                    builder.addStatement("return");
+                }
                 return builder.build();
             }
             case null, default -> {
@@ -1025,53 +1012,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
     }
 
-    /**
-     * @param lambda The lambda
-     * @return The expression of a single expression body, or {@code null} for a block body
-     */
-    @Nullable
-    private static ExpressionDef singleExpressionBody(Lambda lambda) {
-        List<StatementDef> statements = lambda.implementation().getStatements();
-        if (statements.size() == 1 && statements.get(0) instanceof StatementDef.Return(ExpressionDef expression)) {
-            return expression;
-        }
-        return null;
-    }
-
-    private static boolean containsBlockBodyLambda(StatementDef statementDef) {
-        return statementDef.nestedExpressionsStream().anyMatch(JavaPoetSourceGenerator::containsBlockBodyLambda);
-    }
-
-    private static boolean containsBlockBodyLambda(ExpressionDef expressionDef) {
-        if (expressionDef instanceof Lambda lambda) {
-            // A lambda does not expose its body as nested expressions, so descend into it explicitly
-            return singleExpressionBody(lambda) == null
-                || lambda.implementation().getStatements().stream().anyMatch(JavaPoetSourceGenerator::containsBlockBodyLambda);
-        }
-        return expressionDef.nestedExpressionsStream().anyMatch(JavaPoetSourceGenerator::containsBlockBodyLambda);
-    }
-
-    private static boolean containsSwitchExpression(StatementDef statementDef) {
-        return statementDef.nestedExpressionsStream().anyMatch(JavaPoetSourceGenerator::containsSwitchExpression);
-    }
-
-    private static boolean containsSwitchExpression(ExpressionDef expressionDef) {
-        return expressionDef instanceof ExpressionDef.Switch
-            || expressionDef.nestedExpressionsStream().anyMatch(JavaPoetSourceGenerator::containsSwitchExpression);
-    }
-
     private CodeBlock renderExpression(@Nullable ObjectDef objectDef,
                                        @Nullable MethodDef methodDef,
                                        RenderScope scope,
                                        ExpressionDef expressionDef) {
         return renderExpression(objectDef, methodDef, scope, expressionDef, CastContext.DEFAULT);
-    }
-
-    private static boolean isNullLiteral(ExpressionDef expressionDef) {
-        while (expressionDef instanceof ExpressionDef.Cast castExpressionDef) {
-            expressionDef = castExpressionDef.expressionDef();
-        }
-        return expressionDef instanceof ExpressionDef.Constant constant && constant.value() == null;
     }
 
     private CodeBlock renderExpression(@Nullable ObjectDef objectDef,
@@ -1301,8 +1246,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     builder.add(renderExpression(objectDef, implementation, lambdaScope, body));
                 } else {
                     builder.add("{\n").indent();
-                    for (StatementDef statement : statements) {
-                        builder.add(renderStatementCodeBlock(objectDef, implementation, lambdaScope, statement));
+                    for (int i = 0; i < statements.size(); i++) {
+                        builder.add(renderStatementCodeBlock(objectDef, implementation, lambdaScope, statements.get(i),
+                            i == statements.size() - 1));
                     }
                     builder.unindent().add("}");
                 }
@@ -1338,28 +1284,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
     }
 
-    private static String getMathOp(ExpressionDef.MathBinaryOperation mathOperation) {
-        return switch (mathOperation.opType()) {
-            case ADDITION -> " + ";
-            case SUBTRACTION -> " - ";
-            case MULTIPLICATION -> " * ";
-            case DIVISION -> " / ";
-            case MODULUS -> " % ";
-            case BITWISE_AND -> " & ";
-            case BITWISE_OR -> " | ";
-            case BITWISE_XOR -> " ^ ";
-            case BITWISE_LEFT_SHIFT -> " << ";
-            case BITWISE_RIGHT_SHIFT -> " >> ";
-            case BITWISE_UNSIGNED_RIGHT_SHIFT -> " >>> ";
-        };
-    }
-
-    private static String getMathOp(ExpressionDef.MathUnaryOperation mathOperation) {
-        return switch (mathOperation.opType()) {
-            case NEGATE -> "-";
-        };
-    }
-
     private CodeBlock renderMathOperand(@Nullable ObjectDef objectDef,
                                         @Nullable MethodDef methodDef,
                                         RenderScope scope,
@@ -1374,25 +1298,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return rendered;
         }
         return renderExpressionWithParentheses(objectDef, methodDef, scope, operand);
-    }
-
-    private static boolean requiresMathParentheses(ExpressionDef.MathBinaryOperation parent,
-                                                  ExpressionDef.MathBinaryOperation child,
-                                                  boolean rightOperand) {
-        int parentPrecedence = mathPrecedence(parent.opType());
-        int childPrecedence = mathPrecedence(child.opType());
-        return childPrecedence < parentPrecedence || (rightOperand && childPrecedence == parentPrecedence);
-    }
-
-    private static int mathPrecedence(ExpressionDef.MathBinaryOperation.OpType opType) {
-        return switch (opType) {
-            case MULTIPLICATION, DIVISION, MODULUS -> 6;
-            case ADDITION, SUBTRACTION -> 5;
-            case BITWISE_LEFT_SHIFT, BITWISE_RIGHT_SHIFT, BITWISE_UNSIGNED_RIGHT_SHIFT -> 4;
-            case BITWISE_AND -> 3;
-            case BITWISE_XOR -> 2;
-            case BITWISE_OR -> 1;
-        };
     }
 
     private CodeBlock renderExpressionWithParentheses(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef expressionDef) {
@@ -1413,63 +1318,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return rendered;
         }
         return addParentheses(rendered);
-    }
-
-    private static boolean requiresParentheses(ExpressionDef expressionDef) {
-        expressionDef = unwrapCasts(expressionDef);
-        if (expressionDef instanceof ExpressionDef.InvokeHashCodeMethod invokeHashCodeMethod) {
-            TypeDef type = invokeHashCodeMethod.instance().type();
-            return !type.isPrimitive() && !type.isArray();
-        }
-        return !(expressionDef instanceof StatementDef
-            || expressionDef instanceof VariableDef
-            || expressionDef instanceof ExpressionDef.And
-            || expressionDef instanceof ExpressionDef.Constant
-            || expressionDef instanceof ExpressionDef.GetPropertyValue
-            || expressionDef instanceof ExpressionDef.InvokeGetClassMethod
-            || expressionDef instanceof ExpressionDef.ArrayElement
-            || expressionDef instanceof ExpressionDef.NewArrayOfSize
-            || expressionDef instanceof ExpressionDef.NewArrayInitialized
-            || expressionDef instanceof ExpressionDef.NewInstance
-            || expressionDef instanceof ExpressionDef.Switch);
-    }
-
-    private static ExpressionDef unwrapCasts(ExpressionDef expressionDef) {
-        while (expressionDef instanceof ExpressionDef.Cast cast) {
-            expressionDef = cast.expressionDef();
-        }
-        return expressionDef;
-    }
-
-    private static ExpressionDef collapseNestedCasts(ExpressionDef expressionDef) {
-        while (expressionDef instanceof ExpressionDef.Cast cast) {
-            if (cast.type().isPrimitive()) {
-                TypeDef previousCastType = cast.expressionDef().type();
-                if (!previousCastType.equals(TypeDef.OBJECT)) {
-                    break;
-                }
-            }
-            // Only keep the last cast
-            expressionDef = cast.expressionDef();
-        }
-        return expressionDef;
-    }
-
-    private static boolean requiresCastOperandParentheses(ExpressionDef expressionDef) {
-        return expressionDef instanceof ExpressionDef.ConditionExpressionDef
-            || expressionDef instanceof ExpressionDef.IfElse
-            || expressionDef instanceof ExpressionDef.MathBinaryOperation
-            || expressionDef instanceof ExpressionDef.MathUnaryOperation
-            || expressionDef instanceof ExpressionDef.StringConcatenation
-            || expressionDef instanceof ExpressionDef.Switch
-            || isNegativeNumericConstant(expressionDef);
-    }
-
-    private static boolean isNegativeNumericConstant(ExpressionDef expressionDef) {
-        // `(Object) -1` would parse as a subtraction of the variable `Object`
-        return expressionDef instanceof ExpressionDef.Constant constant
-            && constant.value() instanceof Number number
-            && number.toString().startsWith("-");
     }
 
     /**
@@ -1520,58 +1368,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return renderExpression(objectDef, enclosingMethod, scope, value);
             })
             .collect(CodeBlock.joining(", "));
-    }
-
-    private static boolean requiresImplicitInvocationCast(TypeDef paramType, TypeDef valueType) {
-        if (valueType.equals(TypeDef.OBJECT)) {
-            return !paramType.equals(TypeDef.OBJECT);
-        }
-        // A reflective signature is raw: passing a parameterized value through the raw type makes the call
-        // unchecked, where javac would otherwise reject mismatched type arguments
-        return paramType instanceof ClassTypeDef paramClass
-            && !(paramType instanceof ClassTypeDef.Parameterized)
-            && valueType instanceof ClassTypeDef.Parameterized parameterized
-            && parameterized.rawType().getName().equals(paramClass.getName());
-    }
-
-    private static boolean requiresMethodCallTargetParentheses(ExpressionDef expressionDef) {
-        return expressionDef instanceof ExpressionDef.Cast
-            || expressionDef instanceof ExpressionDef.ConditionExpressionDef
-            || expressionDef instanceof ExpressionDef.IfElse
-            || expressionDef instanceof ExpressionDef.MathBinaryOperation
-            || expressionDef instanceof ExpressionDef.MathUnaryOperation
-            || expressionDef instanceof ExpressionDef.StringConcatenation
-            || expressionDef instanceof ExpressionDef.Switch;
-    }
-
-    private static boolean canEliminateCastToObject(ExpressionDef.Cast castExpressionDef,
-                                                    ExpressionDef expressionDef,
-                                                    CastContext castContext) {
-        if (!castExpressionDef.type().equals(TypeDef.OBJECT)) {
-            return false;
-        }
-        return switch (castContext) {
-            case DEFAULT -> false;
-            case OBJECT_REFERENCE -> !expressionDef.type().isPrimitive();
-            case PRIMITIVE_EQUALITY -> true;
-        };
-    }
-
-    private static boolean arePrimitiveReferenceEqualityOperands(ExpressionDef left, ExpressionDef right) {
-        return objectCastOperandType(left).isPrimitive() && objectCastOperandType(right).isPrimitive();
-    }
-
-    private static TypeDef objectCastOperandType(ExpressionDef expressionDef) {
-        if (expressionDef instanceof ExpressionDef.Cast cast && cast.type().equals(TypeDef.OBJECT)) {
-            return collapseNestedCasts(cast.expressionDef()).type();
-        }
-        return expressionDef.type();
-    }
-
-    private enum CastContext {
-        DEFAULT,
-        OBJECT_REFERENCE,
-        PRIMITIVE_EQUALITY
     }
 
     private CodeBlock addParentheses(CodeBlock rendered) {
@@ -1688,26 +1484,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         return rendered;
     }
 
-    private static boolean isOrCondition(ExpressionDef.ConditionExpressionDef expressionDef) {
-        return switch (expressionDef) {
-            case ExpressionDef.Or _ -> true;
-            case ExpressionDef.IsTrue isTrue when unwrapCasts(isTrue.expression()) instanceof ExpressionDef.ConditionExpressionDef conditionExpressionDef ->
-                isOrCondition(conditionExpressionDef);
-            case null, default -> false;
-        };
-    }
-
-    private static String getOpType(ExpressionDef.ComparisonOperation comparisonOperation) {
-        return switch (comparisonOperation.opType()) {
-            case EQUAL_TO -> " == ";
-            case NOT_EQUAL_TO -> " != ";
-            case GREATER_THAN -> " > ";
-            case LESS_THAN -> " < ";
-            case GREATER_THAN_OR_EQUAL -> " >= ";
-            case LESS_THAN_OR_EQUAL -> " <= ";
-        };
-    }
-
     private CodeBlock renderEqualsReferentially(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef left, ExpressionDef right) {
         CastContext castContext = arePrimitiveReferenceEqualityOperands(left, right)
             ? CastContext.PRIMITIVE_EQUALITY
@@ -1728,37 +1504,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             .add(" != ")
             .add(renderExpressionWithParentheses(objectDef, methodDef, scope, right, castContext))
             .build();
-    }
-
-    private static boolean cannotCompleteNormally(StatementDef statementDef) {
-        return switch (statementDef) {
-            case StatementDef.Return _, StatementDef.Throw _ -> true;
-            case StatementDef.Multi multi ->
-                !multi.statements().isEmpty() && cannotCompleteNormally(multi.statements().getLast());
-            case StatementDef.IfElse ifElse ->
-                cannotCompleteNormally(ifElse.statement()) && cannotCompleteNormally(ifElse.elseStatement());
-            case StatementDef.Switch aSwitch -> aSwitch.defaultCase() != null
-                && cannotCompleteNormally(aSwitch.defaultCase())
-                && aSwitch.cases().values().stream().allMatch(JavaPoetSourceGenerator::cannotCompleteNormally);
-            case StatementDef.Try aTry -> aTry.finallyStatement() == null
-                && cannotCompleteNormally(aTry.statement())
-                && aTry.catches().stream().allMatch(aCatch -> cannotCompleteNormally(aCatch.statement()));
-            default -> false;
-        };
-    }
-
-    private static boolean hasSwitchYieldReturn(StatementDef statementDef) {
-        List<StatementDef> statements = statementDef.flatten();
-        if (statements.isEmpty()) {
-            return false;
-        }
-        StatementDef last = statements.getLast();
-        return switch (last) {
-            case StatementDef.Return(_) -> true;
-            case StatementDef.IfElse(_, StatementDef statement, StatementDef elseStatement) ->
-                hasSwitchYieldReturn(statement) && hasSwitchYieldReturn(elseStatement);
-            default -> false;
-        };
     }
 
     private void renderYield(CodeBlock.Builder builder, @Nullable MethodDef methodDef, RenderScope scope, StatementDef statementDef, @Nullable ObjectDef objectDef) {
@@ -1919,12 +1664,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return CodeBlock.of("$L", name);
             }
             case VariableDef.StaticField staticField -> {
-                // A reference to a static field declared by the class currently being rendered must use
-                // the unqualified name: a blank final static field can only be assigned this way, and
-                // `ThisClass.field = ...` is illegal even when `ThisClass` is the enclosing class itself.
-                if (objectDef != null && staticField.ownerType().getName().equals(objectDef.asTypeDef().getName())) {
-                    return CodeBlock.of("$L", staticField.name());
-                }
+                // Always qualified: an unqualified name would resolve to a parameter or local of the same name
                 return CodeBlock.of("$T.$L", asType(staticField.ownerType(), objectDef), staticField.name());
             }
             case VariableDef.Field field -> {

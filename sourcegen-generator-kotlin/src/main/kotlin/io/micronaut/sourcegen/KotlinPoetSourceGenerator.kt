@@ -756,8 +756,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         }
         val scope = RenderScope.root(method)
         val renderingObjectDef = if (method.modifiers.contains(Modifier.STATIC)) null else objectDef
-        for (statement in method.statements) {
-            funBuilder.addCode(renderStatementCodeBlock(renderingObjectDef, method, scope, statement))
+        for ((index, statement) in method.statements.withIndex()) {
+            funBuilder.addCode(renderStatementCodeBlock(renderingObjectDef, method, scope, statement,
+                index == method.statements.size - 1))
             if (cannotCompleteNormally(statement)) {
                 break
             }
@@ -1109,13 +1110,16 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             objectDef: @Nullable ObjectDef?,
             methodDef: MethodDef,
             scope: RenderScope,
-            statementDef: StatementDef?
+            statementDef: StatementDef?,
+            // Whether nothing follows the statement in the body, so that returning is what falling out of it does
+            tailPosition: Boolean = false
         ): CodeBlock {
             if (statementDef is Multi) {
                 val builder: CodeBlock.Builder =
                     CodeBlock.builder()
-                for (statement in statementDef.statements) {
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement))
+                for ((index, statement) in statementDef.statements.withIndex()) {
+                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement,
+                        tailPosition && index == statementDef.statements.size - 1))
                     if (cannotCompleteNormally(statement)) {
                         // The model may append a fallback after an exhaustive statement, such as a return null
                         break
@@ -1123,8 +1127,20 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 return builder.build()
             }
+            val returnedVoid = (statementDef as? Return)?.expression?.takeIf { it.type() == TypeDef.VOID }
+            if (returnedVoid != null) {
+                // A void invocation cannot be returned in source. Where the statement is not in tail position - a
+                // branch of a conditional, say - the call is followed by the return it stands for, which execution
+                // would otherwise fall through
+                val builder = CodeBlock.builder()
+                    .addStatement("%L", renderExpressionCode(objectDef, methodDef, scope, returnedVoid))
+                if (!tailPosition) {
+                    builder.addStatement("return")
+                }
+                return builder.build()
+            }
             if (statementDef is StatementDef.Try) {
-                return renderTry(objectDef, methodDef, scope, statementDef)
+                return renderTry(objectDef, methodDef, scope, statementDef, tailPosition)
             }
             if (statementDef is StatementDef.Synchronized) {
                 val builder: CodeBlock.Builder = CodeBlock.builder()
@@ -1132,7 +1148,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.monitor(), true))
                 builder.add(") {\n")
                 builder.indent()
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement()))
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement(), tailPosition))
                 builder.unindent()
                 builder.add("}\n")
                 return builder.build()
@@ -1144,7 +1160,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.condition))
                 builder.add(") {\n")
                 builder.indent()
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement))
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement, tailPosition))
                 builder.unindent()
                 builder.add("}\n")
                 return builder.build()
@@ -1155,17 +1171,17 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.condition))
                 builder.add(") {\n")
                 builder.indent()
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement))
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement, tailPosition))
                 builder.unindent()
                 builder.add("} else {\n")
                 builder.indent()
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.elseStatement))
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.elseStatement, tailPosition))
                 builder.unindent()
                 builder.add("}\n")
                 return builder.build()
             }
             if (statementDef is StatementDef.Switch) {
-                return renderSwitchStatement(objectDef, methodDef, scope, statementDef)
+                return renderSwitchStatement(objectDef, methodDef, scope, statementDef, tailPosition)
             }
             if (statementDef is While) {
                 val builder: CodeBlock.Builder =
@@ -1188,12 +1204,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             objectDef: @Nullable ObjectDef?,
             methodDef: MethodDef,
             scope: RenderScope,
-            statementDef: StatementDef.Try
+            statementDef: StatementDef.Try,
+            tailPosition: Boolean = false
         ): CodeBlock {
             val builder: CodeBlock.Builder = CodeBlock.builder()
             builder.add("try {\n")
             builder.indent()
-            builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement()))
+            builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement(), tailPosition))
             builder.unindent()
             for (aCatch in statementDef.catches()) {
                 // Kotlin warns about shadowing, so a nested catch gets a name of its own
@@ -1202,14 +1219,14 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 builder.indent()
                 val catchScope = scope.nested(null)
                 catchScope.rename(EXCEPTION_NAME, exceptionLocal)
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, catchScope, aCatch.statement()))
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, catchScope, aCatch.statement(), tailPosition))
                 builder.unindent()
             }
             val finallyStatement = statementDef.finallyStatement()
             if (finallyStatement != null) {
                 builder.add("} finally {\n")
                 builder.indent()
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, finallyStatement))
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, finallyStatement, tailPosition))
                 builder.unindent()
             }
             builder.add("}\n")
@@ -1220,7 +1237,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             objectDef: @Nullable ObjectDef?,
             methodDef: MethodDef,
             scope: RenderScope,
-            statementDef: StatementDef.Switch
+            statementDef: StatementDef.Switch,
+            tailPosition: Boolean = false
         ): CodeBlock {
             val builder: CodeBlock.Builder = CodeBlock.builder()
             builder.add("when (")
@@ -1231,14 +1249,14 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 builder.add(renderConstantExpression(key, methodDef, scope))
                 builder.add("-> {\n")
                 builder.indent()
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement))
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement, tailPosition))
                 builder.unindent()
                 builder.add("}\n")
             }
             if (statementDef.defaultCase != null) {
                 builder.add("else -> {\n")
                 builder.indent()
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.defaultCase))
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.defaultCase, tailPosition))
                 builder.unindent()
                 builder.add("}\n")
             }

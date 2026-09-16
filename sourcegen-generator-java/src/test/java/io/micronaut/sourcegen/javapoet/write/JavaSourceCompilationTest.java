@@ -263,4 +263,88 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertTrue(source.contains("accept(Object "), source);
         assertCompiles(source);
     }
+
+    @Test
+    void staticFieldOfTheWrittenClassIsQualified() throws Exception {
+        FieldDef value = FieldDef.builder("value", TypeDef.STRING)
+            .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
+            .initializer(ExpressionDef.constant("static"))
+            .build();
+        ClassTypeDef shadowType = ClassTypeDef.of("test.Shadow");
+        // A parameter of the same name shadows an unqualified reference to the field
+        ClassDef classDef = ClassDef.builder("test.Shadow")
+            .addField(value)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", String.class)
+                .returns(String.class)
+                .build((aThis, methodParameters) -> shadowType.getStaticField(value).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("return Shadow.value;"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void returningAVoidInvocationInsideACondition() throws Exception {
+        MethodDef run = MethodDef.builder("run").addModifiers(Modifier.PRIVATE)
+            .build((aThis, methodParameters) -> StatementDef.multi());
+        // Without the return, the branch falls through and the call below it runs as well
+        ClassDef classDef = ClassDef.builder("test.Branch")
+            .addMethod(run)
+            .addMethod(MethodDef.builder("dispatch").addModifiers(Modifier.PUBLIC)
+                .addParameter("stop", boolean.class)
+                .build((aThis, methodParameters) -> StatementDef.multi(
+                    new StatementDef.If(methodParameters.get(0), aThis.invoke(run).returning()),
+                    aThis.invoke(run))))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("return;"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void blankFinalStaticFieldKeepsFinalWhereItIsAssignedOnce() throws Exception {
+        FieldDef kept = FieldDef.builder("KEPT", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL).build();
+        FieldDef fallback = FieldDef.builder("FALLBACK", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL).build();
+        ClassTypeDef type = ClassTypeDef.of("test.Statics");
+        ClassDef classDef = ClassDef.builder("test.Statics")
+            .addField(kept)
+            .addField(fallback)
+            // The second field is assigned in both a try and its catch, which definite assignment rejects
+            .addStaticInitializer(StatementDef.multi(
+                type.getStaticField(kept).put(ExpressionDef.constant("kept")),
+                new StatementDef.Try(
+                    type.getStaticField(fallback).put(ExpressionDef.constant("value")),
+                    List.of(new StatementDef.Try.Catch(ClassTypeDef.of(Throwable.class),
+                        type.getStaticField(fallback).put(ExpressionDef.constant("fallback")))),
+                    null)))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("public static final String KEPT;"), source);
+        assertTrue(source.contains("public static String FALLBACK;"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void emptyArrayAnnotationMemberIsWritten() throws Exception {
+        ClassDef classDef = ClassDef.builder("test.EmptyMember")
+            .addAnnotation(AnnotationDef.builder(SuppressWarnings.class)
+                .addMember("value", new String[0])
+                .build())
+            .build();
+
+        String source = writeClass(classDef);
+
+        // Without a value the member is omitted, and `@SuppressWarnings` alone does not compile
+        assertTrue(source.contains("{}"), source);
+        assertCompiles(source);
+    }
 }

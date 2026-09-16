@@ -289,4 +289,27 @@ class KotlinSourceCompilationTest {
         assertTrue(source.contains("names(): Set<String>"), source)
         assertCompiles(writeClass(names), source)
     }
+
+    @Test
+    fun returningAVoidInvocationInsideACondition() {
+        val run = MethodDef.builder("run").addModifiers(Modifier.PRIVATE)
+            .build { _, _ -> StatementDef.multi() }
+        // Without the return, the branch falls through and the call below it runs as well
+        val classDef = ClassDef.builder("test.Branch")
+            .addMethod(run)
+            .addMethod(MethodDef.builder("dispatch").addModifiers(Modifier.PUBLIC)
+                .addParameter("stop", TypeDef.primitive(Boolean::class.javaPrimitiveType!!))
+                .build { aThis, parameters ->
+                    StatementDef.multi(
+                        StatementDef.If(parameters[0], aThis.invoke(run).returning()),
+                        aThis.invoke(run)
+                    )
+                })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("return\n"), source)
+        assertCompiles(source)
+    }
 }
