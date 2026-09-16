@@ -154,6 +154,25 @@ final class JavaExpressionRules {
             && number.toString().startsWith("-");
     }
 
+    /**
+     * Whether a returned value needs a cast to the return type: as an argument does, and also where an override is
+     * resolved to return a type variable the value is typed with the bound of - `(T)` for a `CharSequence` value
+     * of `T extends CharSequence`. An argument is not cast to a variable, which a generic method infers instead.
+     *
+     * @param returnType The return type
+     * @param valueType  The type of the value
+     * @return true if the value is cast
+     */
+    static boolean requiresImplicitReturnCast(TypeDef returnType, TypeDef valueType) {
+        if (requiresImplicitInvocationCast(returnType, valueType)) {
+            return true;
+        }
+        TypeDef target = TypeHierarchy.unwrap(returnType);
+        return target instanceof TypeDef.TypeVariable
+            && !target.equals(TypeHierarchy.unwrap(valueType))
+            && (valueType instanceof ClassTypeDef || valueType instanceof TypeDef.Array);
+    }
+
     static boolean requiresImplicitInvocationCast(TypeDef paramType, TypeDef valueType) {
         if (valueType.equals(TypeDef.OBJECT)) {
             return !paramType.equals(TypeDef.OBJECT);
@@ -177,9 +196,9 @@ final class JavaExpressionRules {
      * @return The declared types, or {@code null} where the method cannot be resolved
      */
     @Nullable
-    static List<TypeDef> declaredParameterTypes(@Nullable ClassTypeDef owner,
-                                                String methodName,
-                                                List<TypeDef> parameterTypes) {
+    static DeclaredSignature declaredSignature(@Nullable ClassTypeDef owner,
+                                               String methodName,
+                                               List<TypeDef> parameterTypes) {
         if (owner == null) {
             return null;
         }
@@ -188,8 +207,9 @@ final class JavaExpressionRules {
             : ClassUtils.forName(owner.getName(), JavaExpressionRules.class.getClassLoader()).orElse(null);
         if (loaded != null) {
             Executable executable = findExecutable(loaded, methodName, erasures);
-            return executable == null ? null
-                : Arrays.stream(executable.getGenericParameterTypes()).map(TypeHierarchy::typeDefOf).toList();
+            return executable == null ? null : new DeclaredSignature(
+                Arrays.stream(executable.getGenericParameterTypes()).map(TypeHierarchy::typeDefOf).toList(),
+                executable.isVarArgs());
         }
         VisitorContext context = JavaPoetNames.context();
         if (context == null) {
@@ -200,9 +220,9 @@ final class JavaExpressionRules {
                 .filter(method -> erasures.equals(Arrays.stream(method.getParameters())
                     .map(parameter -> erasedNameOf(parameter.getType())).toList()))
                 .findFirst())
-            .map(method -> Arrays.stream(method.getParameters())
+            .map(method -> new DeclaredSignature(Arrays.stream(method.getParameters())
                 .map(parameter -> TypeDef.of(parameter.getGenericType(), ignore -> null, false))
-                .toList())
+                .toList(), method.isVarArgs()))
             .orElse(null);
     }
 
@@ -311,7 +331,7 @@ final class JavaExpressionRules {
                 return containsWildcard(wildcard, value);
             }
             return wildcard.upperBounds().stream().allMatch(bound -> withinBound(bound, valueArgument))
-                && wildcard.lowerBounds().stream().allMatch(bound -> isAssignable(valueArgument, bound));
+                && wildcard.lowerBounds().stream().allMatch(bound -> withinBound(valueArgument, bound));
         }
         if (declaredArgument instanceof ClassTypeDef.Parameterized declared) {
             if (!(valueArgument instanceof ClassTypeDef.Parameterized value)
@@ -344,7 +364,7 @@ final class JavaExpressionRules {
         // does not hold, `? super Number` within `? super Integer` does
         boolean lower = declared.lowerBounds().isEmpty()
             || !value.lowerBounds().isEmpty() && declared.lowerBounds().stream().allMatch(bound ->
-                value.lowerBounds().stream().anyMatch(valueBound -> isAssignable(valueBound, bound)));
+                value.lowerBounds().stream().anyMatch(valueBound -> withinBound(valueBound, bound)));
         return upper && lower;
     }
 
@@ -353,8 +373,34 @@ final class JavaExpressionRules {
      * needs a parameterized type - a raw one is only an unchecked conversion.
      */
     private static boolean withinBound(TypeDef bound, TypeDef type) {
-        return accepts(bound, type)
-            && !(bound instanceof ClassTypeDef.Parameterized && !(type instanceof ClassTypeDef.Parameterized));
+        if (bound instanceof ClassTypeDef.Parameterized parameterizedBound
+            && !(type instanceof ClassTypeDef.Parameterized)) {
+            if (type instanceof TypeDef.TypeVariable) {
+                return true;
+            }
+            if (!(type instanceof ClassTypeDef concrete)) {
+                return false;
+            }
+            // A class that declares no type variables is not raw: `StringList extends ArrayList<String>` is the
+            // `List<String>` a `? extends List<T>` bounds
+            Class<?> loaded = loaded(concrete);
+            if (loaded == null) {
+                return !isGenericToTheCompiler(concrete);
+            }
+            if (loaded.getTypeParameters().length > 0) {
+                return false;
+            }
+            ClassTypeDef.Parameterized asBound = asSupertype(loaded, Map.of(), parameterizedBound.rawType().getName());
+            return asBound != null && accepts(parameterizedBound, asBound);
+        }
+        return accepts(bound, type);
+    }
+
+    private static boolean isGenericToTheCompiler(ClassTypeDef type) {
+        VisitorContext context = JavaPoetNames.context();
+        return context != null && context.getClassElement(type.getName())
+            .map(element -> !element.getDeclaredGenericPlaceholders().isEmpty())
+            .orElse(false);
     }
 
     /**
@@ -491,5 +537,14 @@ final class JavaExpressionRules {
         DEFAULT,
         OBJECT_REFERENCE,
         PRIMITIVE_EQUALITY
+    }
+
+    /**
+     * The signature an invoked method declares.
+     *
+     * @param parameterTypes The generic parameter types
+     * @param varargs        Whether the last parameter takes varargs
+     */
+    record DeclaredSignature(List<TypeDef> parameterTypes, boolean varargs) {
     }
 }

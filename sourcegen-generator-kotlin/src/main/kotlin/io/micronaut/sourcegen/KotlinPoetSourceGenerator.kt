@@ -711,7 +711,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             // assigned by every constructor, which a val allows. A primitive cannot be lateinit - including a boxed
             // type, which Kotlin maps to its primitive - so it takes a default instead
             field.initializer.isEmpty && !field.type.isNullable
-                && (field.modifiers.contains(Modifier.STATIC) || !field.modifiers.contains(Modifier.FINAL))
+                && (field.modifiers.contains(Modifier.STATIC)
+                    || !field.modifiers.contains(Modifier.FINAL) && !isAssignedByEveryConstructor(objectDef, field))
                 && field.type !is TypeDef.Primitive && field.type !is TypeDef.TypeVariable
                 && !isKotlinPrimitive(field.type),
         )
@@ -2391,9 +2392,39 @@ class KotlinPoetSourceGenerator : SourceGenerator {
          * may be a vararg, which takes the value as an element - an array return type is cast to as well, as is a
          * type variable an override is resolved to.
          */
-        private fun requiresImplicitReturnCast(returnType: TypeDef, valueType: TypeDef): Boolean =
-            requiresImplicitCast(returnType, valueType)
-                || valueType == TypeDef.OBJECT && (returnType is TypeDef.Array || returnType is TypeDef.TypeVariable)
+        private fun requiresImplicitReturnCast(returnType: TypeDef, valueType: TypeDef): Boolean {
+            if (requiresImplicitCast(returnType, valueType)) {
+                return true
+            }
+            if (valueType == TypeDef.OBJECT && (returnType is TypeDef.Array || returnType is TypeDef.TypeVariable)) {
+                return true
+            }
+            // A value typed with the bound an override's return type was erased to: `CharSequence` for the
+            // `String` of a `Bounded<String>`, or for a `T : CharSequence`
+            if (returnType is TypeDef.TypeVariable) {
+                return valueType != returnType && (valueType is ClassTypeDef || valueType is TypeDef.Array)
+            }
+            return returnType is ClassTypeDef.JavaClass && valueType is ClassTypeDef.JavaClass
+                && !returnType.type.isAssignableFrom(valueType.type)
+        }
+
+        /**
+         * Whether every constructor of the definition assigns the field, which lets it be declared without an
+         * initializer - and without lateinit, which an annotation such as @JvmField does not allow.
+         */
+        private fun isAssignedByEveryConstructor(objectDef: ObjectDef?, field: FieldDef): Boolean {
+            val constructors = objectDef?.methods?.filter { it.isConstructor } ?: return false
+            return constructors.isNotEmpty() && constructors.all { constructor ->
+                constructor.statements.any { assignsField(it, field.name) }
+            }
+        }
+
+        private fun assignsField(statement: StatementDef?, name: String): Boolean = when (statement) {
+            null -> false
+            is StatementDef.PutField -> statement.field.name == name
+            is Multi -> statement.statements.any { assignsField(it, name) }
+            else -> false
+        }
 
         /**
          * The type of an `is` check: Kotlin names every type argument, so a raw generic type is

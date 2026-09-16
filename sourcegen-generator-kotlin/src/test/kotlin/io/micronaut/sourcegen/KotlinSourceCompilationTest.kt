@@ -394,4 +394,47 @@ class KotlinSourceCompilationTest {
 
         assertCompiles(writeClass(box), writeClass(strings))
     }
+
+    @Test
+    fun jvmFieldAssignedByTheConstructor() {
+        val name = FieldDef.builder("name", String::class.java)
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationDef.builder(JvmField::class.java).build())
+            .build()
+        // lateinit cannot be combined with @JvmField, and the constructor assigns the property anyway
+        val classDef = ClassDef.builder("test.JvmNamed")
+            .addField(name)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .addParameter("name", String::class.java)
+                .build { aThis, parameters -> aThis.field(name).put(parameters[0]) })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(!source.contains("lateinit"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun returnErasedToABoundIsCast() {
+        val variable = TypeDef.variable("T", TypeDef.of(CharSequence::class.java))
+        val bounded = InterfaceDef.builder("test.Bounded")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(variable)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(variable)
+                .build())
+            .build()
+        // The model declares the erasure, `CharSequence get()`, which Kotlin overrides as `String get()`
+        val classDef = ClassDef.builder("test.BoundedString")
+            .addSuperinterface(TypeDef.parameterized(bounded.asTypeDef(), TypeDef.STRING))
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC).overrides()
+                .returns(CharSequence::class.java)
+                .build { _, _ ->
+                    ExpressionDef.constant("value").cast(TypeDef.of(CharSequence::class.java)).returning()
+                })
+            .build()
+
+        assertCompiles(writeClass(bounded), writeClass(classDef))
+    }
 }

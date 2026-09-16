@@ -722,4 +722,113 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertTrue(source.contains("(List) lists"), source);
         assertCompiles(source);
     }
+
+    @Test
+    void singleValueOfVarargsStaysAnElement() throws Exception {
+        var format = String.class.getMethod("format", String.class, Object[].class);
+        // A cast to Object[] would fail at runtime for any value that is not an array
+        ClassDef classDef = ClassDef.builder("test.Formatted")
+            .addMethod(MethodDef.builder("describe").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Object.class)
+                .returns(String.class)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(String.class)
+                    .invokeStatic(format, ExpressionDef.constant("%s"), methodParameters.get(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertFalse(source.contains("(Object[])"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void concreteSubtypeWithinAParameterizedBound() throws Exception {
+        var flatten = CompilationSignatures.class.getMethod("flatten", List.class);
+        var get = List.class.getMethod("get", int.class);
+        // `StringList` is the `List<String>` that `? extends List<T>` bounds, and infers `T` as String
+        ClassDef classDef = ClassDef.builder("test.Flattened")
+            .addMethod(MethodDef.builder("first").addModifiers(Modifier.PUBLIC)
+                .addParameter("values", TypeDef.parameterized(ClassTypeDef.of(List.class),
+                    ClassTypeDef.of(CompilationSignatures.StringList.class)))
+                .returns(String.class)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(CompilationSignatures.class)
+                    .invokeStatic(flatten, methodParameters.get(0))
+                    .invoke(get, ExpressionDef.constant(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertFalse(source.contains("(List) values"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void lowerBoundKeepsItsTypeArguments() throws Exception {
+        var addTo = CompilationSignatures.class.getMethod("addTo", List.class);
+        TypeDef integers = TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.of(Integer.class));
+        // `List<String>` is no subtype of `List<Integer>`, so `? super List<String>` does not take it
+        ClassDef classDef = ClassDef.builder("test.LowerBound")
+            .addMethod(MethodDef.builder("add").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", TypeDef.parameterized(ClassTypeDef.of(List.class), integers))
+                .returns(int.class)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(CompilationSignatures.class)
+                    .invokeStatic(addTo, methodParameters.get(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(List) target"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void erasedOverrideReturningABoundedTypeVariable() throws Exception {
+        TypeDef.TypeVariable interfaceVariable = TypeDef.variable("T", TypeDef.of(CharSequence.class));
+        InterfaceDef bounded = InterfaceDef.builder("test.Bounded")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(interfaceVariable)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(interfaceVariable)
+                .build())
+            .build();
+        TypeDef.TypeVariable variable = TypeDef.variable("T", TypeDef.of(CharSequence.class));
+        // The model declares the erasure, `CharSequence get()`, which as source is `T get()`
+        ClassDef classDef = ClassDef.builder("test.BoundedBox")
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(bounded.asTypeDef(), variable))
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC).overrides()
+                .returns(CharSequence.class)
+                .build((aThis, methodParameters) -> ExpressionDef.constant("value")
+                    .cast(TypeDef.of(CharSequence.class))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("T get()"), source);
+        assertCompiles(writeSource(bounded), source);
+    }
+
+    @Test
+    void blankFinalFieldNamedLikeACatchParameter() throws Exception {
+        FieldDef failure = FieldDef.builder("e0", Throwable.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .build();
+        ClassTypeDef type = ClassTypeDef.of("test.Caught");
+        // The catch parameter takes another name, so that the assignment writes the field
+        ClassDef classDef = ClassDef.builder("test.Caught")
+            .addField(failure)
+            .addStaticInitializer(StatementDef
+                .doTry(ClassTypeDef.of(IllegalStateException.class).instantiate().doThrow())
+                .doCatch(Exception.class, exception -> type.getStaticField(failure).put(exception)))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertFalse(source.contains("catch (Exception e0)"), source);
+        assertCompiles(source);
+    }
 }

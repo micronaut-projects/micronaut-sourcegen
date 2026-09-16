@@ -16,7 +16,9 @@
 package io.micronaut.sourcegen.generator;
 
 import io.micronaut.core.annotation.Internal;
+import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
@@ -96,14 +98,66 @@ public final class OverrideResolver {
         String returnErasure = TypeHierarchy.erasedName(declaringType.erase(methodDef.getReturnType()), objectDef);
         Declared declared = new Declared(objectDef, methodDef, parameterErasures, returnErasure, declaringType,
             new HashSet<>(declaringType.getTypeParameters()), exact);
-        OverriddenMethod[] found = new OverriddenMethod[1];
+        List<OverriddenMethod> found = new ArrayList<>();
         TypeHierarchy.visitInheritedMethods(objectDef,
             context == null ? null : name -> context.getClassElement(name).orElse(null),
             (type, inherited) -> {
-                found[0] = overriddenBy(declared, type, inherited);
-                return found[0] == null;
+                OverriddenMethod overridden = overriddenBy(declared, type, inherited);
+                if (overridden != null) {
+                    found.add(overridden);
+                }
+                return true;
             });
-        return found[0];
+        return mostSpecific(found);
+    }
+
+    /**
+     * The resolved signature that satisfies every inherited method the declared one overrides: one of
+     * {@code A<Number>.get()} and {@code B<Integer>.get()} is implemented by {@code Integer get()}.
+     *
+     * @param found The signatures resolved from each inherited method
+     * @return The one whose return type is a subtype of all the others, or {@code null} where there is none
+     */
+    @Nullable
+    private static OverriddenMethod mostSpecific(List<OverriddenMethod> found) {
+        OverriddenMethod best = null;
+        for (OverriddenMethod candidate : found) {
+            if (best == null || isSubtype(candidate.returnType(), best.returnType())) {
+                best = candidate;
+            }
+        }
+        if (best == null) {
+            return null;
+        }
+        for (OverriddenMethod other : found) {
+            if (!isSubtype(best.returnType(), other.returnType())) {
+                return null;
+            }
+        }
+        return best;
+    }
+
+    private static boolean isSubtype(TypeDef subtype, TypeDef supertype) {
+        TypeDef sub = TypeHierarchy.unwrap(subtype);
+        TypeDef sup = TypeHierarchy.unwrap(supertype);
+        if (sub.equals(sup) || TypeDef.OBJECT.equals(sup)) {
+            return true;
+        }
+        if (sup instanceof ClassTypeDef.Parameterized || !(sub instanceof ClassTypeDef) || !(sup instanceof ClassTypeDef)) {
+            // Type arguments and variables are only known to relate where they are the same
+            return false;
+        }
+        Class<?> subClass = loaded(sub);
+        Class<?> supClass = loaded(sup);
+        return subClass != null && supClass != null && supClass.isAssignableFrom(subClass);
+    }
+
+    @Nullable
+    private static Class<?> loaded(TypeDef type) {
+        if (type instanceof ClassTypeDef.JavaClass javaClass) {
+            return javaClass.type();
+        }
+        return ClassUtils.forName(TypeHierarchy.erasedName(type), OverrideResolver.class.getClassLoader()).orElse(null);
     }
 
     @Nullable

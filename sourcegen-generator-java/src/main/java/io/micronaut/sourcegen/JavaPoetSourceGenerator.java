@@ -21,7 +21,7 @@ import static io.micronaut.sourcegen.JavaExpressionRules.CastContext;
 import static io.micronaut.sourcegen.JavaExpressionRules.arePrimitiveReferenceEqualityOperands;
 import static io.micronaut.sourcegen.JavaExpressionRules.canEliminateCastToObject;
 import static io.micronaut.sourcegen.JavaExpressionRules.collapseNestedCasts;
-import static io.micronaut.sourcegen.JavaExpressionRules.declaredParameterTypes;
+import static io.micronaut.sourcegen.JavaExpressionRules.declaredSignature;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawCast;
 import static io.micronaut.sourcegen.JavaExpressionRules.getMathOp;
 import static io.micronaut.sourcegen.JavaExpressionRules.getOpType;
@@ -29,6 +29,7 @@ import static io.micronaut.sourcegen.JavaExpressionRules.isNullLiteral;
 import static io.micronaut.sourcegen.JavaExpressionRules.isOrCondition;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresCastOperandParentheses;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresImplicitInvocationCast;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresImplicitReturnCast;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresMathParentheses;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresMethodCallTargetParentheses;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresParentheses;
@@ -83,6 +84,7 @@ import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.TypeHierarchy;
 import io.micronaut.sourcegen.model.VariableDef;
 
 import javax.lang.model.element.Modifier;
@@ -465,6 +467,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
     }
 
+    private static boolean declaresField(@Nullable ObjectDef objectDef, String name) {
+        List<FieldDef> fields = switch (objectDef) {
+            case ClassDef classDef -> classDef.getFields();
+            case EnumDef enumDef -> enumDef.getFields();
+            case null, default -> List.of();
+        };
+        return fields.stream().anyMatch(field -> field.getName().equals(name));
+    }
+
     private MethodSpec asMethodSpec(ObjectDef objectDef, MethodDef method) {
         String methodName = method.getName();
         List<TypeDef> parameterTypes = method.getParameters().stream().map(ParameterDef::getType).toList();
@@ -801,7 +812,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 }
                 ExpressionDef returned = aReturn.expression();
                 if (methodDef != null && !methodDef.getReturnType().equals(TypeDef.VOID)
-                    && requiresImplicitInvocationCast(methodDef.getReturnType(), returned.type())) {
+                    && requiresImplicitReturnCast(methodDef.getReturnType(), returned.type())) {
                     // e.g. an interceptor chain proceeds to Object, which the verifier accepts for a reference return
                     returned = returned.cast(methodDef.getReturnType());
                 }
@@ -896,6 +907,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 int i = 0;
                 for (StatementDef.Try.Catch aCatch : tryStatement.catches()) {
                     String exceptionLocal = "e" + i++;
+                    while (declaresField(objectDef, exceptionLocal)) {
+                        // An unqualified assignment of that field would otherwise write the parameter
+                        exceptionLocal = "e" + i++;
+                    }
                     builder.add(CodeBlock.of("} catch ($T $L) {\n", asType(aCatch.exception(), objectDef), exceptionLocal));
                     builder.indent();
                     RenderScope catchScope = scope.nested(null);
@@ -1369,14 +1384,24 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                                 List<? extends ExpressionDef> values) {
         List<TypeDef> sameArityParameterTypes = parameterTypes != null && parameterTypes.size() == values.size()
             ? parameterTypes : null;
-        // The types the invoked method declares, which carry the type arguments the erased model does not
-        List<TypeDef> declaredTypes = methodName == null || sameArityParameterTypes == null ? null
-            : declaredParameterTypes(owner, methodName, sameArityParameterTypes);
+        // The signature the invoked method declares, which carries the type arguments the erased model does not
+        JavaExpressionRules.DeclaredSignature signature = methodName == null || sameArityParameterTypes == null ? null
+            : declaredSignature(owner, methodName, sameArityParameterTypes);
+        List<TypeDef> declaredTypes = signature == null ? null : signature.parameterTypes();
+        // Where the method is unknown, a trailing array parameter may take varargs: a value is passed as it is
+        boolean varargs = signature == null || signature.varargs();
         return IntStream.range(0, values.size())
             .mapToObj(i -> {
                 ExpressionDef value = values.get(i);
                 if (sameArityParameterTypes != null) {
                     TypeDef paramType = sameArityParameterTypes.get(i);
+                    boolean vararg = varargs && i == values.size() - 1
+                        && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array
+                        && !(TypeHierarchy.unwrap(value.type()) instanceof TypeDef.Array);
+                    if (vararg) {
+                        // A value that is not an array is one element of the varargs, which a cast would not be
+                        return renderExpression(objectDef, enclosingMethod, scope, value);
+                    }
                     if (requiresImplicitInvocationCast(paramType, value.type())) {
                         value = value.cast(paramType);
                     } else if (declaredTypes != null && declaredTypes.size() == values.size()

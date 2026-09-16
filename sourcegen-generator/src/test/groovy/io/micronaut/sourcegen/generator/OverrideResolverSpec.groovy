@@ -317,4 +317,32 @@ class OverrideResolverSpec extends Specification {
         overridden.returnType() == TypeDef.STRING
         overridden.parameterTypes() == [ClassTypeDef.of(List)]
     }
+
+    void "resolves the return type every inherited method accepts"() {
+        given:
+        def a = TypeDef.variable("T")
+        def first = InterfaceDef.builder("example.First")
+            .addTypeVariable(a)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(a).build())
+            .build()
+        def b = TypeDef.variable("T")
+        def second = InterfaceDef.builder("example.Second")
+            .addTypeVariable(b)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(b).build())
+            .build()
+        def erased = MethodDef.builder("get")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        // `Number get()` does not implement `Second<Integer>`; `Integer get()` implements both
+        def classDef = ClassDef.builder("example.Both")
+            .addSuperinterface(TypeDef.parameterized(first.asTypeDef(), TypeDef.of(Number)))
+            .addSuperinterface(TypeDef.parameterized(second.asTypeDef(), TypeDef.of(Integer)))
+            .addMethod(erased)
+            .build()
+
+        expect:
+        OverrideResolver.resolve(classDef, erased, null).returnType() == TypeDef.of(Integer)
+    }
 }
