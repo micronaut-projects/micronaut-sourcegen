@@ -23,6 +23,8 @@ import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import org.jspecify.annotations.Nullable;
 
+import javax.lang.model.element.Modifier;
+
 import java.util.List;
 
 /**
@@ -73,41 +75,119 @@ final class JavaSourceRules {
     }
 
     /**
-     * Whether the static initializer of the definition assigns a field exactly once and outside any control flow,
-     * which is what Java's definite-assignment checks accept for a blank final.
+     * Whether a blank final static field of the definition is definitely assigned exactly once by its static
+     * initializer, which is what Java requires of one - and what lets the field keep its {@code final} modifier and
+     * be assigned by its unqualified name.
      *
      * @param objectDef The definition
      * @param fieldName The field name
-     * @return true if the field keeps its `final` modifier
+     * @return true if the field keeps its {@code final} modifier
      */
-    static boolean isAssignedOnceInStaticInitializer(@Nullable ObjectDef objectDef, String fieldName) {
-        if (!(objectDef instanceof ClassDef classDef)) {
+    static boolean keepsFinal(@Nullable ObjectDef objectDef, String fieldName) {
+        if (!(objectDef instanceof ClassDef classDef) || classDef.getStaticInitializer() == null) {
             return false;
         }
-        return countAssignments(classDef.getStaticInitializer(), fieldName, false) == 1;
+        boolean blankFinal = classDef.getFields().stream()
+            .filter(field -> field.getName().equals(fieldName))
+            .anyMatch(field -> field.getModifiers().contains(Modifier.STATIC)
+                && field.getModifiers().contains(Modifier.FINAL)
+                && field.getInitializer().isEmpty());
+        if (!blankFinal) {
+            return false;
+        }
+        // A local of the same name takes over the unqualified assignment the field would need
+        if (declaresLocal(classDef.getStaticInitializer(), fieldName)) {
+            return false;
+        }
+        Assignment assignment = assignmentOf(classDef.getStaticInitializer(), fieldName);
+        return assignment.definite() && !assignment.repeatable();
     }
 
-    static int countAssignments(@Nullable StatementDef statement, String fieldName, boolean conditional) {
-        // A conditional assignment counts twice, so that it never reads as the single unconditional one
+    private static boolean declaresLocal(@Nullable StatementDef statement, String name) {
         return switch (statement) {
-            case null -> 0;
+            case null -> false;
+            case StatementDef.DefineAndAssign define -> define.variable().name().equals(name);
+            case StatementDef.Multi multi -> multi.statements().stream().anyMatch(child -> declaresLocal(child, name));
+            case StatementDef.If anIf -> declaresLocal(anIf.statement(), name);
+            case StatementDef.IfElse ifElse -> declaresLocal(ifElse.statement(), name)
+                || declaresLocal(ifElse.elseStatement(), name);
+            case StatementDef.Switch aSwitch -> declaresLocal(aSwitch.defaultCase(), name)
+                || aSwitch.cases().values().stream().anyMatch(aCase -> declaresLocal(aCase, name));
+            case StatementDef.While aWhile -> declaresLocal(aWhile.statement(), name);
+            case StatementDef.Synchronized aSynchronized -> declaresLocal(aSynchronized.statement(), name);
+            case StatementDef.Try aTry -> declaresLocal(aTry.statement(), name)
+                || declaresLocal(aTry.finallyStatement(), name)
+                || aTry.catches().stream().anyMatch(aCatch -> declaresLocal(aCatch.statement(), name));
+            default -> false;
+        };
+    }
+
+    private static Assignment assignmentOf(@Nullable StatementDef statement, String fieldName) {
+        return switch (statement) {
+            case null -> Assignment.NONE;
             case StatementDef.PutStaticField put ->
-                put.field().name().equals(fieldName) ? (conditional ? 2 : 1) : 0;
-            case StatementDef.Multi multi -> multi.statements().stream()
-                .mapToInt(child -> countAssignments(child, fieldName, conditional)).sum();
-            case StatementDef.If anIf -> countAssignments(anIf.statement(), fieldName, true);
-            case StatementDef.IfElse ifElse -> countAssignments(ifElse.statement(), fieldName, true)
-                + countAssignments(ifElse.elseStatement(), fieldName, true);
-            case StatementDef.Switch aSwitch -> aSwitch.cases().values().stream()
-                .mapToInt(aCase -> countAssignments(aCase, fieldName, true)).sum()
-                + countAssignments(aSwitch.defaultCase(), fieldName, true);
-            case StatementDef.While aWhile -> countAssignments(aWhile.statement(), fieldName, true);
-            case StatementDef.Synchronized aSynchronized ->
-                countAssignments(aSynchronized.statement(), fieldName, conditional);
-            case StatementDef.Try aTry -> countAssignments(aTry.statement(), fieldName, true)
-                + aTry.catches().stream().mapToInt(aCatch -> countAssignments(aCatch.statement(), fieldName, true)).sum()
-                + countAssignments(aTry.finallyStatement(), fieldName, true);
-            default -> 0;
+                put.field().name().equals(fieldName) ? Assignment.ONCE : Assignment.NONE;
+            case StatementDef.Multi multi -> {
+                boolean definite = false;
+                boolean possible = false;
+                boolean repeatable = false;
+                for (StatementDef child : multi.statements()) {
+                    Assignment assignment = assignmentOf(child, fieldName);
+                    repeatable |= assignment.repeatable() || (possible && assignment.possible());
+                    definite |= assignment.definite();
+                    possible |= assignment.possible();
+                }
+                yield new Assignment(definite, possible, repeatable);
+            }
+            case StatementDef.If anIf -> {
+                Assignment assignment = assignmentOf(anIf.statement(), fieldName);
+                yield new Assignment(false, assignment.possible(), assignment.repeatable());
+            }
+            case StatementDef.IfElse ifElse -> {
+                // The branches are mutually exclusive: assigning in each of them assigns the field exactly once
+                Assignment then = assignmentOf(ifElse.statement(), fieldName);
+                Assignment otherwise = assignmentOf(ifElse.elseStatement(), fieldName);
+                yield new Assignment(then.definite() && otherwise.definite(), then.possible() || otherwise.possible(),
+                    then.repeatable() || otherwise.repeatable());
+            }
+            case StatementDef.Switch aSwitch -> {
+                boolean definite = aSwitch.defaultCase() != null
+                    && assignmentOf(aSwitch.defaultCase(), fieldName).definite();
+                boolean possible = assignmentOf(aSwitch.defaultCase(), fieldName).possible();
+                boolean repeatable = assignmentOf(aSwitch.defaultCase(), fieldName).repeatable();
+                for (StatementDef aCase : aSwitch.cases().values()) {
+                    Assignment assignment = assignmentOf(aCase, fieldName);
+                    definite &= assignment.definite();
+                    possible |= assignment.possible();
+                    repeatable |= assignment.repeatable();
+                }
+                yield new Assignment(definite, possible, repeatable);
+            }
+            case StatementDef.While aWhile -> {
+                // An iteration could assign what the one before it did
+                Assignment assignment = assignmentOf(aWhile.statement(), fieldName);
+                yield new Assignment(false, assignment.possible(), assignment.possible() || assignment.repeatable());
+            }
+            case StatementDef.Synchronized aSynchronized -> assignmentOf(aSynchronized.statement(), fieldName);
+            case StatementDef.Try aTry -> {
+                Assignment body = assignmentOf(aTry.statement(), fieldName);
+                Assignment aFinally = assignmentOf(aTry.finallyStatement(), fieldName);
+                boolean catchesPossible = false;
+                boolean catchesDefinite = true;
+                boolean repeatable = body.repeatable() || aFinally.repeatable();
+                for (StatementDef.Try.Catch aCatch : aTry.catches()) {
+                    Assignment assignment = assignmentOf(aCatch.statement(), fieldName);
+                    catchesPossible |= assignment.possible();
+                    catchesDefinite &= assignment.definite();
+                    repeatable |= assignment.repeatable();
+                }
+                // The body may have assigned the field before it threw, so a catch or a finally assigning it again
+                // is what Java reports as possibly already assigned
+                repeatable |= body.possible() && (catchesPossible || aFinally.possible());
+                boolean definite = aFinally.definite() || (body.definite() && catchesDefinite);
+                yield new Assignment(definite, body.possible() || catchesPossible || aFinally.possible(), repeatable);
+            }
+            default -> Assignment.NONE;
         };
     }
 
@@ -140,5 +220,17 @@ final class JavaSourceRules {
                 hasSwitchYieldReturn(statement) && hasSwitchYieldReturn(elseStatement);
             default -> false;
         };
+    }
+
+    /**
+     * How a statement assigns one field.
+     *
+     * @param definite   Whether every path that completes it normally has assigned the field
+     * @param possible   Whether some path has
+     * @param repeatable Whether a path could assign the field a second time, which Java rejects for a blank final
+     */
+    private record Assignment(boolean definite, boolean possible, boolean repeatable) {
+        private static final Assignment NONE = new Assignment(false, false, false);
+        private static final Assignment ONCE = new Assignment(true, true, false);
     }
 }

@@ -92,7 +92,8 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("Holder.VALUE"), source);
+        assertTrue(source.contains("private static String VALUE;"), source);
+        assertTrue(source.contains("private static Throwable FAILURE;"), source);
         assertCompiles(source);
     }
 
@@ -296,7 +297,7 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
             .addMethod(MethodDef.builder("dispatch").addModifiers(Modifier.PUBLIC)
                 .addParameter("stop", boolean.class)
                 .build((aThis, methodParameters) -> StatementDef.multi(
-                    new StatementDef.If(methodParameters.get(0), aThis.invoke(run).returning()),
+                    methodParameters.get(0).isTrue().doIf(aThis.invoke(run).returning()),
                     aThis.invoke(run))))
             .build();
 
@@ -319,11 +320,9 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
             // The second field is assigned in both a try and its catch, which definite assignment rejects
             .addStaticInitializer(StatementDef.multi(
                 type.getStaticField(kept).put(ExpressionDef.constant("kept")),
-                new StatementDef.Try(
-                    type.getStaticField(fallback).put(ExpressionDef.constant("value")),
-                    List.of(new StatementDef.Try.Catch(ClassTypeDef.of(Throwable.class),
-                        type.getStaticField(fallback).put(ExpressionDef.constant("fallback")))),
-                    null)))
+                StatementDef.doTry(type.getStaticField(fallback).put(ExpressionDef.constant("value")))
+                    .doCatch(Throwable.class, exception ->
+                        type.getStaticField(fallback).put(ExpressionDef.constant("fallback")))))
             .build();
 
         String source = writeClass(classDef);
@@ -345,6 +344,69 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         // Without a value the member is omitted, and `@SuppressWarnings` alone does not compile
         assertTrue(source.contains("{}"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void returningFromAFinallyBlock() throws Exception {
+        MethodDef run = MethodDef.builder("run").addModifiers(Modifier.PRIVATE)
+            .build((aThis, methodParameters) -> StatementDef.multi());
+        // The return discards the exception of the try; dropping it would let the exception out
+        ClassDef classDef = ClassDef.builder("test.Finally")
+            .addMethod(run)
+            .addMethod(MethodDef.builder("guarded").addModifiers(Modifier.PUBLIC)
+                .build((aThis, methodParameters) -> StatementDef
+                    .doTry(ClassTypeDef.of(IllegalStateException.class).instantiate().doThrow())
+                    .doFinally(StatementDef.multi(aThis.invoke(run), aThis.invoke(run).returning()))))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("return;"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void staticFieldAssignedBesideALocalOfTheSameName() throws Exception {
+        FieldDef value = FieldDef.builder("value", TypeDef.Primitive.INT)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .build();
+        ClassTypeDef type = ClassTypeDef.of("test.LocalShadow");
+        // A local of the same name would take over an unqualified assignment, leaving the field unwritten
+        ClassDef classDef = ClassDef.builder("test.LocalShadow")
+            .addField(value)
+            .addStaticInitializer(ExpressionDef.constant(1).newLocal("value", local -> StatementDef.multi(
+                type.getStaticField(value).put(ExpressionDef.constant(7)),
+                type.getStaticField(value).put(local)
+            )))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("LocalShadow.value = 7;"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void blankFinalStaticFieldAssignedInEachBranchKeepsFinal() throws Exception {
+        FieldDef value = FieldDef.builder("VALUE", TypeDef.STRING)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .build();
+        ClassTypeDef type = ClassTypeDef.of("test.Branches");
+        // Mutually exclusive branches assign the field exactly once, which definite assignment accepts
+        ClassDef classDef = ClassDef.builder("test.Branches")
+            .addField(value)
+            .addStaticInitializer(ClassTypeDef.of(Boolean.class)
+                .invokeStatic("getBoolean", TypeDef.Primitive.BOOLEAN, ExpressionDef.constant("flag"))
+                .isTrue()
+                .doIfElse(
+                    type.getStaticField(value).put(ExpressionDef.constant("yes")),
+                    type.getStaticField(value).put(ExpressionDef.constant("no"))))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("public static final String VALUE;"), source);
         assertCompiles(source);
     }
 }

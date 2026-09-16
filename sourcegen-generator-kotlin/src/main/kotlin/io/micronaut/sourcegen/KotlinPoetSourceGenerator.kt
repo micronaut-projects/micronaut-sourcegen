@@ -1226,7 +1226,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (finallyStatement != null) {
                 builder.add("} finally {\n")
                 builder.indent()
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, finallyStatement, tailPosition))
+                // Never the tail: a return here discards an exception or a return of the try, which falling out of
+                // the block does not
+                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, finallyStatement, false))
                 builder.unindent()
             }
             builder.add("}\n")

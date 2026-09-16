@@ -39,7 +39,7 @@ import static io.micronaut.sourcegen.JavaSourceRules.cannotCompleteNormally;
 import static io.micronaut.sourcegen.JavaSourceRules.containsBlockBodyLambda;
 import static io.micronaut.sourcegen.JavaSourceRules.containsSwitchExpression;
 import static io.micronaut.sourcegen.JavaSourceRules.hasSwitchYieldReturn;
-import static io.micronaut.sourcegen.JavaSourceRules.isAssignedOnceInStaticInitializer;
+import static io.micronaut.sourcegen.JavaSourceRules.keepsFinal;
 import static io.micronaut.sourcegen.JavaSourceRules.singleExpressionBody;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.core.naming.NameUtils;
@@ -400,7 +400,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             boolean blankFinalStaticField = field.getModifiers().contains(Modifier.STATIC)
                 && field.getModifiers().contains(Modifier.FINAL)
                 && field.getInitializer().isEmpty()
-                && !isAssignedOnceInStaticInitializer(objectDef, field.getName());
+                && !keepsFinal(objectDef, field.getName());
             Modifier[] modifiers = blankFinalStaticField
                 ? field.getModifiers().stream().filter(m -> m != Modifier.FINAL).toArray(Modifier[]::new)
                 : field.getModifiersArray();
@@ -824,10 +824,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             case StatementDef.PutStaticField putStaticField -> {
                 // A blank final static field can only be assigned by its unqualified name, and
-                // `ThisClass.field = ...` is illegal even where `ThisClass` is the class being written. Only in a
-                // static initializer, where no parameter and no local of that name can shadow the field
+                // `ThisClass.field = ...` is illegal even where `ThisClass` is the class being written. Every other
+                // field is assigned by its qualified name, which no local of the same name can take over
                 CodeBlock target = methodDef == null && objectDef != null
                     && putStaticField.field().ownerType().getName().equals(objectDef.asTypeDef().getName())
+                    && keepsFinal(objectDef, putStaticField.field().name())
                     ? CodeBlock.of("$L", putStaticField.field().name())
                     : renderExpression(objectDef, methodDef, scope, putStaticField.field());
                 return CodeBlock.concat(
@@ -903,7 +904,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 if (tryStatement.finallyStatement() != null) {
                     builder.add("} finally {\n");
                     builder.indent();
-                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, tryStatement.finallyStatement(), tailPosition));
+                    // Never the tail: a return here discards an exception or a return of the try, which falling out
+                    // of the block does not
+                    builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, tryStatement.finallyStatement(), false));
                     builder.unindent();
                 }
                 builder.add("}\n");

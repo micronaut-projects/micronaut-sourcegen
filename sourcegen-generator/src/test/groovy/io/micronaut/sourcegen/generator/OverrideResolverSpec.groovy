@@ -32,7 +32,7 @@ class OverrideResolverSpec extends Specification {
             .overrides()
             .build()
         def classDef = ClassDef.builder("example.StringConsumer")
-            .addSuperinterface(new ClassTypeDef.Parameterized(consumer.asTypeDef(), [TypeDef.STRING]))
+            .addSuperinterface(TypeDef.parameterized(consumer.asTypeDef(), TypeDef.STRING))
             .addMethod(erased)
             .build()
 
@@ -224,7 +224,7 @@ class OverrideResolverSpec extends Specification {
             .build()
         def classDef = ClassDef.builder("example.Outer")
             .addInnerType(ClassDef.builder("Key").build())
-            .addSuperinterface(new ClassTypeDef.Parameterized(producer.asTypeDef(), [TypeDef.STRING]))
+            .addSuperinterface(TypeDef.parameterized(producer.asTypeDef(), TypeDef.STRING))
             .addMethod(erased)
             .build()
 

@@ -301,9 +301,30 @@ class KotlinSourceCompilationTest {
                 .addParameter("stop", TypeDef.primitive(Boolean::class.javaPrimitiveType!!))
                 .build { aThis, parameters ->
                     StatementDef.multi(
-                        StatementDef.If(parameters[0], aThis.invoke(run).returning()),
+                        parameters[0].isTrue().doIf(aThis.invoke(run).returning()),
                         aThis.invoke(run)
                     )
+                })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("return\n"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun returningFromAFinallyBlock() {
+        val run = MethodDef.builder("run").addModifiers(Modifier.PRIVATE)
+            .build { _, _ -> StatementDef.multi() }
+        // The return discards the exception of the try; dropping it would let the exception out
+        val classDef = ClassDef.builder("test.Finally")
+            .addMethod(run)
+            .addMethod(MethodDef.builder("guarded").addModifiers(Modifier.PUBLIC)
+                .build { aThis, _ ->
+                    StatementDef
+                        .doTry(ClassTypeDef.of(IllegalStateException::class.java).instantiate().doThrow())
+                        .doFinally(StatementDef.multi(aThis.invoke(run), aThis.invoke(run).returning()))
                 })
             .build()
 
