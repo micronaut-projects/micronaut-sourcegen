@@ -309,6 +309,17 @@ public final class TypeHierarchy {
         return null;
     }
 
+    /**
+     * Substitutes type variables by name, at any depth of the type.
+     *
+     * @param type         The type
+     * @param substitution The types to substitute for the variables
+     * @return The substituted type
+     */
+    public static TypeDef substituted(TypeDef type, Map<String, TypeDef> substitution) {
+        return substitute(type, substitution);
+    }
+
     private static TypeDef substitute(TypeDef type, Map<String, TypeDef> substitution) {
         TypeDef unwrapped = unwrap(type);
         if (unwrapped instanceof TypeDef.TypeVariable variable) {

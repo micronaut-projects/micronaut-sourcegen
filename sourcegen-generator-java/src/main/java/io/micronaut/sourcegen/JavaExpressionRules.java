@@ -29,8 +29,12 @@ import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.Executable;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * What an expression reads as in Java source: where it needs parentheses of its own, where a cast is implicit in
@@ -263,9 +267,17 @@ final class JavaExpressionRules {
                 && wildcard.lowerBounds().stream().allMatch(bound -> isAssignable(valueType, bound));
         }
         if (declaredType instanceof ClassTypeDef.Parameterized declared) {
-            if (!(valueType instanceof ClassTypeDef.Parameterized value)
-                || !declared.rawType().getName().equals(value.rawType().getName())
-                || declared.typeArguments().size() != value.typeArguments().size()) {
+            if (!(valueType instanceof ClassTypeDef.Parameterized value)) {
+                return false;
+            }
+            if (!declared.rawType().getName().equals(value.rawType().getName())) {
+                // The value of a subtype is compared as the declared type sees it: `ArrayList<String>` is the
+                // `List<String>` a `List<? extends T>` accepts. A supertype that cannot be resolved is taken to fit,
+                // rather than erasing the value
+                ClassTypeDef.Parameterized asDeclared = asSupertype(value, declared.rawType().getName());
+                return asDeclared == null || accepts(declared, asDeclared);
+            }
+            if (declared.typeArguments().size() != value.typeArguments().size()) {
                 return false;
             }
             for (int i = 0; i < declared.typeArguments().size(); i++) {
@@ -276,6 +288,54 @@ final class JavaExpressionRules {
             return true;
         }
         return isAssignable(declaredType, valueType);
+    }
+
+    /**
+     * The value type as one of its supertypes, with the type arguments it inherits that supertype with.
+     *
+     * @param value   The type
+     * @param rawName The binary name of the supertype
+     * @return The supertype, or {@code null} where it cannot be resolved
+     */
+    private static ClassTypeDef.@Nullable Parameterized asSupertype(ClassTypeDef.Parameterized value, String rawName) {
+        Class<?> valueClass = loaded(value);
+        return valueClass == null ? null : asSupertype(valueClass, substitutionOf(valueClass, value), rawName);
+    }
+
+    private static ClassTypeDef.@Nullable Parameterized asSupertype(Class<?> type,
+                                                                    Map<String, TypeDef> substitution,
+                                                                    String rawName) {
+        List<Type> superTypes = new ArrayList<>();
+        if (type.getGenericSuperclass() != null) {
+            superTypes.add(type.getGenericSuperclass());
+        }
+        superTypes.addAll(Arrays.asList(type.getGenericInterfaces()));
+        for (Type superType : superTypes) {
+            TypeDef converted = TypeHierarchy.substituted(TypeHierarchy.typeDefOf(superType), substitution);
+            Class<?> raw = loaded(converted);
+            if (raw == null) {
+                continue;
+            }
+            if (raw.getName().equals(rawName)) {
+                return converted instanceof ClassTypeDef.Parameterized parameterized ? parameterized : null;
+            }
+            ClassTypeDef.Parameterized found = asSupertype(raw,
+                converted instanceof ClassTypeDef.Parameterized parameterized
+                    ? substitutionOf(raw, parameterized) : Map.of(), rawName);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
+    }
+
+    private static Map<String, TypeDef> substitutionOf(Class<?> type, ClassTypeDef.Parameterized parameterized) {
+        Map<String, TypeDef> substitution = new HashMap<>();
+        java.lang.reflect.TypeVariable<?>[] variables = type.getTypeParameters();
+        for (int i = 0; i < variables.length && i < parameterized.typeArguments().size(); i++) {
+            substitution.put(variables[i].getName(), parameterized.typeArguments().get(i));
+        }
+        return substitution;
     }
 
     private static boolean isAssignable(TypeDef declaredType, TypeDef valueType) {

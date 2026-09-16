@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.function.Consumer;
@@ -549,6 +550,27 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
             .addMethod(MethodDef.builder("first").addModifiers(Modifier.PUBLIC)
                 .addParameter("items", TypeDef.parameterized(rawList, rawList))
                 .returns(rawList)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(Collections.class)
+                    .invokeStatic(unmodifiableList, methodParameters.get(0))
+                    .invoke(get, ExpressionDef.constant(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertFalse(source.contains("(List) items"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void argumentOfAGenericSubtypeOfTheDeclaredType() throws Exception {
+        var unmodifiableList = Collections.class.getMethod("unmodifiableList", List.class);
+        var get = List.class.getMethod("get", int.class);
+        // `ArrayList<String>` is the `List<String>` that `unmodifiableList(List<? extends T>)` accepts
+        ClassDef classDef = ClassDef.builder("test.Items4")
+            .addMethod(MethodDef.builder("first").addModifiers(Modifier.PUBLIC)
+                .addParameter("items", TypeDef.parameterized(ClassTypeDef.of(ArrayList.class), TypeDef.STRING))
+                .returns(String.class)
                 .build((aThis, methodParameters) -> ClassTypeDef.of(Collections.class)
                     .invokeStatic(unmodifiableList, methodParameters.get(0))
                     .invoke(get, ExpressionDef.constant(0))
