@@ -18,12 +18,16 @@ micronaut-platform = "5.1.0"
 micronaut-data = "5.1.1"
 micronaut-validation = "5.1.0"
 micronaut-gradle-plugin = "5.0.2"
+# The Python compiler (micronaut-inject-python) of test-suite-python ships with Micronaut core 5.2+, which this branch does not use yet
+micronaut-python = "5.2.2"
 
 [libraries]
 # Micronaut
 micronaut-core = { module = "io.micronaut:micronaut-core-bom", version.ref = "micronaut" }
 micronaut-data = { module = "io.micronaut.data:micronaut-data-bom", version.ref = "micronaut-data" }
 micronaut-validation = { module = "io.micronaut.validation:micronaut-validation-bom", version.ref = "micronaut-validation" }
+micronaut-core-python = { module = "io.micronaut:micronaut-core-bom", version.ref = "micronaut-python" }
+micronaut-inject-python-test = { module = "io.micronaut:micronaut-inject-python-test" }
 
 managed-kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "managed-kotlinpoet" }
 managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", version.ref = "managed-kotlinpoet-javapoet" }
