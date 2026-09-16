@@ -2399,6 +2399,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (valueType == TypeDef.OBJECT && (returnType is TypeDef.Array || returnType is TypeDef.TypeVariable)) {
                 return true
             }
+            if (returnType is TypeDef.Array && valueType is TypeDef.Array
+                && returnType.dimensions == valueType.dimensions
+                && returnType.componentType != valueType.componentType) {
+                // An array of the erased bound, returned where the override narrows it: `Array<CharSequence>` as
+                // `Array<String>` - Kotlin arrays are invariant
+                return true
+            }
             // A value typed with the bound an override's return type was erased to: `CharSequence` for the
             // `String` of a `Bounded<String>`, or for a `T : CharSequence`
             if (returnType is TypeDef.TypeVariable) {
@@ -2414,59 +2421,76 @@ class KotlinPoetSourceGenerator : SourceGenerator {
          */
         private fun isAssignedByEveryConstructor(objectDef: ObjectDef?, field: FieldDef): Boolean {
             val constructors = objectDef?.methods?.filter { it.isConstructor } ?: return false
-            return constructors.isNotEmpty() && constructors.all { assignsBeforeReturning(it.statements, field.name) }
-        }
-
-        /**
-         * Whether a sequence of statements assigns the field before anything in it may return - a return ends the
-         * constructor with the property unassigned, and the statements after one are not even rendered.
-         */
-        private fun assignsBeforeReturning(statements: List<StatementDef>, name: String): Boolean {
-            for (statement in statements) {
-                if (mayReturn(statement)) {
-                    return false
-                }
-                if (assignsDefinitely(statement, name)) {
-                    return true
-                }
+            return constructors.isNotEmpty() && constructors.all { constructor ->
+                val assignment = assignmentOf(StatementDef.multi(constructor.statements), field.name, false)
+                assignment.assigned && !assignment.returnsUnassigned
             }
-            return false
-        }
-
-        private fun mayReturn(statement: StatementDef?): Boolean = when (statement) {
-            null -> false
-            is Return -> true
-            is Multi -> statement.statements.any { mayReturn(it) }
-            is StatementDef.If -> mayReturn(statement.statement)
-            is StatementDef.IfElse -> mayReturn(statement.statement) || mayReturn(statement.elseStatement)
-            is StatementDef.Switch -> mayReturn(statement.defaultCase) || statement.cases.values.any { mayReturn(it) }
-            is StatementDef.While -> mayReturn(statement.statement)
-            is StatementDef.Synchronized -> mayReturn(statement.statement())
-            is StatementDef.Try -> mayReturn(statement.statement()) || mayReturn(statement.finallyStatement())
-                || statement.catches().any { mayReturn(it.statement()) }
-            else -> false
         }
 
         /**
-         * Whether every path through the statement that completes normally assigns the field of this instance -
-         * not one of another object that shares its name.
+         * How a statement assigns the field of this instance - not one of another object that shares its name.
+         *
+         * @param assigned          Whether the field is assigned by the time the statement is reached
+         * @property assigned       Whether it is on every path that completes the statement normally
+         * @property returnsUnassigned Whether a path returns from the constructor before assigning it
          */
-        private fun assignsDefinitely(statement: StatementDef?, name: String): Boolean = when (statement) {
-            null -> false
-            is StatementDef.PutField -> statement.field.name == name && statement.field.instance is VariableDef.This
-            is Multi -> assignsBeforeReturning(statement.statements, name)
-            is StatementDef.IfElse -> assignsDefinitely(statement.statement, name)
-                && assignsDefinitely(statement.elseStatement, name)
-            is StatementDef.Switch -> statement.defaultCase != null
-                && assignsDefinitely(statement.defaultCase, name)
-                && statement.cases.values.all { assignsDefinitely(it, name) }
-            is StatementDef.Synchronized -> assignsDefinitely(statement.statement(), name)
-            is StatementDef.Try -> assignsDefinitely(statement.finallyStatement(), name)
-                || assignsDefinitely(statement.statement(), name)
-                && statement.catches().all { assignsDefinitely(it.statement(), name) }
-            // No path completes normally past it
-            is Throw -> true
-            else -> false
+        private data class Assignment(val assigned: Boolean, val returnsUnassigned: Boolean)
+
+        private fun assignmentOf(statement: StatementDef?, name: String, assigned: Boolean): Assignment = when (statement) {
+            null -> Assignment(assigned, false)
+            is StatementDef.PutField ->
+                Assignment(assigned || statement.field.name == name && statement.field.instance is VariableDef.This, false)
+            // Nothing completes past either; a return ends the constructor with the field as it is
+            is Return -> Assignment(true, !assigned)
+            is Throw -> Assignment(true, false)
+            is Multi -> {
+                var current = assigned
+                var returnsUnassigned = false
+                for (child in statement.statements) {
+                    val assignment = assignmentOf(child, name, current)
+                    current = assignment.assigned
+                    returnsUnassigned = returnsUnassigned || assignment.returnsUnassigned
+                    if (cannotCompleteNormally(child)) {
+                        // The statements after it are not rendered
+                        break
+                    }
+                }
+                Assignment(current, returnsUnassigned)
+            }
+            is StatementDef.If -> {
+                val then = assignmentOf(statement.statement, name, assigned)
+                Assignment(assigned, then.returnsUnassigned)
+            }
+            is StatementDef.IfElse -> {
+                val then = assignmentOf(statement.statement, name, assigned)
+                val otherwise = assignmentOf(statement.elseStatement, name, assigned)
+                Assignment(then.assigned && otherwise.assigned, then.returnsUnassigned || otherwise.returnsUnassigned)
+            }
+            is StatementDef.Switch -> {
+                val cases = statement.cases.values.map { assignmentOf(it, name, assigned) }
+                val default = statement.defaultCase?.let { assignmentOf(it, name, assigned) }
+                Assignment(
+                    default != null && default.assigned && cases.all { it.assigned },
+                    cases.any { it.returnsUnassigned } || default?.returnsUnassigned == true
+                )
+            }
+            is StatementDef.While -> Assignment(assigned, assignmentOf(statement.statement, name, assigned).returnsUnassigned)
+            is StatementDef.Synchronized -> assignmentOf(statement.statement(), name, assigned)
+            is StatementDef.Try -> {
+                val body = assignmentOf(statement.statement(), name, assigned)
+                val catches = statement.catches().map { assignmentOf(it.statement(), name, assigned) }
+                val completed = body.assigned && catches.all { it.assigned }
+                val finallyAssignment = assignmentOf(statement.finallyStatement(), name, completed)
+                // A return in the try or a catch runs the finally before it leaves
+                val returnsInside = body.returnsUnassigned || catches.any { it.returnsUnassigned }
+                val finallyAssigns = statement.finallyStatement() != null
+                    && assignmentOf(statement.finallyStatement(), name, false).assigned
+                Assignment(
+                    completed || finallyAssignment.assigned,
+                    returnsInside && !finallyAssigns || finallyAssignment.returnsUnassigned
+                )
+            }
+            else -> Assignment(assigned, false)
         }
 
         /**

@@ -381,4 +381,52 @@ class OverrideResolverSpec extends Specification {
         ClassTypeDef.of(Cloneable)                                                   | TypeDef.STRING.array()
         ClassDef.builder("example.Parent").build().asTypeDef()                       | ClassDef.builder("example.Child").superclass(ClassDef.builder("example.Parent").build().asTypeDef()).build().asTypeDef()
     }
+
+    void "resolves a generated subtype of a parameterized return type"() {
+        given:
+        def parent = ClassDef.builder("example.GenericParent").addTypeVariable(TypeDef.variable("T")).build()
+        def wide = TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING)
+        // Neither type can be loaded: the model says `StringChild` is the `GenericParent<String>`
+        def narrow = ClassDef.builder("example.StringChild").superclass(wide).build().asTypeDef()
+        def classDef = implementing(wide, narrow)
+
+        expect:
+        OverrideResolver.resolve(classDef, classDef.methods[0], null).returnType() == narrow
+    }
+
+    void "resolves a type variable within the bound it is declared with"() {
+        given:
+        def variable = TypeDef.variable("V", TypeDef.of(CharSequence))
+        def classDef = implementing(TypeDef.of(CharSequence), variable, variable)
+
+        expect:
+        OverrideResolver.resolve(classDef, classDef.methods[0], null).returnType() == variable
+    }
+
+    /**
+     * A class implementing two generic interfaces whose `get()` returns the given types.
+     */
+    private static ClassDef implementing(TypeDef wide, TypeDef narrow, TypeDef.TypeVariable... variables) {
+        def a = TypeDef.variable("T")
+        def first = InterfaceDef.builder("example.WideGet")
+            .addTypeVariable(a)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(a).build())
+            .build()
+        def b = TypeDef.variable("T")
+        def second = InterfaceDef.builder("example.NarrowGet")
+            .addTypeVariable(b)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(b).build())
+            .build()
+        def builder = ClassDef.builder("example.BothGet")
+        variables.each { builder.addTypeVariable(it) }
+        return builder
+            .addSuperinterface(TypeDef.parameterized(first.asTypeDef(), wide))
+            .addSuperinterface(TypeDef.parameterized(second.asTypeDef(), narrow))
+            .addMethod(MethodDef.builder("get")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(TypeDef.OBJECT)
+                .overrides()
+                .build())
+            .build()
+    }
 }

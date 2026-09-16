@@ -277,6 +277,51 @@ public final class TypeHierarchy {
         return false;
     }
 
+    /**
+     * A type as one of its supertypes, with the type arguments it inherits that supertype with - from the model,
+     * reflection or annotation-processing type of each on the way.
+     *
+     * @param type               The type
+     * @param supertypeName      The binary name of the supertype
+     * @param classElementLookup Looks up the element of a type only known by name, or {@code null}
+     * @return The supertype, parameterized where it is inherited so, or {@code null} where it is not inherited
+     */
+    @Nullable
+    public static ClassTypeDef asSupertype(ClassTypeDef type,
+                                           String supertypeName,
+                                           @Nullable Function<String, @Nullable ClassElement> classElementLookup) {
+        Deque<ClassTypeDef> queue = new ArrayDeque<>();
+        Set<String> visited = new HashSet<>();
+        queue.add(type);
+        while (!queue.isEmpty()) {
+            ClassTypeDef current = queue.removeFirst();
+            ClassTypeDef raw = rawTypeOf(current);
+            if (raw.getName().equals(supertypeName)) {
+                return current;
+            }
+            if (!visited.add(raw.getName())) {
+                continue;
+            }
+            TypeInfo info = typeInfoOf(raw, classElementLookup);
+            if (info == null) {
+                continue;
+            }
+            Map<String, TypeDef> substitution = new HashMap<>();
+            if (current instanceof ClassTypeDef.Parameterized parameterized) {
+                List<String> variables = info.typeParameters();
+                for (int i = 0; i < variables.size() && i < parameterized.typeArguments().size(); i++) {
+                    substitution.put(variables.get(i), parameterized.typeArguments().get(i));
+                }
+            }
+            for (TypeDef superType : info.superTypes()) {
+                if (substitute(superType, substitution) instanceof ClassTypeDef superClassType) {
+                    queue.addLast(superClassType);
+                }
+            }
+        }
+        return TypeDef.OBJECT.getName().equals(supertypeName) ? TypeDef.OBJECT : null;
+    }
+
     private static ClassTypeDef rawTypeOf(ClassTypeDef type) {
         ClassTypeDef raw = type;
         while (raw instanceof ClassTypeDef.Parameterized parameterized) {

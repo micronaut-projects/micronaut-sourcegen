@@ -54,6 +54,7 @@ import java.util.function.Function;
 @Internal
 public final class OverrideResolver {
 
+    private static final int MAX_DEPTH = 8;
     private static final Set<String> ARRAY_SUPERTYPES = Set.of(Cloneable.class.getName(), java.io.Serializable.class.getName());
 
     private OverrideResolver() {
@@ -117,22 +118,22 @@ public final class OverrideResolver {
                 }
                 return true;
             });
-        return mostSpecific(found, lookup);
+        return mostSpecific(found, new Hierarchy(lookup, declaringType));
     }
 
     /**
      * The resolved signature that satisfies every inherited method the declared one overrides: one of
      * {@code A<Number>.get()} and {@code B<Integer>.get()} is implemented by {@code Integer get()}.
      *
-     * @param found The signatures resolved from each inherited method
+     * @param found     The signatures resolved from each inherited method
+     * @param hierarchy What the types relate through
      * @return The one whose return type is a subtype of all the others, or {@code null} where there is none
      */
     @Nullable
-    private static OverriddenMethod mostSpecific(List<OverriddenMethod> found,
-                                                 @Nullable Function<String, @Nullable ClassElement> lookup) {
+    private static OverriddenMethod mostSpecific(List<OverriddenMethod> found, Hierarchy hierarchy) {
         OverriddenMethod best = null;
         for (OverriddenMethod candidate : found) {
-            if (best == null || isSubtype(candidate.returnType(), best.returnType(), lookup)) {
+            if (best == null || isSubtype(candidate.returnType(), best.returnType(), hierarchy, 0)) {
                 best = candidate;
             }
         }
@@ -140,20 +141,28 @@ public final class OverrideResolver {
             return null;
         }
         for (OverriddenMethod other : found) {
-            if (!isSubtype(best.returnType(), other.returnType(), lookup)) {
+            if (!isSubtype(best.returnType(), other.returnType(), hierarchy, 0)) {
                 return null;
             }
         }
         return best;
     }
 
-    private static boolean isSubtype(TypeDef subtype,
-                                     TypeDef supertype,
-                                     @Nullable Function<String, @Nullable ClassElement> lookup) {
+    private static boolean isSubtype(TypeDef subtype, TypeDef supertype, Hierarchy hierarchy, int depth) {
         TypeDef sub = TypeHierarchy.unwrap(subtype);
         TypeDef sup = TypeHierarchy.unwrap(supertype);
         if (sub.equals(sup) || TypeDef.OBJECT.equals(sup)) {
             return true;
+        }
+        if (depth > MAX_DEPTH) {
+            // A bound that refers to its own variable, `T extends Comparable<T>`, is not followed any further
+            return false;
+        }
+        if (sub instanceof TypeDef.TypeVariable variable) {
+            // A variable is a subtype of whatever its bound is: `V extends CharSequence` is a CharSequence
+            List<TypeDef> bounds = variable.bounds().isEmpty()
+                ? List.of(hierarchy.declaringType().erase(variable)) : variable.bounds();
+            return bounds.stream().anyMatch(bound -> isSubtype(bound, sup, hierarchy, depth + 1));
         }
         if (sub instanceof TypeDef.Array subArray) {
             if (sup instanceof TypeDef.Array supArray) {
@@ -163,7 +172,7 @@ public final class OverrideResolver {
                     TypeDef supComponent = supArray.componentType();
                     return subComponent.isPrimitive() || supComponent.isPrimitive()
                         ? subComponent.equals(supComponent)
-                        : isSubtype(subComponent, supComponent, lookup);
+                        : isSubtype(subComponent, supComponent, hierarchy, depth + 1);
                 }
                 return subArray.dimensions() > supArray.dimensions() && TypeDef.OBJECT.equals(supArray.componentType());
             }
@@ -172,7 +181,7 @@ public final class OverrideResolver {
                 && ARRAY_SUPERTYPES.contains(supClass.getName());
         }
         if (!(sub instanceof ClassTypeDef subClassType) || !(sup instanceof ClassTypeDef supClassType)) {
-            // Type variables are only known to relate where they are the same
+            // A variable as the supertype is only known to relate to itself
             return false;
         }
         Class<?> subClass = loaded(sub);
@@ -188,30 +197,31 @@ public final class OverrideResolver {
             // `List<String>` is a `Collection<String>` and a `List<? extends CharSequence>`
             TypeDef asSupertype = asSupertype(subClassType, subClass, supClass);
             return asSupertype instanceof ClassTypeDef.Parameterized parameterized
-                && containsArguments(supParameterized.typeArguments(), parameterized.typeArguments(), lookup);
+                && containsArguments(supParameterized.typeArguments(), parameterized.typeArguments(), hierarchy, depth);
         }
-        // A type generated in this round cannot be loaded: its model or its element says what it inherits
+        // A type generated in this round cannot be loaded: its model or its element says what it inherits, and with
+        // which type arguments - `Child extends Parent<String>` is a `Parent<String>`
         String supName = TypeHierarchy.erasedName(sup);
-        if (!TypeHierarchy.inherits(subClassType, supName, lookup)) {
+        ClassTypeDef asSupertype = TypeHierarchy.asSupertype(subClassType, supName, hierarchy.lookup());
+        if (asSupertype == null) {
             return false;
         }
         if (!(supClassType instanceof ClassTypeDef.Parameterized supParameterized)) {
             return true;
         }
-        // The type arguments of such a type are only known where it names the supertype itself
-        return subClassType instanceof ClassTypeDef.Parameterized subParameterized
-            && TypeHierarchy.erasedName(subParameterized).equals(supName)
-            && containsArguments(supParameterized.typeArguments(), subParameterized.typeArguments(), lookup);
+        return asSupertype instanceof ClassTypeDef.Parameterized parameterized
+            && containsArguments(supParameterized.typeArguments(), parameterized.typeArguments(), hierarchy, depth);
     }
 
     private static boolean containsArguments(List<TypeDef> declared,
                                              List<TypeDef> arguments,
-                                             @Nullable Function<String, @Nullable ClassElement> lookup) {
+                                             Hierarchy hierarchy,
+                                             int depth) {
         if (declared.size() != arguments.size()) {
             return false;
         }
         for (int i = 0; i < declared.size(); i++) {
-            if (!containsArgument(declared.get(i), arguments.get(i), lookup)) {
+            if (!containsArgument(declared.get(i), arguments.get(i), hierarchy, depth)) {
                 return false;
             }
         }
@@ -221,9 +231,7 @@ public final class OverrideResolver {
     /**
      * Whether a type argument lies within the declared one: the same type, or one within the bounds of a wildcard.
      */
-    private static boolean containsArgument(TypeDef declared,
-                                            TypeDef argument,
-                                            @Nullable Function<String, @Nullable ClassElement> lookup) {
+    private static boolean containsArgument(TypeDef declared, TypeDef argument, Hierarchy hierarchy, int depth) {
         if (declared.equals(argument)) {
             return true;
         }
@@ -234,12 +242,12 @@ public final class OverrideResolver {
             List<TypeDef> upperBounds = argumentWildcard.upperBounds().isEmpty()
                 ? List.of(TypeDef.OBJECT) : argumentWildcard.upperBounds();
             return wildcard.upperBounds().stream().allMatch(bound ->
-                    upperBounds.stream().anyMatch(upper -> isSubtype(upper, bound, lookup)))
+                    upperBounds.stream().anyMatch(upper -> isSubtype(upper, bound, hierarchy, depth + 1)))
                 && (wildcard.lowerBounds().isEmpty() || wildcard.lowerBounds().stream().allMatch(bound ->
-                    argumentWildcard.lowerBounds().stream().anyMatch(lower -> isSubtype(bound, lower, lookup))));
+                    argumentWildcard.lowerBounds().stream().anyMatch(lower -> isSubtype(bound, lower, hierarchy, depth + 1))));
         }
-        return wildcard.upperBounds().stream().allMatch(bound -> isSubtype(argument, bound, lookup))
-            && wildcard.lowerBounds().stream().allMatch(bound -> isSubtype(bound, argument, lookup));
+        return wildcard.upperBounds().stream().allMatch(bound -> isSubtype(argument, bound, hierarchy, depth + 1))
+            && wildcard.lowerBounds().stream().allMatch(bound -> isSubtype(bound, argument, hierarchy, depth + 1));
     }
 
     /**
@@ -407,5 +415,16 @@ public final class OverrideResolver {
             }
             return builder.build();
         }
+    }
+
+    /**
+     * What return types relate through: the elements of types only known by name, and the declaring type, whose
+     * type variables a resolved return type can name.
+     *
+     * @param lookup        Looks up the element of a type only known by name, or {@code null}
+     * @param declaringType The declaring type
+     */
+    private record Hierarchy(@Nullable Function<String, @Nullable ClassElement> lookup,
+                             TypeHierarchy.InheritedType declaringType) {
     }
 }

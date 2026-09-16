@@ -508,4 +508,65 @@ class KotlinSourceCompilationTest {
         assertTrue(source.contains("lateinit var name"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun jvmFieldAssignedInEachBranchBeforeItReturns() {
+        val run = MethodDef.builder("run").addModifiers(Modifier.PRIVATE)
+            .build { _, _ -> StatementDef.multi() }
+        val name = FieldDef.builder("name", String::class.java)
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationDef.builder(JvmField::class.java).build())
+            .build()
+        // Each branch assigns the property before it returns, so no path leaves it unassigned
+        val classDef = ClassDef.builder("test.BranchReturns")
+            .addField(name)
+            .addMethod(run)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .addParameter("flag", TypeDef.primitive(Boolean::class.javaPrimitiveType!!))
+                .build { aThis, parameters ->
+                    parameters[0].isTrue().doIfElse(
+                        StatementDef.multi(
+                            aThis.field(name).put(ExpressionDef.constant("yes")),
+                            aThis.invoke(run).returning()
+                        ),
+                        StatementDef.multi(
+                            aThis.field(name).put(ExpressionDef.constant("no")),
+                            aThis.invoke(run).returning()
+                        )
+                    )
+                })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(!source.contains("lateinit"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun narrowedArrayReturnIsCast() {
+        val variable = TypeDef.variable("T", TypeDef.of(CharSequence::class.java))
+        val bounded = InterfaceDef.builder("test.BoundedArray")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(variable)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(variable.array())
+                .build())
+            .build()
+        val sequences = TypeDef.of(CharSequence::class.java).array()
+        val values = FieldDef.builder("values", sequences)
+            .addModifiers(Modifier.PRIVATE)
+            .initializer(sequences.instantiate(listOf(ExpressionDef.constant("a"))))
+            .build()
+        // The model declares the erasure, `Array<CharSequence>`, which Kotlin overrides as `Array<String>`
+        val classDef = ClassDef.builder("test.StringArray")
+            .addField(values)
+            .addSuperinterface(TypeDef.parameterized(bounded.asTypeDef(), TypeDef.STRING))
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC).overrides()
+                .returns(sequences)
+                .build { aThis, _ -> aThis.field(values).returning() })
+            .build()
+
+        assertCompiles(writeClass(bounded), writeClass(classDef))
+    }
 }
