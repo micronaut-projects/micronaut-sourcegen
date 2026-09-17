@@ -22,6 +22,7 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -258,6 +259,62 @@ public final class OverrideResolver {
             return null;
         }
         return new OverriddenMethod(parameterTypes, returnType);
+    }
+
+    /**
+     * How a method reference is written where override resolution narrowed the referenced generated method: as a
+     * lambda converting the values the functional interface passes to the narrowed parameter types, and the result
+     * to the type the functional interface returns.
+     *
+     * @param owner     The type of the receiver, or {@code null}
+     * @param current   The definition being written, or {@code null}
+     * @param caller    The method the reference is written in, or {@code null}
+     * @param reference The reference
+     * @param context   The context of the file being written, or {@code null}
+     * @param exact     Whether the source language overrides with the substituted types only
+     * @return The conversions, or {@code null} where the reference is written as is
+     */
+    @Nullable
+    public static ReferenceAdaptation adaptReference(@Nullable ClassTypeDef owner,
+                                                     @Nullable ObjectDef current,
+                                                     @Nullable MethodDef caller,
+                                                     MethodReferenceExpression reference,
+                                                     @Nullable VisitorContext context,
+                                                     boolean exact) {
+        MethodDef method = reference.method();
+        OverriddenMethod emitted = emittedSignature(owner, current, caller, method, context, exact);
+        if (emitted == null) {
+            return null;
+        }
+        List<@Nullable TypeDef> argumentTypes = new ArrayList<>();
+        boolean converted = false;
+        for (int i = 0; i < emitted.parameterTypes().size(); i++) {
+            TypeDef type = emitted.parameterTypes().get(i);
+            boolean changed = !type.equals(method.getParameters().get(i).getType());
+            argumentTypes.add(changed ? type : null);
+            converted |= changed;
+        }
+        TypeDef resultType = null;
+        TypeDef functionalReturn = functionalReturnType(reference.type());
+        TypeDef returned = TypeHierarchy.unwrap(emitted.returnType());
+        if (functionalReturn != null && !TypeDef.OBJECT.equals(functionalReturn)
+            && !(functionalReturn instanceof TypeDef.Primitive) && !(returned instanceof TypeDef.Primitive)
+            && !functionalReturn.equals(returned)) {
+            resultType = functionalReturn;
+        }
+        return converted || resultType != null ? new ReferenceAdaptation(argumentTypes, resultType) : null;
+    }
+
+    @Nullable
+    private static TypeDef functionalReturnType(ClassTypeDef functionalInterface) {
+        try {
+            TypeDef type = TypeHierarchy.unwrap(functionalInterface.getLambda().getImplementation().getReturnType());
+            return type instanceof ClassTypeDef || type instanceof TypeDef.Array || type instanceof TypeDef.Primitive
+                ? type : null;
+        } catch (RuntimeException e) {
+            // A functional interface known only by name has no members to read
+            return null;
+        }
     }
 
     /**
@@ -667,6 +724,16 @@ public final class OverrideResolver {
             }
             return builder.build();
         }
+    }
+
+    /**
+     * The conversions a method reference to a narrowed method is written with.
+     *
+     * @param argumentTypes The type each value the functional interface passes is cast to, or {@code null} where it
+     *                      is passed as is
+     * @param resultType    The type the result is cast to, or {@code null} where it is returned as is
+     */
+    public record ReferenceAdaptation(List<@Nullable TypeDef> argumentTypes, @Nullable TypeDef resultType) {
     }
 
     /**

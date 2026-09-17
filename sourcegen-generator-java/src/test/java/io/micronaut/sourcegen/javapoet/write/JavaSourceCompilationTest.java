@@ -1594,6 +1594,68 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertCompiles(writeClass(target), source);
     }
 
+    @Test
+    void referencesThroughOtherReceiversReadThemOnce() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        ClassDef target = ClassDef.builder("test.CapturedTarget")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(apply)
+            .build();
+        ClassTypeDef objectFunction = TypeDef.parameterized(Function.class, Object.class, Object.class);
+        FieldDef field = FieldDef.builder("target", target.asTypeDef()).addModifiers(Modifier.PRIVATE).build();
+        MethodDef getTarget = MethodDef.builder("getTarget").addModifiers(Modifier.PUBLIC)
+            .returns(target.asTypeDef())
+            .build((aThis, methodParameters) -> aThis.field(field).returning());
+        // A field, a local and a method result are each read once, where the reference is created
+        ClassDef caller = ClassDef.builder("test.CapturingCaller")
+            .addField(field)
+            .addMethod(getTarget)
+            .addMethod(MethodDef.builder("fromField").addModifiers(Modifier.PUBLIC)
+                .returns(objectFunction)
+                .build((aThis, methodParameters) -> objectFunction.methodReference(aThis.field(field), apply)
+                    .returning()))
+            .addMethod(MethodDef.builder("fromLocal").addModifiers(Modifier.PUBLIC)
+                .returns(objectFunction)
+                .build((aThis, methodParameters) -> aThis.field(field).newLocal("local",
+                    local -> objectFunction.methodReference(local, apply).returning())))
+            .addMethod(MethodDef.builder("fromResult").addModifiers(Modifier.PUBLIC)
+                .returns(objectFunction)
+                .build((aThis, methodParameters) -> objectFunction.methodReference(aThis.invoke(getTarget), apply)
+                    .returning()))
+            .build();
+
+        String source = writeClass(caller);
+
+        assertTrue(source.contains("Optional.of(this.target).<Function<Object, Object>>map(target -> (arg) -> target.apply((String) arg)).get()"), source);
+        assertTrue(source.contains("Optional.of(local)"), source);
+        assertTrue(source.contains("Optional.of(this.getTarget())"), source);
+        assertCompiles(writeClass(target), source);
+    }
+
+    @Test
+    void referenceToANarrowedMethodConvertsItsResult() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        ClassTypeDef stringFunction = TypeDef.parameterized(Function.class, Object.class, String.class);
+        // `apply` is written as `CharSequence apply(CharSequence)`, which a `Function<Object, String>` returns cast
+        ClassDef classDef = ClassDef.builder("test.ResultReferenced")
+            .addSuperinterface(TypeDef.parameterized(Function.class, CharSequence.class, CharSequence.class))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .returns(stringFunction)
+                .build((aThis, methodParameters) -> stringFunction.methodReference(aThis, apply).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(arg) -> (String) this.apply((CharSequence) arg)"), source);
+        assertCompiles(source);
+    }
+
     private static ClassDef genericTarget(String name) throws NoSuchMethodException {
         var applyMethod = Function.class.getMethod("apply", Object.class);
         TypeDef.TypeVariable variable = TypeDef.variable("T", TypeDef.of(CharSequence.class));

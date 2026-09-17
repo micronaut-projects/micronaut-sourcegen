@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -134,19 +135,34 @@ public final class TypeHierarchy {
      * @return true if another variable is referenced
      */
     public static boolean containsVariableOtherThan(TypeDef type, Set<String> variables) {
+        return containsVariable(type, name -> !variables.contains(name));
+    }
+
+    /**
+     * Whether a type refers to a variable a generic method declares, as renamed by
+     * {@link InheritedType#substitute(TypeDef, List)}.
+     *
+     * @param type The type
+     * @return true if a variable of the method is referenced
+     */
+    public static boolean containsMethodVariable(TypeDef type) {
+        return containsVariable(type, name -> name.endsWith(InheritedType.methodVariable("")));
+    }
+
+    private static boolean containsVariable(TypeDef type, Predicate<String> matches) {
         TypeDef unwrapped = unwrap(type);
         if (unwrapped instanceof TypeDef.TypeVariable variable) {
-            return !variables.contains(variable.name());
+            return matches.test(variable.name());
         }
         if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
-            return parameterized.typeArguments().stream().anyMatch(argument -> containsVariableOtherThan(argument, variables));
+            return parameterized.typeArguments().stream().anyMatch(argument -> containsVariable(argument, matches));
         }
         if (unwrapped instanceof TypeDef.Array array) {
-            return containsVariableOtherThan(array.componentType(), variables);
+            return containsVariable(array.componentType(), matches);
         }
         if (unwrapped instanceof TypeDef.Wildcard wildcard) {
-            return wildcard.upperBounds().stream().anyMatch(bound -> containsVariableOtherThan(bound, variables))
-                || wildcard.lowerBounds().stream().anyMatch(bound -> containsVariableOtherThan(bound, variables));
+            return wildcard.upperBounds().stream().anyMatch(bound -> containsVariable(bound, matches))
+                || wildcard.lowerBounds().stream().anyMatch(bound -> containsVariable(bound, matches));
         }
         return false;
     }

@@ -88,9 +88,16 @@ public final class BridgeResolver {
             || (inherited.packagePrivate() && !type.getPackageName().equals(declared.objectDef().getPackageName()))) {
             return null;
         }
-        List<String> substituted = inherited.overrideParameters().stream()
-            .map(parameter -> TypeUtils.getDescriptor(type.erase(type.substitute(parameter), declared.declaringType()), null))
-            .toList();
+        // A variable the method declares of its own is not the type's of the same name: it is erased to its bound,
+        // as the declaration erases it
+        List<String> substituted = new ArrayList<>(inherited.overrideParameters().size());
+        for (int i = 0; i < inherited.overrideParameters().size(); i++) {
+            TypeDef parameter = type.substitute(inherited.overrideParameters().get(i), inherited.typeVariables());
+            TypeDef erased = TypeHierarchy.containsMethodVariable(parameter)
+                ? type.erase(inherited.bridgeParameters().get(i))
+                : type.erase(parameter, declared.declaringType());
+            substituted.add(TypeUtils.getDescriptor(erased, null));
+        }
         if (!substituted.equals(declared.parameterDescriptors())) {
             return null;
         }

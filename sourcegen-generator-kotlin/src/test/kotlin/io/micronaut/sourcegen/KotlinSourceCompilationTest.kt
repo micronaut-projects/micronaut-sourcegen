@@ -878,7 +878,7 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("arg0 -> this.apply(arg0 as String)"), source)
+        assertTrue(source.contains("arg -> this.apply(arg as String)"), source)
         assertCompiles(source)
     }
 
@@ -903,6 +903,91 @@ class KotlinSourceCompilationTest {
         val source = writeClass(classDef)
 
         assertTrue(source.contains("this.apply(`value` as T)"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun referenceThroughAFieldReadsItOnce() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, parameters -> parameters[0].returning() }
+        val target = ClassDef.builder("test.CapturedTarget")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(
+                java.util.function.Function::class.java, String::class.java, String::class.java))
+            .addMethod(apply)
+            .build()
+        val anyFunction = TypeDef.parameterized(
+            java.util.function.Function::class.java, Any::class.java, Any::class.java)
+        val field = FieldDef.builder("target", target.asTypeDef()).addModifiers(Modifier.PRIVATE)
+            .initializer(target.asTypeDef().instantiate())
+            .build()
+        val caller = ClassDef.builder("test.CapturingCaller")
+            .addField(field)
+            .addMethod(MethodDef.builder("fromField").addModifiers(Modifier.PUBLIC)
+                .returns(anyFunction)
+                .build { aThis, _ -> anyFunction.methodReference(aThis.field(field), apply).returning() })
+            .build()
+
+        val source = writeClass(caller)
+
+        assertTrue(source.contains(".let { target -> "), source)
+        assertTrue(source.contains("arg -> target.apply(arg as String)"), source)
+        assertCompiles(writeClass(target), source)
+    }
+
+    @Test
+    fun adaptedReferenceNamesAvoidTheEnclosingLambda() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, parameters -> parameters[0].returning() }
+        val target = ClassDef.builder("test.NamedTarget")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(
+                java.util.function.Function::class.java, String::class.java, String::class.java))
+            .addMethod(apply)
+            .build()
+        val anyFunction = TypeDef.parameterized(
+            java.util.function.Function::class.java, Any::class.java, Any::class.java)
+        val factory = TypeDef.parameterized(ClassTypeDef.of(java.util.function.Function::class.java),
+            target.asTypeDef(), anyFunction)
+        // The outer lambda's parameter is named `arg`, which the adapter's own parameter must not shadow
+        val caller = ClassDef.builder("test.NestedCaller")
+            .addMethod(MethodDef.builder("factory").addModifiers(Modifier.PUBLIC)
+                .returns(factory)
+                .build { _, _ ->
+                    factory.lambda.implement(listOf("arg")) { _, parameters ->
+                        anyFunction.methodReference(parameters[0], apply).returning()
+                    }.returning()
+                })
+            .build()
+
+        val source = writeClass(caller)
+
+        assertTrue(source.contains("arg1 -> arg.apply(arg1 as String)"), source)
+        assertCompiles(writeClass(target), source)
+    }
+
+    @Test
+    fun referenceToANarrowedMethodConvertsItsResult() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, parameters -> parameters[0].returning() }
+        val stringFunction = TypeDef.parameterized(
+            java.util.function.Function::class.java, Any::class.java, String::class.java)
+        // `apply` is written as `apply(CharSequence): CharSequence`, which a `Function<Any, String>` returns cast
+        val classDef = ClassDef.builder("test.ResultReferenced")
+            .addSuperinterface(TypeDef.parameterized(
+                java.util.function.Function::class.java, CharSequence::class.java, CharSequence::class.java))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .returns(stringFunction)
+                .build { aThis, _ -> stringFunction.methodReference(aThis, apply).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("(this.apply(arg as CharSequence) as String)"), source)
         assertCompiles(source)
     }
 }

@@ -1872,8 +1872,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
             if (expressionDef is MethodReferenceExpression) {
                 val instance = expressionDef.instance()
-                if ((instance is VariableDef.This || instance is VariableDef.MethodParameter)
-                    && !expressionDef.isConstructor) {
+                if (instance != null && !expressionDef.isConstructor) {
                     renderAdaptedReference(objectDef, methodDef, scope, expressionDef, instance)?.let { return it }
                 }
                 // A callable reference is not a functional interface on its own, so it is wrapped
@@ -2429,8 +2428,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
         /**
          * A reference to a generated method that override resolution narrowed, as a lambda converting its
-         * arguments: the functional interface passes the parameter types the model declares. The lambda reads
-         * `this` or a parameter, which the model never assigns, as the reference would.
+         * arguments and result. A receiver other than `this` or a parameter, which the model never assigns, is
+         * read once where the reference is created, as the reference would.
          */
         private fun renderAdaptedReference(
             objectDef: ObjectDef?,
@@ -2439,33 +2438,38 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             reference: MethodReferenceExpression,
             instance: ExpressionDef
         ): CodeBlock? {
-            val method = reference.method()
-            val emitted = OverrideResolver.emittedSignature(
-                ownerOf(objectDef, instance.type()), objectDef, methodDef, method, VISITOR_CONTEXT.get(), true
+            val adaptation = OverrideResolver.adaptReference(
+                ownerOf(objectDef, instance.type()), objectDef, methodDef, reference, VISITOR_CONTEXT.get(), true
             ) ?: return null
-            val declared = method.parameters.map { it.type }
-            if (emitted.parameterTypes() == declared) {
-                return null
-            }
-            val taken = methodDef.parameters.map { it.name }.toSet()
-            val names = declared.indices.map { index ->
-                generateSequence(0) { it + 1 }.map { "arg$index" + if (it == 0) "" else "_$it" }.first { it !in taken }
-            }
-            val arguments = declared.indices.map { index ->
-                val type = emitted.parameterTypes()[index]
-                if (type == declared[index]) {
+            val lambdaScope = scope.nested(null)
+            val captured = instance !is VariableDef.This && instance !is VariableDef.MethodParameter
+            val receiver = if (captured) lambdaScope.allocate("target").also { lambdaScope.declare(it) } else null
+            val names = adaptation.argumentTypes().map { lambdaScope.allocate("arg").also { lambdaScope.declare(it) } }
+            val arguments = adaptation.argumentTypes().mapIndexed { index, type ->
+                if (type == null) {
                     CodeBlock.of("%N", names[index])
                 } else {
                     CodeBlock.of("%N as %T", names[index], asType(type, objectDef, methodDef))
                 }
             }
-            return CodeBlock.of(
-                "%T { %L -> %L.%N(%L) }",
-                asType(reference.type(), objectDef),
-                names.joinToString(", "),
-                renderExpressionCode(objectDef, methodDef, scope, instance),
-                method.name,
+            var call = CodeBlock.of(
+                "%L.%N(%L)",
+                if (receiver != null) CodeBlock.of("%N", receiver) else renderExpressionCode(objectDef, methodDef, scope, instance),
+                reference.method().name,
                 arguments.joinToCode(", ")
+            )
+            adaptation.resultType()?.let { call = CodeBlock.of("(%L as %T)", call, asType(it, objectDef, methodDef)) }
+            val lambda = CodeBlock.of(
+                "%T { %L -> %L }", asType(reference.type(), objectDef), names.joinToString(", "), call
+            )
+            if (receiver == null) {
+                return lambda
+            }
+            return CodeBlock.of(
+                "%L.let { %N -> %L }",
+                renderExpressionWithParentheses(objectDef, methodDef, scope, instance, true),
+                receiver,
+                lambda
             )
         }
 

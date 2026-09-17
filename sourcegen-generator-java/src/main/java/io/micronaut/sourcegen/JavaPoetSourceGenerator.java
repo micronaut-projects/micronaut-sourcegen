@@ -103,6 +103,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 
@@ -1128,9 +1129,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         instance = addParentheses(instance);
                     }
                 }
-                // The method name is rendered via `$L`, not spliced into the format string: a
-                // Micronaut-generated method name can itself contain a literal `$`, which would
-                // otherwise be misread as the start of a format placeholder.
+                // The name is a `$L` argument: a generated method name can contain a `$`, read as a placeholder
                 CodeBlock methodNameAndOpenParen = callMethod.isConstructor()
                     ? CodeBlock.of("(")
                     : CodeBlock.of(".$L(", callMethod.getName());
@@ -1280,18 +1279,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return builder.build();
             }
             case MethodReferenceExpression methodReference -> {
-                // The method name is rendered via `$L`, not spliced into the format string: a
-                // Micronaut-generated method name can itself contain a literal `$`, which would
-                // otherwise be misread as the start of a format placeholder.
+                // The name is a `$L` argument: a generated method name can contain a `$`, read as a placeholder
                 String name = methodReference.isConstructor() ? "new" : methodReference.method().getName();
                 ExpressionDef instance = methodReference.instance();
                 if (instance == null) {
                     return CodeBlock.of("$T::$L", asType(methodReference.owner(), objectDef), name);
                 }
-                // A lambda captures `this` and a parameter, which the model never assigns, as the reference would
-                CodeBlock adapted = (instance instanceof VariableDef.This || instance instanceof VariableDef.MethodParameter)
-                    && !methodReference.isConstructor()
-                    ? renderAdaptedReference(objectDef, methodDef, scope, instance, methodReference.method()) : null;
+                CodeBlock adapted = methodReference.isConstructor() ? null
+                    : renderAdaptedReference(objectDef, methodDef, scope, methodReference, instance);
                 if (adapted != null) {
                     return adapted;
                 }
@@ -1317,34 +1312,44 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     /**
-     * A reference to a generated method that override resolution narrowed, as a lambda converting its arguments:
-     * the functional interface passes the parameter types the model declares.
+     * A reference to a generated method that override resolution narrowed, as a lambda converting its arguments and
+     * result. A receiver other than `this` or a parameter, which the model never assigns, is read once and checked
+     * for `null` where the reference is created, as the reference would.
      */
     @Nullable
     private CodeBlock renderAdaptedReference(@Nullable ObjectDef objectDef,
                                              @Nullable MethodDef methodDef,
                                              RenderScope scope,
-                                             ExpressionDef instance,
-                                             MethodDef method) {
-        OverrideResolver.OverriddenMethod emitted = OverrideResolver.emittedSignature(ownerOf(objectDef, instance.type()),
-            objectDef, methodDef, method, JavaPoetNames.context(), false);
-        List<TypeDef> declared = method.getParameters().stream().map(ParameterDef::getType).toList();
-        if (emitted == null || emitted.parameterTypes().equals(declared)) {
+                                             MethodReferenceExpression reference,
+                                             ExpressionDef instance) {
+        OverrideResolver.ReferenceAdaptation adaptation = OverrideResolver.adaptReference(
+            ownerOf(objectDef, instance.type()), objectDef, methodDef, reference, JavaPoetNames.context(), false);
+        if (adaptation == null) {
             return null;
         }
         RenderScope lambdaScope = scope.nested(null);
+        boolean captured = !(instance instanceof VariableDef.This || instance instanceof VariableDef.MethodParameter);
+        String receiver = captured ? lambdaScope.allocate("target") : "";
+        lambdaScope.declare(receiver);
         List<CodeBlock> parameters = new ArrayList<>();
         List<CodeBlock> arguments = new ArrayList<>();
-        for (int i = 0; i < declared.size(); i++) {
+        for (TypeDef type : adaptation.argumentTypes()) {
             String name = lambdaScope.allocate("arg");
             lambdaScope.declare(name);
-            TypeDef type = emitted.parameterTypes().get(i);
             parameters.add(CodeBlock.of("$L", name));
-            arguments.add(type.equals(declared.get(i)) ? CodeBlock.of("$L", name)
+            arguments.add(type == null ? CodeBlock.of("$L", name)
                 : CodeBlock.of("($T) $L", asType(type, objectDef, methodDef), name));
         }
-        return CodeBlock.of("($L) -> $L.$L($L)", CodeBlock.join(parameters, ", "),
-            renderExpression(objectDef, methodDef, scope, instance), method.getName(), CodeBlock.join(arguments, ", "));
+        CodeBlock call = CodeBlock.of("$L.$L($L)", captured ? receiver
+            : renderExpression(objectDef, methodDef, scope, instance), reference.method().getName(),
+            CodeBlock.join(arguments, ", "));
+        if (adaptation.resultType() != null) {
+            call = CodeBlock.of("($T) $L", asType(adaptation.resultType(), objectDef, methodDef), call);
+        }
+        CodeBlock lambda = CodeBlock.of("($L) -> $L", CodeBlock.join(parameters, ", "), call);
+        return !captured ? lambda : CodeBlock.of("$T.of($L).<$T>map($L -> $L).get()", Optional.class,
+            renderExpression(objectDef, methodDef, scope, instance), asType(reference.type(), objectDef, methodDef),
+            receiver, lambda);
     }
 
     private CodeBlock renderMathOperand(@Nullable ObjectDef objectDef,

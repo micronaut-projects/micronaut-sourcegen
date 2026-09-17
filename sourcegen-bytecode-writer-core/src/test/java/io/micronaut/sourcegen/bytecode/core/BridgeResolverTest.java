@@ -445,6 +445,73 @@ class BridgeResolverTest {
         assertEquals(List.of(), descriptors(otherPackage, method));
     }
 
+    @Test
+    void methodVariableShadowingTheClassVariableIsNotBridged() {
+        MethodDef echo = MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.STRING)
+            .returns(TypeDef.STRING)
+            .build((aThis, parameters) -> parameters.get(0).returning());
+        // `<T extends Number> T echo(T)` declares its own `T`: `echo(String)` is an unrelated overload
+        TypeDef.TypeVariable methodVariable = TypeDef.variable("T", TypeDef.of(Number.class));
+        ClassDef modelParent = ClassDef.builder("example.ShadowingParent")
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(methodVariable)
+                .addParameter("value", TypeDef.variable("T"))
+                .returns(TypeDef.variable("T"))
+                .build((aThis, parameters) -> parameters.get(0).returning()))
+            .build();
+        ClassDef modelChild = ClassDef.builder("example.ShadowingChild")
+            .superclass(TypeDef.parameterized(modelParent.asTypeDef(), TypeDef.STRING))
+            .addMethod(echo)
+            .build();
+        ClassDef reflectedChild = ClassDef.builder("example.ReflectedShadowingChild")
+            .superclass(TypeDef.parameterized(ShadowingEcho.class, String.class))
+            .addMethod(echo)
+            .build();
+
+        assertEquals(List.of(), descriptors(modelChild, echo));
+        assertEquals(List.of(), descriptors(reflectedChild, echo));
+    }
+
+    @Test
+    void methodVariableIsBridgedAsItsBound() {
+        TypeDef.TypeVariable classVariable = TypeDef.variable("T");
+        ClassDef parent = ClassDef.builder("example.BoundedEchoParent")
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(TypeDef.variable("U", TypeDef.of(Number.class)))
+                .addParameter("value", classVariable)
+                .addParameter("other", TypeDef.variable("U"))
+                .returns(classVariable)
+                .build((aThis, parameters) -> parameters.get(0).returning()))
+            .build();
+        MethodDef echo = MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.STRING)
+            .addParameter("other", TypeDef.of(Number.class))
+            .returns(TypeDef.STRING)
+            .build((aThis, parameters) -> parameters.get(0).returning());
+        ClassDef child = ClassDef.builder("example.BoundedEchoChild")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(echo)
+            .build();
+
+        assertEquals(List.of("(Ljava/lang/Object;Ljava/lang/Number;)Ljava/lang/Object;"), descriptors(child, echo));
+    }
+
+    /**
+     * A generic method whose own variable shadows the class's.
+     *
+     * @param <T> The class variable
+     */
+    public static class ShadowingEcho<T> {
+
+        @SuppressWarnings("TypeParameterHidesVisibleType")
+        public <T extends Number> T echo(T value) {
+            return value;
+        }
+    }
+
     /**
      * The bridge descriptors in a stable order, so the expectations read as JVM descriptors
      * rather than as model objects.
