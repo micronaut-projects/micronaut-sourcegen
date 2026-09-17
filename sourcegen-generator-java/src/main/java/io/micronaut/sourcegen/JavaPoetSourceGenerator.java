@@ -24,7 +24,9 @@ import static io.micronaut.sourcegen.JavaExpressionRules.collapseNestedCasts;
 import static io.micronaut.sourcegen.JavaExpressionRules.declaredSignature;
 import static io.micronaut.sourcegen.JavaExpressionRules.ownerOf;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawCast;
-import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawReturn;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawCastTo;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawConversion;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresVariableCast;
 import static io.micronaut.sourcegen.JavaExpressionRules.sourceTypeOf;
 import static io.micronaut.sourcegen.JavaExpressionRules.getMathOp;
 import static io.micronaut.sourcegen.JavaExpressionRules.getOpType;
@@ -776,13 +778,22 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     return renderExpression(objectDef, methodDef, scope, aReturn.expression());
                 }
                 ExpressionDef returned = aReturn.expression();
+                ClassTypeDef.Parameterized bound = methodDef == null ? null
+                    : OverrideResolver.parameterizedBound(methodDef.getReturnType(), objectDef);
+                if (methodDef != null && bound != null && requiresRawConversion(bound, returned.type())) {
+                    // A variable bounded by a parameterization the value does not convert to: through the raw bound
+                    return CodeBlock.concat(CodeBlock.of("return ($T) ($T) ",
+                        asType(methodDef.getReturnType(), objectDef, methodDef), asType(bound.rawType(), objectDef)),
+                        renderCastOperand(objectDef, methodDef, scope, returned));
+                }
                 if (methodDef != null && !methodDef.getReturnType().equals(TypeDef.VOID)
                     && requiresImplicitReturnCast(methodDef.getReturnType(), returned.type())) {
                     // e.g. an interceptor chain proceeds to Object, which the verifier accepts for a reference return
                     returned = returned.cast(methodDef.getReturnType());
-                } else if (methodDef != null && requiresRawReturn(methodDef.getReturnType(), returned.type())) {
+                } else if (methodDef != null && requiresRawConversion(methodDef.getReturnType(), returned.type())) {
                     // Only an unchecked conversion returns it - `List<Object>` as the `List<String>` of an override
-                    returned = returned.cast(((ClassTypeDef.Parameterized) methodDef.getReturnType()).rawType());
+                    returned = returned.cast(((ClassTypeDef.Parameterized) TypeHierarchy.unwrap(methodDef.getReturnType()))
+                        .rawType());
                 }
                 return CodeBlock.concat(
                     CodeBlock.of("return "),
@@ -1075,7 +1086,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 TypeDef castType = castExpressionDef.type();
                 if (castType instanceof ClassTypeDef.Parameterized parameterized
                     && sourceTypeOf(exp, methodDef, objectDef) instanceof ClassTypeDef.Parameterized narrowed
-                    && !narrowed.equals(exp.type()) && requiresRawCast(castType, narrowed)) {
+                    && !narrowed.equals(exp.type()) && requiresRawCastTo(castType, narrowed, objectDef)) {
                     // A value an override narrowed to a parameterization the cast does not accept is cast raw
                     castType = parameterized.rawType();
                 }
@@ -1424,9 +1435,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         // The signature the invoked method declares, which carries the type arguments the erased model does not
         InvokedSignature signature = methodName == null || sameArityParameterTypes == null ? null
             : declaredSignature(owner, methodName, sameArityParameterTypes);
-        // A generated method, which cannot be looked up, declares the types it is written with
+        // A generated method, which cannot be looked up, declares the types it is written with, and the variables
+        // of its class are fixed by the receiver
+        boolean generated = signature == null && OverrideResolver.definitionOf(owner, objectDef) != null;
         List<TypeDef> declaredTypes = signature != null ? signature.parameterTypes()
-            : OverrideResolver.definitionOf(owner, objectDef) != null ? sameArityParameterTypes : null;
+            : generated ? sameArityParameterTypes : null;
         // Only a method whose signature says so takes varargs: an unresolved one - such as a generated method - is
         // taken as declared, with its array parameter an array
         boolean varargs = signature != null && signature.varargs();
@@ -1463,10 +1476,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                             renderCastOperand(objectDef, enclosingMethod, scope, value)
                         );
                     }
-                    if (requiresImplicitInvocationCast(paramType, value.type())) {
+                    if (requiresImplicitInvocationCast(paramType, value.type())
+                        || generated && requiresVariableCast(paramType, value.type())) {
                         value = value.cast(paramType);
                     } else if (declaredTypes != null && declaredTypes.size() == values.size()
-                        && requiresRawCast(declaredTypes.get(i), value.type())) {
+                        && (generated ? requiresRawConversion(declaredTypes.get(i), value.type())
+                        : requiresRawCast(declaredTypes.get(i), value.type()))) {
                         // Only an unchecked conversion accepts the value, which a cast to the declared raw type is
                         value = value.cast(paramType instanceof ClassTypeDef.Parameterized parameterized
                             ? parameterized.rawType() : paramType);

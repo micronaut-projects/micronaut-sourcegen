@@ -2585,7 +2585,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             // A value typed with the bound an override's return type was erased to: `CharSequence` for the
             // `String` of a `Bounded<String>`, or for a `T : CharSequence`
             if (returnType is TypeDef.TypeVariable) {
-                return valueType != returnType && (valueType is ClassTypeDef || valueType is TypeDef.Array)
+                return valueType != returnType
+                    && (valueType is ClassTypeDef || valueType is TypeDef.Array || valueType is TypeDef.TypeVariable)
             }
             return returnType is ClassTypeDef.JavaClass && valueType is ClassTypeDef.JavaClass
                 && !returnType.type.isAssignableFrom(valueType.type)

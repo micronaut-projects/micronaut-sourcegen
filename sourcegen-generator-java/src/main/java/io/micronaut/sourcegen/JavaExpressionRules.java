@@ -264,9 +264,7 @@ final class JavaExpressionRules {
             return targetArray.componentType() instanceof TypeDef.TypeVariable
                 || requiresImplicitInvocationCast(targetArray.componentType(), valueArray.componentType());
         }
-        return target instanceof TypeDef.TypeVariable
-            && !target.equals(TypeHierarchy.unwrap(valueType))
-            && (valueType instanceof ClassTypeDef || valueType instanceof TypeDef.Array);
+        return requiresVariableCast(target, valueType);
     }
 
     static boolean requiresImplicitInvocationCast(TypeDef paramType, TypeDef valueType) {
@@ -320,31 +318,56 @@ final class JavaExpressionRules {
     }
 
     /**
-     * Whether a returned value only converts to the return type through the raw type. Unlike a method invoked,
-     * whose variables are inferred, the variables a return type names are fixed: `List<T>` does not accept a
+     * Whether a value only converts to a type through the raw type, where the variables the type names are fixed:
+     * those of a return type, or of a generated method as the receiver sees it. `List<T>` does not accept a
      * `List<String>`.
      */
-    static boolean requiresRawReturn(TypeDef returnType, TypeDef valueType) {
+    static boolean requiresRawConversion(TypeDef targetType, TypeDef valueType) {
+        Map<String, TypeDef.TypeVariable> variables = new HashMap<>();
+        collectVariables(targetType, variables);
+        collectVariables(valueType, variables);
         Map<String, TypeDef> fixed = new HashMap<>();
-        collectVariables(returnType, fixed);
-        collectVariables(valueType, fixed);
-        return requiresRawCast(TypeHierarchy.substituted(returnType, fixed), TypeHierarchy.substituted(valueType, fixed));
+        variables.keySet().forEach(name -> fixed.put(name, ClassTypeDef.of("fixed variable " + name)));
+        return requiresRawCast(TypeHierarchy.substituted(targetType, fixed), TypeHierarchy.substituted(valueType, fixed));
     }
 
     /**
-     * Maps each variable a type names to a class of its own, which accepts nothing but itself.
+     * Whether a cast to a parameterized type cannot convert a value, which it then does as raw: a variable the type
+     * names can be any type within its bounds - `List<T>` casts a `List<String>`, unless `T extends Number`.
      */
-    private static void collectVariables(TypeDef type, Map<String, TypeDef> fixed) {
+    static boolean requiresRawCastTo(TypeDef castType, TypeDef valueType, @Nullable ObjectDef objectDef) {
+        Map<String, TypeDef.TypeVariable> variables = new HashMap<>();
+        collectVariables(castType, variables);
+        Map<String, TypeDef> asWildcards = new HashMap<>();
+        variables.forEach((name, variable) -> {
+            List<TypeDef> bounds = !variable.bounds().isEmpty() || objectDef == null ? variable.bounds()
+                : TypeHierarchy.declaring(objectDef).getBounds(name);
+            asWildcards.put(name, bounds.isEmpty() ? TypeDef.wildcard() : TypeDef.wildcardSubtypeOf(bounds.get(0)));
+        });
+        return requiresRawCast(TypeHierarchy.substituted(castType, asWildcards), valueType);
+    }
+
+    /**
+     * Whether a value is cast to a variable it is not known to be: one of another variable, or of its bound.
+     */
+    static boolean requiresVariableCast(TypeDef targetType, TypeDef valueType) {
+        return TypeHierarchy.unwrap(targetType) instanceof TypeDef.TypeVariable
+            && !TypeHierarchy.unwrap(targetType).equals(TypeHierarchy.unwrap(valueType))
+            && (valueType instanceof ClassTypeDef || valueType instanceof TypeDef.Array
+            || valueType instanceof TypeDef.TypeVariable);
+    }
+
+    private static void collectVariables(TypeDef type, Map<String, TypeDef.TypeVariable> variables) {
         TypeDef unwrapped = TypeHierarchy.unwrap(type);
         if (unwrapped instanceof TypeDef.TypeVariable variable) {
-            fixed.put(variable.name(), ClassTypeDef.of("fixed variable " + variable.name()));
+            variables.putIfAbsent(variable.name(), variable);
         } else if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
-            parameterized.typeArguments().forEach(argument -> collectVariables(argument, fixed));
+            parameterized.typeArguments().forEach(argument -> collectVariables(argument, variables));
         } else if (unwrapped instanceof TypeDef.Array array) {
-            collectVariables(array.componentType(), fixed);
+            collectVariables(array.componentType(), variables);
         } else if (unwrapped instanceof TypeDef.Wildcard wildcard) {
-            wildcard.upperBounds().forEach(bound -> collectVariables(bound, fixed));
-            wildcard.lowerBounds().forEach(bound -> collectVariables(bound, fixed));
+            wildcard.upperBounds().forEach(bound -> collectVariables(bound, variables));
+            wildcard.lowerBounds().forEach(bound -> collectVariables(bound, variables));
         }
     }
 

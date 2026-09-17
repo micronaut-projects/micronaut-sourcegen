@@ -286,8 +286,17 @@ public final class OverrideResolver {
         }
         TypeDef bound = TypeHierarchy.unwrap(TypeHierarchy.substituted(bounds.get(0), substitution));
         if (bound instanceof TypeDef.Wildcard wildcard) {
-            bound = wildcard.upperBounds().isEmpty() || !wildcard.lowerBounds().isEmpty()
-                ? TypeDef.OBJECT : wildcard.upperBounds().get(0);
+            if (wildcard.lowerBounds().isEmpty() && !wildcard.upperBounds().isEmpty()
+                && !TypeDef.OBJECT.equals(wildcard.upperBounds().get(0))) {
+                bound = wildcard.upperBounds().get(0);
+            } else if (TypeHierarchy.unwrap(bounds.get(0)) instanceof TypeDef.TypeVariable boundVariable
+                && !boundVariable.name().equals(typeVariable.name())) {
+                // A bound naming another variable captured itself - `T extends A` of a `Target<?, ?>` - is that
+                // variable's bound
+                return capturedBound(target, boundVariable, Map.of());
+            } else {
+                bound = TypeDef.OBJECT;
+            }
         }
         return declaring.erase(bound);
     }
@@ -355,7 +364,7 @@ public final class OverrideResolver {
         }
         if (converted || resultType != null) {
             return new ReferenceAdaptation(argumentTypes, resultType == null || exact ? resultType : asRaw(resultType),
-                exact ? null : resultBound(resultType, returned));
+                exact ? null : resultBound(resultType, returned, current));
         }
         return null;
     }
@@ -365,13 +374,36 @@ public final class OverrideResolver {
      * not relate to another parameterization - `List<String>` to `U extends List<Object>`.
      */
     @Nullable
-    private static TypeDef resultBound(@Nullable TypeDef resultType, TypeDef returned) {
-        if (resultType instanceof TypeDef.TypeVariable variable && !variable.bounds().isEmpty()
-            && TypeHierarchy.unwrap(variable.bounds().get(0)) instanceof ClassTypeDef.Parameterized bound
-            && returned instanceof ClassTypeDef.Parameterized && !bound.equals(returned)) {
+    private static TypeDef resultBound(@Nullable TypeDef resultType, TypeDef returned, @Nullable ObjectDef current) {
+        ClassTypeDef.Parameterized bound = resultType == null ? null : parameterizedBound(resultType, current);
+        if (bound != null && returned instanceof ClassTypeDef.Parameterized && !bound.equals(returned)) {
             return bound.rawType();
         }
         return null;
+    }
+
+    /**
+     * The parameterized type a type variable is bounded by, following a bound that is another variable, and the
+     * declaration of a variable of the definition named without its bounds.
+     *
+     * @param type    The type
+     * @param current The definition being written, or {@code null}
+     * @return The bound, or {@code null} where the type is no variable bounded by a parameterized type
+     */
+    public static ClassTypeDef.@Nullable Parameterized parameterizedBound(TypeDef type, @Nullable ObjectDef current) {
+        TypeDef bound = TypeHierarchy.unwrap(type);
+        if (!(bound instanceof TypeDef.TypeVariable)) {
+            return null;
+        }
+        for (int depth = 0; depth < MAX_DEPTH && bound instanceof TypeDef.TypeVariable variable; depth++) {
+            List<TypeDef> bounds = !variable.bounds().isEmpty() ? variable.bounds()
+                : current == null ? List.of() : TypeHierarchy.declaring(current).getBounds(variable.name());
+            if (bounds.isEmpty()) {
+                return null;
+            }
+            bound = TypeHierarchy.unwrap(bounds.get(0));
+        }
+        return bound instanceof ClassTypeDef.Parameterized parameterized ? parameterized : null;
     }
 
     /**

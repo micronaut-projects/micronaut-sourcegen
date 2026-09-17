@@ -82,7 +82,9 @@ public final class TypeHierarchy {
                 }
             }
             for (TypeDef superType : type.info.superTypes()) {
-                enqueue(queue, visited, type.substitute(superType), type.substitution, type.raw, classElementLookup);
+                // `enqueue` substitutes the arguments of the edge: substituting here as well would substitute an
+                // argument that names a variable of the same name twice
+                enqueue(queue, visited, superType, type.substitution, type.raw, classElementLookup);
             }
         }
     }
