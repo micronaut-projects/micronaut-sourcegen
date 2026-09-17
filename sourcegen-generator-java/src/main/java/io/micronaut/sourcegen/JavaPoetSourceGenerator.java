@@ -508,9 +508,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             methodBuilder.returns(asType(returnType, objectDef, method));
         }
         for (TypeDef.TypeVariable typeVariable : method.getTypeVariables()) {
-            methodBuilder.addTypeVariable(
-                asTypeVariable(typeVariable, null)
-            );
+            // A bound can name a variable of the class or of the method
+            methodBuilder.addTypeVariable(asTypeVariable(typeVariable, objectDef, method));
         }
         method.getJavadoc().forEach(methodBuilder::addJavadoc);
         for (AnnotationDef annotation : method.getAnnotations()) {
@@ -536,9 +535,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private TypeVariableName asTypeVariable(TypeDef.TypeVariable tv, @Nullable ObjectDef objectDef) {
+        return asTypeVariable(tv, objectDef, null);
+    }
+
+    private TypeVariableName asTypeVariable(TypeDef.TypeVariable tv, @Nullable ObjectDef objectDef, @Nullable MethodDef method) {
         return TypeVariableName.get(
             tv.name(),
-            tv.bounds().stream().map(t -> asType(t, objectDef)).toArray(TypeName[]::new)
+            tv.bounds().stream().map(t -> asType(t, objectDef, method)).toArray(TypeName[]::new)
         );
     }
 
@@ -776,6 +779,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     && requiresImplicitReturnCast(methodDef.getReturnType(), returned.type())) {
                     // e.g. an interceptor chain proceeds to Object, which the verifier accepts for a reference return
                     returned = returned.cast(methodDef.getReturnType());
+                } else if (methodDef != null && requiresRawCast(methodDef.getReturnType(), returned.type())) {
+                    // Only an unchecked conversion returns it - `List<Object>` as the `List<String>` of an override
+                    returned = returned.cast(((ClassTypeDef.Parameterized) methodDef.getReturnType()).rawType());
                 }
                 return CodeBlock.concat(
                     CodeBlock.of("return "),
@@ -1065,7 +1071,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     || canEliminateCastToObject(castExpressionDef, exp, castContext)) {
                     return renderExpression(objectDef, methodDef, scope, exp, castContext);
                 }
-                CodeBlock explicitCast = CodeBlock.of("($T)", asType(castExpressionDef.type(), objectDef, methodDef));
+                TypeDef castType = castExpressionDef.type();
+                if (castType instanceof ClassTypeDef.Parameterized parameterized
+                    && sourceTypeOf(exp, methodDef, objectDef) instanceof ClassTypeDef.Parameterized narrowed
+                    && !narrowed.equals(exp.type()) && !narrowed.equals(castType)) {
+                    // A value an override narrowed to another parameterization is cast to the raw type
+                    castType = parameterized.rawType();
+                }
+                CodeBlock explicitCast = CodeBlock.of("($T)", asType(castType, objectDef, methodDef));
                 CodeBlock rendered = renderExpression(objectDef, methodDef, scope, exp);
                 ExpressionDef castOperand = unwrapCasts(exp);
                 if (!requiresCastOperandParentheses(castOperand)) {
@@ -1444,9 +1457,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     if (!sourceType.equals(value.type()) && !paramType.equals(sourceType)) {
                         // An override narrowed the parameter the value names - `Object value` to `String value` -
                         // which would select another overload than the one the model calls: keep its type. Written
-                        // out, since in the model the cast is to the type the value already has, which is dropped
-                        return CodeBlock.concat(
-                            CodeBlock.of("($T) ", asType(paramType, objectDef, enclosingMethod)),
+                        // out, since in the model the cast is to the type the value already has, which is dropped. A
+                        // parameterized type is cast to as raw: the narrowed one need not relate to it
+                        return CodeBlock.concat(CodeBlock.of("($T) ", asType(paramType instanceof ClassTypeDef.Parameterized
+                            parameterized ? parameterized.rawType() : paramType, objectDef, enclosingMethod)),
                             renderCastOperand(objectDef, enclosingMethod, scope, value)
                         );
                     }

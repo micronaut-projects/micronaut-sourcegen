@@ -1048,4 +1048,26 @@ class KotlinSourceCompilationTest {
         assertTrue(source.contains("(this.apply(arg as Number) as Int)"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun arrayArgumentOfANarrowedParameter() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, _ -> ExpressionDef.constant("value").returning() }
+        // `apply` is written as `apply(Array<String>)`, which an `Array<Any>` is cast to
+        val classDef = ClassDef.builder("test.ArrayArguments")
+            .addSuperinterface(TypeDef.parameterized(
+                ClassTypeDef.of(java.util.function.Function::class.java), TypeDef.STRING.array(), TypeDef.OBJECT))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("values", TypeDef.OBJECT.array())
+                .returns(Any::class.java)
+                .build { aThis, parameters -> aThis.invoke(apply, parameters[0]).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("this.apply(values as Array<String>)"), source)
+        assertCompiles(source)
+    }
 }

@@ -279,7 +279,14 @@ final class JavaExpressionRules {
             && valueType instanceof ClassTypeDef.JavaClass valueClass) {
             return !paramClass.type().isAssignableFrom(valueClass.type());
         }
-        return false;
+        // A value of a variable, or an array of another component, where an override narrowed the parameter
+        if (valueType instanceof TypeDef.TypeVariable) {
+            return paramType instanceof ClassTypeDef.JavaClass && !paramType.equals(TypeDef.OBJECT);
+        }
+        return paramType instanceof TypeDef.Array paramArray && valueType instanceof TypeDef.Array valueArray
+            && paramArray.dimensions() == valueArray.dimensions()
+            && !paramArray.componentType().equals(valueArray.componentType())
+            && requiresImplicitInvocationCast(paramArray.componentType(), valueArray.componentType());
     }
 
     /**

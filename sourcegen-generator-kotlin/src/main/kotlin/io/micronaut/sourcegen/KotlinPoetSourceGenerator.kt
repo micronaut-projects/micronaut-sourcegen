@@ -2414,9 +2414,16 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     builder.add(" as %T)", asType(parameterType, objectDef))
                     continue
                 }
-                val argument = if (parameterType != null && (requiresImplicitCast(parameterType, value.type())
-                        || !vararg && value.type() == TypeDef.OBJECT
-                        && (parameterType is TypeDef.Array || parameterType is TypeDef.TypeVariable))) {
+                val valueType = value.type()
+                val argument = if (parameterType != null && (requiresImplicitCast(parameterType, valueType)
+                        || !vararg && valueType == TypeDef.OBJECT
+                        && (parameterType is TypeDef.Array || parameterType is TypeDef.TypeVariable)
+                        // A value of a variable, or an array of another component, where an override narrowed the
+                        // parameter
+                        || !vararg && valueType is TypeDef.TypeVariable && parameterType is ClassTypeDef
+                        && parameterType != TypeDef.OBJECT
+                        || !vararg && valueType is TypeDef.Array && parameterType is TypeDef.Array
+                        && valueType != parameterType)) {
                     value.cast(parameterType)
                 } else {
                     value

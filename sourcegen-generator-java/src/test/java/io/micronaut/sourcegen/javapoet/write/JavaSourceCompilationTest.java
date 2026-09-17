@@ -1856,6 +1856,182 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertCompiles(source);
     }
 
+    @Test
+    void methodVariableBoundByAClassVariableIsWrittenWithItsBound() throws Exception {
+        TypeDef.TypeVariable classVariable = TypeDef.variable("T");
+        TypeDef.TypeVariable extra = TypeDef.variable("U", classVariable);
+        ClassDef parent = ClassDef.builder("test.BoundedExtraParent")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(extra)
+                .addParameter("value", classVariable)
+                .addParameter("extra", extra)
+                .returns(classVariable)
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+        // `<U extends T>` of a `BoundedExtraParent<String>` erases to `String`, which the override takes
+        ClassDef child = ClassDef.builder("test.BoundedExtraChild")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC).overrides()
+                .addParameter("value", Object.class)
+                .addParameter("extra", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> methodParameters.get(1).returning()))
+            .build();
+
+        String parentSource = writeClass(parent);
+        String source = writeClass(child);
+
+        assertTrue(parentSource.contains("<U extends T> T echo(T value, U extra)"), parentSource);
+        assertTrue(source.contains("String echo(String value, String extra)"), source);
+        assertCompiles(parentSource, source);
+    }
+
+    @Test
+    void capturedResultIsOfTheVariablesBound() throws Exception {
+        MethodDef get = MethodDef.override(Supplier.class.getMethod("get"))
+            .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
+        TypeDef.TypeVariable variable = TypeDef.variable("T", TypeDef.of(CharSequence.class));
+        ClassDef target = ClassDef.builder("test.BoundedSupplier")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier.class), variable))
+            .addMethod(get)
+            .build();
+        MethodDef chooseObject = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", Object.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("object").returning());
+        MethodDef chooseSequence = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", CharSequence.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("sequence").returning());
+        // Through a `BoundedSupplier<?>`, `get()` is a CharSequence, where the model calls `choose(Object)`
+        ClassDef caller = ClassDef.builder("test.CapturedChooser")
+            .addMethod(chooseObject)
+            .addMethod(chooseSequence)
+            .addMethod(MethodDef.builder("pick").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", TypeDef.parameterized(ClassTypeDef.of(target), TypeDef.wildcard()))
+                .returns(String.class)
+                .build((aThis, methodParameters) -> aThis.invoke(chooseObject,
+                    methodParameters.get(0).invoke(get)).returning()))
+            .build();
+
+        String source = writeClass(caller);
+
+        assertTrue(source.contains("choose((Object) target.get())"), source);
+        assertCompiles(writeClass(target), source);
+    }
+
+    @Test
+    void arrayAndVariableArgumentsOfNarrowedParameters() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef arrayApply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
+        // `apply` is written as `apply(String[])`, which an Object[] is cast to
+        ClassDef arrays = ClassDef.builder("test.ArrayArguments")
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Function.class), TypeDef.STRING.array(),
+                TypeDef.OBJECT))
+            .addMethod(arrayApply)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("values", TypeDef.OBJECT.array())
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> aThis.invoke(arrayApply, methodParameters.get(0)).returning()))
+            .build();
+        MethodDef stringApply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
+        TypeDef.TypeVariable variable = TypeDef.variable("U");
+        // `apply` is written as `apply(String)`, which a value of the class's `U` is cast to
+        ClassDef variables = ClassDef.builder("test.VariableArguments")
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, Object.class))
+            .addMethod(stringApply)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", variable)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> aThis.invoke(stringApply, methodParameters.get(0)).returning()))
+            .build();
+
+        String arraySource = writeClass(arrays);
+        String variableSource = writeClass(variables);
+
+        assertTrue(arraySource.contains("this.apply((String[]) values)"), arraySource);
+        assertTrue(variableSource.contains("this.apply((String) value)"), variableSource);
+        assertCompiles(arraySource);
+        assertCompiles(variableSource);
+    }
+
+    @Test
+    void narrowedParameterizedParameterIsRestoredAsRaw() throws Exception {
+        ClassTypeDef objects = TypeDef.parameterized(List.class, Object.class);
+        MethodDef consumeList = MethodDef.builder("consume").addModifiers(Modifier.PUBLIC)
+            .addParameter("values", objects)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("list").returning());
+        MethodDef consumeObject = MethodDef.builder("consume").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", Object.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("object").returning());
+        var apply = Function.class.getMethod("apply", Object.class);
+        // `apply(Object value)` becomes `apply(List<String> value)`, which is passed on as the `List<Object>` the
+        // model calls with
+        ClassDef classDef = ClassDef.builder("test.RawRestored")
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Function.class),
+                TypeDef.parameterized(List.class, String.class), TypeDef.STRING))
+            .addMethod(consumeList)
+            .addMethod(consumeObject)
+            .addMethod(MethodDef.override(apply)
+                .build((aThis, methodParameters) -> aThis.invoke(consumeList,
+                    methodParameters.get(0).cast(objects)).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("this.consume((List) arg0)"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void narrowedReturnOfAnUnrelatedParameterizationIsRaw() throws Exception {
+        ClassTypeDef objects = TypeDef.parameterized(List.class, Object.class);
+        FieldDef field = FieldDef.builder("value", objects).addModifiers(Modifier.PRIVATE).build();
+        // `get` is written as `List<String> get()`, which the `List<Object>` field is returned as
+        ClassDef classDef = ClassDef.builder("test.RawReturned")
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier.class),
+                TypeDef.parameterized(List.class, String.class)))
+            .addField(field)
+            .addMethod(MethodDef.override(Supplier.class.getMethod("get"))
+                .build((aThis, methodParameters) -> aThis.field(field).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("return (List) this.value"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void referenceWithAWildcardResultConvertsItsResult() throws Exception {
+        MethodDef get = MethodDef.override(Supplier.class.getMethod("get"))
+            .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
+        ClassTypeDef stringsSupplier = TypeDef.parameterized(ClassTypeDef.of(Supplier.class),
+            TypeDef.wildcardSubtypeOf(TypeDef.STRING));
+        // `get` is written as `CharSequence get()`, which a `Supplier<? extends String>` returns as a String
+        ClassDef classDef = ClassDef.builder("test.WildcardSupplied")
+            .addSuperinterface(TypeDef.parameterized(Supplier.class, CharSequence.class))
+            .addMethod(get)
+            .addMethod(MethodDef.builder("asStrings").addModifiers(Modifier.PUBLIC)
+                .returns(stringsSupplier)
+                .build((aThis, methodParameters) -> stringsSupplier.methodReference(aThis, get).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("() -> (String) (Object) this.get()"), source);
+        assertCompiles(source);
+    }
+
     private static ClassDef genericTarget(String name) throws NoSuchMethodException {
         var applyMethod = Function.class.getMethod("apply", Object.class);
         TypeDef.TypeVariable variable = TypeDef.variable("T", TypeDef.of(CharSequence.class));

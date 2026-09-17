@@ -255,13 +255,14 @@ public final class OverrideResolver {
         List<TypeDef> parameterTypes = emitted.parameterTypes().stream().map(asSeen).toList();
         TypeDef returnType = asSeen.apply(emitted.returnType());
         // A wildcard the receiver binds a variable to is captured: a parameter of that type takes no value it can be
-        // cast to, and a result of it is of its upper bound
+        // cast to, and a result of it is of the wildcard's upper bound, or else of the variable's
         if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.unwrap(type) instanceof TypeDef.Wildcard)) {
             return null;
         }
         if (TypeHierarchy.unwrap(returnType) instanceof TypeDef.Wildcard wildcard) {
-            returnType = wildcard.upperBounds().isEmpty() || !wildcard.lowerBounds().isEmpty()
-                ? TypeDef.OBJECT : wildcard.upperBounds().get(0);
+            returnType = wildcard.lowerBounds().isEmpty() && !wildcard.upperBounds().isEmpty()
+                && !TypeDef.OBJECT.equals(wildcard.upperBounds().get(0))
+                ? wildcard.upperBounds().get(0) : TypeHierarchy.declaring(target).erase(emitted.returnType());
         }
         if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.containsVariableOtherThan(type, inScope))
             || TypeHierarchy.containsVariableOtherThan(returnType, inScope)) {
@@ -306,6 +307,11 @@ public final class OverrideResolver {
         TypeDef resultType = null;
         MethodDef functional = functionalMethod(reference.type());
         TypeDef functionalReturn = functional == null ? null : TypeHierarchy.unwrap(functional.getReturnType());
+        if (functionalReturn instanceof TypeDef.Wildcard wildcard) {
+            // `Supplier<? extends String>` returns a String
+            functionalReturn = wildcard.lowerBounds().isEmpty() && !wildcard.upperBounds().isEmpty()
+                ? TypeHierarchy.unwrap(wildcard.upperBounds().get(0)) : null;
+        }
         if (!(functionalReturn instanceof ClassTypeDef || functionalReturn instanceof TypeDef.Array
             || functionalReturn instanceof TypeDef.Primitive || functionalReturn instanceof TypeDef.TypeVariable)) {
             functionalReturn = null;
