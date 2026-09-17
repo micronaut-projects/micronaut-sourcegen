@@ -29,8 +29,6 @@ import java.util.Map;
 
 import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.assertCompiles;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Models shaped like the ones written for bytecode, rendered as Java source that has to compile.
@@ -55,8 +53,16 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("super();"), source);
-        assertFalse(source.contains("Object.super"), source);
+        assertEquals(
+            """
+            package test;
+
+            class Child {
+              Child() {
+                super();
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -81,8 +87,32 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("Iterator.super.remove()"), source);
-        assertTrue(source.contains("return super.toString();"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.Iterator;
+
+            class Iter implements Iterator {
+              public boolean hasNext() {
+                return false;
+              }
+
+              public Object next() {
+                return null;
+              }
+
+              public void remove() {
+                Iterator.super.remove();
+              }
+
+              public String toString() {
+                return super.toString();
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -108,8 +138,32 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("private static String VALUE;"), source);
-        assertTrue(source.contains("private static Throwable FAILURE;"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.lang.Throwable;
+
+            class Holder {
+              private static String VALUE;
+
+              private static Throwable FAILURE;
+
+              static {
+                try {
+                  Holder.VALUE = "a";
+                } catch (Throwable e0) {
+                  Holder.FAILURE = e0;
+                }
+                try {
+                  Holder.VALUE = "b";
+                } catch (Throwable e0) {
+                  Holder.VALUE = "c";
+                }
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -130,6 +184,26 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+
+            class $Holder$Definition {
+              private String $field;
+
+              String $get() {
+                return this.$field;
+              }
+
+              String $copy(String $value) {
+                this.$field = $value;
+                String $local = this.$get();
+                return $local;
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -151,9 +225,31 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("this.take((String) value)"), source);
-        assertTrue(source.contains("new java.lang.StringBuilder((String) value)"), source);
-        assertTrue(source.contains("return (String) value;"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.lang.StringBuilder;
+
+            class Dispatch {
+              void take(String text) {
+              }
+
+              void dispatch(Object value) {
+                this.take((String) value);
+              }
+
+              StringBuilder create(Object value) {
+                return new java.lang.StringBuilder((String) value);
+              }
+
+              String narrow(Object value) {
+                return (String) value;
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -183,8 +279,41 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("return this.run()"), source);
-        assertFalse(source.contains("return null;"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.Throwable;
+
+            class Flow {
+              void run() {
+              }
+
+              void delegate() {
+                this.run();
+              }
+
+              Object select(int index) {
+                switch (index) {
+                  case 0 -> {
+                    return "zero";
+                  }
+                  default -> {
+                    throw new java.lang.IllegalStateException();
+                  }
+                }
+              }
+
+              Object guarded() {
+                try {
+                  return "value";
+                } catch (Throwable e0) {
+                  throw new java.lang.IllegalStateException();
+                }
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -198,7 +327,18 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("instanceof java.util.Map.Entry"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+
+            class Check {
+              boolean isEntry(Object value) {
+                return value instanceof java.util.Map.Entry;
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -215,7 +355,32 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
                     methodParameters.get(0).cast(otherType), otherType, "name", TypeDef.STRING).returning()))
             .build();
 
-        assertCompiles(writeClass(other), writeClass(accessor));
+        String otherSource = writeClass(other);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+
+            public class Other {
+              public String name;
+            }
+            """, otherSource);
+        String accessorSource = writeClass(accessor);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+
+            class Accessor {
+              String read(Object value) {
+                return ((Other) value).name;
+              }
+            }
+            """, accessorSource);
+        assertCompiles(otherSource, accessorSource);
     }
 
     @Test
@@ -232,8 +397,23 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("[Ljava.lang.String;"), source);
-        assertTrue(source.contains("new String[][]{"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.lang.SuppressWarnings;
+
+            @SuppressWarnings({
+                "unchecked",
+                "rawtypes"
+            })
+            class Arrays2 {
+              String[][] matrix() {
+                return new String[][]{new String[]{"a"}};
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -253,8 +433,24 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("compareTo(String "), source);
-        assertTrue(source.contains("String get()"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Comparable;
+            import java.lang.String;
+            import java.util.function.Supplier;
+
+            class Typed implements Comparable<String>, Supplier<String> {
+              public int compareTo(String arg0) {
+                return 0;
+              }
+
+              public String get() {
+                return "value";
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -276,8 +472,23 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("T get()"), source);
-        assertTrue(source.contains("accept(Object "), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.util.function.Consumer;
+            import java.util.function.Supplier;
+
+            class Box<T> implements Supplier<T>, Consumer<T> {
+              public T get() {
+                return null;
+              }
+
+              public void accept(Object arg0) {
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -299,7 +510,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("return Shadow.value;"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+
+            class Shadow {
+              private static String value = "static";
+
+              public String get(String value) {
+                return Shadow.value;
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -319,7 +543,23 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("return;"), source);
+        assertEquals(
+            """
+            package test;
+
+            class Branch {
+              private void run() {
+              }
+
+              public void dispatch(boolean stop) {
+                if (stop) {
+                  this.run();
+                  return;
+                }
+                this.run();
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -343,8 +583,28 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("public static final String KEPT;"), source);
-        assertTrue(source.contains("public static String FALLBACK;"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.lang.Throwable;
+
+            class Statics {
+              public static final String KEPT;
+
+              public static String FALLBACK;
+
+              static {
+                KEPT = "kept";
+                try {
+                  Statics.FALLBACK = "value";
+                } catch (Throwable e0) {
+                  Statics.FALLBACK = "fallback";
+                }
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -359,7 +619,16 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         String source = writeClass(classDef);
 
         // Without a value the member is omitted, and `@SuppressWarnings` alone does not compile
-        assertTrue(source.contains("{}"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.SuppressWarnings;
+
+            @SuppressWarnings({})
+            class EmptyMember {
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -378,7 +647,25 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("return;"), source);
+        assertEquals(
+            """
+            package test;
+
+            class Finally {
+              private void run() {
+              }
+
+              public void guarded() {
+                try {
+                  throw new java.lang.IllegalStateException();
+                } finally {
+                  this.run();
+                  this.run();
+                  return;
+                }
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -399,7 +686,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("LocalShadow.value = 7;"), source);
+        assertEquals(
+            """
+            package test;
+
+            class LocalShadow {
+              public static int value;
+
+              static {
+                int value = 1;
+                LocalShadow.value = 7;
+                LocalShadow.value = value;
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -422,7 +722,25 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("public static final String VALUE;"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Boolean;
+            import java.lang.String;
+
+            class Branches {
+              public static final String VALUE;
+
+              static {
+                if (Boolean.getBoolean("flag")) {
+                  VALUE = "yes";
+                } else {
+                  VALUE = "no";
+                }
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -443,7 +761,27 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("public static String VALUE;"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.lang.Throwable;
+
+            class CatchAndFinally {
+              public static String VALUE;
+
+              static {
+                try {
+                  throw new java.lang.IllegalStateException();
+                } catch (Throwable e0) {
+                  CatchAndFinally.VALUE = "a";
+                } finally {
+                  CatchAndFinally.VALUE = "b";
+                }
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -467,8 +805,32 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("public static String VALUE;"), source);
-        assertCompiles(writeClass(other), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+
+            class Owner {
+              public static String VALUE;
+
+              static {
+                External.VALUE = "a";
+              }
+            }
+            """, source);
+        String otherSource = writeClass(other);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+
+            public class External {
+              public static String VALUE;
+            }
+            """, otherSource);
+        assertCompiles(otherSource, source);
     }
 
     @Test
@@ -488,7 +850,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("(List) items"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.Collections;
+            import java.util.List;
+
+            class Items {
+              public String first(List<String> items) {
+                return (String) Collections.unmodifiableList(items).get(0);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -516,8 +891,30 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("Integer get()"), source);
-        assertCompiles(writeSource(numeric), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Integer;
+
+            class Count implements Numeric<Integer> {
+              public Integer get() {
+                return Integer.valueOf(1);
+              }
+            }
+            """, source);
+        String numericSource = writeSource(numeric);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Number;
+
+            public interface Numeric<N extends Number> {
+              N get();
+            }
+            """, numericSource);
+        assertCompiles(numericSource, source);
     }
 
     @Test
@@ -539,8 +936,28 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("(List) items"), source);
-        assertCompiles(writeClass(item), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.util.Collections;
+            import java.util.List;
+
+            class Items2 {
+              public Item first(List<Item> items) {
+                return (Item) Collections.unmodifiableList(items).get(0);
+              }
+            }
+            """, source);
+        String itemSource = writeClass(item);
+        assertEquals(
+            """
+            package test;
+
+            public class Item {
+            }
+            """, itemSource);
+        assertCompiles(itemSource, source);
     }
 
     @Test
@@ -561,7 +978,19 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("(List) items"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.util.Collections;
+            import java.util.List;
+
+            class Items3 {
+              public List first(List<List> items) {
+                return (List) Collections.unmodifiableList(items).get(0);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -582,7 +1011,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("(List) items"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.ArrayList;
+            import java.util.Collections;
+
+            class Items4 {
+              public String first(ArrayList<String> items) {
+                return (String) Collections.unmodifiableList(items).get(0);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -599,7 +1041,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("Object get()"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Number;
+            import java.lang.Object;
+            import java.util.function.Supplier;
+
+            class RawSupplier<T extends Number> implements Supplier {
+              public Object get() {
+                return "text";
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -622,7 +1077,25 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("public static final String VALUE;"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Boolean;
+            import java.lang.String;
+
+            class OrThrow {
+              public static final String VALUE;
+
+              static {
+                if (Boolean.getBoolean("flag")) {
+                  VALUE = "yes";
+                } else {
+                  throw new java.lang.IllegalStateException();
+                }
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -641,7 +1114,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(List) numbers"), source);
+        assertEquals(
+            """
+            package test;
+
+            import io.micronaut.sourcegen.javapoet.write.CompilationSignatures;
+            import java.lang.Integer;
+            import java.util.List;
+
+            class Invariant {
+              public int total(List<Integer> numbers) {
+                return CompilationSignatures.sum((List) numbers);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -661,7 +1147,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(List) lists"), source);
+        assertEquals(
+            """
+            package test;
+
+            import io.micronaut.sourcegen.javapoet.write.CompilationSignatures;
+            import java.lang.Integer;
+            import java.util.List;
+
+            class Bounded {
+              public int size(List<List<Integer>> lists) {
+                return CompilationSignatures.firstSize((List) lists);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -680,7 +1179,21 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(List) numbers"), source);
+        assertEquals(
+            """
+            package test;
+
+            import io.micronaut.sourcegen.javapoet.write.CompilationSignatures;
+            import java.lang.Integer;
+            import java.lang.String;
+            import java.util.List;
+
+            class WithArray {
+              public String joined(String[] parts, List<Integer> numbers) {
+                return CompilationSignatures.join(parts, (List) numbers);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -702,7 +1215,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("(List) values"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.Collections;
+            import java.util.List;
+
+            class Wildcards {
+              public String first(List<? extends String> values) {
+                return (String) Collections.unmodifiableList(values).get(0);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -722,7 +1248,19 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(List) lists"), source);
+        assertEquals(
+            """
+            package test;
+
+            import io.micronaut.sourcegen.javapoet.write.CompilationSignatures;
+            import java.util.List;
+
+            class Unbounded {
+              public int size(List<? extends List<?>> lists) {
+                return CompilationSignatures.firstSize((List) lists);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -741,7 +1279,19 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("(Object[])"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+
+            class Formatted {
+              public String describe(Object value) {
+                return String.format("%s", value);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -763,7 +1313,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("(List) values"), source);
+        assertEquals(
+            """
+            package test;
+
+            import io.micronaut.sourcegen.javapoet.write.CompilationSignatures;
+            import java.lang.String;
+            import java.util.List;
+
+            class Flattened {
+              public String first(List<CompilationSignatures.StringList> values) {
+                return (String) CompilationSignatures.flatten(values).get(0);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -783,7 +1346,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(List) target"), source);
+        assertEquals(
+            """
+            package test;
+
+            import io.micronaut.sourcegen.javapoet.write.CompilationSignatures;
+            import java.lang.Integer;
+            import java.util.List;
+
+            class LowerBound {
+              public int add(List<List<Integer>> target) {
+                return CompilationSignatures.addTo((List) target);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -811,8 +1387,30 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("T get()"), source);
-        assertCompiles(writeSource(bounded), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+
+            class BoundedBox<T extends CharSequence> implements Bounded<T> {
+              public T get() {
+                return (T) "value";
+              }
+            }
+            """, source);
+        String boundedSource = writeSource(bounded);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+
+            public interface Bounded<T extends CharSequence> {
+              T get();
+            }
+            """, boundedSource);
+        assertCompiles(boundedSource, source);
     }
 
     @Test
@@ -831,7 +1429,25 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("catch (Exception e0)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Exception;
+            import java.lang.Throwable;
+
+            class Caught {
+              public static final Throwable e0;
+
+              static {
+                try {
+                  throw new java.lang.IllegalStateException();
+                } catch (Exception e1) {
+                  e0 = e1;
+                }
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -850,7 +1466,22 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(String[]) value"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+
+            class Takes {
+              public void take(String[] values) {
+              }
+
+              public void dispatch(Object value) {
+                this.take((String[]) value);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -872,7 +1503,24 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("Exception e0") || source.contains("Exception e1"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Exception;
+            import java.lang.String;
+
+            class Scoped {
+              private static final String e0 = "field";
+
+              public void run(String e1) {
+                try {
+                  throw new java.lang.IllegalStateException();
+                } catch (Exception e2) {
+                }
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -902,9 +1550,33 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("String[] get()"), source);
-        assertTrue(source.contains("(String[])"), source);
-        assertCompiles(writeSource(bounded), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.String;
+
+            class Strings implements BoundedArray<String> {
+              private CharSequence[] values = new String[]{"a"};
+
+              public String[] get() {
+                return (String[]) this.values;
+              }
+            }
+            """, source);
+        String boundedSource = writeSource(bounded);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+
+            public interface BoundedArray<T extends CharSequence> {
+              T[] get();
+            }
+            """, boundedSource);
+        assertCompiles(boundedSource, source);
     }
 
     @Test
@@ -929,8 +1601,28 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("String apply(String "), source);
-        assertTrue(source.contains("choose((Object) "), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class Chooser implements Function<String, String> {
+              public String choose(Object value) {
+                return "object";
+              }
+
+              public String choose(String value) {
+                return "string";
+              }
+
+              public String apply(String arg0) {
+                return this.choose((Object) arg0);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -948,6 +1640,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class Lambdas {
+              public Function<Object, String> identity() {
+                return (arg0) -> (String) arg0;
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -964,7 +1670,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("super((String) value)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Exception;
+            import java.lang.Object;
+            import java.lang.String;
+
+            class Failure extends Exception {
+              public Failure(Object value) {
+                super((String) value);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -983,7 +1702,19 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertFalse(source.contains("(Object[])"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class Formats implements Function<String, String> {
+              public String apply(String arg0) {
+                return String.format("%s", arg0);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1001,7 +1732,19 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("super(value)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import io.micronaut.sourcegen.javapoet.write.CompilationSignatures;
+            import java.lang.Object;
+
+            class VarargsChild extends CompilationSignatures.VarargsParent {
+              public VarargsChild(Object value) {
+                super(value);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1028,7 +1771,28 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("choose((Object) "), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class CastChooser implements Function<String, String> {
+              public String choose(Object value) {
+                return "object";
+              }
+
+              public String choose(String value) {
+                return "string";
+              }
+
+              public String apply(String arg0) {
+                return this.choose((Object) arg0);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1049,7 +1813,24 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("this.apply((String) value)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class Caller implements Function<String, String> {
+              public String apply(String arg0) {
+                return (String) arg0;
+              }
+
+              public Object call(Object value) {
+                return this.apply((String) value);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1071,7 +1852,22 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("asList((Object) arg0)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Integer;
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.Arrays;
+            import java.util.function.Function;
+
+            class Elements implements Function<String[], Integer> {
+              public Integer apply(String[] arg0) {
+                return Arrays.asList((Object) arg0).size();
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1098,8 +1894,34 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("target.apply((String) value)"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+
+            class OtherCaller {
+              public Object call(Target target, Object value) {
+                return target.apply((String) value);
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.function.Function;
+
+            public class Target implements Function<String, String> {
+              public String apply(String arg0) {
+                return (String) arg0;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1130,7 +1952,32 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("choose((Object) this.apply("), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class ResultChooser implements Function<String, String> {
+              public String choose(Object value) {
+                return "object";
+              }
+
+              public String choose(String value) {
+                return "string";
+              }
+
+              public String apply(String arg0) {
+                return (String) arg0;
+              }
+
+              public String pick(Object value) {
+                return this.choose((Object) this.apply((String) value));
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1159,8 +2006,34 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("target.apply((String) value)"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+
+            class GenericCaller {
+              public Object call(GenericTarget<String> target, Object value) {
+                return target.apply((String) value);
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.util.function.Function;
+
+            public class GenericTarget<T extends CharSequence> implements Function<T, T> {
+              public T apply(T arg0) {
+                return (T) arg0;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1187,7 +2060,28 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("choose((Object) ("), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class ConditionalChooser implements Function<String, String> {
+              public String choose(Object value) {
+                return "object";
+              }
+
+              public String choose(String value) {
+                return "string";
+              }
+
+              public String apply(String arg0) {
+                return this.choose((Object) (true ? arg0 : arg0));
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1210,8 +2104,34 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("target.apply((U) value)"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.Object;
+
+            class ScopedCaller<U extends CharSequence> {
+              public Object call(CallerScopedTarget<U> target, Object value) {
+                return target.apply((U) value);
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.util.function.Function;
+
+            public class CallerScopedTarget<T extends CharSequence> implements Function<T, T> {
+              public T apply(T arg0) {
+                return (T) arg0;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1231,8 +2151,34 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("target.apply((CharSequence) value)"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.Object;
+
+            class RawCaller {
+              public Object call(RawTarget target, Object value) {
+                return target.apply((CharSequence) value);
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.util.function.Function;
+
+            public class RawTarget<T extends CharSequence> implements Function<T, T> {
+              public T apply(T arg0) {
+                return (T) arg0;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1262,8 +2208,42 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("target.apply((String) value)"), source);
-        assertCompiles(writeClass(parent), writeClass(child), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+
+            class ChildCaller {
+              public Object call(ChildTarget target, Object value) {
+                return target.apply((String) value);
+              }
+            }
+            """, source);
+        String parentSource = writeClass(parent);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.function.Function;
+
+            public class ParentTarget implements Function<String, String> {
+              public String apply(String arg0) {
+                return (String) arg0;
+              }
+            }
+            """, parentSource);
+        String childSource = writeClass(child);
+        assertEquals(
+            """
+            package test;
+
+            public class ChildTarget extends ParentTarget {
+            }
+            """, childSource);
+        assertCompiles(parentSource, childSource, source);
     }
 
     @Test
@@ -1277,7 +2257,28 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("choose((Object) ("), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class NullConditionalChooser implements Function<String, String> {
+              public String choose(Object value) {
+                return "object";
+              }
+
+              public String choose(String value) {
+                return "string";
+              }
+
+              public String apply(String arg0) {
+                return this.choose((Object) (true ? arg0 : null));
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1293,7 +2294,31 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("choose((Object) "), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class SwitchChooser implements Function<String, String> {
+              public String choose(Object value) {
+                return "object";
+              }
+
+              public String choose(String value) {
+                return "string";
+              }
+
+              public String apply(String arg0) {
+                return this.choose((Object) (switch (1) {
+                  case 1 -> arg0;
+                  default -> arg0;
+                }));
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1319,9 +2344,39 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("String[] values"), source);
-        assertTrue(source.contains("choose((Object) values[0])"), source);
-        assertCompiles(writeSource(arrays), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+
+            class ArrayChooser implements ArrayChoice<String> {
+              public String choose(Object value) {
+                return "object";
+              }
+
+              public String choose(String value) {
+                return "string";
+              }
+
+              public String accept(String[] values) {
+                return this.choose((Object) values[0]);
+              }
+            }
+            """, source);
+        String arraysSource = writeSource(arrays);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+
+            public interface ArrayChoice<T> {
+              String accept(T[] values);
+            }
+            """, arraysSource);
+        assertCompiles(arraysSource, source);
     }
 
     @Test
@@ -1341,7 +2396,24 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(arg) -> this.apply((String) arg)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class ReferencedFunction implements Function<String, String> {
+              public String apply(String arg0) {
+                return (String) arg0;
+              }
+
+              public Function<Object, Object> asFunction() {
+                return (arg) -> this.apply((String) arg);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1364,8 +2436,34 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("target.apply((U) value)"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.Object;
+
+            class MethodScopedCaller {
+              public <U extends CharSequence> Object call(MethodScopedTarget<U> target, Object value) {
+                return target.apply((U) value);
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.util.function.Function;
+
+            public class MethodScopedTarget<T extends CharSequence> implements Function<T, T> {
+              public T apply(T arg0) {
+                return (T) arg0;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1385,9 +2483,34 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("UnboundTarget<CharSequence> target"), source);
-        assertTrue(source.contains("target.apply((CharSequence) value)"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.Object;
+
+            class UnboundCaller {
+              public Object call(UnboundTarget<CharSequence> target, Object value) {
+                return target.apply((CharSequence) value);
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.util.function.Function;
+
+            public class UnboundTarget<T extends CharSequence> implements Function<T, T> {
+              public T apply(T arg0) {
+                return (T) arg0;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1418,8 +2541,42 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("target.apply((String) value)"), source);
-        assertCompiles(writeSource(parent), writeClass(implementation), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+
+            class DefaultCaller {
+              public Object call(DefaultTargetImpl target, Object value) {
+                return target.apply((String) value);
+              }
+            }
+            """, source);
+        String parentSource = writeSource(parent);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.function.Function;
+
+            public interface DefaultTarget extends Function<String, String> {
+              default String apply(String arg0) {
+                return (String) arg0;
+              }
+            }
+            """, parentSource);
+        String implementationSource = writeClass(implementation);
+        assertEquals(
+            """
+            package test;
+
+            public class DefaultTargetImpl implements DefaultTarget {
+            }
+            """, implementationSource);
+        assertCompiles(parentSource, implementationSource, source);
     }
 
     @Test
@@ -1448,8 +2605,31 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(child);
 
-        assertTrue(source.contains("String echo(String value, Object other)"), source);
-        assertCompiles(writeClass(parent), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+
+            class MixedChild extends MixedParent<String> {
+              public String echo(String value, Object other) {
+                return (String) value;
+              }
+            }
+            """, source);
+        String parentSource = writeClass(parent);
+        assertEquals(
+            """
+            package test;
+
+            public class MixedParent<T> {
+              public <U> T echo(T value, U other) {
+                return value;
+              }
+            }
+            """, parentSource);
+        assertCompiles(parentSource, source);
     }
 
     @Test
@@ -1464,7 +2644,31 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("choose((Object) "), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class NullSwitchChooser implements Function<String, String> {
+              public String choose(Object value) {
+                return "object";
+              }
+
+              public String choose(String value) {
+                return "string";
+              }
+
+              public String apply(String arg0) {
+                return this.choose((Object) (switch (1) {
+                  case 1 -> arg0;
+                  default -> null;
+                }));
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1493,7 +2697,27 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("choose((Object) ("), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.Object;
+
+            class MixedConditionalChooser {
+              public int choose(Object value) {
+                return 1;
+              }
+
+              public int choose(CharSequence value) {
+                return 2;
+              }
+
+              public int pick(boolean flag) {
+                return this.choose((Object) (flag ? "a" : new java.lang.StringBuilder()));
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1519,8 +2743,35 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("(arg) -> target.apply((String) arg)"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class ReferencingCaller {
+              public Function<Object, Object> asFunction(ReferencedTarget target) {
+                return (arg) -> target.apply((String) arg);
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.function.Function;
+
+            public class ReferencedTarget implements Function<String, String> {
+              public String apply(String arg0) {
+                return (String) arg0;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1542,7 +2793,24 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeSource(interfaceDef);
 
-        assertTrue(source.contains("this.apply((String) value)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            public interface DefaultCalls extends Function<String, String> {
+              default String apply(String arg0) {
+                return (String) arg0;
+              }
+
+              default Object call(Object value) {
+                return this.apply((String) value);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1561,7 +2829,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("String echo(String value, Number other)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import io.micronaut.sourcegen.javapoet.write.CompilationSignatures;
+            import java.lang.Number;
+            import java.lang.String;
+
+            class BoundedEchoChild extends CompilationSignatures.BoundedEcho<String> {
+              public String echo(String value, Number other) {
+                return (String) value;
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1592,8 +2873,35 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("target.apply((List<? extends CharSequence>) value)"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.Object;
+            import java.util.List;
+
+            class WildcardCaller {
+              public Object call(ListTarget<List<? extends CharSequence>> target, Object value) {
+                return target.apply((List<? extends CharSequence>) value);
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.util.List;
+            import java.util.function.Function;
+
+            public class ListTarget<T extends List> implements Function<T, T> {
+              public T apply(T arg0) {
+                return (T) arg0;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1631,10 +2939,51 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("Optional.of(this.target).<Function<Object, Object>>map(target -> (arg) -> target.apply((String) arg)).get()"), source);
-        assertTrue(source.contains("Optional.of(local)"), source);
-        assertTrue(source.contains("Optional.of(this.getTarget())"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.Optional;
+            import java.util.function.Function;
+
+            class CapturingCaller {
+              private CapturedTarget target;
+
+              public CapturedTarget getTarget() {
+                return this.target;
+              }
+
+              public Function<Object, Object> fromField() {
+                return Optional.of(this.target).<Function<Object, Object>>map(target -> (arg) -> target.apply((String) arg)).get();
+              }
+
+              public Function<Object, Object> fromLocal() {
+                CapturedTarget local = this.target;
+                return Optional.of(local).<Function<Object, Object>>map(target -> (arg) -> target.apply((String) arg)).get();
+              }
+
+              public Function<Object, Object> fromResult() {
+                return Optional.of(this.getTarget()).<Function<Object, Object>>map(target -> (arg) -> target.apply((String) arg)).get();
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.function.Function;
+
+            public class CapturedTarget implements Function<String, String> {
+              public String apply(String arg0) {
+                return (String) arg0;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1654,7 +3003,25 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(arg) -> (String) this.apply((CharSequence) arg)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class ResultReferenced implements Function<CharSequence, CharSequence> {
+              public CharSequence apply(CharSequence arg0) {
+                return (CharSequence) arg0;
+              }
+
+              public Function<Object, String> asFunction() {
+                return (arg) -> (String) this.apply((CharSequence) arg);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1679,8 +3046,35 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(child);
 
-        assertTrue(source.contains("(arg) -> super.apply((String) arg)"), source);
-        assertCompiles(writeClass(parent), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class SuperReferencing extends SuperTarget {
+              public Function<Object, Object> asFunction() {
+                return (arg) -> super.apply((String) arg);
+              }
+            }
+            """, source);
+        String parentSource = writeClass(parent);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.function.Function;
+
+            public class SuperTarget implements Function<String, String> {
+              public String apply(String arg0) {
+                return (String) arg0;
+              }
+            }
+            """, parentSource);
+        assertCompiles(parentSource, source);
     }
 
     @Test
@@ -1707,8 +3101,30 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(arg) -> (U) this.apply((Number) arg)"), source);
-        assertTrue(source.contains("(arg) -> (Integer) this.apply((Number) arg)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Integer;
+            import java.lang.Number;
+            import java.lang.Object;
+            import java.util.function.Function;
+            import java.util.function.ToIntFunction;
+
+            class NumberReferenced<U extends Number> implements Function<Number, Number> {
+              public Number apply(Number arg0) {
+                return (Number) arg0;
+              }
+
+              public Function<Object, U> asFunction() {
+                return (arg) -> (U) this.apply((Number) arg);
+              }
+
+              public ToIntFunction<Object> asIntFunction() {
+                return (arg) -> (Integer) this.apply((Number) arg);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1731,7 +3147,25 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("() -> (List) this.get()"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.List;
+            import java.util.function.Supplier;
+
+            class ListSupplied implements Supplier<List<String>> {
+              public List<String> get() {
+                return null;
+              }
+
+              public Supplier<List<Object>> asObjects() {
+                return () -> (List) this.get();
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1763,8 +3197,35 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("target.apply((String) value)"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.Object;
+            import java.lang.String;
+
+            class WildcardResultCaller {
+              public Object call(TwoTarget<String, ? extends CharSequence> target, Object value) {
+                return target.apply((String) value);
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.util.function.Function;
+
+            public class TwoTarget<A extends CharSequence, B extends CharSequence> implements Function<A, B> {
+              public B apply(A arg0) {
+                return null;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1792,8 +3253,32 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(child);
 
-        assertTrue(source.contains("String echo(String value)"), source);
-        assertCompiles(writeClass(parent), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+
+            class BoundByClassChild extends BoundByClassParent<String, String> {
+              public String echo(String value) {
+                return (String) value;
+              }
+            }
+            """, source);
+        String parentSource = writeClass(parent);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+
+            public class BoundByClassParent<T, U extends CharSequence> {
+              public <T extends U> U echo(T value) {
+                return null;
+              }
+            }
+            """, parentSource);
+        assertCompiles(parentSource, source);
     }
 
     @Test
@@ -1819,8 +3304,29 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(arg) -> this.apply((List) arg)"), source);
-        assertTrue(source.contains("this.apply((List) values)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.List;
+            import java.util.function.Function;
+
+            class Unrelated implements Function<List<String>, Object> {
+              public Object apply(List<String> arg0) {
+                return null;
+              }
+
+              public Function<List<Object>, Object> asFunction() {
+                return (arg) -> this.apply((List) arg);
+              }
+
+              public Object call(List<Object> values) {
+                return this.apply((List) values);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1844,7 +3350,24 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("() -> (List) this.get()"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.List;
+            import java.util.function.Supplier;
+
+            public final class Object implements Supplier<List<String>> {
+              public List<String> get() {
+                return null;
+              }
+
+              public Supplier<List<java.lang.Object>> asObjects() {
+                return () -> (List) this.get();
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1875,8 +3398,28 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         String parentSource = writeClass(parent);
         String source = writeClass(child);
 
-        assertTrue(parentSource.contains("<U extends T> T echo(T value, U extra)"), parentSource);
-        assertTrue(source.contains("String echo(String value, String extra)"), source);
+        assertEquals(
+            """
+            package test;
+
+            public class BoundedExtraParent<T> {
+              public <U extends T> T echo(T value, U extra) {
+                return value;
+              }
+            }
+            """, parentSource);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+
+            class BoundedExtraChild extends BoundedExtraParent<String> {
+              public String echo(String value, String extra) {
+                return (String) extra;
+              }
+            }
+            """, source);
         assertCompiles(parentSource, source);
     }
 
@@ -1912,8 +3455,43 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(caller);
 
-        assertTrue(source.contains("choose((Object) target.get())"), source);
-        assertCompiles(writeClass(target), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.Object;
+            import java.lang.String;
+
+            class CapturedChooser {
+              public String choose(Object value) {
+                return "object";
+              }
+
+              public String choose(CharSequence value) {
+                return "sequence";
+              }
+
+              public String pick(BoundedSupplier<?> target) {
+                return this.choose((Object) target.get());
+              }
+            }
+            """, source);
+        String targetSource = writeClass(target);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.util.function.Supplier;
+
+            public class BoundedSupplier<T extends CharSequence> implements Supplier<T> {
+              public T get() {
+                return null;
+              }
+            }
+            """, targetSource);
+        assertCompiles(targetSource, source);
     }
 
     @Test
@@ -1948,8 +3526,42 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         String arraySource = writeClass(arrays);
         String variableSource = writeClass(variables);
 
-        assertTrue(arraySource.contains("this.apply((String[]) values)"), arraySource);
-        assertTrue(variableSource.contains("this.apply((String) value)"), variableSource);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class ArrayArguments implements Function<String[], Object> {
+              public Object apply(String[] arg0) {
+                return null;
+              }
+
+              public Object call(Object[] values) {
+                return this.apply((String[]) values);
+              }
+            }
+            """, arraySource);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.function.Function;
+
+            class VariableArguments<U> implements Function<String, Object> {
+              public Object apply(String arg0) {
+                return null;
+              }
+
+              public Object call(U value) {
+                return this.apply((String) value);
+              }
+            }
+            """, variableSource);
         assertCompiles(arraySource);
         assertCompiles(variableSource);
     }
@@ -1980,7 +3592,29 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("this.consume((List) arg0)"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.List;
+            import java.util.function.Function;
+
+            class RawRestored implements Function<List<String>, String> {
+              public String consume(List<Object> values) {
+                return "list";
+              }
+
+              public String consume(Object value) {
+                return "object";
+              }
+
+              public String apply(List<String> arg0) {
+                return this.consume((List) arg0);
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -1999,7 +3633,23 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("return (List) this.value"), source);
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.List;
+            import java.util.function.Supplier;
+
+            class RawReturned implements Supplier<List<String>> {
+              private List<Object> value;
+
+              public List<String> get() {
+                return (List) this.value;
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 
@@ -2021,6 +3671,24 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         String source = writeClass(classDef);
 
         assertEquals("""
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.String;
+            import java.util.function.Supplier;
+
+            class WildcardSupplied implements Supplier<CharSequence> {
+              public CharSequence get() {
+                return null;
+              }
+
+              public Supplier<? extends String> asStrings() {
+                return () -> (String) this.get();
+              }
+            }
+            """, source);
+        assertEquals(
+            """
             package test;
 
             import java.lang.CharSequence;

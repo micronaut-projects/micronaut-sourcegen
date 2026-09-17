@@ -11,7 +11,7 @@ import io.micronaut.sourcegen.model.ObjectDef
 import io.micronaut.sourcegen.model.StatementDef
 import io.micronaut.sourcegen.model.TypeDef
 import io.micronaut.sourcegen.model.VariableDef
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.StringWriter
 import io.micronaut.sourcegen.model.InterfaceDef
@@ -44,7 +44,16 @@ class KotlinSourceCompilationTest {
             })
             .build()
 
-        assertCompiles(writeClass(classDef))
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |public class Child()
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(classDefSource)
     }
 
     @Test
@@ -69,7 +78,33 @@ class KotlinSourceCompilationTest {
                 })
             .build()
 
-        assertCompiles(writeClass(classDef))
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.IntPredicate
+            |import kotlin.Boolean
+            |import kotlin.Int
+            |import kotlin.String
+            |
+            |public class Predicate : IntPredicate {
+            |  public override fun test(`value`: Int): Boolean {
+            |    return true
+            |  }
+            |
+            |  public override fun negate(): IntPredicate {
+            |    return super<IntPredicate>.negate()
+            |  }
+            |
+            |  public override fun toString(): String {
+            |    return super.toString()
+            |  }
+            |}
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(classDefSource)
     }
 
     @Test
@@ -92,7 +127,38 @@ class KotlinSourceCompilationTest {
             ))
             .build()
 
-        assertCompiles(writeClass(classDef))
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.String
+            |import kotlin.Throwable
+            |
+            |public class Holder {
+            |  public companion object {
+            |    private final lateinit var VALUE: String
+            |
+            |    private final lateinit var FAILURE: Throwable
+            |
+            |    init {
+            |      try {
+            |        Holder.VALUE = "a"
+            |      } catch (e: Throwable) {
+            |        Holder.FAILURE = e
+            |      }
+            |      try {
+            |        Holder.VALUE = "b"
+            |      } catch (e: Throwable) {
+            |        Holder.VALUE = "c"
+            |      }
+            |    }
+            |  }
+            |}
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(classDefSource)
     }
 
     @Test
@@ -112,7 +178,30 @@ class KotlinSourceCompilationTest {
                 })
             .build()
 
-        assertCompiles(writeClass(classDef))
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.String
+            |
+            |public class `${'$'}Holder${'$'}Definition` {
+            |  private lateinit var `${'$'}field`: String
+            |
+            |  public fun `${'$'}get`(): String {
+            |    return this. `${'$'}field`
+            |  }
+            |
+            |  public fun `${'$'}copy`(`${'$'}value`: String): String {
+            |    this. `${'$'}field` = `${'$'}value`
+            |    var `${'$'}local`:String = this.`${'$'}get`()
+            |    return `${'$'}local`
+            |  }
+            |}
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(classDefSource)
     }
 
     @Test
@@ -134,7 +223,35 @@ class KotlinSourceCompilationTest {
                 .build { _, parameters -> parameters[0].returning() })
             .build()
 
-        assertCompiles(writeClass(classDef))
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.lang.StringBuilder
+            |import kotlin.Any
+            |import kotlin.String
+            |
+            |public class Dispatch {
+            |  public fun take(text: String) {
+            |  }
+            |
+            |  public fun dispatch(`value`: Any) {
+            |    this.take(`value` as String)
+            |  }
+            |
+            |  public fun create(`value`: Any): StringBuilder {
+            |    return StringBuilder(`value` as String)
+            |  }
+            |
+            |  public fun narrow(`value`: Any): String {
+            |    return `value` as String
+            |  }
+            |}
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(classDefSource)
     }
 
     @Test
@@ -167,7 +284,47 @@ class KotlinSourceCompilationTest {
                 })
             .build()
 
-        assertCompiles(writeClass(classDef))
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.lang.IllegalStateException
+            |import kotlin.Any
+            |import kotlin.Int
+            |import kotlin.Throwable
+            |
+            |public class Flow {
+            |  public fun run() {
+            |  }
+            |
+            |  public fun `delegate`() {
+            |    this.run()
+            |  }
+            |
+            |  public fun select(index: Int): Any {
+            |    when (index) {
+            |      0-> {
+            |        return "zero"
+            |      }
+            |      else -> {
+            |        throw IllegalStateException()
+            |      }
+            |    }
+            |  }
+            |
+            |  public fun guarded(): Any {
+            |    try {
+            |      return "value"
+            |    } catch (e: Throwable) {
+            |      throw IllegalStateException()
+            |    }
+            |  }
+            |}
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(classDefSource)
     }
 
     @Test
@@ -180,7 +337,24 @@ class KotlinSourceCompilationTest {
                 })
             .build()
 
-        assertCompiles(writeClass(classDef))
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.Map
+            |import kotlin.Any
+            |import kotlin.Boolean
+            |
+            |public class Check {
+            |  public fun isEntry(`value`: Any): Boolean {
+            |    return `value` is Map.Entry<*, *>
+            |  }
+            |}
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(classDefSource)
     }
 
     @Test
@@ -197,7 +371,36 @@ class KotlinSourceCompilationTest {
                 })
             .build()
 
-        assertCompiles(writeClass(other), writeClass(accessor))
+        val otherSource = writeClass(other)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.String
+            |
+            |public class Other {
+            |  public lateinit var name: String
+            |}
+            |""".trimMargin(),
+            otherSource
+        )
+        val accessorSource = writeClass(accessor)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.Any
+            |import kotlin.String
+            |
+            |public class Accessor {
+            |  public fun read(`value`: Any): String {
+            |    return (`value` as Other). name
+            |  }
+            |}
+            |""".trimMargin(),
+            accessorSource
+        )
+        assertCompiles(otherSource, accessorSource)
     }
 
     @Test
@@ -214,7 +417,26 @@ class KotlinSourceCompilationTest {
                 })
             .build()
 
-        assertCompiles(writeClass(classDef))
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.lang.SuppressWarnings
+            |import kotlin.Array
+            |import kotlin.String
+            |
+            |@SuppressWarnings(value = ["unchecked",
+            |"rawtypes"])
+            |public class Arrays2 {
+            |  public fun matrix(): Array<Array<String>> {
+            |    return arrayOf<Array<String>>(arrayOf<String>("a"))
+            |  }
+            |}
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(classDefSource)
     }
 
     @Test
@@ -233,8 +455,27 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("compareTo(arg0: String)"), source)
-        assertTrue(source.contains("`get`(): String"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.lang.Comparable
+            |import java.util.function.Supplier
+            |import kotlin.Int
+            |import kotlin.String
+            |
+            |public class Typed : Comparable<String>, Supplier<String> {
+            |  public override fun compareTo(arg0: String): Int {
+            |    return 0
+            |  }
+            |
+            |  public override fun `get`(): String {
+            |    return "value"
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -256,8 +497,24 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("`get`(): T"), source)
-        assertTrue(source.contains("accept(arg0: T)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Consumer
+            |import java.util.function.Supplier
+            |
+            |public class Box<T> : Supplier<T>, Consumer<T> {
+            |  public override fun `get`(): T {
+            |    return null as T
+            |  }
+            |
+            |  public override fun accept(arg0: T) {
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -286,8 +543,37 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("names(): Set<String>"), source)
-        assertCompiles(writeClass(names), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.Collections
+            |import kotlin.String
+            |import kotlin.collections.Set
+            |
+            |public class RawNames : Names {
+            |  public override fun names(): Set<String> {
+            |    return Collections.emptySet()
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
+        val namesSource = writeClass(names)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.String
+            |import kotlin.collections.Set
+            |
+            |public interface Names {
+            |  public fun names(): Set<String>
+            |}
+            |""".trimMargin(),
+            namesSource
+        )
+        assertCompiles(namesSource, source)
     }
 
     @Test
@@ -309,7 +595,27 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("return\n"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.Boolean
+            |
+            |public class Branch {
+            |  private fun run() {
+            |  }
+            |
+            |  public fun dispatch(stop: Boolean) {
+            |    if (stop) {
+            |      this.run()
+            |      return
+            |    }
+            |    this.run()
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -330,7 +636,29 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("return\n"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.lang.IllegalStateException
+            |
+            |public class Finally {
+            |  private fun run() {
+            |  }
+            |
+            |  public fun guarded() {
+            |    try {
+            |      throw IllegalStateException()
+            |    } finally {
+            |      this.run()
+            |      this.run()
+            |      return
+            |    }
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -348,7 +676,24 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(!source.contains("lateinit"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.Int
+            |
+            |public class Counter {
+            |  public companion object {
+            |    private var count: Int = 0
+            |
+            |    init {
+            |      Counter.count = 1
+            |    }
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -366,8 +711,22 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("val name: String"), source)
-        assertTrue(!source.contains("lateinit"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.String
+            |
+            |public class Named {
+            |  public final val name: String
+            |
+            |  public constructor(name: String) {
+            |    this. name = name
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -392,7 +751,39 @@ class KotlinSourceCompilationTest {
                 })
             .build()
 
-        assertCompiles(writeClass(box), writeClass(strings))
+        val boxSource = writeClass(box)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Supplier
+            |
+            |public class AnyBox<T> : Supplier<T> {
+            |  public override fun `get`(): T {
+            |    return "value" as T
+            |  }
+            |}
+            |""".trimMargin(),
+            boxSource
+        )
+        val stringsSource = writeClass(strings)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Supplier
+            |import kotlin.Array
+            |import kotlin.String
+            |
+            |public class AnyStrings : Supplier<Array<String>> {
+            |  public override fun `get`(): Array<String> {
+            |    return arrayOf<String>("a")
+            |  }
+            |}
+            |""".trimMargin(),
+            stringsSource
+        )
+        assertCompiles(boxSource, stringsSource)
     }
 
     @Test
@@ -411,7 +802,24 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(!source.contains("lateinit"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.String
+            |import kotlin.jvm.JvmField
+            |
+            |public class JvmNamed {
+            |  @JvmField
+            |  public var name: String
+            |
+            |  public constructor(name: String) {
+            |    this. name = name
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -435,7 +843,35 @@ class KotlinSourceCompilationTest {
                 })
             .build()
 
-        assertCompiles(writeClass(bounded), writeClass(classDef))
+        val boundedSource = writeClass(bounded)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.CharSequence
+            |
+            |public interface Bounded<T : CharSequence> {
+            |  public fun `get`(): T
+            |}
+            |""".trimMargin(),
+            boundedSource
+        )
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.String
+            |
+            |public class BoundedString : Bounded<String> {
+            |  public override fun `get`(): String {
+            |    return "value"
+            |  }
+            |}
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(boundedSource, classDefSource)
     }
 
     @Test
@@ -454,7 +890,22 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("lateinit var name"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.String
+            |
+            |public class Other {
+            |  public lateinit var name: String
+            |
+            |  public constructor(other: Other) {
+            |    other. name = "value"
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -479,7 +930,29 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(!source.contains("lateinit"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.Boolean
+            |import kotlin.String
+            |import kotlin.jvm.JvmField
+            |
+            |public class Branched {
+            |  @JvmField
+            |  public var name: String
+            |
+            |  public constructor(flag: Boolean) {
+            |    if (flag) {
+            |      this. name = "yes"
+            |    } else {
+            |      this. name = "no"
+            |    }
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -505,7 +978,26 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("lateinit var name"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.String
+            |
+            |public class EarlyReturn {
+            |  public lateinit var name: String
+            |
+            |  public constructor() {
+            |    this.run()
+            |    return
+            |  }
+            |
+            |  private fun run() {
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -539,7 +1031,34 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(!source.contains("lateinit"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.Boolean
+            |import kotlin.String
+            |import kotlin.jvm.JvmField
+            |
+            |public class BranchReturns {
+            |  @JvmField
+            |  public var name: String
+            |
+            |  public constructor(flag: Boolean) {
+            |    if (flag) {
+            |      this. name = "yes"
+            |      this.run()
+            |    } else {
+            |      this. name = "no"
+            |      this.run()
+            |    }
+            |  }
+            |
+            |  private fun run() {
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -567,7 +1086,40 @@ class KotlinSourceCompilationTest {
                 .build { aThis, _ -> aThis.field(values).returning() })
             .build()
 
-        assertCompiles(writeClass(bounded), writeClass(classDef))
+        val boundedSource = writeClass(bounded)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.Array
+            |import kotlin.CharSequence
+            |
+            |public interface BoundedArray<T : CharSequence> {
+            |  public fun `get`(): Array<T>
+            |}
+            |""".trimMargin(),
+            boundedSource
+        )
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.Array
+            |import kotlin.CharSequence
+            |import kotlin.String
+            |
+            |public class StringArray : BoundedArray<String> {
+            |  private var values: Array<CharSequence> = arrayOf<CharSequence>("a")
+            |
+            |  public override fun `get`(): Array<String> {
+            |    return this. values as Array<String>
+            |  }
+            |}
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(boundedSource, classDefSource)
     }
 
     @Test
@@ -597,7 +1149,33 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(!source.contains("lateinit"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.Int
+            |import kotlin.String
+            |import kotlin.jvm.JvmField
+            |
+            |public class BeforeSwitch {
+            |  @JvmField
+            |  public var name: String
+            |
+            |  public constructor(index: Int) {
+            |    this. name = "value"
+            |    when (index) {
+            |      0-> {
+            |        this.run()
+            |      }
+            |    }
+            |  }
+            |
+            |  private fun run() {
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -622,7 +1200,32 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("lateinit var name"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.lang.IllegalStateException
+            |import kotlin.String
+            |
+            |public class FinallyReturns {
+            |  public lateinit var name: String
+            |
+            |  public constructor() {
+            |    try {
+            |      throw IllegalStateException()
+            |    } finally {
+            |      this.run()
+            |      this.run()
+            |      return
+            |    }
+            |  }
+            |
+            |  private fun run() {
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -648,7 +1251,33 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(!source.contains("lateinit"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.String
+            |import kotlin.jvm.JvmField
+            |
+            |public class TryAssigns {
+            |  @JvmField
+            |  public var name: String
+            |
+            |  public constructor() {
+            |    try {
+            |      this. name = "value"
+            |    } finally {
+            |      this.run()
+            |      this.run()
+            |      return
+            |    }
+            |  }
+            |
+            |  private fun run() {
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -669,7 +1298,30 @@ class KotlinSourceCompilationTest {
                 .build { _, parameters -> parameters[0].returning() })
             .build()
 
-        assertCompiles(writeClass(classDef))
+        val classDefSource = writeClass(classDef)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.Any
+            |import kotlin.Int
+            |
+            |public class Unboxed {
+            |  private fun take(count: Int) {
+            |  }
+            |
+            |  public fun pass(`value`: Any) {
+            |    this.take(`value` as Int)
+            |  }
+            |
+            |  public fun count(`value`: Any): Int {
+            |    return `value` as Int
+            |  }
+            |}
+            |""".trimMargin(),
+            classDefSource
+        )
+        assertCompiles(classDefSource)
     }
 
     @Test
@@ -695,7 +1347,30 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains(" as Any)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.String
+            |
+            |public class Chooser : Function<String, String> {
+            |  public fun choose(`value`: Any): String {
+            |    return "object"
+            |  }
+            |
+            |  public fun choose(`value`: String): String {
+            |    return "string"
+            |  }
+            |
+            |  public override fun apply(arg0: String): String {
+            |    return this.choose((arg0 as Any))
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -717,7 +1392,26 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("this.apply(`value` as String)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.String
+            |
+            |public class Caller : Function<String, String> {
+            |  public override fun apply(arg0: String): String {
+            |    return arg0 as String
+            |  }
+            |
+            |  public fun call(`value`: Any): Any {
+            |    return this.apply(`value` as String)
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -744,7 +1438,31 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains(" as Array<Any>)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.Array
+            |import kotlin.String
+            |
+            |public class ArrayChooser : Function<Array<String>, String> {
+            |  public fun choose(values: Array<Any>): String {
+            |    return "object"
+            |  }
+            |
+            |  public fun choose(values: Array<String>): String {
+            |    return "string"
+            |  }
+            |
+            |  public override fun apply(arg0: Array<String>): String {
+            |    return this.choose((arg0 as Array<Any>))
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -766,7 +1484,27 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("as Array<String>"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.Array
+            |import kotlin.String
+            |
+            |public class ArrayCaller : Function<Array<String>, String> {
+            |  public override fun apply(arg0: Array<String>): String {
+            |    return "value"
+            |  }
+            |
+            |  public fun call(`value`: Any): Any {
+            |    return this.apply(`value` as Array<String>)
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -797,8 +1535,47 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(caller)
 
-        assertTrue(source.contains("apply(`value` as String)"), source)
-        assertCompiles(writeClass(parent), writeClass(child), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import kotlin.Any
+            |import kotlin.String
+            |
+            |public class ChildCaller {
+            |  public fun call(target: ChildTarget, `value`: Any): Any {
+            |    return target.apply(`value` as String)
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
+        val parentSource = writeClass(parent)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.String
+            |
+            |public abstract class ParentTarget : Function<String, String> {
+            |  public override fun apply(arg0: String): String {
+            |    return arg0 as String
+            |  }
+            |}
+            |""".trimMargin(),
+            parentSource
+        )
+        val childSource = writeClass(child)
+        assertEquals(
+            """
+            |package test
+            |
+            |public class ChildTarget : ParentTarget()
+            |""".trimMargin(),
+            childSource
+        )
+        assertCompiles(parentSource, childSource, source)
     }
 
     @Test
@@ -826,7 +1603,32 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains(" as Any)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.String
+            |
+            |public class SwitchChooser : Function<String, String> {
+            |  public fun choose(`value`: Any): String {
+            |    return "object"
+            |  }
+            |
+            |  public fun choose(`value`: String): String {
+            |    return "string"
+            |  }
+            |
+            |  public override fun apply(arg0: String): String {
+            |    return this.choose((when (1) {
+            |          1 -> arg0;
+            |          else -> arg0} as Any))
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -855,7 +1657,32 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains(" as Any)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.lang.StringBuilder
+            |import kotlin.Any
+            |import kotlin.Boolean
+            |import kotlin.CharSequence
+            |import kotlin.Int
+            |
+            |public class MixedConditionalChooser {
+            |  public fun choose(`value`: Any): Int {
+            |    return 1
+            |  }
+            |
+            |  public fun choose(`value`: CharSequence): Int {
+            |    return 2
+            |  }
+            |
+            |  public fun pick(flag: Boolean): Int {
+            |    return this.choose((if (flag) "a" else StringBuilder() as Any))
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -878,7 +1705,26 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("arg0 -> this.apply(arg0 as String)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.String
+            |
+            |public class ReferencedFunction : Function<String, String> {
+            |  public override fun apply(arg0: String): String {
+            |    return arg0 as String
+            |  }
+            |
+            |  public fun asFunction(): Function<Any, Any> {
+            |    return Function<Any, Any> { arg0 -> this.apply(arg0 as String) }
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -902,7 +1748,26 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("this.apply(`value` as T)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.CharSequence
+            |
+            |public class GenericTarget<T : CharSequence> : Function<T, T> {
+            |  public override fun apply(arg0: T): T {
+            |    return arg0 as T
+            |  }
+            |
+            |  public fun call(`value`: Any): Any {
+            |    return this.apply(`value` as T)
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -931,9 +1796,41 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(caller)
 
-        assertTrue(source.contains(".let { target -> "), source)
-        assertTrue(source.contains("arg0 -> target.apply(arg0 as String)"), source)
-        assertCompiles(writeClass(target), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.String
+            |
+            |public class CapturingCaller {
+            |  private var target: CapturedTarget = CapturedTarget()
+            |
+            |  public fun fromField(): Function<Any, Any> {
+            |    return this. target.let { target -> Function<Any, Any> { arg0 -> target.apply(arg0 as String) } }
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
+        val targetSource = writeClass(target)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.String
+            |
+            |public class CapturedTarget : Function<String, String> {
+            |  public override fun apply(arg0: String): String {
+            |    return arg0 as String
+            |  }
+            |}
+            |""".trimMargin(),
+            targetSource
+        )
+        assertCompiles(targetSource, source)
     }
 
     @Test
@@ -964,8 +1861,39 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(caller)
 
-        assertTrue(source.contains("arg0_1 -> arg0.apply(arg0_1 as String)"), source)
-        assertCompiles(writeClass(target), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.String
+            |
+            |public class NestedCaller {
+            |  public fun factory(): Function<NamedTarget, Function<Any, Any>> {
+            |    return Function<NamedTarget, Function<Any, Any>> {arg0: NamedTarget -> Function<Any, Any> { arg0_1 -> arg0.apply(arg0_1 as String) }}
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
+        val targetSource = writeClass(target)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.String
+            |
+            |public class NamedTarget : Function<String, String> {
+            |  public override fun apply(arg0: String): String {
+            |    return arg0 as String
+            |  }
+            |}
+            |""".trimMargin(),
+            targetSource
+        )
+        assertCompiles(targetSource, source)
     }
 
     @Test
@@ -987,7 +1915,27 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("(this.apply(arg0 as CharSequence) as String)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.CharSequence
+            |import kotlin.String
+            |
+            |public class ResultReferenced : Function<CharSequence, CharSequence> {
+            |  public override fun apply(arg0: CharSequence): CharSequence {
+            |    return arg0 as CharSequence
+            |  }
+            |
+            |  public fun asFunction(): Function<Any, String> {
+            |    return Function<Any, String> { arg0 -> (this.apply(arg0 as CharSequence) as String) }
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -1014,8 +1962,39 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(child)
 
-        assertTrue(source.contains("arg0 -> super.apply(arg0 as String)"), source)
-        assertCompiles(writeClass(parent), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.String
+            |
+            |public class SuperReferencing : SuperTarget() {
+            |  public fun asFunction(): Function<Any, Any> {
+            |    return Function<Any, Any> { arg0 -> super.apply(arg0 as String) }
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
+        val parentSource = writeClass(parent)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.String
+            |
+            |public abstract class SuperTarget : Function<String, String> {
+            |  public override fun apply(arg0: String): String {
+            |    return arg0 as String
+            |  }
+            |}
+            |""".trimMargin(),
+            parentSource
+        )
+        assertCompiles(parentSource, source)
     }
 
     @Test
@@ -1044,8 +2023,32 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("(this.apply(arg0 as Number) as U)"), source)
-        assertTrue(source.contains("(this.apply(arg0 as Number) as Int)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.lang.Number
+            |import java.util.function.Function
+            |import java.util.function.ToIntFunction
+            |import kotlin.Any
+            |import kotlin.Int
+            |
+            |public class NumberReferenced<U : Number> : Function<Number, Number> {
+            |  public override fun apply(arg0: Number): Number {
+            |    return arg0 as Number
+            |  }
+            |
+            |  public fun asFunction(): Function<Any, U> {
+            |    return Function<Any, U> { arg0 -> (this.apply(arg0 as Number) as U) }
+            |  }
+            |
+            |  public fun asIntFunction(): ToIntFunction<Any> {
+            |    return ToIntFunction<Any> { arg0 -> (this.apply(arg0 as Number) as Int) }
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 
@@ -1067,7 +2070,27 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("this.apply(values as Array<String>)"), source)
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.Array
+            |import kotlin.String
+            |
+            |public class ArrayArguments : Function<Array<String>, Any> {
+            |  public override fun apply(arg0: Array<String>): Any {
+            |    return "value"
+            |  }
+            |
+            |  public fun call(values: Array<Any>): Any {
+            |    return this.apply(values as Array<String>)
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
         assertCompiles(source)
     }
 }
