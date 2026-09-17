@@ -2380,9 +2380,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             val builder = CodeBlock.builder()
             // A method of this class that override resolution narrowed is written with the narrowed parameters,
             // which the values passed to it are converted to
-            val emittedTypes = if (callMethod != null && owner != null && objectDef != null
-                && owner.name == objectDef.asTypeDef().name) {
-                OverrideResolver.emittedParameterTypes(objectDef, callMethod, VISITOR_CONTEXT.get(), true)
+            val target = OverrideResolver.definitionOf(owner, objectDef)
+            val emittedTypes = if (callMethod != null && target != null) {
+                OverrideResolver.emittedParameterTypes(target, callMethod, VISITOR_CONTEXT.get(), true)
             } else {
                 null
             }
@@ -2399,7 +2399,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     builder.add(", ")
                 }
                 val parameterType = sameArityTypes?.get(index)
-                val sourceType = sourceTypeOf(value, methodDef)
+                val sourceType = sourceTypeOf(value, methodDef, objectDef)
                 val vararg = varargs && index == values.size - 1 && parameterType is TypeDef.Array
                 if (parameterType != null && !vararg
                     && sourceType != value.type() && parameterType != sourceType) {
@@ -2411,7 +2411,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     builder.add(" as %T)", asType(parameterType, objectDef))
                     continue
                 }
-                val argument = if (parameterType != null && requiresImplicitCast(parameterType, value.type())) {
+                val argument = if (parameterType != null && (requiresImplicitCast(parameterType, value.type())
+                        || !vararg && parameterType is TypeDef.Array && value.type() == TypeDef.OBJECT)) {
                     value.cast(parameterType)
                 } else {
                     value
@@ -2425,9 +2426,21 @@ class KotlinPoetSourceGenerator : SourceGenerator {
          * The type a value has in the source: that of the parameter it names, which an override can have narrowed
          * from the type the model built the value with. A cast to the type the value already has is not written.
          */
-        private fun sourceTypeOf(value: ExpressionDef, methodDef: MethodDef): TypeDef {
+        private fun sourceTypeOf(value: ExpressionDef, methodDef: MethodDef, objectDef: ObjectDef?): TypeDef {
             if (value is Cast) {
-                return if (value.type == value.expressionDef.type()) sourceTypeOf(value.expressionDef, methodDef) else value.type
+                return if (value.type == value.expressionDef.type()) {
+                    sourceTypeOf(value.expressionDef, methodDef, objectDef)
+                } else {
+                    value.type
+                }
+            }
+            if (value is InvokeInstanceMethod && !value.method.isConstructor) {
+                // The result of a generated method that override resolution narrowed has the narrowed type
+                val target = OverrideResolver.definitionOf(ownerOf(objectDef, value.instance.type()), objectDef)
+                if (target != null) {
+                    OverrideResolver.emittedSignature(target, value.method, VISITOR_CONTEXT.get(), true)
+                        ?.let { return it.returnType }
+                }
             }
             if (value is VariableDef.MethodParameter) {
                 methodDef.parameters.firstOrNull { it.name == value.name }?.let { return it.type }

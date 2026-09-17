@@ -506,4 +506,63 @@ class OverrideResolverSpec extends Specification {
         expect:
         OverrideResolver.resolve(classDef, erased, null).returnType() == TypeDef.of(Integer)
     }
+
+    void "resolves the class variables a generic method uses besides its own"() {
+        given:
+        def classVariable = TypeDef.variable("T")
+        def methodVariable = TypeDef.variable("U")
+        // `echo` declares `U` of its own, but its signature is in the class's `T`, which `Echoes<String>` binds
+        def parent = ClassDef.builder("example.PartlyGeneric")
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(methodVariable)
+                .addParameter("value", classVariable)
+                .returns(classVariable)
+                .build { aThis, parameters -> parameters[0].returning() })
+            .build()
+        def erased = MethodDef.builder("echo")
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.OBJECT)
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        def classDef = ClassDef.builder("example.StringPartlyGeneric")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(erased)
+            .build()
+
+        when:
+        def overridden = OverrideResolver.resolve(classDef, erased, null)
+
+        then:
+        overridden.parameterTypes() == [TypeDef.STRING]
+        overridden.returnType() == TypeDef.STRING
+    }
+
+    void "resolves a narrower non-generic return next to a bounded erasure"() {
+        given:
+        def variable = TypeDef.variable("T", TypeDef.of(Number))
+        def bounded = InterfaceDef.builder("example.BoundedGet")
+            .addTypeVariable(variable)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(variable).build())
+            .build()
+        def plain = InterfaceDef.builder("example.PlainIntegerGet")
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(TypeDef.of(Integer)).build())
+            .build()
+        // The model declares the bound's erasure, which does not implement `Integer get()`
+        def erased = MethodDef.builder("get")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(TypeDef.of(Number))
+            .overrides()
+            .build()
+        def classDef = ClassDef.builder("example.BoundedAndPlain")
+            .addSuperinterface(TypeDef.parameterized(bounded.asTypeDef(), TypeDef.of(Number)))
+            .addSuperinterface(plain.asTypeDef())
+            .addMethod(erased)
+            .build()
+
+        expect:
+        OverrideResolver.resolve(classDef, erased, null).returnType() == TypeDef.of(Integer)
+    }
 }

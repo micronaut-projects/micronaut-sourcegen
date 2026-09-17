@@ -487,8 +487,8 @@ public final class TypeHierarchy {
      * @param genericReturnType   The generic return type
      * @param finalMethod         Whether the method is final
      * @param packagePrivate      Whether the method is package-private
-     * @param generic             Whether the method declares type variables of its own, which shadow those of the
-     *                            supertype and are bound by nothing it is inherited with
+     * @param typeVariables       The names of the type variables the method declares of its own, which shadow those
+     *                            of the supertype and are bound by nothing it is inherited with
      */
     public record InheritedMethod(String name,
                                   List<TypeDef> overrideParameters,
@@ -497,7 +497,7 @@ public final class TypeHierarchy {
                                   TypeDef genericReturnType,
                                   boolean finalMethod,
                                   boolean packagePrivate,
-                                  boolean generic) {
+                                  List<String> typeVariables) {
     }
 
     /**
@@ -560,6 +560,23 @@ public final class TypeHierarchy {
          */
         public TypeDef substitute(TypeDef type) {
             return TypeHierarchy.substitute(type, substitution);
+        }
+
+        /**
+         * Substitutes the type arguments this type is inherited with, except for variables a generic method declares
+         * of its own, which shadow the type's variables of the same name.
+         *
+         * @param type     A type in the scope of a method of this type
+         * @param shadowed The names of the variables the method declares
+         * @return The substituted type
+         */
+        public TypeDef substitute(TypeDef type, List<String> shadowed) {
+            if (shadowed.isEmpty()) {
+                return substitute(type);
+            }
+            Map<String, TypeDef> visible = new HashMap<>(substitution);
+            shadowed.forEach(visible::remove);
+            return TypeHierarchy.substitute(type, visible);
         }
 
         /**
@@ -642,7 +659,7 @@ public final class TypeHierarchy {
                         && !method.getModifiers().contains(Modifier.PROTECTED);
                     return new InheritedMethod(method.getName(), parameters, parameters, method.getReturnType(),
                         method.getReturnType(), method.getModifiers().contains(Modifier.FINAL), packagePrivate,
-                        !method.getTypeVariables().isEmpty());
+                        method.getTypeVariables().stream().map(TypeDef.TypeVariable::name).toList());
                 }).toList();
         }
 
@@ -700,7 +717,7 @@ public final class TypeHierarchy {
                         returnType, returnType, java.lang.reflect.Modifier.isFinal(modifiers),
                         !java.lang.reflect.Modifier.isPublic(modifiers)
                             && !java.lang.reflect.Modifier.isProtected(modifiers),
-                        method.getTypeParameters().length > 0);
+                        Arrays.stream(method.getTypeParameters()).map(java.lang.reflect.TypeVariable::getName).toList());
                 }).toList();
         }
 
@@ -809,7 +826,7 @@ public final class TypeHierarchy {
             return new InheritedMethod(method.getName(), overrideParameters, bridgeParameters,
                 TypeDef.erasure(method.getReturnType()), TypeDef.of(method.getGenericReturnType(), ignore -> null, false),
                 method.isFinal(), !method.isPublic() && !method.isProtected(),
-                !method.getDeclaredTypeVariables().isEmpty());
+                method.getDeclaredTypeVariables().stream().map(GenericPlaceholderElement::getVariableName).toList());
         }
     }
 }

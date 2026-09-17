@@ -1072,4 +1072,63 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertTrue(source.contains("asList((Object) arg0)"), source);
         assertCompiles(source);
     }
+
+    @Test
+    void callOfANarrowedMethodOfAnotherGeneratedClassIsConverted() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        ClassDef target = ClassDef.builder("test.Target")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(apply)
+            .build();
+        // `Target.apply` is written as `apply(String)`, which the caller's Object value is converted to
+        ClassDef caller = ClassDef.builder("test.OtherCaller")
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", target.asTypeDef())
+                .addParameter("value", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .invoke(apply, methodParameters.get(1))
+                    .returning()))
+            .build();
+
+        String source = writeClass(caller);
+
+        assertTrue(source.contains("target.apply((String) value)"), source);
+        assertCompiles(writeClass(target), source);
+    }
+
+    @Test
+    void narrowedResultKeepsTheOverloadTheModelCalls() throws Exception {
+        MethodDef chooseObject = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", Object.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("object").returning());
+        MethodDef chooseString = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", String.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("string").returning());
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        // `apply` returns String once written, where `choose(this.apply(value))` would call `choose(String)`
+        ClassDef classDef = ClassDef.builder("test.ResultChooser")
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(chooseObject)
+            .addMethod(chooseString)
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("pick").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Object.class)
+                .returns(String.class)
+                .build((aThis, methodParameters) -> aThis.invoke(chooseObject,
+                    aThis.invoke(apply, methodParameters.get(0))).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("choose((Object) this.apply("), source);
+        assertCompiles(source);
+    }
 }

@@ -1377,11 +1377,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         List<TypeDef> parameterTypes = parameters.size() == values.size()
             ? parameters.stream().map(ParameterDef::getType).toList()
             : null;
-        if (parameterTypes != null && owner != null && objectDef != null
-            && owner.getName().equals(objectDef.asTypeDef().getName())) {
-            // A method of this class an override resolution narrowed is written with the narrowed parameters,
-            // which the values passed to it are converted to
-            List<TypeDef> emitted = OverrideResolver.emittedParameterTypes(objectDef, callMethod, JavaPoetNames.context(), false);
+        ObjectDef target = OverrideResolver.definitionOf(owner, objectDef);
+        if (parameterTypes != null && target != null) {
+            // A generated method that override resolution narrowed - of this class or another - is written with the
+            // narrowed parameters, which the values passed to it are converted to
+            List<TypeDef> emitted = OverrideResolver.emittedParameterTypes(target, callMethod, JavaPoetNames.context(), false);
             if (emitted != null) {
                 parameterTypes = emitted;
             }
@@ -1417,7 +1417,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     if (vararg) {
                         // A value that is not an array is one element of the varargs, which a cast would not be.
                         // Where an override narrowed it to an array, it is cast to the element type, which keeps it one
-                        if (TypeHierarchy.unwrap(sourceTypeOf(value, enclosingMethod)) instanceof TypeDef.Array
+                        if (TypeHierarchy.unwrap(sourceTypeOf(value, enclosingMethod, objectDef)) instanceof TypeDef.Array
                             && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array varargsType) {
                             TypeDef elementType = varargsType.dimensions() == 1 ? varargsType.componentType()
                                 : TypeDef.array(varargsType.componentType(), varargsType.dimensions() - 1);
@@ -1428,7 +1428,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         }
                         return renderExpression(objectDef, enclosingMethod, scope, value);
                     }
-                    TypeDef sourceType = sourceTypeOf(value, enclosingMethod);
+                    TypeDef sourceType = sourceTypeOf(value, enclosingMethod, objectDef);
                     if (!sourceType.equals(value.type()) && !paramType.equals(sourceType)) {
                         // An override narrowed the parameter the value names - `Object value` to `String value` -
                         // which would select another overload than the one the model calls: keep its type. Written
@@ -1471,11 +1471,24 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
      * The type a value has in the source: that of the parameter it names, which an override can have narrowed
      * from the type the model built the value with.
      */
-    private static TypeDef sourceTypeOf(ExpressionDef value, @Nullable MethodDef enclosingMethod) {
+    private static TypeDef sourceTypeOf(ExpressionDef value,
+                                        @Nullable MethodDef enclosingMethod,
+                                        @Nullable ObjectDef objectDef) {
         if (value instanceof ExpressionDef.Cast cast) {
             // A cast to the type the value already has in the model is not written, and leaves the value its type
             return cast.type().equals(cast.expressionDef().type())
-                ? sourceTypeOf(cast.expressionDef(), enclosingMethod) : cast.type();
+                ? sourceTypeOf(cast.expressionDef(), enclosingMethod, objectDef) : cast.type();
+        }
+        if (value instanceof ExpressionDef.InvokeInstanceMethod invocation && !invocation.method().isConstructor()) {
+            // The result of a generated method that override resolution narrowed has the narrowed type
+            ObjectDef target = OverrideResolver.definitionOf(ownerOf(objectDef, invocation.instance().type()), objectDef);
+            if (target != null) {
+                OverrideResolver.OverriddenMethod emitted =
+                    OverrideResolver.emittedSignature(target, invocation.method(), JavaPoetNames.context(), false);
+                if (emitted != null) {
+                    return emitted.returnType();
+                }
+            }
         }
         if (value instanceof VariableDef.MethodParameter parameter && enclosingMethod != null) {
             for (ParameterDef declared : enclosingMethod.getParameters()) {

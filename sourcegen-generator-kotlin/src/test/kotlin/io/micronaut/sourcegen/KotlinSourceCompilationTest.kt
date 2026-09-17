@@ -747,4 +747,26 @@ class KotlinSourceCompilationTest {
         assertTrue(source.contains(" as Array<Any>)"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun anyValueOfANarrowedArrayParameter() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, _ -> ExpressionDef.constant("value").returning() }
+        // `apply` is written as `apply(Array<String>)`, an ordinary array parameter the Any value is cast to
+        val classDef = ClassDef.builder("test.ArrayCaller")
+            .addSuperinterface(TypeDef.parameterized(
+                ClassTypeDef.of(java.util.function.Function::class.java), TypeDef.STRING.array(), TypeDef.STRING))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Any::class.java)
+                .returns(Any::class.java)
+                .build { aThis, parameters -> aThis.invoke(apply, parameters[0]).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("as Array<String>"), source)
+        assertCompiles(source)
+    }
 }
