@@ -2374,6 +2374,17 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     builder.add(", ")
                 }
                 val parameterType = sameArityTypes?.get(index)
+                val sourceType = sourceTypeOf(value, methodDef)
+                if (parameterType != null && parameterType !is TypeDef.Array
+                    && sourceType != value.type() && parameterType != sourceType) {
+                    // An override narrowed the parameter the value names - `Any` to `String` - which would select
+                    // another overload than the one the model calls: keep its type. Written out, since in the model
+                    // the cast is to the type the value already has, which is dropped
+                    builder.add("(")
+                    builder.add(renderExpressionCode(objectDef, methodDef, scope, value))
+                    builder.add(" as %T)", asType(parameterType, objectDef))
+                    continue
+                }
                 val argument = if (parameterType != null && requiresImplicitCast(parameterType, value.type())) {
                     value.cast(parameterType)
                 } else {
@@ -2382,6 +2393,20 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 builder.add(renderExpressionCode(objectDef, methodDef, scope, argument))
             }
             return builder.build()
+        }
+
+        /**
+         * The type a value has in the source: that of the parameter it names, which an override can have narrowed
+         * from the type the model built the value with. A cast to the type the value already has is not written.
+         */
+        private fun sourceTypeOf(value: ExpressionDef, methodDef: MethodDef): TypeDef {
+            if (value is Cast) {
+                return if (value.type == value.expressionDef.type()) sourceTypeOf(value.expressionDef, methodDef) else value.type
+            }
+            if (value is VariableDef.MethodParameter) {
+                methodDef.parameters.firstOrNull { it.name == value.name }?.let { return it.type }
+            }
+            return value.type()
         }
 
         private fun requiresImplicitCast(targetType: TypeDef, valueType: TypeDef): Boolean =

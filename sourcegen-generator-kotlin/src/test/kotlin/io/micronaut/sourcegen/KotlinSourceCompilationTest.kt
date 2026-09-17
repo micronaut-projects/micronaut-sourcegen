@@ -671,4 +671,31 @@ class KotlinSourceCompilationTest {
 
         assertCompiles(writeClass(classDef))
     }
+
+    @Test
+    fun narrowedParameterKeepsTheOverloadTheModelCalls() {
+        val chooseAny = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", Any::class.java)
+            .returns(String::class.java)
+            .build { _, _ -> ExpressionDef.constant("object").returning() }
+        val chooseString = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", String::class.java)
+            .returns(String::class.java)
+            .build { _, _ -> ExpressionDef.constant("string").returning() }
+        val apply = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        // `apply(Any)` becomes `apply(String)`, where `choose(value)` would call `choose(String)`
+        val classDef = ClassDef.builder("test.Chooser")
+            .addSuperinterface(TypeDef.parameterized(
+                java.util.function.Function::class.java, String::class.java, String::class.java))
+            .addMethod(chooseAny)
+            .addMethod(chooseString)
+            .addMethod(MethodDef.override(apply)
+                .build { aThis, parameters -> aThis.invoke(chooseAny, parameters[0]).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains(" as Any)"), source)
+        assertCompiles(source)
+    }
 }

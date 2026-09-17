@@ -790,7 +790,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     CodeBlock.of("super"),
                     CodeBlock.of("("),
                     renderInvocationArguments(objectDef, methodDef, scope,
-                        invokeConstructor.superInstance().type() instanceof ClassTypeDef superType ? superType : null,
+                        ownerOf(objectDef, invokeConstructor.superInstance().type()),
                         invokeConstructor.method(), invokeConstructor.values()),
                     CodeBlock.of(")")
                 );
@@ -1142,7 +1142,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     instance,
                     methodNameAndOpenParen,
                     renderInvocationArguments(objectDef, methodDef, scope,
-                        invokeInstanceMethod.instance().type() instanceof ClassTypeDef instanceType ? instanceType : null,
+                        ownerOf(objectDef, invokeInstanceMethod.instance().type()),
                         callMethod, invokeInstanceMethod.values()),
                     CodeBlock.of(")")
                 );
@@ -1401,6 +1401,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 ExpressionDef value = values.get(i);
                 if (sameArityParameterTypes != null) {
                     TypeDef paramType = sameArityParameterTypes.get(i);
+                    boolean vararg = varargs && i == values.size() - 1
+                        && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array
+                        && !(TypeHierarchy.unwrap(value.type()) instanceof TypeDef.Array);
+                    if (vararg) {
+                        // A value that is not an array is one element of the varargs, which a cast would not be
+                        return renderExpression(objectDef, enclosingMethod, scope, value);
+                    }
                     TypeDef sourceType = sourceTypeOf(value, enclosingMethod);
                     if (!sourceType.equals(value.type()) && !paramType.equals(sourceType)) {
                         // An override narrowed the parameter the value names - `Object value` to `String value` -
@@ -1410,13 +1417,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                             CodeBlock.of("($T) ", asType(paramType, objectDef, enclosingMethod)),
                             renderExpression(objectDef, enclosingMethod, scope, value)
                         );
-                    }
-                    boolean vararg = varargs && i == values.size() - 1
-                        && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array
-                        && !(TypeHierarchy.unwrap(value.type()) instanceof TypeDef.Array);
-                    if (vararg) {
-                        // A value that is not an array is one element of the varargs, which a cast would not be
-                        return renderExpression(objectDef, enclosingMethod, scope, value);
                     }
                     if (requiresImplicitInvocationCast(paramType, value.type())) {
                         value = value.cast(paramType);
@@ -1433,10 +1433,30 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     /**
+     * The type declaring an invoked method: the class being written or its superclass for `this` and `super`,
+     * which the model names by placeholders.
+     */
+    @Nullable
+    private static ClassTypeDef ownerOf(@Nullable ObjectDef objectDef, TypeDef type) {
+        TypeDef resolved = type;
+        if (objectDef != null && (TypeDef.THIS.equals(type) || TypeDef.SUPER.equals(type))
+            && !(objectDef instanceof InterfaceDef)) {
+            resolved = objectDef.getContextualType(type);
+        }
+        return resolved instanceof ClassTypeDef classTypeDef && !TypeDef.SUPER.equals(classTypeDef)
+            && !TypeDef.THIS.equals(classTypeDef) ? classTypeDef : null;
+    }
+
+    /**
      * The type a value has in the source: that of the parameter it names, which an override can have narrowed
      * from the type the model built the value with.
      */
     private static TypeDef sourceTypeOf(ExpressionDef value, @Nullable MethodDef enclosingMethod) {
+        if (value instanceof ExpressionDef.Cast cast) {
+            // A cast to the type the value already has in the model is not written, and leaves the value its type
+            return cast.type().equals(cast.expressionDef().type())
+                ? sourceTypeOf(cast.expressionDef(), enclosingMethod) : cast.type();
+        }
         if (value instanceof VariableDef.MethodParameter parameter && enclosingMethod != null) {
             for (ParameterDef declared : enclosingMethod.getParameters()) {
                 if (declared.getName().equals(parameter.name())) {

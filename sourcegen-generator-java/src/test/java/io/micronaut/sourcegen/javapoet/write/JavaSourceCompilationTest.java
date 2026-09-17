@@ -965,4 +965,68 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertTrue(source.contains("super((String) value)"), source);
         assertCompiles(source);
     }
+
+    @Test
+    void narrowedParameterPassedAsAVarargsElement() throws Exception {
+        var format = String.class.getMethod("format", String.class, Object[].class);
+        var apply = Function.class.getMethod("apply", Object.class);
+        // The narrowed `String value` is one element of the varargs, not an array to cast to
+        ClassDef classDef = ClassDef.builder("test.Formats")
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(MethodDef.override(apply)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(String.class)
+                    .invokeStatic(format, ExpressionDef.constant("%s"), methodParameters.get(0))
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertFalse(source.contains("(Object[])"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void superConstructorVarargsResolvedThroughTheSuperclass() throws Exception {
+        ClassTypeDef parent = ClassTypeDef.of(CompilationSignatures.VarargsParent.class);
+        // `superRef()` names the superclass by a placeholder, which is resolved to find the varargs constructor
+        ClassDef classDef = ClassDef.builder("test.VarargsChild")
+            .superclass(parent)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Object.class)
+                .build((aThis, methodParameters) -> aThis.superRef()
+                    .invokeSuperConstructor(List.of(TypeDef.OBJECT.array()), methodParameters.get(0))))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("super(value)"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void narrowedParameterKeepsTheOverloadThroughADroppedCast() throws Exception {
+        MethodDef chooseObject = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", Object.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("object").returning());
+        MethodDef chooseString = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", String.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("string").returning());
+        var apply = Function.class.getMethod("apply", Object.class);
+        // The cast to Object is to the type the value already has in the model, which rendering drops
+        ClassDef classDef = ClassDef.builder("test.CastChooser")
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(chooseObject)
+            .addMethod(chooseString)
+            .addMethod(MethodDef.override(apply)
+                .build((aThis, methodParameters) -> aThis.invoke(chooseObject,
+                    methodParameters.get(0).cast(TypeDef.OBJECT)).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("choose((Object) "), source);
+        assertCompiles(source);
+    }
 }

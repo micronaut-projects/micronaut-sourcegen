@@ -33,6 +33,15 @@ public final class CompilationSignatures {
     }
 
     /**
+     * A superclass whose constructor takes varargs.
+     */
+    public static class VarargsParent {
+
+        public VarargsParent(Object... values) {
+        }
+    }
+
+    /**
      * A concrete list, which declares no type variables of its own.
      */
     public static final class StringList extends ArrayList<String> {
