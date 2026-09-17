@@ -19,12 +19,17 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.InvokedSignature;
+import io.micronaut.sourcegen.generator.OverrideResolver;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeHierarchy;
 import io.micronaut.sourcegen.model.VariableDef;
+import io.micronaut.sourcegen.model.InterfaceDef;
+import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.ParameterDef;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.Type;
@@ -44,6 +49,59 @@ import java.util.Map;
 final class JavaExpressionRules {
 
     private JavaExpressionRules() {
+    }
+
+    /**
+     * The type declaring an invoked method: the class being written or its superclass for `this` and `super`,
+     * which the model names by placeholders.
+     */
+    @Nullable
+    static ClassTypeDef ownerOf(@Nullable ObjectDef objectDef, TypeDef type) {
+        TypeDef resolved = type;
+        if (objectDef != null && (TypeDef.THIS.equals(type) || TypeDef.SUPER.equals(type))
+            && !(objectDef instanceof InterfaceDef)) {
+            resolved = objectDef.getContextualType(type);
+        }
+        return resolved instanceof ClassTypeDef classTypeDef && !TypeDef.SUPER.equals(classTypeDef)
+            && !TypeDef.THIS.equals(classTypeDef) ? classTypeDef : null;
+    }
+
+    /**
+     * The type a value has in the source: that of the parameter it names, which an override can have narrowed
+     * from the type the model built the value with.
+     */
+    static TypeDef sourceTypeOf(ExpressionDef value,
+                                        @Nullable MethodDef enclosingMethod,
+                                        @Nullable ObjectDef objectDef) {
+        if (value instanceof ExpressionDef.Cast cast) {
+            // A cast to the type the value already has in the model is not written, and leaves the value its type
+            return cast.type().equals(cast.expressionDef().type())
+                ? sourceTypeOf(cast.expressionDef(), enclosingMethod, objectDef) : cast.type();
+        }
+        if (value instanceof ExpressionDef.InvokeInstanceMethod invocation && !invocation.method().isConstructor()) {
+            // The result of a generated method that override resolution narrowed has the narrowed type
+            OverrideResolver.OverriddenMethod emitted = OverrideResolver.emittedSignature(
+                ownerOf(objectDef, invocation.instance().type()), objectDef, invocation.method(), JavaPoetNames.context(), false);
+            if (emitted != null) {
+                return emitted.returnType();
+            }
+        }
+        if (value instanceof ExpressionDef.IfElse conditional) {
+            // A conditional has the type its branches have, where they agree
+            TypeDef ifType = sourceTypeOf(conditional.ifExpression(), enclosingMethod, objectDef);
+            TypeDef elseType = sourceTypeOf(conditional.elseExpression(), enclosingMethod, objectDef);
+            if (ifType.equals(elseType)) {
+                return ifType;
+            }
+        }
+        if (value instanceof VariableDef.MethodParameter parameter && enclosingMethod != null) {
+            for (ParameterDef declared : enclosingMethod.getParameters()) {
+                if (declared.getName().equals(parameter.name())) {
+                    return declared.getType();
+                }
+            }
+        }
+        return value.type();
     }
 
     static boolean isNullLiteral(ExpressionDef expressionDef) {

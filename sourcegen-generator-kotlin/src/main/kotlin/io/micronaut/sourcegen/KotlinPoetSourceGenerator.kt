@@ -2380,9 +2380,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             val builder = CodeBlock.builder()
             // A method of this class that override resolution narrowed is written with the narrowed parameters,
             // which the values passed to it are converted to
-            val target = OverrideResolver.definitionOf(owner, objectDef)
-            val emittedTypes = if (callMethod != null && target != null) {
-                OverrideResolver.emittedParameterTypes(target, callMethod, VISITOR_CONTEXT.get(), true)
+            val emittedTypes = if (callMethod != null) {
+                OverrideResolver.emittedSignature(owner, objectDef, callMethod, VISITOR_CONTEXT.get(), true)
+                    ?.parameterTypes()
             } else {
                 null
             }
@@ -2436,10 +2436,15 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
             if (value is InvokeInstanceMethod && !value.method.isConstructor) {
                 // The result of a generated method that override resolution narrowed has the narrowed type
-                val target = OverrideResolver.definitionOf(ownerOf(objectDef, value.instance.type()), objectDef)
-                if (target != null) {
-                    OverrideResolver.emittedSignature(target, value.method, VISITOR_CONTEXT.get(), true)
-                        ?.let { return it.returnType }
+                OverrideResolver.emittedSignature(
+                    ownerOf(objectDef, value.instance.type()), objectDef, value.method, VISITOR_CONTEXT.get(), true
+                )?.let { return it.returnType }
+            }
+            if (value is IfElse) {
+                // A conditional has the type its branches have, where they agree
+                val ifType = sourceTypeOf(value.ifExpression, methodDef, objectDef)
+                if (ifType == sourceTypeOf(value.elseExpression, methodDef, objectDef)) {
+                    return ifType
                 }
             }
             if (value is VariableDef.MethodParameter) {

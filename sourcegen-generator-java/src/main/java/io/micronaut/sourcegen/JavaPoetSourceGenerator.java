@@ -22,7 +22,9 @@ import static io.micronaut.sourcegen.JavaExpressionRules.arePrimitiveReferenceEq
 import static io.micronaut.sourcegen.JavaExpressionRules.canEliminateCastToObject;
 import static io.micronaut.sourcegen.JavaExpressionRules.collapseNestedCasts;
 import static io.micronaut.sourcegen.JavaExpressionRules.declaredSignature;
+import static io.micronaut.sourcegen.JavaExpressionRules.ownerOf;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawCast;
+import static io.micronaut.sourcegen.JavaExpressionRules.sourceTypeOf;
 import static io.micronaut.sourcegen.JavaExpressionRules.getMathOp;
 import static io.micronaut.sourcegen.JavaExpressionRules.getOpType;
 import static io.micronaut.sourcegen.JavaExpressionRules.isNullLiteral;
@@ -40,6 +42,7 @@ import static io.micronaut.sourcegen.JavaPoetNames.resolveNestedClassName;
 import static io.micronaut.sourcegen.JavaPoetNames.simpleNameOf;
 import static io.micronaut.sourcegen.JavaSourceRules.cannotCompleteNormally;
 import static io.micronaut.sourcegen.JavaSourceRules.containsBlockBodyLambda;
+import static io.micronaut.sourcegen.JavaSourceRules.declaresField;
 import static io.micronaut.sourcegen.JavaSourceRules.containsSwitchExpression;
 import static io.micronaut.sourcegen.JavaSourceRules.hasSwitchYieldReturn;
 import static io.micronaut.sourcegen.JavaSourceRules.keepsFinal;
@@ -466,15 +469,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     .build());
             }
         }
-    }
-
-    private static boolean declaresField(@Nullable ObjectDef objectDef, String name) {
-        List<FieldDef> fields = switch (objectDef) {
-            case ClassDef classDef -> classDef.getFields();
-            case EnumDef enumDef -> enumDef.getFields();
-            case null, default -> List.of();
-        };
-        return fields.stream().anyMatch(field -> field.getName().equals(name));
     }
 
     private MethodSpec asMethodSpec(ObjectDef objectDef, MethodDef method) {
@@ -1377,13 +1371,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         List<TypeDef> parameterTypes = parameters.size() == values.size()
             ? parameters.stream().map(ParameterDef::getType).toList()
             : null;
-        ObjectDef target = OverrideResolver.definitionOf(owner, objectDef);
-        if (parameterTypes != null && target != null) {
+        if (parameterTypes != null) {
             // A generated method that override resolution narrowed - of this class or another - is written with the
-            // narrowed parameters, which the values passed to it are converted to
-            List<TypeDef> emitted = OverrideResolver.emittedParameterTypes(target, callMethod, JavaPoetNames.context(), false);
+            // narrowed parameters, as the receiver sees them, which the values passed to it are converted to
+            OverrideResolver.OverriddenMethod emitted =
+                OverrideResolver.emittedSignature(owner, objectDef, callMethod, JavaPoetNames.context(), false);
             if (emitted != null) {
-                parameterTypes = emitted;
+                parameterTypes = emitted.parameterTypes();
             }
         }
         return renderInvocationArguments(objectDef, enclosingMethod, scope, owner, callMethod.getName(),
@@ -1423,7 +1417,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                 : TypeDef.array(varargsType.componentType(), varargsType.dimensions() - 1);
                             return CodeBlock.concat(
                                 CodeBlock.of("($T) ", asType(elementType, objectDef, enclosingMethod)),
-                                renderExpression(objectDef, enclosingMethod, scope, value)
+                                renderCastOperand(objectDef, enclosingMethod, scope, value)
                             );
                         }
                         return renderExpression(objectDef, enclosingMethod, scope, value);
@@ -1435,7 +1429,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         // out, since in the model the cast is to the type the value already has, which is dropped
                         return CodeBlock.concat(
                             CodeBlock.of("($T) ", asType(paramType, objectDef, enclosingMethod)),
-                            renderExpression(objectDef, enclosingMethod, scope, value)
+                            renderCastOperand(objectDef, enclosingMethod, scope, value)
                         );
                     }
                     if (requiresImplicitInvocationCast(paramType, value.type())) {
@@ -1452,52 +1446,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             .collect(CodeBlock.joining(", "));
     }
 
-    /**
-     * The type declaring an invoked method: the class being written or its superclass for `this` and `super`,
-     * which the model names by placeholders.
-     */
-    @Nullable
-    private static ClassTypeDef ownerOf(@Nullable ObjectDef objectDef, TypeDef type) {
-        TypeDef resolved = type;
-        if (objectDef != null && (TypeDef.THIS.equals(type) || TypeDef.SUPER.equals(type))
-            && !(objectDef instanceof InterfaceDef)) {
-            resolved = objectDef.getContextualType(type);
-        }
-        return resolved instanceof ClassTypeDef classTypeDef && !TypeDef.SUPER.equals(classTypeDef)
-            && !TypeDef.THIS.equals(classTypeDef) ? classTypeDef : null;
-    }
-
-    /**
-     * The type a value has in the source: that of the parameter it names, which an override can have narrowed
-     * from the type the model built the value with.
-     */
-    private static TypeDef sourceTypeOf(ExpressionDef value,
-                                        @Nullable MethodDef enclosingMethod,
-                                        @Nullable ObjectDef objectDef) {
-        if (value instanceof ExpressionDef.Cast cast) {
-            // A cast to the type the value already has in the model is not written, and leaves the value its type
-            return cast.type().equals(cast.expressionDef().type())
-                ? sourceTypeOf(cast.expressionDef(), enclosingMethod, objectDef) : cast.type();
-        }
-        if (value instanceof ExpressionDef.InvokeInstanceMethod invocation && !invocation.method().isConstructor()) {
-            // The result of a generated method that override resolution narrowed has the narrowed type
-            ObjectDef target = OverrideResolver.definitionOf(ownerOf(objectDef, invocation.instance().type()), objectDef);
-            if (target != null) {
-                OverrideResolver.OverriddenMethod emitted =
-                    OverrideResolver.emittedSignature(target, invocation.method(), JavaPoetNames.context(), false);
-                if (emitted != null) {
-                    return emitted.returnType();
-                }
-            }
-        }
-        if (value instanceof VariableDef.MethodParameter parameter && enclosingMethod != null) {
-            for (ParameterDef declared : enclosingMethod.getParameters()) {
-                if (declared.getName().equals(parameter.name())) {
-                    return declared.getType();
-                }
-            }
-        }
-        return value.type();
+    private CodeBlock renderCastOperand(@Nullable ObjectDef objectDef,
+                                        @Nullable MethodDef methodDef,
+                                        RenderScope scope,
+                                        ExpressionDef value) {
+        CodeBlock rendered = renderExpression(objectDef, methodDef, scope, value);
+        return requiresCastOperandParentheses(unwrapCasts(value)) ? addParentheses(rendered) : rendered;
     }
 
     private CodeBlock addParentheses(CodeBlock rendered) {

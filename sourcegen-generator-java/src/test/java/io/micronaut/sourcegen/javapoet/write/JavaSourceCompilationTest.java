@@ -1131,4 +1131,61 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertTrue(source.contains("choose((Object) this.apply("), source);
         assertCompiles(source);
     }
+
+    @Test
+    void callThroughAParameterizedReceiverTakesItsTypeArguments() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        TypeDef.TypeVariable variable = TypeDef.variable("T", TypeDef.of(CharSequence.class));
+        ClassDef target = ClassDef.builder("test.GenericTarget")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Function.class), variable, variable))
+            .addMethod(apply)
+            .build();
+        // `apply(T)` on a `GenericTarget<String>` takes a String
+        ClassDef caller = ClassDef.builder("test.GenericCaller")
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", TypeDef.parameterized(target.asTypeDef(), TypeDef.STRING))
+                .addParameter("value", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .invoke(apply, methodParameters.get(1))
+                    .returning()))
+            .build();
+
+        String source = writeClass(caller);
+
+        assertTrue(source.contains("target.apply((String) value)"), source);
+        assertCompiles(writeClass(target), source);
+    }
+
+    @Test
+    void conditionalOfNarrowedParametersKeepsTheOverload() throws Exception {
+        MethodDef chooseObject = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", Object.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("object").returning());
+        MethodDef chooseString = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", String.class)
+            .returns(String.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant("string").returning());
+        var apply = Function.class.getMethod("apply", Object.class);
+        // Both branches are the narrowed parameter, so the conditional is a String in the source
+        ClassDef classDef = ClassDef.builder("test.ConditionalChooser")
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(chooseObject)
+            .addMethod(chooseString)
+            .addMethod(MethodDef.override(apply)
+                .build((aThis, methodParameters) -> aThis.invoke(chooseObject,
+                    ExpressionDef.constant(true).isTrue()
+                        .doIfElse(methodParameters.get(0), methodParameters.get(0))).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("choose((Object) ("), source);
+        assertCompiles(source);
+    }
 }

@@ -21,6 +21,8 @@ import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.StatementDef;
+import io.micronaut.sourcegen.model.EnumDef;
+import io.micronaut.sourcegen.model.FieldDef;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
@@ -37,6 +39,15 @@ import java.util.List;
 final class JavaSourceRules {
 
     private JavaSourceRules() {
+    }
+
+    static boolean declaresField(@Nullable ObjectDef objectDef, String name) {
+        List<FieldDef> fields = switch (objectDef) {
+            case ClassDef classDef -> classDef.getFields();
+            case EnumDef enumDef -> enumDef.getFields();
+            case null, default -> List.of();
+        };
+        return fields.stream().anyMatch(field -> field.getName().equals(name));
     }
 
     /**

@@ -105,11 +105,11 @@ public final class OverrideResolver {
         List<String> parameterErasures = methodDef.getParameters().stream()
             .map(parameter -> TypeHierarchy.erasedName(declaringType.erase(parameter.getType()), objectDef)).toList();
         String returnErasure = TypeHierarchy.erasedName(declaringType.erase(methodDef.getReturnType()), objectDef);
-        Declared declared = new Declared(objectDef, methodDef, parameterErasures, returnErasure, declaringType,
-            new HashSet<>(declaringType.getTypeParameters()), exact);
-        List<OverriddenMethod> found = new ArrayList<>();
         Function<String, @Nullable ClassElement> lookup = context == null ? null
             : name -> context.getClassElement(name).orElse(null);
+        Declared declared = new Declared(objectDef, methodDef, parameterErasures, returnErasure, declaringType,
+            new HashSet<>(declaringType.getTypeParameters()), exact, lookup);
+        List<OverriddenMethod> found = new ArrayList<>();
         TypeHierarchy.visitInheritedMethods(objectDef, lookup,
             (type, inherited) -> {
                 OverriddenMethod overridden = overriddenBy(declared, type, inherited);
@@ -165,6 +165,51 @@ public final class OverrideResolver {
     }
 
     /**
+     * The signature a generated method is written with, as the receiver of the call sees it: with the type arguments
+     * the receiver binds the definition's variables to - `apply(String)` on a `GenericTarget<String>`.
+     *
+     * @param owner      The type of the receiver, or {@code null}
+     * @param current    The definition being written, or {@code null}
+     * @param callMethod The invoked method, as the model calls it
+     * @param context    The context of the file being written, or {@code null}
+     * @param exact      Whether the source language overrides with the substituted types only
+     * @return The signature, or {@code null} where the method is written as the model declares it, or its types
+     * cannot be expressed where it is called
+     */
+    @Nullable
+    public static OverriddenMethod emittedSignature(@Nullable ClassTypeDef owner,
+                                                    @Nullable ObjectDef current,
+                                                    MethodDef callMethod,
+                                                    @Nullable VisitorContext context,
+                                                    boolean exact) {
+        ObjectDef target = definitionOf(owner, current);
+        if (target == null) {
+            return null;
+        }
+        OverriddenMethod emitted = emittedSignature(target, callMethod, context, exact);
+        if (emitted == null || target == current && !(owner instanceof ClassTypeDef.Parameterized)) {
+            // Within the definition itself, its variables are in scope
+            return emitted;
+        }
+        Map<String, TypeDef> substitution = new HashMap<>();
+        if (owner instanceof ClassTypeDef.Parameterized parameterized) {
+            List<String> variables = TypeHierarchy.declaring(target).getTypeParameters();
+            for (int i = 0; i < variables.size() && i < parameterized.typeArguments().size(); i++) {
+                substitution.put(variables.get(i), parameterized.typeArguments().get(i));
+            }
+        }
+        List<TypeDef> parameterTypes = emitted.parameterTypes().stream()
+            .map(type -> TypeHierarchy.substituted(type, substitution)).toList();
+        TypeDef returnType = TypeHierarchy.substituted(emitted.returnType(), substitution);
+        // A variable the receiver does not bind - a raw one - has no meaning where the method is called
+        if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.containsVariableOtherThan(type, Set.of()))
+            || TypeHierarchy.containsVariableOtherThan(returnType, Set.of())) {
+            return null;
+        }
+        return new OverriddenMethod(parameterTypes, returnType);
+    }
+
+    /**
      * The definition a method is invoked on, where it is generated: the one the owner names, or the one being written.
      *
      * @param owner   The type declaring the invoked method, or {@code null}
@@ -186,13 +231,21 @@ public final class OverrideResolver {
         return null;
     }
 
-    private static boolean isNarrowerErasure(String narrower, String wider) {
+    private static boolean isNarrower(TypeDef narrowerType,
+                                      String narrower,
+                                      String wider,
+                                      @Nullable Function<String, @Nullable ClassElement> lookup) {
         if (TypeDef.OBJECT.getName().equals(wider)) {
             return true;
         }
         Class<?> narrowerClass = ClassUtils.forName(narrower, OverrideResolver.class.getClassLoader()).orElse(null);
         Class<?> widerClass = ClassUtils.forName(wider, OverrideResolver.class.getClassLoader()).orElse(null);
-        return narrowerClass != null && widerClass != null && widerClass.isAssignableFrom(narrowerClass);
+        if (narrowerClass != null && widerClass != null) {
+            return widerClass.isAssignableFrom(narrowerClass);
+        }
+        // A type generated in this round cannot be loaded: its model or its element says what it inherits
+        return TypeHierarchy.unwrap(narrowerType) instanceof ClassTypeDef narrowerClassType
+            && TypeHierarchy.inherits(narrowerClassType, wider, lookup);
     }
 
     /**
@@ -404,6 +457,9 @@ public final class OverrideResolver {
         if (!declarationErasure.equals(declared.parameterErasures())) {
             return null;
         }
+        // A variable the inherited method declares of its own is not one of the declaring type, whatever its name
+        Set<String> visibleVariables = new HashSet<>(declared.variables());
+        inherited.typeVariables().forEach(visibleVariables::remove);
         // For Java, only a substitution that changes an erasure - where the bytecode writer adds a bridge - needs the
         // resolved parameters. A difference in type arguments alone (a raw `Set` for `Set<Class<?>>`) is a valid
         // override as is, and keeping it leaves the body assigning to the declared, raw types
@@ -411,7 +467,7 @@ public final class OverrideResolver {
         List<TypeDef> parameterTypes = new ArrayList<>(declarationErasure.size());
         for (int i = 0; i < declarationErasure.size(); i++) {
             TypeDef substituted = type.substitute(inherited.overrideParameters().get(i), inherited.typeVariables());
-            if (TypeHierarchy.containsVariableOtherThan(substituted, declared.variables())) {
+            if (TypeHierarchy.containsVariableOtherThan(substituted, visibleVariables)) {
                 return null;
             }
             TypeDef declaredType = methodDef.getParameters().get(i).getType();
@@ -426,13 +482,14 @@ public final class OverrideResolver {
         TypeDef returnType = methodDef.getReturnType();
         String declarationReturnErasure = TypeHierarchy.erasedName(type.erase(inherited.returnType()));
         if (!declarationReturnErasure.equals(declared.returnErasure())
-            && isNarrowerErasure(declarationReturnErasure, declared.returnErasure())
+            && isNarrower(type.erase(inherited.returnType()), declarationReturnErasure, declared.returnErasure(),
+                declared.lookup())
             && !(TypeHierarchy.unwrap(inherited.returnType()) instanceof TypeDef.Primitive)) {
             // A wider return cannot implement a narrower one, which another supertype may need erased: the narrower
             // one is a constraint on the return type as well - `Integer get()` next to `A<Number>.get()`, or next to
             // `A<T extends Number>.get()` erased to `Number get()`
             TypeDef substituted = type.substitute(inherited.genericReturnType(), inherited.typeVariables());
-            if (TypeHierarchy.containsVariableOtherThan(substituted, declared.variables())) {
+            if (TypeHierarchy.containsVariableOtherThan(substituted, visibleVariables)) {
                 return null;
             }
             return new OverriddenMethod(parameterTypes, substituted);
@@ -440,7 +497,7 @@ public final class OverrideResolver {
         if (declarationReturnErasure.equals(declared.returnErasure())
             && !(TypeHierarchy.unwrap(returnType) instanceof TypeDef.Primitive)) {
             TypeDef substituted = type.substitute(inherited.genericReturnType(), inherited.typeVariables());
-            if (TypeHierarchy.containsVariableOtherThan(substituted, declared.variables())) {
+            if (TypeHierarchy.containsVariableOtherThan(substituted, visibleVariables)) {
                 return null;
             }
             // A return type has to be a subtype of the substituted one: the erasure of a type variable is not,
@@ -475,7 +532,8 @@ public final class OverrideResolver {
                             String returnErasure,
                             TypeHierarchy.InheritedType declaringType,
                             Set<String> variables,
-                            boolean exact) {
+                            boolean exact,
+                            @Nullable Function<String, @Nullable ClassElement> lookup) {
     }
 
     /**

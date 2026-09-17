@@ -565,4 +565,61 @@ class OverrideResolverSpec extends Specification {
         expect:
         OverrideResolver.resolve(classDef, erased, null).returnType() == TypeDef.of(Integer)
     }
+
+    void "resolves nothing for a method-local variable that a variable of the declaring type is named like"() {
+        given:
+        def methodVariable = TypeDef.variable("T")
+        def parent = ClassDef.builder("example.ShadowingParent")
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(methodVariable)
+                .addParameter("value", methodVariable)
+                .returns(methodVariable)
+                .build { aThis, parameters -> parameters[0].returning() })
+            .build()
+        def erased = MethodDef.builder("echo")
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.OBJECT)
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        // The child's own `T` is not the method's `T`
+        def classDef = ClassDef.builder("example.ShadowingChild")
+            .addTypeVariable(TypeDef.variable("T", TypeDef.of(CharSequence)))
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(erased)
+            .build()
+
+        expect:
+        OverrideResolver.resolve(classDef, erased, null) == null
+    }
+
+    void "resolves a narrower return of a generated type next to a bounded erasure"() {
+        given:
+        def base = ClassDef.builder("example.BaseValue").build()
+        def child = ClassDef.builder("example.ChildValue").superclass(base.asTypeDef()).build()
+        def variable = TypeDef.variable("T", base.asTypeDef())
+        def bounded = InterfaceDef.builder("example.BaseGet")
+            .addTypeVariable(variable)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(variable).build())
+            .build()
+        def plain = InterfaceDef.builder("example.ChildGet")
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(child.asTypeDef()).build())
+            .build()
+        // Neither value type can be loaded: the model says `ChildValue` is a `BaseValue`
+        def erased = MethodDef.builder("get")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(base.asTypeDef())
+            .overrides()
+            .build()
+        def classDef = ClassDef.builder("example.BothValues")
+            .addSuperinterface(TypeDef.parameterized(bounded.asTypeDef(), base.asTypeDef()))
+            .addSuperinterface(plain.asTypeDef())
+            .addMethod(erased)
+            .build()
+
+        expect:
+        OverrideResolver.resolve(classDef, erased, null).returnType() == child.asTypeDef()
+    }
 }
