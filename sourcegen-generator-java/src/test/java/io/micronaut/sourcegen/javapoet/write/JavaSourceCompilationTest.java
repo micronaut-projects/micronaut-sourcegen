@@ -1653,7 +1653,7 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(arg) -> (String) this.apply((CharSequence) arg)"), source);
+        assertTrue(source.contains("(arg) -> (String) (Object) this.apply((CharSequence) arg)"), source);
         assertCompiles(source);
     }
 
@@ -1706,8 +1706,8 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(arg) -> (U) this.apply((Number) arg)"), source);
-        assertTrue(source.contains("(arg) -> (Integer) this.apply((Number) arg)"), source);
+        assertTrue(source.contains("(arg) -> (U) (Object) this.apply((Number) arg)"), source);
+        assertTrue(source.contains("(arg) -> (Integer) (Object) this.apply((Number) arg)"), source);
         assertCompiles(source);
     }
 
@@ -1731,6 +1731,128 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         String source = writeClass(classDef);
 
         assertTrue(source.contains("() -> (List<Object>) (Object) this.get()"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void callThroughAReceiverWithAWildcardResultKeepsItsArguments() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        TypeDef.TypeVariable input = TypeDef.variable("A", TypeDef.of(CharSequence.class));
+        TypeDef.TypeVariable output = TypeDef.variable("B", TypeDef.of(CharSequence.class));
+        ClassDef target = ClassDef.builder("test.TwoTarget")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(input)
+            .addTypeVariable(output)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Function.class), input, output))
+            .addMethod(MethodDef.override(applyMethod)
+                .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning()))
+            .build();
+        MethodDef apply = target.getMethods().get(0);
+        // The result is of the captured `? extends CharSequence`, and the argument still a String
+        ClassDef caller = ClassDef.builder("test.WildcardResultCaller")
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", TypeDef.parameterized(ClassTypeDef.of(target), TypeDef.STRING,
+                    TypeDef.wildcardSubtypeOf(TypeDef.of(CharSequence.class))))
+                .addParameter("value", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .invoke(apply, methodParameters.get(1))
+                    .returning()))
+            .build();
+
+        String source = writeClass(caller);
+
+        assertTrue(source.contains("target.apply((String) value)"), source);
+        assertCompiles(writeClass(target), source);
+    }
+
+    @Test
+    void erasedOverrideOfAMethodVariableBoundByAClassVariable() throws Exception {
+        TypeDef.TypeVariable classU = TypeDef.variable("U", TypeDef.of(CharSequence.class));
+        ClassDef parent = ClassDef.builder("test.BoundByClassParent")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("T"))
+            .addTypeVariable(classU)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(TypeDef.variable("T", classU))
+                .addParameter("value", TypeDef.variable("T"))
+                .returns(classU)
+                .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning()))
+            .build();
+        // The model declares the erasure `CharSequence echo(CharSequence)`, which as a member of
+        // `BoundByClassParent<String, String>` is `String echo(String)`
+        ClassDef child = ClassDef.builder("test.BoundByClassChild")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING, TypeDef.STRING))
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC).overrides()
+                .addParameter("value", CharSequence.class)
+                .returns(CharSequence.class)
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+
+        String source = writeClass(child);
+
+        assertTrue(source.contains("String echo(String value)"), source);
+        assertCompiles(writeClass(parent), source);
+    }
+
+    @Test
+    void unrelatedParameterizationsAreConvertedThroughObjectOrTheRawType() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
+        ClassTypeDef objects = TypeDef.parameterized(List.class, Object.class);
+        ClassTypeDef objectsFunction = TypeDef.parameterized(ClassTypeDef.of(Function.class), objects, TypeDef.OBJECT);
+        ClassTypeDef integerSupplier = TypeDef.parameterized(Supplier.class, Integer.class);
+        MethodDef get = MethodDef.override(Supplier.class.getMethod("get"))
+            .build((aThis, methodParameters) -> ExpressionDef.constant("value").returning());
+        // `apply` is written as `apply(List<String>)`, and `get` as `String get()`
+        ClassDef classDef = ClassDef.builder("test.Unrelated")
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Function.class),
+                TypeDef.parameterized(List.class, String.class), TypeDef.OBJECT))
+            .addSuperinterface(TypeDef.parameterized(Supplier.class, String.class))
+            .addMethod(apply)
+            .addMethod(get)
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .returns(objectsFunction)
+                .build((aThis, methodParameters) -> objectsFunction.methodReference(aThis, apply).returning()))
+            .addMethod(MethodDef.builder("asSupplier").addModifiers(Modifier.PUBLIC)
+                .returns(integerSupplier)
+                .build((aThis, methodParameters) -> integerSupplier.methodReference(aThis, get).returning()))
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("values", objects)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> aThis.invoke(apply, methodParameters.get(0)).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(arg) -> this.apply((List<String>) (Object) arg)"), source);
+        assertTrue(source.contains("() -> (Integer) (Object) this.get()"), source);
+        assertTrue(source.contains("this.apply((List) values)"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void objectCastThroughAGeneratedTypeNamedObject() throws Exception {
+        var getMethod = Supplier.class.getMethod("get");
+        MethodDef get = MethodDef.override(getMethod)
+            .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
+        ClassTypeDef objectsSupplier = TypeDef.parameterized(ClassTypeDef.of(Supplier.class),
+            TypeDef.parameterized(List.class, Object.class));
+        // The generated type shadows `java.lang.Object`
+        ClassDef classDef = ClassDef.builder("test.Object")
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier.class),
+                TypeDef.parameterized(List.class, String.class)))
+            .addMethod(get)
+            .addMethod(MethodDef.builder("asObjects").addModifiers(Modifier.PUBLIC)
+                .returns(objectsSupplier)
+                .build((aThis, methodParameters) -> objectsSupplier.methodReference(aThis, get).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(java.lang.Object) this.get()"), source);
         assertCompiles(source);
     }
 

@@ -19,6 +19,13 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.javapoet.ClassName;
+import io.micronaut.sourcegen.javapoet.TypeName;
+import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.InterfaceDef;
+import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.RecordDef;
+import io.micronaut.sourcegen.model.TypeDef;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayDeque;
@@ -140,5 +147,42 @@ final class JavaPoetNames {
     static String simpleNameOf(String binaryName) {
         int i = binaryName.lastIndexOf('.');
         return i == -1 ? binaryName : binaryName.substring(i + 1);
+    }
+
+    static TypeName asPrimitiveType(TypeDef.Primitive primitive) {
+        return switch (primitive.name()) {
+            case "void" -> TypeName.VOID;
+            case "byte" -> TypeName.BYTE;
+            case "short" -> TypeName.SHORT;
+            case "char" -> TypeName.CHAR;
+            case "int" -> TypeName.INT;
+            case "long" -> TypeName.LONG;
+            case "float" -> TypeName.FLOAT;
+            case "double" -> TypeName.DOUBLE;
+            case "boolean" -> TypeName.BOOLEAN;
+            default -> throw new IllegalStateException("Unrecognized primitive name: " + primitive.name());
+        };
+    }
+
+    static boolean isVariablePartOfTheDefinition(String variableName,
+                                                         @Nullable ObjectDef objectDef,
+                                                         @Nullable MethodDef methodDef,
+                                                         boolean staticContext) {
+        if (methodDef != null
+            && methodDef.getTypeVariables().stream().anyMatch(v -> v.name().equals(variableName))) {
+            return true;
+        }
+        if (staticContext) {
+            return false;
+        }
+        return switch (objectDef) {
+            case ClassDef classDef -> classDef.getTypeVariables().stream()
+                .anyMatch(tv -> tv.name().equals(variableName));
+            case InterfaceDef interfaceDef -> interfaceDef.getTypeVariables().stream()
+                .anyMatch(tv -> tv.name().equals(variableName));
+            case RecordDef recordDef -> recordDef.getTypeVariables().stream()
+                .anyMatch(tv -> tv.name().equals(variableName));
+            case null, default -> false;
+        };
     }
 }

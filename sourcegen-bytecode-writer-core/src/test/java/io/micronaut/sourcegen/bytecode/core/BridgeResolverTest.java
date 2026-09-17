@@ -531,6 +531,33 @@ class BridgeResolverTest {
         assertEquals(List.of(bridge), descriptors(reflectedChild, echo));
     }
 
+    @Test
+    void methodVariableBoundByAnotherMethodVariableIsBridgedAsItsBound() {
+        TypeDef.TypeVariable classVariable = TypeDef.variable("T");
+        // `<V extends Number, U extends V>`: `U` erases to `Number`
+        ClassDef parent = ClassDef.builder("example.TransitiveParent")
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(TypeDef.variable("V", TypeDef.of(Number.class)))
+                .addTypeVariable(TypeDef.variable("U", TypeDef.variable("V")))
+                .addParameter("value", classVariable)
+                .addParameter("other", TypeDef.variable("U"))
+                .returns(classVariable)
+                .build((aThis, parameters) -> parameters.get(0).returning()))
+            .build();
+        MethodDef echo = MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.STRING)
+            .addParameter("other", TypeDef.of(Number.class))
+            .returns(TypeDef.STRING)
+            .build((aThis, parameters) -> parameters.get(0).returning());
+        ClassDef child = ClassDef.builder("example.TransitiveChild")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(echo)
+            .build();
+
+        assertEquals(List.of("(Ljava/lang/Object;Ljava/lang/Number;)Ljava/lang/Object;"), descriptors(child, echo));
+    }
+
     /**
      * A generic method whose own variable is bounded by a variable of the class.
      *

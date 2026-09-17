@@ -37,6 +37,8 @@ import static io.micronaut.sourcegen.JavaExpressionRules.requiresMethodCallTarge
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresParentheses;
 import static io.micronaut.sourcegen.JavaExpressionRules.unwrapCasts;
 import static io.micronaut.sourcegen.JavaPoetNames.asClassName;
+import static io.micronaut.sourcegen.JavaPoetNames.asPrimitiveType;
+import static io.micronaut.sourcegen.JavaPoetNames.isVariablePartOfTheDefinition;
 import static io.micronaut.sourcegen.JavaPoetNames.packageNameOf;
 import static io.micronaut.sourcegen.JavaPoetNames.resolveNestedClassName;
 import static io.micronaut.sourcegen.JavaPoetNames.simpleNameOf;
@@ -707,43 +709,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         return asType(typeVariable.bounds().get(0), objectDef, methodDef, staticContext);
     }
 
-    private static TypeName asPrimitiveType(TypeDef.Primitive primitive) {
-        return switch (primitive.name()) {
-            case "void" -> TypeName.VOID;
-            case "byte" -> TypeName.BYTE;
-            case "short" -> TypeName.SHORT;
-            case "char" -> TypeName.CHAR;
-            case "int" -> TypeName.INT;
-            case "long" -> TypeName.LONG;
-            case "float" -> TypeName.FLOAT;
-            case "double" -> TypeName.DOUBLE;
-            case "boolean" -> TypeName.BOOLEAN;
-            default -> throw new IllegalStateException("Unrecognized primitive name: " + primitive.name());
-        };
-    }
-
-    private static boolean isVariablePartOfTheDefinition(String variableName,
-                                                         @Nullable ObjectDef objectDef,
-                                                         @Nullable MethodDef methodDef,
-                                                         boolean staticContext) {
-        if (methodDef != null
-            && methodDef.getTypeVariables().stream().anyMatch(v -> v.name().equals(variableName))) {
-            return true;
-        }
-        if (staticContext) {
-            return false;
-        }
-        return switch (objectDef) {
-            case ClassDef classDef -> classDef.getTypeVariables().stream()
-                .anyMatch(tv -> tv.name().equals(variableName));
-            case InterfaceDef interfaceDef -> interfaceDef.getTypeVariables().stream()
-                .anyMatch(tv -> tv.name().equals(variableName));
-            case RecordDef recordDef -> recordDef.getTypeVariables().stream()
-                .anyMatch(tv -> tv.name().equals(variableName));
-            case null, default -> false;
-        };
-    }
-
     /**
      * Converts a {@link ClassTypeDef} into a JavaPoet {@link ClassName}.
      *
@@ -1334,20 +1299,24 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         lambdaScope.declare(receiver);
         List<CodeBlock> parameters = new ArrayList<>();
         List<CodeBlock> arguments = new ArrayList<>();
-        for (TypeDef type : adaptation.argumentTypes()) {
+        // Types that do not relate - `List<Object>` and `List<String>`, `String` and `Integer` - are cast through
+        // `Object`, which is named by a placeholder in case a generated type shadows it
+        TypeName object = asType(TypeDef.OBJECT, objectDef);
+        for (int i = 0; i < adaptation.argumentTypes().size(); i++) {
             String name = lambdaScope.allocate("arg");
             lambdaScope.declare(name);
             parameters.add(CodeBlock.of("$L", name));
+            TypeDef type = adaptation.argumentTypes().get(i);
             arguments.add(type == null ? CodeBlock.of("$L", name)
+                : adaptation.castsArgumentThroughObject(i)
+                ? CodeBlock.of("($T) ($T) $L", asType(type, objectDef, methodDef), object, name)
                 : CodeBlock.of("($T) $L", asType(type, objectDef, methodDef), name));
         }
         CodeBlock call = CodeBlock.of("$L.$L($L)", captured ? receiver
             : renderExpression(objectDef, methodDef, scope, instance), reference.method().getName(),
             CodeBlock.join(arguments, ", "));
         if (adaptation.resultType() != null) {
-            // Parameterizations that do not relate are cast through their erasure
-            call = CodeBlock.of(adaptation.resultType() instanceof ClassTypeDef.Parameterized ? "($T) (Object) $L"
-                : "($T) $L", asType(adaptation.resultType(), objectDef, methodDef), call);
+            call = CodeBlock.of("($T) ($T) $L", asType(adaptation.resultType(), objectDef, methodDef), object, call);
         }
         CodeBlock lambda = CodeBlock.of("($L) -> $L", CodeBlock.join(parameters, ", "), call);
         return !captured ? lambda : CodeBlock.of("$T.of($L).<$T>map($L -> $L).get()", Optional.class,
@@ -1443,7 +1412,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         // The signature the invoked method declares, which carries the type arguments the erased model does not
         InvokedSignature signature = methodName == null || sameArityParameterTypes == null ? null
             : declaredSignature(owner, methodName, sameArityParameterTypes);
-        List<TypeDef> declaredTypes = signature == null ? null : signature.parameterTypes();
+        // A generated method, which cannot be looked up, declares the types it is written with
+        List<TypeDef> declaredTypes = signature != null ? signature.parameterTypes()
+            : OverrideResolver.definitionOf(owner, objectDef) != null ? sameArityParameterTypes : null;
         // Only a method whose signature says so takes varargs: an unresolved one - such as a generated method - is
         // taken as declared, with its array parameter an array
         boolean varargs = signature != null && signature.varargs();

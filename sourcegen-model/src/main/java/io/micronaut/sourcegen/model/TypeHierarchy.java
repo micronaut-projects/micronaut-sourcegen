@@ -38,6 +38,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 /**
@@ -445,6 +446,24 @@ public final class TypeHierarchy {
         return unwrapped;
     }
 
+    /**
+     * The variables a method declares, keyed by their names, with their bounds substituted - including the
+     * variables of the method a bound names, {@code <V extends Number, U extends V>}, each with its own bound.
+     */
+    private static Map<String, TypeDef> boundVariables(List<TypeDef.TypeVariable> variables,
+                                                       Map<String, TypeDef> substitution,
+                                                       UnaryOperator<String> naming) {
+        Map<String, TypeDef> bound = new HashMap<>(substitution);
+        variables.forEach(variable -> bound.put(variable.name(), TypeDef.variable(naming.apply(variable.name()))));
+        // Each round resolves the bounds one level further
+        for (int round = 0; round < variables.size(); round++) {
+            Map<String, TypeDef> inBounds = new HashMap<>(bound);
+            variables.forEach(variable -> bound.put(variable.name(), TypeDef.variable(naming.apply(variable.name()),
+                variable.bounds().stream().map(type -> substitute(type, inBounds)).toList())));
+        }
+        return bound;
+    }
+
     private static TypeDef erase(TypeDef type, @Nullable TypeInfo boundOwner, TypeInfo owner) {
         TypeDef unwrapped = unwrap(type);
         if (TypeDef.THIS.equals(unwrapped)) {
@@ -582,12 +601,7 @@ public final class TypeHierarchy {
             if (shadowed.isEmpty()) {
                 return substitute(type);
             }
-            Map<String, TypeDef> inBounds = new HashMap<>(substitution);
-            shadowed.forEach(variable -> inBounds.put(variable.name(), TypeDef.variable(methodVariable(variable.name()))));
-            Map<String, TypeDef> renamed = new HashMap<>(substitution);
-            shadowed.forEach(variable -> renamed.put(variable.name(), TypeDef.variable(methodVariable(variable.name()),
-                variable.bounds().stream().map(bound -> TypeHierarchy.substitute(bound, inBounds)).toList())));
-            return TypeHierarchy.substitute(type, renamed);
+            return TypeHierarchy.substitute(type, boundVariables(shadowed, substitution, InheritedType::methodVariable));
         }
 
         /**
@@ -680,8 +694,7 @@ public final class TypeHierarchy {
                     boolean packagePrivate = !interfaceType && !method.getModifiers().contains(Modifier.PUBLIC)
                         && !method.getModifiers().contains(Modifier.PROTECTED);
                     // A type can name a variable of the method without its bounds, which the method declares
-                    Map<String, TypeDef> declared = new HashMap<>();
-                    method.getTypeVariables().forEach(variable -> declared.put(variable.name(), variable));
+                    Map<String, TypeDef> declared = boundVariables(method.getTypeVariables(), Map.of(), UnaryOperator.identity());
                     return new InheritedMethod(method.getName(), parameters,
                         parameters.stream().map(parameter -> substitute(parameter, declared)).toList(),
                         substitute(method.getReturnType(), declared), method.getReturnType(),

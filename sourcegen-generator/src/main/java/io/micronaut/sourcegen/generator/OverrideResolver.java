@@ -255,10 +255,13 @@ public final class OverrideResolver {
         List<TypeDef> parameterTypes = emitted.parameterTypes().stream().map(asSeen).toList();
         TypeDef returnType = asSeen.apply(emitted.returnType());
         // A wildcard the receiver binds a variable to is captured: a parameter of that type takes no value it can be
-        // cast to
-        if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.unwrap(type) instanceof TypeDef.Wildcard)
-            || TypeHierarchy.unwrap(returnType) instanceof TypeDef.Wildcard) {
+        // cast to, and a result of it is of its upper bound
+        if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.unwrap(type) instanceof TypeDef.Wildcard)) {
             return null;
+        }
+        if (TypeHierarchy.unwrap(returnType) instanceof TypeDef.Wildcard wildcard) {
+            returnType = wildcard.upperBounds().isEmpty() || !wildcard.lowerBounds().isEmpty()
+                ? TypeDef.OBJECT : wildcard.upperBounds().get(0);
         }
         if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.containsVariableOtherThan(type, inScope))
             || TypeHierarchy.containsVariableOtherThan(returnType, inScope)) {
@@ -301,22 +304,27 @@ public final class OverrideResolver {
             converted |= changed;
         }
         TypeDef resultType = null;
-        TypeDef functionalReturn = functionalReturnType(reference.type());
+        MethodDef functional = functionalMethod(reference.type());
+        TypeDef functionalReturn = functional == null ? null : TypeHierarchy.unwrap(functional.getReturnType());
+        if (!(functionalReturn instanceof ClassTypeDef || functionalReturn instanceof TypeDef.Array
+            || functionalReturn instanceof TypeDef.Primitive || functionalReturn instanceof TypeDef.TypeVariable)) {
+            functionalReturn = null;
+        }
         TypeDef returned = TypeHierarchy.unwrap(emitted.returnType());
         if (functionalReturn != null && !TypeDef.OBJECT.equals(functionalReturn) && !TypeDef.VOID.equals(functionalReturn)
             && !(returned instanceof TypeDef.Primitive) && !functionalReturn.equals(returned)) {
             // A primitive is unboxed from its wrapper, which the reference type is cast to
             resultType = functionalReturn instanceof TypeDef.Primitive primitive ? primitive.wrapperType() : functionalReturn;
         }
-        return converted || resultType != null ? new ReferenceAdaptation(argumentTypes, resultType) : null;
+        List<TypeDef> passedTypes = functional == null || functional.getParameters().size() != argumentTypes.size()
+            ? null : functional.getParameters().stream().map(ParameterDef::getType).toList();
+        return converted || resultType != null ? new ReferenceAdaptation(argumentTypes, passedTypes, resultType) : null;
     }
 
     @Nullable
-    private static TypeDef functionalReturnType(ClassTypeDef functionalInterface) {
+    private static MethodDef functionalMethod(ClassTypeDef functionalInterface) {
         try {
-            TypeDef type = TypeHierarchy.unwrap(functionalInterface.getLambda().getImplementation().getReturnType());
-            return type instanceof ClassTypeDef || type instanceof TypeDef.Array || type instanceof TypeDef.Primitive
-                || type instanceof TypeDef.TypeVariable ? type : null;
+            return functionalInterface.getLambda().getImplementation();
         } catch (RuntimeException e) {
             // A functional interface known only by name has no members to read
             return null;
@@ -624,10 +632,7 @@ public final class OverrideResolver {
         for (int i = 0; i < declarationErasure.size(); i++) {
             TypeDef substituted = substitutedParameters.get(i);
             TypeDef declaredType = methodDef.getParameters().get(i).getType();
-            if (TypeHierarchy.containsVariableOtherThan(substituted, visibleVariables)) {
-                parameterTypes.add(declaredType);
-                continue;
-            }
+            // A variable of the method erases to its bound, with the type arguments substituted
             TypeDef erased = type.erase(substituted, declared.declaringType());
             boolean parameterChanged = declared.exact()
                 ? !sameType(substituted, declaredType)
@@ -656,8 +661,12 @@ public final class OverrideResolver {
             && !(TypeHierarchy.unwrap(returnType) instanceof TypeDef.Primitive)) {
             TypeDef substituted = type.substitute(inherited.genericReturnType(), inherited.typeVariables());
             if (TypeHierarchy.containsVariableOtherThan(substituted, visibleVariables)) {
-                // The erasure is what the model declares
-                return changed && erasedSignature ? new OverriddenMethod(parameterTypes, returnType) : null;
+                // A variable of the method is written as its erasure
+                TypeDef erased = type.erase(substituted, declared.declaringType());
+                if (!TypeHierarchy.erasedName(erased).equals(declarationReturnErasure)) {
+                    return new OverriddenMethod(parameterTypes, erased);
+                }
+                return changed ? new OverriddenMethod(parameterTypes, returnType) : null;
             }
             // A return type has to be a subtype of the substituted one: the erasure of a type variable is not,
             // even where it is the same class
@@ -738,9 +747,24 @@ public final class OverrideResolver {
      *
      * @param argumentTypes The type each value the functional interface passes is cast to, or {@code null} where it
      *                      is passed as is
+     * @param passedTypes   The types of the values the functional interface passes, or {@code null} where they are
+     *                      not known
      * @param resultType    The type the result is cast to, or {@code null} where it is returned as is
      */
-    public record ReferenceAdaptation(List<@Nullable TypeDef> argumentTypes, @Nullable TypeDef resultType) {
+    public record ReferenceAdaptation(List<@Nullable TypeDef> argumentTypes,
+                                      @Nullable List<TypeDef> passedTypes,
+                                      @Nullable TypeDef resultType) {
+
+        /**
+         * Whether a value the functional interface passes is cast through {@code Object}, which a cast between
+         * types that do not relate - `List<Object>` to `List<String>` - needs.
+         *
+         * @param index The index of the value
+         * @return true where the value is not known to be an {@code Object}
+         */
+        public boolean castsArgumentThroughObject(int index) {
+            return passedTypes == null || !TypeDef.OBJECT.equals(TypeHierarchy.unwrap(passedTypes.get(index)));
+        }
     }
 
     /**
