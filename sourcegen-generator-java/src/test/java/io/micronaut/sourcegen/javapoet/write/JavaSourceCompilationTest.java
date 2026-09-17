@@ -16,12 +16,14 @@ import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
+import java.io.Serializable;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 import java.util.List;
@@ -3684,6 +3686,184 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
               public Supplier<? extends String> asStrings() {
                 return () -> (String) this.get();
+              }
+            }
+            """, source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void compatibleParameterizedCastOfANarrowedParameterIsKept() throws Exception {
+        var apply = Function.class.getMethod("apply", Object.class);
+        ClassTypeDef sequences = TypeDef.parameterized(ClassTypeDef.of(List.class),
+            TypeDef.wildcardSubtypeOf(TypeDef.of(CharSequence.class)));
+        ClassTypeDef indexed = TypeDef.parameterized(IntFunction.class, CharSequence.class);
+        var listGet = List.class.getMethod("get", int.class);
+        // `apply(Object value)` becomes `apply(List<String> value)`, which the cast to `List<? extends CharSequence>`
+        // accepts, and which types the reference
+        ClassDef classDef = ClassDef.builder("test.IndexedSequences")
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Function.class),
+                TypeDef.parameterized(List.class, String.class), indexed))
+            .addMethod(MethodDef.override(apply)
+                .build((aThis, methodParameters) -> indexed.methodReference(methodParameters.get(0).cast(sequences),
+                    listGet).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.String;
+            import java.util.List;
+            import java.util.function.Function;
+            import java.util.function.IntFunction;
+
+            class IndexedSequences implements Function<List<String>, IntFunction<CharSequence>> {
+              public IntFunction<CharSequence> apply(List<String> arg0) {
+                return ((List<? extends CharSequence>) arg0)::get;
+              }
+            }
+            """, source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void referenceResultOfAVariableWithAParameterizedBound() throws Exception {
+        MethodDef get = MethodDef.override(Supplier.class.getMethod("get"))
+            .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
+        TypeDef.TypeVariable variable = TypeDef.variable("U", TypeDef.parameterized(List.class, Object.class));
+        ClassTypeDef variableSupplier = TypeDef.parameterized(ClassTypeDef.of(Supplier.class), variable);
+        // `get` is written as `List<String> get()`, which converts to `U extends List<Object>` through `List`
+        ClassDef classDef = ClassDef.builder("test.BoundListSupplied")
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier.class),
+                TypeDef.parameterized(List.class, String.class)))
+            .addMethod(get)
+            .addMethod(MethodDef.builder("asVariable").addModifiers(Modifier.PUBLIC)
+                .returns(variableSupplier)
+                .build((aThis, methodParameters) -> variableSupplier.methodReference(aThis, get).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.Object;
+            import java.lang.String;
+            import java.util.List;
+            import java.util.function.Supplier;
+
+            class BoundListSupplied<U extends List<Object>> implements Supplier<List<String>> {
+              public List<String> get() {
+                return null;
+              }
+
+              public Supplier<U> asVariable() {
+                return () -> (U) (List) this.get();
+              }
+            }
+            """, source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void capturedResultIsOfTheBoundTheReceiverBinds() throws Exception {
+        MethodDef get = MethodDef.override(Supplier.class.getMethod("get"))
+            .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
+        TypeDef.TypeVariable upper = TypeDef.variable("A");
+        TypeDef.TypeVariable variable = TypeDef.variable("T", upper);
+        ClassDef target = ClassDef.builder("test.DependentSupplier")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(upper)
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier.class), variable))
+            .addMethod(get)
+            .build();
+        // Through a `DependentSupplier<String, ?>`, `get()` is a String, where the model calls `choose(Object)`
+        ClassDef caller = chooser("test.DependentChooser", ClassTypeDef.of(Serializable.class),
+            chooseObject -> MethodDef.builder("pick")
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("target", TypeDef.parameterized(ClassTypeDef.of(target), TypeDef.STRING, TypeDef.wildcard()))
+            .returns(String.class)
+            .build((aThis, methodParameters) -> aThis.invoke(chooseObject,
+                methodParameters.get(0).invoke(get)).returning()));
+
+        String targetSource = writeClass(target);
+        String source = writeClass(caller);
+
+        assertEquals(
+            """
+            package test;
+
+            import java.util.function.Supplier;
+
+            public class DependentSupplier<A, T extends A> implements Supplier<T> {
+              public T get() {
+                return null;
+              }
+            }
+            """, targetSource);
+        assertEquals(
+            """
+            package test;
+
+            import java.io.Serializable;
+            import java.lang.Object;
+            import java.lang.String;
+
+            class DependentChooser implements Serializable {
+              public String choose(Object value) {
+                return "object";
+              }
+
+              public String choose(String value) {
+                return "string";
+              }
+
+              public String pick(DependentSupplier<String, ?> target) {
+                return this.choose((Object) target.get());
+              }
+            }
+            """, source);
+        assertCompiles(targetSource, source);
+    }
+
+    @Test
+    void returnOfAParameterizationTheClassVariableDoesNotAccept() throws Exception {
+        TypeDef.TypeVariable variable = TypeDef.variable("T");
+        FieldDef field = FieldDef.builder("value", TypeDef.parameterized(List.class, String.class))
+            .addModifiers(Modifier.PRIVATE)
+            .build();
+        // `get` is written as `List<T> get()`, which the `List<String>` field only converts to as a raw `List`
+        ClassDef classDef = ClassDef.builder("test.VariableListReturned")
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier.class),
+                TypeDef.parameterized(ClassTypeDef.of(List.class), variable)))
+            .addField(field)
+            .addMethod(MethodDef.override(Supplier.class.getMethod("get"))
+                .build((aThis, methodParameters) -> aThis.field(field).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertEquals(
+            """
+            package test;
+
+            import java.lang.String;
+            import java.util.List;
+            import java.util.function.Supplier;
+
+            class VariableListReturned<T> implements Supplier<List<T>> {
+              private List<String> value;
+
+              public List<T> get() {
+                return (List) this.value;
               }
             }
             """, source);

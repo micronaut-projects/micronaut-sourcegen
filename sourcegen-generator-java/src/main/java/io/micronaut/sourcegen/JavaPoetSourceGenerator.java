@@ -24,6 +24,7 @@ import static io.micronaut.sourcegen.JavaExpressionRules.collapseNestedCasts;
 import static io.micronaut.sourcegen.JavaExpressionRules.declaredSignature;
 import static io.micronaut.sourcegen.JavaExpressionRules.ownerOf;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawCast;
+import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawReturn;
 import static io.micronaut.sourcegen.JavaExpressionRules.sourceTypeOf;
 import static io.micronaut.sourcegen.JavaExpressionRules.getMathOp;
 import static io.micronaut.sourcegen.JavaExpressionRules.getOpType;
@@ -779,7 +780,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     && requiresImplicitReturnCast(methodDef.getReturnType(), returned.type())) {
                     // e.g. an interceptor chain proceeds to Object, which the verifier accepts for a reference return
                     returned = returned.cast(methodDef.getReturnType());
-                } else if (methodDef != null && requiresRawCast(methodDef.getReturnType(), returned.type())) {
+                } else if (methodDef != null && requiresRawReturn(methodDef.getReturnType(), returned.type())) {
                     // Only an unchecked conversion returns it - `List<Object>` as the `List<String>` of an override
                     returned = returned.cast(((ClassTypeDef.Parameterized) methodDef.getReturnType()).rawType());
                 }
@@ -1074,8 +1075,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 TypeDef castType = castExpressionDef.type();
                 if (castType instanceof ClassTypeDef.Parameterized parameterized
                     && sourceTypeOf(exp, methodDef, objectDef) instanceof ClassTypeDef.Parameterized narrowed
-                    && !narrowed.equals(exp.type()) && !narrowed.equals(castType)) {
-                    // A value an override narrowed to another parameterization is cast to the raw type
+                    && !narrowed.equals(exp.type()) && requiresRawCast(castType, narrowed)) {
+                    // A value an override narrowed to a parameterization the cast does not accept is cast raw
                     castType = parameterized.rawType();
                 }
                 CodeBlock explicitCast = CodeBlock.of("($T)", asType(castType, objectDef, methodDef));
@@ -1322,6 +1323,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         CodeBlock call = CodeBlock.of("$L.$L($L)", captured ? receiver
             : renderExpression(objectDef, methodDef, scope, instance), reference.method().getName(),
             CodeBlock.join(arguments, ", "));
+        if (adaptation.resultBound() != null) {
+            // Only an unchecked conversion through the bound's raw type turns the result into the variable
+            call = CodeBlock.of("($T) $L", asType(adaptation.resultBound(), objectDef, methodDef), call);
+        }
         if (adaptation.resultType() != null) {
             call = CodeBlock.of("($T) $L", asType(adaptation.resultType(), objectDef, methodDef), call);
         }

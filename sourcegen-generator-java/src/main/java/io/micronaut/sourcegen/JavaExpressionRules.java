@@ -320,6 +320,35 @@ final class JavaExpressionRules {
     }
 
     /**
+     * Whether a returned value only converts to the return type through the raw type. Unlike a method invoked,
+     * whose variables are inferred, the variables a return type names are fixed: `List<T>` does not accept a
+     * `List<String>`.
+     */
+    static boolean requiresRawReturn(TypeDef returnType, TypeDef valueType) {
+        Map<String, TypeDef> fixed = new HashMap<>();
+        collectVariables(returnType, fixed);
+        collectVariables(valueType, fixed);
+        return requiresRawCast(TypeHierarchy.substituted(returnType, fixed), TypeHierarchy.substituted(valueType, fixed));
+    }
+
+    /**
+     * Maps each variable a type names to a class of its own, which accepts nothing but itself.
+     */
+    private static void collectVariables(TypeDef type, Map<String, TypeDef> fixed) {
+        TypeDef unwrapped = TypeHierarchy.unwrap(type);
+        if (unwrapped instanceof TypeDef.TypeVariable variable) {
+            fixed.put(variable.name(), ClassTypeDef.of("fixed variable " + variable.name()));
+        } else if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
+            parameterized.typeArguments().forEach(argument -> collectVariables(argument, fixed));
+        } else if (unwrapped instanceof TypeDef.Array array) {
+            collectVariables(array.componentType(), fixed);
+        } else if (unwrapped instanceof TypeDef.Wildcard wildcard) {
+            wildcard.upperBounds().forEach(bound -> collectVariables(bound, fixed));
+            wildcard.lowerBounds().forEach(bound -> collectVariables(bound, fixed));
+        }
+    }
+
+    /**
      * Whether a value of one type can be passed where the other is declared, without an unchecked conversion: a
      * subtype is, with the type arguments the declared type sees it with.
      */

@@ -2093,4 +2093,47 @@ class KotlinSourceCompilationTest {
         )
         assertCompiles(source)
     }
+
+    @Test
+    fun referenceArgumentKeepsItsParameterization() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, _ -> ExpressionDef.constant("value").returning() }
+        val anyListFunction = TypeDef.parameterized(ClassTypeDef.of(java.util.function.Function::class.java),
+            TypeDef.parameterized(List::class.java, Any::class.java), TypeDef.OBJECT)
+        // `apply` is written as `apply(List<String>)`, which the `List<Any>` passed is cast to as a whole
+        val classDef = ClassDef.builder("test.ListReferenced")
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(java.util.function.Function::class.java),
+                TypeDef.parameterized(List::class.java, String::class.java), TypeDef.OBJECT))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .returns(anyListFunction)
+                .build { aThis, _ -> anyListFunction.methodReference(aThis, apply).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertEquals(
+            """
+            |package test
+            |
+            |import java.util.function.Function
+            |import kotlin.Any
+            |import kotlin.String
+            |import kotlin.collections.List
+            |
+            |public class ListReferenced : Function<List<String>, Any> {
+            |  public override fun apply(arg0: List<String>): Any {
+            |    return "value"
+            |  }
+            |
+            |  public fun asFunction(): Function<List<Any>, Any> {
+            |    return Function<List<Any>, Any> { arg0 -> this.apply(arg0 as List<String>) }
+            |  }
+            |}
+            |""".trimMargin(),
+            source
+        )
+        assertCompiles(source)
+    }
 }

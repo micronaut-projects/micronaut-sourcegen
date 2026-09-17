@@ -238,11 +238,11 @@ public final class OverrideResolver {
         }
         List<String> variables = TypeHierarchy.declaring(target).getTypeParameters();
         Function<TypeDef, TypeDef> asSeen;
+        Map<String, TypeDef> substitution = new HashMap<>();
         if (owner instanceof ClassTypeDef.Parameterized parameterized) {
             if (parameterized.typeArguments().size() != variables.size()) {
                 return null;
             }
-            Map<String, TypeDef> substitution = new HashMap<>();
             for (int i = 0; i < variables.size(); i++) {
                 substitution.put(variables.get(i), asWritten(parameterized.typeArguments().get(i), inScope));
             }
@@ -262,13 +262,34 @@ public final class OverrideResolver {
         if (TypeHierarchy.unwrap(returnType) instanceof TypeDef.Wildcard wildcard) {
             returnType = wildcard.lowerBounds().isEmpty() && !wildcard.upperBounds().isEmpty()
                 && !TypeDef.OBJECT.equals(wildcard.upperBounds().get(0))
-                ? wildcard.upperBounds().get(0) : TypeHierarchy.declaring(target).erase(emitted.returnType());
+                ? wildcard.upperBounds().get(0) : capturedBound(target, emitted.returnType(), substitution);
         }
         if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.containsVariableOtherThan(type, inScope))
             || TypeHierarchy.containsVariableOtherThan(returnType, inScope)) {
             return null;
         }
         return new OverriddenMethod(parameterTypes, returnType);
+    }
+
+    /**
+     * The bound of a variable a wildcard is captured for, with the type arguments of the receiver substituted:
+     * {@code T extends A} of a {@code Target<String, ?>} is a String.
+     */
+    private static TypeDef capturedBound(ObjectDef target, TypeDef variable, Map<String, TypeDef> substitution) {
+        TypeHierarchy.InheritedType declaring = TypeHierarchy.declaring(target);
+        if (!(TypeHierarchy.unwrap(variable) instanceof TypeDef.TypeVariable typeVariable)) {
+            return declaring.erase(variable);
+        }
+        List<TypeDef> bounds = declaring.getBounds(typeVariable.name());
+        if (bounds.isEmpty()) {
+            return TypeDef.OBJECT;
+        }
+        TypeDef bound = TypeHierarchy.unwrap(TypeHierarchy.substituted(bounds.get(0), substitution));
+        if (bound instanceof TypeDef.Wildcard wildcard) {
+            bound = wildcard.upperBounds().isEmpty() || !wildcard.lowerBounds().isEmpty()
+                ? TypeDef.OBJECT : wildcard.upperBounds().get(0);
+        }
+        return declaring.erase(bound);
     }
 
     /**
@@ -322,8 +343,9 @@ public final class OverrideResolver {
             // A primitive is unboxed from its wrapper, which the reference type is cast to
             resultType = functionalReturn instanceof TypeDef.Primitive primitive ? primitive.wrapperType() : functionalReturn;
         }
-        // A value that is not an `Object` is cast to a raw type: a parameterization does not convert to another
-        if (functional != null && functional.getParameters().size() == argumentTypes.size()) {
+        // For Java, a value that is not an `Object` is cast to a raw type: a parameterization does not convert to
+        // another. Kotlin casts to the parameterization
+        if (!exact && functional != null && functional.getParameters().size() == argumentTypes.size()) {
             for (int i = 0; i < argumentTypes.size(); i++) {
                 TypeDef type = argumentTypes.get(i);
                 if (type != null && !TypeDef.OBJECT.equals(TypeHierarchy.unwrap(functional.getParameters().get(i).getType()))) {
@@ -331,9 +353,25 @@ public final class OverrideResolver {
                 }
             }
         }
-        return converted || resultType != null
-            ? new ReferenceAdaptation(argumentTypes, resultType == null ? null : asRaw(resultType))
-            : null;
+        if (converted || resultType != null) {
+            return new ReferenceAdaptation(argumentTypes, resultType == null || exact ? resultType : asRaw(resultType),
+                exact ? null : resultBound(resultType, returned));
+        }
+        return null;
+    }
+
+    /**
+     * The erased bound a Java result is converted to before it is cast to a variable: a parameterized bound does
+     * not relate to another parameterization - `List<String>` to `U extends List<Object>`.
+     */
+    @Nullable
+    private static TypeDef resultBound(@Nullable TypeDef resultType, TypeDef returned) {
+        if (resultType instanceof TypeDef.TypeVariable variable && !variable.bounds().isEmpty()
+            && TypeHierarchy.unwrap(variable.bounds().get(0)) instanceof ClassTypeDef.Parameterized bound
+            && returned instanceof ClassTypeDef.Parameterized && !bound.equals(returned)) {
+            return bound.rawType();
+        }
+        return null;
     }
 
     /**
@@ -778,8 +816,12 @@ public final class OverrideResolver {
      * @param argumentTypes The type each value the functional interface passes is cast to, or {@code null} where it
      *                      is passed as is
      * @param resultType    The type the result is cast to, or {@code null} where it is returned as is
+     * @param resultBound   The raw bound of a variable result type the result is converted to first, or
+     *                      {@code null}
      */
-    public record ReferenceAdaptation(List<@Nullable TypeDef> argumentTypes, @Nullable TypeDef resultType) {
+    public record ReferenceAdaptation(List<@Nullable TypeDef> argumentTypes,
+                                      @Nullable TypeDef resultType,
+                                      @Nullable TypeDef resultBound) {
     }
 
     /**
