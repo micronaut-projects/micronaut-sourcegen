@@ -3687,24 +3687,6 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
               }
             }
             """, source);
-        assertEquals(
-            """
-            package test;
-
-            import java.lang.CharSequence;
-            import java.lang.String;
-            import java.util.function.Supplier;
-
-            class WildcardSupplied implements Supplier<CharSequence> {
-              public CharSequence get() {
-                return null;
-              }
-
-              public Supplier<? extends String> asStrings() {
-                return () -> (String) this.get();
-              }
-            }
-            """, source);
         assertCompiles(source);
     }
 
