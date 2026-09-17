@@ -2,7 +2,7 @@ If you annotate a Java Bean with `@ToString`, a `[Bean]Object` class is generate
 with a static implementation of the java.utils.Object's toString() method.
 
 - Properties that do not wish to be printed out should be annotated with @ToString.Exclude
-- All bean properties (with getters) will be written in the form of a Java Record in the generated toString() method with signature:
+- Only bean properties (with getters) are included; they will be written in the form of a Java Record in the generated toString() method with signature:
 
     `public static String [BeanName]Object.toString(BeanName object)`
 
