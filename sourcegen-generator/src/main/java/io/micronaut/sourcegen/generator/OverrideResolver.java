@@ -293,7 +293,7 @@ public final class OverrideResolver {
                 && !boundVariable.name().equals(typeVariable.name())) {
                 // A bound naming another variable captured itself - `T extends A` of a `Target<?, ?>` - is that
                 // variable's bound
-                return capturedBound(target, boundVariable, Map.of());
+                return capturedBound(target, boundVariable, substitution);
             } else {
                 bound = TypeDef.OBJECT;
             }
@@ -354,56 +354,99 @@ public final class OverrideResolver {
         }
         // For Java, a value that is not an `Object` is cast to a raw type: a parameterization does not convert to
         // another. Kotlin casts to the parameterization
+        List<@Nullable TypeDef> argumentBounds = new ArrayList<>(argumentTypes.size());
+        argumentTypes.forEach(type -> argumentBounds.add(null));
         if (!exact && functional != null && functional.getParameters().size() == argumentTypes.size()) {
             for (int i = 0; i < argumentTypes.size(); i++) {
                 TypeDef type = argumentTypes.get(i);
-                if (type != null && !TypeDef.OBJECT.equals(TypeHierarchy.unwrap(functional.getParameters().get(i).getType()))) {
+                TypeDef passed = TypeHierarchy.unwrap(functional.getParameters().get(i).getType());
+                if (type != null && !TypeDef.OBJECT.equals(passed)) {
                     argumentTypes.set(i, asRaw(type));
+                    argumentBounds.set(i, boundConversion(type, passed, current, caller));
                 }
             }
         }
         if (converted || resultType != null) {
-            return new ReferenceAdaptation(argumentTypes, resultType == null || exact ? resultType : asRaw(resultType),
-                exact ? null : resultBound(resultType, returned, current));
+            return new ReferenceAdaptation(argumentTypes, argumentBounds,
+                resultType == null || exact ? resultType : asRaw(resultType),
+                exact || resultType == null ? null : boundConversion(resultType, returned, current, caller));
         }
         return null;
     }
 
     /**
-     * The erased bound a Java result is converted to before it is cast to a variable: a parameterized bound does
-     * not relate to another parameterization - `List<String>` to `U extends List<Object>`.
+     * The raw bound a Java value is converted to before it is cast to a variable: a parameterized bound does not
+     * relate to another parameterization - `List<String>` to `U extends List<Object>`.
      */
     @Nullable
-    private static TypeDef resultBound(@Nullable TypeDef resultType, TypeDef returned, @Nullable ObjectDef current) {
-        ClassTypeDef.Parameterized bound = resultType == null ? null : parameterizedBound(resultType, current);
-        if (bound != null && returned instanceof ClassTypeDef.Parameterized && !bound.equals(returned)) {
+    private static TypeDef boundConversion(TypeDef variable,
+                                           TypeDef value,
+                                           @Nullable ObjectDef current,
+                                           @Nullable MethodDef method) {
+        ClassTypeDef.Parameterized bound = parameterizedBound(variable, current, method);
+        if (bound != null && value instanceof ClassTypeDef.Parameterized && !bound.equals(value)) {
             return bound.rawType();
         }
         return null;
     }
 
     /**
-     * The parameterized type a type variable is bounded by, following a bound that is another variable, and the
-     * declaration of a variable of the definition named without its bounds.
+     * The parameterized type a type variable is bounded by: one of its bounds, or of the variables they name. A
+     * variable named without its bounds is looked up in the declarations of the method, then of the definition.
      *
      * @param type    The type
      * @param current The definition being written, or {@code null}
+     * @param method  The method being written, or {@code null}
      * @return The bound, or {@code null} where the type is no variable bounded by a parameterized type
      */
-    public static ClassTypeDef.@Nullable Parameterized parameterizedBound(TypeDef type, @Nullable ObjectDef current) {
-        TypeDef bound = TypeHierarchy.unwrap(type);
-        if (!(bound instanceof TypeDef.TypeVariable)) {
-            return null;
+    public static ClassTypeDef.@Nullable Parameterized parameterizedBound(TypeDef type,
+                                                                         @Nullable ObjectDef current,
+                                                                         @Nullable MethodDef method) {
+        return upperBounds(type, current, method).stream()
+            .filter(ClassTypeDef.Parameterized.class::isInstance)
+            .map(ClassTypeDef.Parameterized.class::cast)
+            .findFirst().orElse(null);
+    }
+
+    /**
+     * The bounds of a type variable that are no variables themselves, in declaration order, with the bounds of the
+     * variables a bound names in its place - `U extends V` with `V extends Number` is bounded by `Number`.
+     *
+     * @param type    The type
+     * @param current The definition being written, or {@code null}
+     * @param method  The method being written, or {@code null}
+     * @return The bounds, empty where the type is no variable or an unbounded one
+     */
+    public static List<TypeDef> upperBounds(TypeDef type, @Nullable ObjectDef current, @Nullable MethodDef method) {
+        List<TypeDef> result = new ArrayList<>();
+        collectUpperBounds(TypeHierarchy.unwrap(type), current, method, result, 0);
+        return result;
+    }
+
+    private static void collectUpperBounds(TypeDef type,
+                                           @Nullable ObjectDef current,
+                                           @Nullable MethodDef method,
+                                           List<TypeDef> result,
+                                           int depth) {
+        if (!(type instanceof TypeDef.TypeVariable variable) || depth > MAX_DEPTH) {
+            return;
         }
-        for (int depth = 0; depth < MAX_DEPTH && bound instanceof TypeDef.TypeVariable variable; depth++) {
-            List<TypeDef> bounds = !variable.bounds().isEmpty() ? variable.bounds()
-                : current == null ? List.of() : TypeHierarchy.declaring(current).getBounds(variable.name());
-            if (bounds.isEmpty()) {
-                return null;
+        List<TypeDef> bounds = variable.bounds();
+        if (bounds.isEmpty() && method != null) {
+            bounds = method.getTypeVariables().stream().filter(declared -> declared.name().equals(variable.name()))
+                .findFirst().map(TypeDef.TypeVariable::bounds).orElse(List.of());
+        }
+        if (bounds.isEmpty() && current != null) {
+            bounds = TypeHierarchy.declaring(current).getBounds(variable.name());
+        }
+        for (TypeDef bound : bounds) {
+            TypeDef unwrapped = TypeHierarchy.unwrap(bound);
+            if (unwrapped instanceof TypeDef.TypeVariable) {
+                collectUpperBounds(unwrapped, current, method, result, depth + 1);
+            } else if (!TypeDef.OBJECT.equals(unwrapped)) {
+                result.add(unwrapped);
             }
-            bound = TypeHierarchy.unwrap(bounds.get(0));
         }
-        return bound instanceof ClassTypeDef.Parameterized parameterized ? parameterized : null;
     }
 
     /**
@@ -848,10 +891,13 @@ public final class OverrideResolver {
      * @param argumentTypes The type each value the functional interface passes is cast to, or {@code null} where it
      *                      is passed as is
      * @param resultType    The type the result is cast to, or {@code null} where it is returned as is
+     * @param argumentBounds The raw bound of a variable argument type each value is converted to first, or
+     *                      {@code null}
      * @param resultBound   The raw bound of a variable result type the result is converted to first, or
      *                      {@code null}
      */
     public record ReferenceAdaptation(List<@Nullable TypeDef> argumentTypes,
+                                      List<@Nullable TypeDef> argumentBounds,
                                       @Nullable TypeDef resultType,
                                       @Nullable TypeDef resultBound) {
     }

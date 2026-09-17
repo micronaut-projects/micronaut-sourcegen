@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * What an expression reads as in Java source: where it needs parentheses of its own, where a cast is implicit in
@@ -319,15 +320,16 @@ final class JavaExpressionRules {
 
     /**
      * Whether a value only converts to a type through the raw type, where the variables the type names are fixed:
-     * those of a return type, or of a generated method as the receiver sees it. `List<T>` does not accept a
-     * `List<String>`.
+     * those of a return type, or of the class of a generated method as the receiver sees it. `List<T>` does not
+     * accept a `List<String>`.
      */
-    static boolean requiresRawConversion(TypeDef targetType, TypeDef valueType) {
+    static boolean requiresRawConversion(TypeDef targetType, TypeDef valueType, Set<String> inferred) {
         Map<String, TypeDef.TypeVariable> variables = new HashMap<>();
         collectVariables(targetType, variables);
         collectVariables(valueType, variables);
         Map<String, TypeDef> fixed = new HashMap<>();
-        variables.keySet().forEach(name -> fixed.put(name, ClassTypeDef.of("fixed variable " + name)));
+        variables.keySet().stream().filter(name -> !inferred.contains(name))
+            .forEach(name -> fixed.put(name, ClassTypeDef.of("fixed variable " + name)));
         return requiresRawCast(TypeHierarchy.substituted(targetType, fixed), TypeHierarchy.substituted(valueType, fixed));
     }
 
@@ -335,16 +337,93 @@ final class JavaExpressionRules {
      * Whether a cast to a parameterized type cannot convert a value, which it then does as raw: a variable the type
      * names can be any type within its bounds - `List<T>` casts a `List<String>`, unless `T extends Number`.
      */
-    static boolean requiresRawCastTo(TypeDef castType, TypeDef valueType, @Nullable ObjectDef objectDef) {
+    static boolean requiresRawCastTo(TypeDef castType,
+                                     TypeDef valueType,
+                                     @Nullable ObjectDef objectDef,
+                                     @Nullable MethodDef methodDef) {
         Map<String, TypeDef.TypeVariable> variables = new HashMap<>();
         collectVariables(castType, variables);
         Map<String, TypeDef> asWildcards = new HashMap<>();
         variables.forEach((name, variable) -> {
-            List<TypeDef> bounds = !variable.bounds().isEmpty() || objectDef == null ? variable.bounds()
-                : TypeHierarchy.declaring(objectDef).getBounds(name);
+            List<TypeDef> bounds = OverrideResolver.upperBounds(variable, objectDef, methodDef);
             asWildcards.put(name, bounds.isEmpty() ? TypeDef.wildcard() : TypeDef.wildcardSubtypeOf(bounds.get(0)));
         });
         return requiresRawCast(TypeHierarchy.substituted(castType, asWildcards), valueType);
+    }
+
+    /**
+     * The casts a value passed to a parameter is written with, the outer first: to a class variable bounded by a
+     * parameterization the value does not convert to, through the raw bound - `(T) (List) values`.
+     *
+     * @param paramType    The parameter type
+     * @param valueType    The type of the value
+     * @param declaredType The type the invoked method declares, or {@code null} where it is not known
+     * @param generated    Whether the method is generated, whose class variables the receiver fixes
+     * @param inferred     The variables of the invoked method, which are inferred from the value
+     * @param objectDef    The definition being written
+     * @param methodDef    The method being written
+     * @return The casts, empty where the value is passed as is
+     */
+    static List<TypeDef> argumentCasts(TypeDef paramType,
+                                       TypeDef valueType,
+                                       @Nullable TypeDef declaredType,
+                                       boolean generated,
+                                       Set<String> inferred,
+                                       @Nullable ObjectDef objectDef,
+                                       @Nullable MethodDef methodDef) {
+        if (requiresImplicitInvocationCast(paramType, valueType)) {
+            return List.of(paramType);
+        }
+        if (generated && TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable variable
+            && !inferred.contains(variable.name())) {
+            ClassTypeDef.Parameterized bound = OverrideResolver.parameterizedBound(paramType, objectDef, methodDef);
+            if (bound != null && requiresRawConversion(bound, valueType, Set.of())) {
+                return List.of(paramType, bound.rawType());
+            }
+            if (requiresVariableCast(paramType, valueType)) {
+                return List.of(paramType);
+            }
+        }
+        if (declaredType != null && (generated ? requiresRawConversion(declaredType, valueType, inferred)
+            : requiresRawCast(declaredType, valueType))) {
+            // Only an unchecked conversion accepts the value, which a cast to the declared raw type is
+            return List.of(paramType instanceof ClassTypeDef.Parameterized parameterized ? parameterized.rawType() : paramType);
+        }
+        return List.of();
+    }
+
+    /**
+     * The casts a returned value is written with, the outer first: to a variable bounded by a parameterization the
+     * value, as the source types it, does not convert to, through the raw bound - `(U) (List) this.values`.
+     *
+     * @param returnType The return type
+     * @param valueType  The type of the value in the model
+     * @param sourceType The type of the value in the source
+     * @param objectDef  The definition being written
+     * @param methodDef  The method being written
+     * @return The casts, empty where the value is returned as is
+     */
+    static List<TypeDef> returnCasts(TypeDef returnType,
+                                     TypeDef valueType,
+                                     TypeDef sourceType,
+                                     @Nullable ObjectDef objectDef,
+                                     @Nullable MethodDef methodDef) {
+        if (TypeDef.VOID.equals(returnType)) {
+            return List.of();
+        }
+        ClassTypeDef.Parameterized bound = OverrideResolver.parameterizedBound(returnType, objectDef, methodDef);
+        if (bound != null && requiresRawConversion(bound, sourceType, Set.of())) {
+            return List.of(returnType, bound.rawType());
+        }
+        if (requiresImplicitReturnCast(returnType, valueType)) {
+            // e.g. an interceptor chain proceeds to Object, which the verifier accepts for a reference return
+            return List.of(returnType);
+        }
+        if (requiresRawConversion(returnType, valueType, Set.of())) {
+            // Only an unchecked conversion returns it - `List<Object>` as the `List<String>` of an override
+            return List.of(((ClassTypeDef.Parameterized) TypeHierarchy.unwrap(returnType)).rawType());
+        }
+        return List.of();
     }
 
     /**

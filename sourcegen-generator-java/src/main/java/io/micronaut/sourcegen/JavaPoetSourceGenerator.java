@@ -18,23 +18,20 @@ package io.micronaut.sourcegen;
 import io.micronaut.core.annotation.Internal;
 
 import static io.micronaut.sourcegen.JavaExpressionRules.CastContext;
+import static io.micronaut.sourcegen.JavaExpressionRules.returnCasts;
+import static io.micronaut.sourcegen.JavaExpressionRules.argumentCasts;
 import static io.micronaut.sourcegen.JavaExpressionRules.arePrimitiveReferenceEqualityOperands;
 import static io.micronaut.sourcegen.JavaExpressionRules.canEliminateCastToObject;
 import static io.micronaut.sourcegen.JavaExpressionRules.collapseNestedCasts;
 import static io.micronaut.sourcegen.JavaExpressionRules.declaredSignature;
 import static io.micronaut.sourcegen.JavaExpressionRules.ownerOf;
-import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawCast;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawCastTo;
-import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawConversion;
-import static io.micronaut.sourcegen.JavaExpressionRules.requiresVariableCast;
 import static io.micronaut.sourcegen.JavaExpressionRules.sourceTypeOf;
 import static io.micronaut.sourcegen.JavaExpressionRules.getMathOp;
 import static io.micronaut.sourcegen.JavaExpressionRules.getOpType;
 import static io.micronaut.sourcegen.JavaExpressionRules.isNullLiteral;
 import static io.micronaut.sourcegen.JavaExpressionRules.isOrCondition;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresCastOperandParentheses;
-import static io.micronaut.sourcegen.JavaExpressionRules.requiresImplicitInvocationCast;
-import static io.micronaut.sourcegen.JavaExpressionRules.requiresImplicitReturnCast;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresMathParentheses;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresMethodCallTargetParentheses;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresParentheses;
@@ -102,6 +99,7 @@ import java.io.Writer;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -778,27 +776,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     return renderExpression(objectDef, methodDef, scope, aReturn.expression());
                 }
                 ExpressionDef returned = aReturn.expression();
-                ClassTypeDef.Parameterized bound = methodDef == null ? null
-                    : OverrideResolver.parameterizedBound(methodDef.getReturnType(), objectDef);
-                if (methodDef != null && bound != null && requiresRawConversion(bound, returned.type())) {
-                    // A variable bounded by a parameterization the value does not convert to: through the raw bound
-                    return CodeBlock.concat(CodeBlock.of("return ($T) ($T) ",
-                        asType(methodDef.getReturnType(), objectDef, methodDef), asType(bound.rawType(), objectDef)),
-                        renderCastOperand(objectDef, methodDef, scope, returned));
-                }
-                if (methodDef != null && !methodDef.getReturnType().equals(TypeDef.VOID)
-                    && requiresImplicitReturnCast(methodDef.getReturnType(), returned.type())) {
-                    // e.g. an interceptor chain proceeds to Object, which the verifier accepts for a reference return
-                    returned = returned.cast(methodDef.getReturnType());
-                } else if (methodDef != null && requiresRawConversion(methodDef.getReturnType(), returned.type())) {
-                    // Only an unchecked conversion returns it - `List<Object>` as the `List<String>` of an override
-                    returned = returned.cast(((ClassTypeDef.Parameterized) TypeHierarchy.unwrap(methodDef.getReturnType()))
-                        .rawType());
-                }
-                return CodeBlock.concat(
-                    CodeBlock.of("return "),
-                    renderExpression(objectDef, methodDef, scope, returned)
-                );
+                List<TypeDef> casts = methodDef == null ? List.of() : returnCasts(methodDef.getReturnType(),
+                    returned.type(), sourceTypeOf(returned, methodDef, objectDef), objectDef, methodDef);
+                return CodeBlock.concat(CodeBlock.of("return "),
+                    renderConverted(objectDef, methodDef, scope, returned, casts));
             }
             case StatementDef.Assign assign -> {
                 return CodeBlock.concat(
@@ -1040,7 +1021,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return CodeBlock.concat(
                     CodeBlock.of("new $L(", asType(newInstance.type(), objectDef)),
                     renderInvocationArguments(objectDef, methodDef, scope, newInstance.type(), MethodDef.CONSTRUCTOR,
-                        newInstance.parameterTypes(), newInstance.values()),
+                        newInstance.parameterTypes(), Set.of(), newInstance.values()),
                     CodeBlock.of(")")
                 );
             }
@@ -1086,7 +1067,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 TypeDef castType = castExpressionDef.type();
                 if (castType instanceof ClassTypeDef.Parameterized parameterized
                     && sourceTypeOf(exp, methodDef, objectDef) instanceof ClassTypeDef.Parameterized narrowed
-                    && !narrowed.equals(exp.type()) && requiresRawCastTo(castType, narrowed, objectDef)) {
+                    && !narrowed.equals(exp.type()) && requiresRawCastTo(castType, narrowed, objectDef, methodDef)) {
                     // A value an override narrowed to a parameterization the cast does not accept is cast raw
                     castType = parameterized.rawType();
                 }
@@ -1252,12 +1233,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 List<StatementDef> statements = implementation.getStatements();
                 ExpressionDef body = singleExpressionBody(lambda);
                 if (body != null) {
-                    TypeDef lambdaReturnType = implementation.getReturnType();
-                    if (!TypeDef.VOID.equals(lambdaReturnType)
-                        && requiresImplicitReturnCast(lambdaReturnType, body.type())) {
-                        body = body.cast(lambdaReturnType);
-                    }
-                    builder.add(renderExpression(objectDef, implementation, lambdaScope, body));
+                    builder.add(renderConverted(objectDef, implementation, lambdaScope, body,
+                        returnCasts(implementation.getReturnType(), body.type(),
+                            sourceTypeOf(body, implementation, objectDef), objectDef, implementation)));
                 } else {
                     builder.add("{\n").indent();
                     for (int i = 0; i < statements.size(); i++) {
@@ -1324,12 +1302,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         lambdaScope.declare(receiver);
         List<CodeBlock> parameters = new ArrayList<>();
         List<CodeBlock> arguments = new ArrayList<>();
-        for (TypeDef type : adaptation.argumentTypes()) {
+        for (int i = 0; i < adaptation.argumentTypes().size(); i++) {
             String name = lambdaScope.allocate("arg");
             lambdaScope.declare(name);
             parameters.add(CodeBlock.of("$L", name));
-            arguments.add(type == null ? CodeBlock.of("$L", name)
-                : CodeBlock.of("($T) $L", asType(type, objectDef, methodDef), name));
+            TypeDef type = adaptation.argumentTypes().get(i);
+            TypeDef bound = adaptation.argumentBounds().get(i);
+            arguments.add(type == null ? CodeBlock.of("$L", name) : bound == null
+                ? CodeBlock.of("($T) $L", asType(type, objectDef, methodDef), name)
+                : CodeBlock.of("($T) ($T) $L", asType(type, objectDef, methodDef), asType(bound, objectDef), name));
         }
         CodeBlock call = CodeBlock.of("$L.$L($L)", captured ? receiver
             : renderExpression(objectDef, methodDef, scope, instance), reference.method().getName(),
@@ -1419,8 +1400,27 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 parameterTypes = emitted.parameterTypes();
             }
         }
+        Set<String> inferred = new HashSet<>();
+        callMethod.getTypeVariables().forEach(variable -> inferred.add(variable.name()));
         return renderInvocationArguments(objectDef, enclosingMethod, scope, owner, callMethod.getName(),
-            parameterTypes, values);
+            parameterTypes, inferred, values);
+    }
+
+    /**
+     * A value written with the casts it needs, the outer first, which a cast in the model would not keep: a
+     * cast to the raw bound of a variable is not one to the type the value has.
+     */
+    private CodeBlock renderConverted(@Nullable ObjectDef objectDef,
+                                      @Nullable MethodDef methodDef,
+                                      RenderScope scope,
+                                      ExpressionDef value,
+                                      List<TypeDef> casts) {
+        if (casts.size() < 2) {
+            return renderExpression(objectDef, methodDef, scope, casts.isEmpty() ? value : value.cast(casts.get(0)));
+        }
+        CodeBlock.Builder builder = CodeBlock.builder();
+        casts.forEach(cast -> builder.add("($T) ", asType(cast, objectDef, methodDef)));
+        return builder.add(renderCastOperand(objectDef, methodDef, scope, value)).build();
     }
 
     private CodeBlock renderInvocationArguments(@Nullable ObjectDef objectDef,
@@ -1429,6 +1429,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                                 @Nullable ClassTypeDef owner,
                                                 @Nullable String methodName,
                                                 @Nullable List<TypeDef> parameterTypes,
+                                                Set<String> inferred,
                                                 List<? extends ExpressionDef> values) {
         List<TypeDef> sameArityParameterTypes = parameterTypes != null && parameterTypes.size() == values.size()
             ? parameterTypes : null;
@@ -1476,16 +1477,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                             renderCastOperand(objectDef, enclosingMethod, scope, value)
                         );
                     }
-                    if (requiresImplicitInvocationCast(paramType, value.type())
-                        || generated && requiresVariableCast(paramType, value.type())) {
-                        value = value.cast(paramType);
-                    } else if (declaredTypes != null && declaredTypes.size() == values.size()
-                        && (generated ? requiresRawConversion(declaredTypes.get(i), value.type())
-                        : requiresRawCast(declaredTypes.get(i), value.type()))) {
-                        // Only an unchecked conversion accepts the value, which a cast to the declared raw type is
-                        value = value.cast(paramType instanceof ClassTypeDef.Parameterized parameterized
-                            ? parameterized.rawType() : paramType);
-                    }
+                    return renderConverted(objectDef, enclosingMethod, scope, value, argumentCasts(paramType, value.type(),
+                        declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null,
+                        generated, inferred, objectDef, enclosingMethod));
                 }
                 return renderExpression(objectDef, enclosingMethod, scope, value);
             })
