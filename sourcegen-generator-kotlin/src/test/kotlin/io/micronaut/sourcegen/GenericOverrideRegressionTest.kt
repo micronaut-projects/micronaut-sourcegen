@@ -22,6 +22,7 @@ import io.micronaut.sourcegen.model.ExpressionDef
 import io.micronaut.sourcegen.model.MethodDef
 import io.micronaut.sourcegen.model.ObjectDef
 import io.micronaut.sourcegen.model.TypeDef
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.StringWriter
 import java.util.function.Function
@@ -65,7 +66,44 @@ class GenericOverrideRegressionTest {
             .build()
 
         // Choosing the CharSequence overload instead of the modeled Object overload cannot return a String.
-        assertCompiles(writeSource(target), writeSource(caller))
+        assertCompiles(
+            assertSource(target, """
+                |package test
+                |
+                |import java.util.function.Supplier
+                |import kotlin.CharSequence
+                |
+                |public class DependentTarget<A : CharSequence, T : A> : Supplier<T> {
+                |  public override fun `get`(): T {
+                |    return "text" as T
+                |  }
+                |}
+                |""".trimMargin()),
+            assertSource(caller, """
+                |package test
+                |
+                |import kotlin.Any
+                |import kotlin.CharSequence
+                |import kotlin.Int
+                |import kotlin.String
+                |
+                |public class DependentCaller {
+                |  public fun call(target: DependentTarget<in String, in String>): String {
+                |    return DependentCaller.choose((target.`get`() as Any))
+                |  }
+                |
+                |  public companion object {
+                |    public fun choose(`value`: Any): String {
+                |      return "selected"
+                |    }
+                |
+                |    public fun choose(`value`: CharSequence): Int {
+                |      return 2
+                |    }
+                |  }
+                |}
+                |""".trimMargin())
+        )
     }
 
     @Test
@@ -79,7 +117,17 @@ class GenericOverrideRegressionTest {
                 .build { _, parameters -> parameters[0].returning() })
             .build()
 
-        assertCompiles(writeSource(classDef))
+        assertCompiles(assertSource(classDef, """
+            |package test
+            |
+            |import java.util.function.Function
+            |
+            |public class VariableValue<T, V> : Function<V, T> {
+            |  public override fun apply(`value`: V): T {
+            |    return `value` as T
+            |  }
+            |}
+            |""".trimMargin()))
     }
 
     @Test
@@ -97,7 +145,32 @@ class GenericOverrideRegressionTest {
             .build()
 
         // Supplier<T> becomes Supplier<List<T>>, not Supplier<List<List<T>>>.
-        assertCompiles(writeSource(parent), writeSource(child))
+        assertCompiles(
+            assertSource(parent, """
+                |package test
+                |
+                |import java.util.function.Supplier
+                |
+                |public abstract class GenericParent<T> : Supplier<T>
+                |""".trimMargin()),
+            assertSource(child, """
+                |package test
+                |
+                |import kotlin.collections.List
+                |
+                |public class GenericChild<T> : GenericParent<List<T>>() {
+                |  public override fun `get`(): List<T> {
+                |    return null as List<T>
+                |  }
+                |}
+                |""".trimMargin())
+        )
+    }
+
+    private fun assertSource(objectDef: ObjectDef, expected: String): String {
+        val source = writeSource(objectDef)
+        assertEquals(expected, source)
+        return source
     }
 
     private fun writeSource(objectDef: ObjectDef): String {
