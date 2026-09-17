@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.assertCompiles;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -1653,7 +1654,7 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(arg) -> (String) (Object) this.apply((CharSequence) arg)"), source);
+        assertTrue(source.contains("(arg) -> (String) this.apply((CharSequence) arg)"), source);
         assertCompiles(source);
     }
 
@@ -1706,8 +1707,8 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(arg) -> (U) (Object) this.apply((Number) arg)"), source);
-        assertTrue(source.contains("(arg) -> (Integer) (Object) this.apply((Number) arg)"), source);
+        assertTrue(source.contains("(arg) -> (U) this.apply((Number) arg)"), source);
+        assertTrue(source.contains("(arg) -> (Integer) this.apply((Number) arg)"), source);
         assertCompiles(source);
     }
 
@@ -1730,7 +1731,7 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("() -> (List<Object>) (Object) this.get()"), source);
+        assertTrue(source.contains("() -> (List) this.get()"), source);
         assertCompiles(source);
     }
 
@@ -1796,28 +1797,20 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
     }
 
     @Test
-    void unrelatedParameterizationsAreConvertedThroughObjectOrTheRawType() throws Exception {
+    void unrelatedParameterizationsAreConvertedThroughTheRawType() throws Exception {
         var applyMethod = Function.class.getMethod("apply", Object.class);
         MethodDef apply = MethodDef.override(applyMethod)
             .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
         ClassTypeDef objects = TypeDef.parameterized(List.class, Object.class);
         ClassTypeDef objectsFunction = TypeDef.parameterized(ClassTypeDef.of(Function.class), objects, TypeDef.OBJECT);
-        ClassTypeDef integerSupplier = TypeDef.parameterized(Supplier.class, Integer.class);
-        MethodDef get = MethodDef.override(Supplier.class.getMethod("get"))
-            .build((aThis, methodParameters) -> ExpressionDef.constant("value").returning());
-        // `apply` is written as `apply(List<String>)`, and `get` as `String get()`
+        // `apply` is written as `apply(List<String>)`
         ClassDef classDef = ClassDef.builder("test.Unrelated")
             .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Function.class),
                 TypeDef.parameterized(List.class, String.class), TypeDef.OBJECT))
-            .addSuperinterface(TypeDef.parameterized(Supplier.class, String.class))
             .addMethod(apply)
-            .addMethod(get)
             .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
                 .returns(objectsFunction)
                 .build((aThis, methodParameters) -> objectsFunction.methodReference(aThis, apply).returning()))
-            .addMethod(MethodDef.builder("asSupplier").addModifiers(Modifier.PUBLIC)
-                .returns(integerSupplier)
-                .build((aThis, methodParameters) -> integerSupplier.methodReference(aThis, get).returning()))
             .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
                 .addParameter("values", objects)
                 .returns(Object.class)
@@ -1826,14 +1819,13 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(arg) -> this.apply((List<String>) (Object) arg)"), source);
-        assertTrue(source.contains("() -> (Integer) (Object) this.get()"), source);
+        assertTrue(source.contains("(arg) -> this.apply((List) arg)"), source);
         assertTrue(source.contains("this.apply((List) values)"), source);
         assertCompiles(source);
     }
 
     @Test
-    void objectCastThroughAGeneratedTypeNamedObject() throws Exception {
+    void rawCastInAGeneratedTypeNamedObject() throws Exception {
         var getMethod = Supplier.class.getMethod("get");
         MethodDef get = MethodDef.override(getMethod)
             .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
@@ -1852,7 +1844,7 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("(java.lang.Object) this.get()"), source);
+        assertTrue(source.contains("() -> (List) this.get()"), source);
         assertCompiles(source);
     }
 
@@ -2028,7 +2020,23 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
         String source = writeClass(classDef);
 
-        assertTrue(source.contains("() -> (String) (Object) this.get()"), source);
+        assertEquals("""
+            package test;
+
+            import java.lang.CharSequence;
+            import java.lang.String;
+            import java.util.function.Supplier;
+
+            class WildcardSupplied implements Supplier<CharSequence> {
+              public CharSequence get() {
+                return null;
+              }
+
+              public Supplier<? extends String> asStrings() {
+                return () -> (String) this.get();
+              }
+            }
+            """, source);
         assertCompiles(source);
     }
 

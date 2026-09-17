@@ -878,7 +878,7 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("arg -> this.apply(arg as String)"), source)
+        assertTrue(source.contains("arg0 -> this.apply(arg0 as String)"), source)
         assertCompiles(source)
     }
 
@@ -932,7 +932,7 @@ class KotlinSourceCompilationTest {
         val source = writeClass(caller)
 
         assertTrue(source.contains(".let { target -> "), source)
-        assertTrue(source.contains("arg -> target.apply(arg as String)"), source)
+        assertTrue(source.contains("arg0 -> target.apply(arg0 as String)"), source)
         assertCompiles(writeClass(target), source)
     }
 
@@ -951,12 +951,12 @@ class KotlinSourceCompilationTest {
             java.util.function.Function::class.java, Any::class.java, Any::class.java)
         val factory = TypeDef.parameterized(ClassTypeDef.of(java.util.function.Function::class.java),
             target.asTypeDef(), anyFunction)
-        // The outer lambda's parameter is named `arg`, which the adapter's own parameter must not shadow
+        // The outer lambda's parameter is named `arg0`, which the adapter's own parameter must not shadow
         val caller = ClassDef.builder("test.NestedCaller")
             .addMethod(MethodDef.builder("factory").addModifiers(Modifier.PUBLIC)
                 .returns(factory)
                 .build { _, _ ->
-                    factory.lambda.implement(listOf("arg")) { _, parameters ->
+                    factory.lambda.implement(listOf("arg0")) { _, parameters ->
                         anyFunction.methodReference(parameters[0], apply).returning()
                     }.returning()
                 })
@@ -964,7 +964,7 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(caller)
 
-        assertTrue(source.contains("arg1 -> arg.apply(arg1 as String)"), source)
+        assertTrue(source.contains("arg0_1 -> arg0.apply(arg0_1 as String)"), source)
         assertCompiles(writeClass(target), source)
     }
 
@@ -987,7 +987,7 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("(this.apply(arg as CharSequence) as String)"), source)
+        assertTrue(source.contains("(this.apply(arg0 as CharSequence) as String)"), source)
         assertCompiles(source)
     }
 
@@ -1014,7 +1014,7 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(child)
 
-        assertTrue(source.contains("arg -> super.apply(arg as String)"), source)
+        assertTrue(source.contains("arg0 -> super.apply(arg0 as String)"), source)
         assertCompiles(writeClass(parent), source)
     }
 
@@ -1044,8 +1044,8 @@ class KotlinSourceCompilationTest {
 
         val source = writeClass(classDef)
 
-        assertTrue(source.contains("(this.apply(arg as Number) as U)"), source)
-        assertTrue(source.contains("(this.apply(arg as Number) as Int)"), source)
+        assertTrue(source.contains("(this.apply(arg0 as Number) as U)"), source)
+        assertTrue(source.contains("(this.apply(arg0 as Number) as Int)"), source)
         assertCompiles(source)
     }
 

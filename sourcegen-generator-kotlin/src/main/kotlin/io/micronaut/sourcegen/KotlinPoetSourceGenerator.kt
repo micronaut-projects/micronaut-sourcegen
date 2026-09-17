@@ -2452,7 +2452,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             val captured = instance !is VariableDef.This && instance !is VariableDef.Super
                 && instance !is VariableDef.MethodParameter
             val receiver = if (captured) lambdaScope.allocate("target").also { lambdaScope.declare(it) } else null
-            val names = adaptation.argumentTypes().map { lambdaScope.allocate("arg").also { lambdaScope.declare(it) } }
+            val names = adaptation.argumentTypes().indices.map { index ->
+                generateSequence(0) { it + 1 }.map { "arg$index" + if (it == 0) "" else "_$it" }
+                    .first { !lambdaScope.isTaken(it) }
+                    .also { lambdaScope.declare(it) }
+            }
             val arguments = adaptation.argumentTypes().mapIndexed { index, type ->
                 if (type == null) {
                     CodeBlock.of("%N", names[index])

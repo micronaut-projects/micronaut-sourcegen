@@ -1312,24 +1312,18 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         lambdaScope.declare(receiver);
         List<CodeBlock> parameters = new ArrayList<>();
         List<CodeBlock> arguments = new ArrayList<>();
-        // Types that do not relate - `List<Object>` and `List<String>`, `String` and `Integer` - are cast through
-        // `Object`, which is named by a placeholder in case a generated type shadows it
-        TypeName object = asType(TypeDef.OBJECT, objectDef);
-        for (int i = 0; i < adaptation.argumentTypes().size(); i++) {
+        for (TypeDef type : adaptation.argumentTypes()) {
             String name = lambdaScope.allocate("arg");
             lambdaScope.declare(name);
             parameters.add(CodeBlock.of("$L", name));
-            TypeDef type = adaptation.argumentTypes().get(i);
             arguments.add(type == null ? CodeBlock.of("$L", name)
-                : adaptation.castsArgumentThroughObject(i)
-                ? CodeBlock.of("($T) ($T) $L", asType(type, objectDef, methodDef), object, name)
                 : CodeBlock.of("($T) $L", asType(type, objectDef, methodDef), name));
         }
         CodeBlock call = CodeBlock.of("$L.$L($L)", captured ? receiver
             : renderExpression(objectDef, methodDef, scope, instance), reference.method().getName(),
             CodeBlock.join(arguments, ", "));
         if (adaptation.resultType() != null) {
-            call = CodeBlock.of("($T) ($T) $L", asType(adaptation.resultType(), objectDef, methodDef), object, call);
+            call = CodeBlock.of("($T) $L", asType(adaptation.resultType(), objectDef, methodDef), call);
         }
         CodeBlock lambda = CodeBlock.of("($L) -> $L", CodeBlock.join(parameters, ", "), call);
         return !captured ? lambda : CodeBlock.of("$T.of($L).<$T>map($L -> $L).get()", Optional.class,

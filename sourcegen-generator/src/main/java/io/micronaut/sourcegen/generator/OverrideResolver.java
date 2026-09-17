@@ -322,9 +322,33 @@ public final class OverrideResolver {
             // A primitive is unboxed from its wrapper, which the reference type is cast to
             resultType = functionalReturn instanceof TypeDef.Primitive primitive ? primitive.wrapperType() : functionalReturn;
         }
-        List<TypeDef> passedTypes = functional == null || functional.getParameters().size() != argumentTypes.size()
-            ? null : functional.getParameters().stream().map(ParameterDef::getType).toList();
-        return converted || resultType != null ? new ReferenceAdaptation(argumentTypes, passedTypes, resultType) : null;
+        // A value that is not an `Object` is cast to a raw type: a parameterization does not convert to another
+        if (functional != null && functional.getParameters().size() == argumentTypes.size()) {
+            for (int i = 0; i < argumentTypes.size(); i++) {
+                TypeDef type = argumentTypes.get(i);
+                if (type != null && !TypeDef.OBJECT.equals(TypeHierarchy.unwrap(functional.getParameters().get(i).getType()))) {
+                    argumentTypes.set(i, asRaw(type));
+                }
+            }
+        }
+        return converted || resultType != null
+            ? new ReferenceAdaptation(argumentTypes, resultType == null ? null : asRaw(resultType))
+            : null;
+    }
+
+    /**
+     * The raw type of a parameterized type, or of the component of an array of one.
+     */
+    private static TypeDef asRaw(TypeDef type) {
+        TypeDef unwrapped = TypeHierarchy.unwrap(type);
+        if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
+            return parameterized.rawType();
+        }
+        if (unwrapped instanceof TypeDef.Array array
+            && TypeHierarchy.unwrap(array.componentType()) instanceof ClassTypeDef.Parameterized component) {
+            return TypeDef.array(component.rawType(), array.dimensions());
+        }
+        return type;
     }
 
     @Nullable
@@ -753,24 +777,9 @@ public final class OverrideResolver {
      *
      * @param argumentTypes The type each value the functional interface passes is cast to, or {@code null} where it
      *                      is passed as is
-     * @param passedTypes   The types of the values the functional interface passes, or {@code null} where they are
-     *                      not known
      * @param resultType    The type the result is cast to, or {@code null} where it is returned as is
      */
-    public record ReferenceAdaptation(List<@Nullable TypeDef> argumentTypes,
-                                      @Nullable List<TypeDef> passedTypes,
-                                      @Nullable TypeDef resultType) {
-
-        /**
-         * Whether a value the functional interface passes is cast through {@code Object}, which a cast between
-         * types that do not relate - `List<Object>` to `List<String>` - needs.
-         *
-         * @param index The index of the value
-         * @return true where the value is not known to be an {@code Object}
-         */
-        public boolean castsArgumentThroughObject(int index) {
-            return passedTypes == null || !TypeDef.OBJECT.equals(TypeHierarchy.unwrap(passedTypes.get(index)));
-        }
+    public record ReferenceAdaptation(List<@Nullable TypeDef> argumentTypes, @Nullable TypeDef resultType) {
     }
 
     /**
