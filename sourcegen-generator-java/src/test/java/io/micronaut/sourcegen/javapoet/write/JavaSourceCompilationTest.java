@@ -1029,4 +1029,47 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertTrue(source.contains("choose((Object) "), source);
         assertCompiles(source);
     }
+
+    @Test
+    void callOfANarrowedMethodOfTheClassIsConverted() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        // `apply` is written as `apply(String)`, which the Object value passed to it is converted to
+        ClassDef classDef = ClassDef.builder("test.Caller")
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> aThis.invoke(apply, methodParameters.get(0)).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("this.apply((String) value)"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void narrowedArrayStaysOneVarargsElement() throws Exception {
+        var asList = java.util.Arrays.class.getMethod("asList", Object[].class);
+        var size = List.class.getMethod("size");
+        var apply = Function.class.getMethod("apply", Object.class);
+        // The model passes an Object, one element; the narrowed `String[]` would be spread into the varargs
+        ClassDef classDef = ClassDef.builder("test.Elements")
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Function.class),
+                TypeDef.STRING.array(), TypeDef.of(Integer.class)))
+            .addMethod(MethodDef.override(apply)
+                .build((aThis, methodParameters) -> ClassTypeDef.of(java.util.Arrays.class)
+                    .invokeStatic(asList, methodParameters.get(0))
+                    .invoke(size)
+                    .returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("asList((Object) arg0)"), source);
+        assertCompiles(source);
+    }
 }

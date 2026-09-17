@@ -17,19 +17,16 @@ package io.micronaut.sourcegen;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.reflect.ClassUtils;
-import io.micronaut.inject.ast.ClassElement;
-import io.micronaut.inject.ast.ElementQuery;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.generator.InvokedSignature;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
-import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeHierarchy;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 
-import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -195,84 +192,18 @@ final class JavaExpressionRules {
     }
 
     /**
-     * The generic parameter types the invoked method declares, which the erased signature of the model does not
-     * carry. Resolved by loading the type, and failing that through the compiler.
+     * The signature the invoked method declares, looked up with the context of the file being written.
      *
-     * @param owner      The type declaring the method, or {@code null}
-     * @param methodName The method name
-     * @param arity      The number of parameters
-     * @return The declared types, or {@code null} where the method cannot be resolved
+     * @param owner          The type declaring the method, or {@code null}
+     * @param methodName     The method name
+     * @param parameterTypes The parameter types of the method in the model
+     * @return The signature, or {@code null} where the method cannot be resolved
      */
     @Nullable
-    static DeclaredSignature declaredSignature(@Nullable ClassTypeDef owner,
-                                               String methodName,
-                                               List<TypeDef> parameterTypes) {
-        if (owner == null) {
-            return null;
-        }
-        List<String> erasures = parameterTypes.stream().map(TypeHierarchy::erasedName).toList();
-        Class<?> loaded = owner instanceof ClassTypeDef.JavaClass javaClass ? javaClass.type()
-            : ClassUtils.forName(owner.getName(), JavaExpressionRules.class.getClassLoader()).orElse(null);
-        if (loaded != null) {
-            Executable executable = findExecutable(loaded, methodName, erasures);
-            return executable == null ? null : new DeclaredSignature(
-                Arrays.stream(executable.getGenericParameterTypes()).map(TypeHierarchy::typeDefOf).toList(),
-                executable.isVarArgs());
-        }
-        VisitorContext context = JavaPoetNames.context();
-        if (context == null) {
-            return null;
-        }
-        return context.getClassElement(owner.getName())
-            .flatMap(element -> element.getEnclosedElements(ElementQuery.ALL_METHODS.named(methodName)).stream()
-                .filter(method -> erasures.equals(Arrays.stream(method.getParameters())
-                    .map(parameter -> erasedNameOf(parameter.getType())).toList()))
-                .findFirst())
-            .map(method -> new DeclaredSignature(Arrays.stream(method.getParameters())
-                .map(parameter -> TypeDef.of(parameter.getGenericType(), ignore -> null, false))
-                .toList(), method.isVarArgs()))
-            .orElse(null);
-    }
-
-    @Nullable
-    private static Executable findExecutable(Class<?> type, String methodName, List<String> erasures) {
-        if (MethodDef.CONSTRUCTOR.equals(methodName)) {
-            return Arrays.stream(type.getDeclaredConstructors())
-                .filter(constructor -> matches(constructor, erasures)).findFirst().orElse(null);
-        }
-        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
-            Executable found = Arrays.stream(current.getDeclaredMethods())
-                .filter(method -> method.getName().equals(methodName) && matches(method, erasures))
-                .findFirst().orElse(null);
-            if (found != null) {
-                return found;
-            }
-            for (Class<?> interfaceType : current.getInterfaces()) {
-                found = findExecutable(interfaceType, methodName, erasures);
-                if (found != null) {
-                    return found;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Whether the erased parameter types name the same overload, so that a method with several of them is not
-     * read from the wrong one.
-     */
-    private static boolean matches(Executable executable, List<String> erasures) {
-        // `getTypeName` writes an array as `java.lang.String[]`, the form the erasures are in, where `getName` does not
-        return Arrays.stream(executable.getParameterTypes()).map(Class::getTypeName).toList().equals(erasures);
-    }
-
-    /**
-     * The erased name of a compiler type in the form {@link TypeHierarchy#erasedName(TypeDef)} writes it: the
-     * element of an array names its component, and counts its dimensions apart.
-     */
-    private static String erasedNameOf(ClassElement type) {
-        String name = type.getName();
-        return type.isArray() && !name.endsWith("[]") ? name + "[]".repeat(type.getArrayDimensions()) : name;
+    static InvokedSignature declaredSignature(@Nullable ClassTypeDef owner,
+                                              String methodName,
+                                              List<TypeDef> parameterTypes) {
+        return InvokedSignature.resolve(owner, methodName, parameterTypes, JavaPoetNames.context());
     }
 
     /**
@@ -545,14 +476,5 @@ final class JavaExpressionRules {
         DEFAULT,
         OBJECT_REFERENCE,
         PRIMITIVE_EQUALITY
-    }
-
-    /**
-     * The signature an invoked method declares.
-     *
-     * @param parameterTypes The generic parameter types
-     * @param varargs        Whether the last parameter takes varargs
-     */
-    record DeclaredSignature(List<TypeDef> parameterTypes, boolean varargs) {
     }
 }

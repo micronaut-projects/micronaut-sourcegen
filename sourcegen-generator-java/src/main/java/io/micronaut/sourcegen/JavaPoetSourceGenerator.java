@@ -49,6 +49,7 @@ import io.micronaut.core.naming.NameUtils;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.ast.Element;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.generator.InvokedSignature;
 import io.micronaut.sourcegen.generator.OverrideResolver;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec;
@@ -1376,6 +1377,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         List<TypeDef> parameterTypes = parameters.size() == values.size()
             ? parameters.stream().map(ParameterDef::getType).toList()
             : null;
+        if (parameterTypes != null && owner != null && objectDef != null
+            && owner.getName().equals(objectDef.asTypeDef().getName())) {
+            // A method of this class an override resolution narrowed is written with the narrowed parameters,
+            // which the values passed to it are converted to
+            List<TypeDef> emitted = OverrideResolver.emittedParameterTypes(objectDef, callMethod, JavaPoetNames.context(), false);
+            if (emitted != null) {
+                parameterTypes = emitted;
+            }
+        }
         return renderInvocationArguments(objectDef, enclosingMethod, scope, owner, callMethod.getName(),
             parameterTypes, values);
     }
@@ -1390,7 +1400,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         List<TypeDef> sameArityParameterTypes = parameterTypes != null && parameterTypes.size() == values.size()
             ? parameterTypes : null;
         // The signature the invoked method declares, which carries the type arguments the erased model does not
-        JavaExpressionRules.DeclaredSignature signature = methodName == null || sameArityParameterTypes == null ? null
+        InvokedSignature signature = methodName == null || sameArityParameterTypes == null ? null
             : declaredSignature(owner, methodName, sameArityParameterTypes);
         List<TypeDef> declaredTypes = signature == null ? null : signature.parameterTypes();
         // Only a method whose signature says so takes varargs: an unresolved one - such as a generated method - is
@@ -1405,7 +1415,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array
                         && !(TypeHierarchy.unwrap(value.type()) instanceof TypeDef.Array);
                     if (vararg) {
-                        // A value that is not an array is one element of the varargs, which a cast would not be
+                        // A value that is not an array is one element of the varargs, which a cast would not be.
+                        // Where an override narrowed it to an array, it is cast to the element type, which keeps it one
+                        if (TypeHierarchy.unwrap(sourceTypeOf(value, enclosingMethod)) instanceof TypeDef.Array
+                            && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array varargsType) {
+                            TypeDef elementType = varargsType.dimensions() == 1 ? varargsType.componentType()
+                                : TypeDef.array(varargsType.componentType(), varargsType.dimensions() - 1);
+                            return CodeBlock.concat(
+                                CodeBlock.of("($T) ", asType(elementType, objectDef, enclosingMethod)),
+                                renderExpression(objectDef, enclosingMethod, scope, value)
+                            );
+                        }
                         return renderExpression(objectDef, enclosingMethod, scope, value);
                     }
                     TypeDef sourceType = sourceTypeOf(value, enclosingMethod);

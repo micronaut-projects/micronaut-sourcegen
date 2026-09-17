@@ -379,6 +379,7 @@ class OverrideResolverSpec extends Specification {
         TypeDef.OBJECT.array()                                                       | TypeDef.STRING.array()
         TypeDef.parameterized(ClassTypeDef.of(List), TypeDef.wildcardSubtypeOf(TypeDef.of(CharSequence))) | TypeDef.parameterized(List, String)
         ClassTypeDef.of(Cloneable)                                                   | TypeDef.STRING.array()
+        ClassTypeDef.of(Cloneable).array()                                           | TypeDef.array(TypeDef.Primitive.INT, 2)
         ClassDef.builder("example.Parent").build().asTypeDef()                       | ClassDef.builder("example.Child").superclass(ClassDef.builder("example.Parent").build().asTypeDef()).build().asTypeDef()
     }
 
@@ -449,5 +450,60 @@ class OverrideResolverSpec extends Specification {
                 .overrides()
                 .build())
             .build()
+    }
+
+    void "resolves nothing for a generic method whose variable shadows the supertype's"() {
+        given:
+        def classVariable = TypeDef.variable("T")
+        def methodVariable = TypeDef.variable("T")
+        // The method's `T` is its own, which `Echoes<String>` binds nothing of
+        def parent = ClassDef.builder("example.Echoes")
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(methodVariable)
+                .addParameter("value", methodVariable)
+                .returns(methodVariable)
+                .build { aThis, parameters -> parameters[0].returning() })
+            .build()
+        def erased = MethodDef.builder("echo")
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.OBJECT)
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        def classDef = ClassDef.builder("example.StringEchoes")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(erased)
+            .build()
+
+        expect:
+        OverrideResolver.resolve(classDef, erased, null) == null
+    }
+
+    void "resolves the return type a non-generic inherited method needs as well"() {
+        given:
+        def variable = TypeDef.variable("T")
+        def generic = InterfaceDef.builder("example.GenericGet")
+            .addTypeVariable(variable)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(variable).build())
+            .build()
+        def plain = InterfaceDef.builder("example.IntegerGet")
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(TypeDef.of(Integer)).build())
+            .build()
+        def erased = MethodDef.builder("get")
+            .addModifiers(Modifier.PUBLIC)
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        // `Number get()` does not implement `IntegerGet`
+        def classDef = ClassDef.builder("example.BothGets")
+            .addSuperinterface(TypeDef.parameterized(generic.asTypeDef(), TypeDef.of(Number)))
+            .addSuperinterface(plain.asTypeDef())
+            .addMethod(erased)
+            .build()
+
+        expect:
+        OverrideResolver.resolve(classDef, erased, null).returnType() == TypeDef.of(Integer)
     }
 }

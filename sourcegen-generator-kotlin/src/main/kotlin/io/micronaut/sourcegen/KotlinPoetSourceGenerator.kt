@@ -26,6 +26,7 @@ import io.micronaut.core.annotation.Internal
 import io.micronaut.core.reflect.ClassUtils
 import io.micronaut.inject.ast.Element
 import io.micronaut.inject.visitor.VisitorContext
+import io.micronaut.sourcegen.generator.InvokedSignature
 import io.micronaut.sourcegen.generator.OverrideResolver
 import io.micronaut.sourcegen.generator.SourceGenerator
 import io.micronaut.sourcegen.model.*
@@ -1477,7 +1478,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is NewInstance) {
                 val codeBuilder = CodeBlock.builder()
                 codeBuilder.add("%T(", asClassName(expressionDef.type))
-                codeBuilder.add(renderArguments(objectDef, methodDef, scope, expressionDef.parameterTypes, expressionDef.values))
+                codeBuilder.add(renderArguments(
+                    objectDef, methodDef, scope, expressionDef.type, "<init>", null,
+                    expressionDef.parameterTypes, expressionDef.values
+                ))
                 codeBuilder.add(")")
                 return codeBuilder.build()
             }
@@ -1498,7 +1502,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     codeBuilder.add(".%N(", expressionDef.method.name)
                 }
                 codeBuilder.add(renderArguments(
-                    objectDef, methodDef, scope, expressionDef.method.parameters.map { it.type }, expressionDef.values
+                    objectDef, methodDef, scope, ownerOf(objectDef, expressionDef.instance.type()),
+                    expressionDef.method.name, expressionDef.method,
+                    expressionDef.method.parameters.map { it.type }, expressionDef.values
                 ))
                 codeBuilder.add(")")
                 return codeBuilder.build()
@@ -1516,7 +1522,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 val codeBuilder = CodeBlock.builder()
                 codeBuilder.add("%T.%N(", asStaticOwnerName(expressionDef.classDef), expressionDef.method.name)
                 codeBuilder.add(renderArguments(
-                    objectDef, methodDef, scope, expressionDef.method.parameters.map { it.type }, expressionDef.values
+                    objectDef, methodDef, scope, expressionDef.classDef, expressionDef.method.name, null,
+                    expressionDef.method.parameters.map { it.type }, expressionDef.values
                 ))
                 codeBuilder.add(")")
                 return codeBuilder.build()
@@ -2364,18 +2371,37 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             objectDef: ObjectDef?,
             methodDef: MethodDef,
             scope: RenderScope,
+            owner: ClassTypeDef?,
+            methodName: String?,
+            callMethod: MethodDef?,
             parameterTypes: List<TypeDef>?,
             values: List<ExpressionDef>
         ): CodeBlock {
             val builder = CodeBlock.builder()
-            val sameArityTypes = parameterTypes?.takeIf { it.size == values.size }
+            // A method of this class that override resolution narrowed is written with the narrowed parameters,
+            // which the values passed to it are converted to
+            val emittedTypes = if (callMethod != null && owner != null && objectDef != null
+                && owner.name == objectDef.asTypeDef().name) {
+                OverrideResolver.emittedParameterTypes(objectDef, callMethod, VISITOR_CONTEXT.get(), true)
+            } else {
+                null
+            }
+            val sameArityTypes = (emittedTypes ?: parameterTypes)?.takeIf { it.size == values.size }
+            // Only a method whose signature says so takes varargs
+            val signature = if (methodName != null && sameArityTypes != null) {
+                InvokedSignature.resolve(owner, methodName, sameArityTypes, VISITOR_CONTEXT.get())
+            } else {
+                null
+            }
+            val varargs = signature?.varargs == true
             for ((index, value) in values.withIndex()) {
                 if (index > 0) {
                     builder.add(", ")
                 }
                 val parameterType = sameArityTypes?.get(index)
                 val sourceType = sourceTypeOf(value, methodDef)
-                if (parameterType != null && parameterType !is TypeDef.Array
+                val vararg = varargs && index == values.size - 1 && parameterType is TypeDef.Array
+                if (parameterType != null && !vararg
                     && sourceType != value.type() && parameterType != sourceType) {
                     // An override narrowed the parameter the value names - `Any` to `String` - which would select
                     // another overload than the one the model calls: keep its type. Written out, since in the model
@@ -2407,6 +2433,20 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 methodDef.parameters.firstOrNull { it.name == value.name }?.let { return it.type }
             }
             return value.type()
+        }
+
+        /**
+         * The type declaring an invoked method: the class being written or its superclass for `this` and `super`,
+         * which the model names by placeholders.
+         */
+        private fun ownerOf(objectDef: ObjectDef?, type: TypeDef): ClassTypeDef? {
+            val resolved = if (objectDef != null && objectDef !is InterfaceDef
+                && (type == TypeDef.THIS || type == TypeDef.SUPER)) {
+                objectDef.getContextualType(type)
+            } else {
+                type
+            }
+            return (resolved as? ClassTypeDef)?.takeIf { it != TypeDef.THIS && it != TypeDef.SUPER }
         }
 
         private fun requiresImplicitCast(targetType: TypeDef, valueType: TypeDef): Boolean =

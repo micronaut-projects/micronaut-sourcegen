@@ -122,6 +122,32 @@ public final class OverrideResolver {
     }
 
     /**
+     * The parameter types a method of the definition is written with, where override resolution changes them - so
+     * that a call to it passes values of those types.
+     *
+     * @param objectDef  The definition
+     * @param callMethod The invoked method, as the model calls it
+     * @param context    The context of the file being written, or {@code null}
+     * @param exact      Whether the source language overrides with the substituted types only
+     * @return The parameter types, or {@code null} where the method is written as the model declares it
+     */
+    @Nullable
+    public static List<TypeDef> emittedParameterTypes(ObjectDef objectDef,
+                                                      MethodDef callMethod,
+                                                      @Nullable VisitorContext context,
+                                                      boolean exact) {
+        List<TypeDef> callTypes = callMethod.getParameters().stream().map(ParameterDef::getType).toList();
+        for (MethodDef method : objectDef.getMethods()) {
+            if (method.getName().equals(callMethod.getName())
+                && method.getParameters().stream().map(ParameterDef::getType).toList().equals(callTypes)) {
+                OverriddenMethod overridden = resolve(objectDef, method, context, exact);
+                return overridden == null ? null : overridden.parameterTypes();
+            }
+        }
+        return null;
+    }
+
+    /**
      * The resolved signature that satisfies every inherited method the declared one overrides: one of
      * {@code A<Number>.get()} and {@code B<Integer>.get()} is implemented by {@code Integer get()}.
      *
@@ -181,7 +207,13 @@ public final class OverrideResolver {
                         ? subComponent.equals(supComponent)
                         : isSubtype(subComponent, supComponent, hierarchy, depth + 1);
                 }
-                return subArray.dimensions() > supArray.dimensions() && TypeDef.OBJECT.equals(supArray.componentType());
+                // The deeper elements are arrays, which are Objects, Cloneables and Serializables:
+                // `int[][]` is a `Cloneable[]`
+                return subArray.dimensions() > supArray.dimensions()
+                    && (TypeDef.OBJECT.equals(supArray.componentType())
+                    || supArray.componentType() instanceof ClassTypeDef supComponent
+                    && !(supComponent instanceof ClassTypeDef.Parameterized)
+                    && ARRAY_SUPERTYPES.contains(supComponent.getName()));
             }
             // Every array is Cloneable and Serializable as well
             return sup instanceof ClassTypeDef supClass && !(sup instanceof ClassTypeDef.Parameterized)
@@ -311,6 +343,11 @@ public final class OverrideResolver {
         if (type.isRaw()) {
             return null;
         }
+        // A generic method's own variables shadow those of the supertype, and the erased override overrides it as it
+        // is - its parameters are bound by nothing the supertype is inherited with
+        if (inherited.generic()) {
+            return null;
+        }
         if (!inherited.name().equals(methodDef.getName())
             || inherited.overrideParameters().size() != declared.parameterErasures().size()
             || inherited.finalMethod()
@@ -345,6 +382,17 @@ public final class OverrideResolver {
         }
         TypeDef returnType = methodDef.getReturnType();
         String declarationReturnErasure = TypeHierarchy.erasedName(type.erase(inherited.returnType()));
+        if (!declarationReturnErasure.equals(declared.returnErasure())
+            && TypeDef.OBJECT.getName().equals(declared.returnErasure())
+            && !(TypeHierarchy.unwrap(inherited.returnType()) instanceof TypeDef.Primitive)) {
+            // An Object return cannot implement a narrower one, which another supertype may need erased: the narrower
+            // one is a constraint on the return type as well - `Integer get()` next to `A<Number>.get()`
+            TypeDef substituted = type.substitute(inherited.genericReturnType());
+            if (TypeHierarchy.containsVariableOtherThan(substituted, declared.variables())) {
+                return null;
+            }
+            return new OverriddenMethod(parameterTypes, substituted);
+        }
         if (declarationReturnErasure.equals(declared.returnErasure())
             && !(TypeHierarchy.unwrap(returnType) instanceof TypeDef.Primitive)) {
             TypeDef substituted = type.substitute(inherited.genericReturnType());

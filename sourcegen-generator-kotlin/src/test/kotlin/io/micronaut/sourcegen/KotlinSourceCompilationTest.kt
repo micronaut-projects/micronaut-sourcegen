@@ -698,4 +698,53 @@ class KotlinSourceCompilationTest {
         assertTrue(source.contains(" as Any)"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun callOfANarrowedMethodOfTheClassIsConverted() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, parameters -> parameters[0].returning() }
+        // `apply` is written as `apply(String)`, which the Any value passed to it is converted to
+        val classDef = ClassDef.builder("test.Caller")
+            .addSuperinterface(TypeDef.parameterized(
+                java.util.function.Function::class.java, String::class.java, String::class.java))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Any::class.java)
+                .returns(Any::class.java)
+                .build { aThis, parameters -> aThis.invoke(apply, parameters[0]).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("this.apply(`value` as String)"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun narrowedArrayKeepsTheArrayOverloadTheModelCalls() {
+        val chooseAny = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("values", TypeDef.OBJECT.array())
+            .returns(String::class.java)
+            .build { _, _ -> ExpressionDef.constant("object").returning() }
+        val chooseString = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("values", TypeDef.STRING.array())
+            .returns(String::class.java)
+            .build { _, _ -> ExpressionDef.constant("string").returning() }
+        val apply = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        // An ordinary array parameter is no varargs: the narrowed `Array<String>` keeps the `Array<Any>` overload
+        val classDef = ClassDef.builder("test.ArrayChooser")
+            .addSuperinterface(TypeDef.parameterized(
+                ClassTypeDef.of(java.util.function.Function::class.java), TypeDef.STRING.array(), TypeDef.STRING))
+            .addMethod(chooseAny)
+            .addMethod(chooseString)
+            .addMethod(MethodDef.override(apply)
+                .build { aThis, parameters -> aThis.invoke(chooseAny, parameters[0]).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains(" as Array<Any>)"), source)
+        assertCompiles(source)
+    }
 }

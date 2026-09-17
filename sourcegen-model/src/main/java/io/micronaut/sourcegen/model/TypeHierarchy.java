@@ -487,6 +487,8 @@ public final class TypeHierarchy {
      * @param genericReturnType   The generic return type
      * @param finalMethod         Whether the method is final
      * @param packagePrivate      Whether the method is package-private
+     * @param generic             Whether the method declares type variables of its own, which shadow those of the
+     *                            supertype and are bound by nothing it is inherited with
      */
     public record InheritedMethod(String name,
                                   List<TypeDef> overrideParameters,
@@ -494,7 +496,8 @@ public final class TypeHierarchy {
                                   TypeDef returnType,
                                   TypeDef genericReturnType,
                                   boolean finalMethod,
-                                  boolean packagePrivate) {
+                                  boolean packagePrivate,
+                                  boolean generic) {
     }
 
     /**
@@ -638,7 +641,8 @@ public final class TypeHierarchy {
                     boolean packagePrivate = !interfaceType && !method.getModifiers().contains(Modifier.PUBLIC)
                         && !method.getModifiers().contains(Modifier.PROTECTED);
                     return new InheritedMethod(method.getName(), parameters, parameters, method.getReturnType(),
-                        method.getReturnType(), method.getModifiers().contains(Modifier.FINAL), packagePrivate);
+                        method.getReturnType(), method.getModifiers().contains(Modifier.FINAL), packagePrivate,
+                        !method.getTypeVariables().isEmpty());
                 }).toList();
         }
 
@@ -695,7 +699,8 @@ public final class TypeHierarchy {
                     return new InheritedMethod(method.getName(), parameters, parameters,
                         returnType, returnType, java.lang.reflect.Modifier.isFinal(modifiers),
                         !java.lang.reflect.Modifier.isPublic(modifiers)
-                            && !java.lang.reflect.Modifier.isProtected(modifiers));
+                            && !java.lang.reflect.Modifier.isProtected(modifiers),
+                        method.getTypeParameters().length > 0);
                 }).toList();
         }
 
@@ -803,7 +808,8 @@ public final class TypeHierarchy {
                 .map(parameter -> TypeDef.erasure(parameter.getType())).toList();
             return new InheritedMethod(method.getName(), overrideParameters, bridgeParameters,
                 TypeDef.erasure(method.getReturnType()), TypeDef.of(method.getGenericReturnType(), ignore -> null, false),
-                method.isFinal(), !method.isPublic() && !method.isProtected());
+                method.isFinal(), !method.isPublic() && !method.isProtected(),
+                !method.getDeclaredTypeVariables().isEmpty());
         }
     }
 }
