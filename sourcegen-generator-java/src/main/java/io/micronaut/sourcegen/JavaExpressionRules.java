@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * What an expression reads as in Java source: where it needs parentheses of its own, where a cast is implicit in
@@ -343,12 +344,48 @@ final class JavaExpressionRules {
                                      @Nullable MethodDef methodDef) {
         Map<String, TypeDef.TypeVariable> variables = new HashMap<>();
         collectVariables(castType, variables);
+        Map<String, List<TypeDef>> bounds = new HashMap<>();
+        variables.forEach((name, variable) -> bounds.put(name, OverrideResolver.upperBounds(variable, objectDef, methodDef)));
         Map<String, TypeDef> asWildcards = new HashMap<>();
-        variables.forEach((name, variable) -> {
-            List<TypeDef> bounds = OverrideResolver.upperBounds(variable, objectDef, methodDef);
-            asWildcards.put(name, bounds.isEmpty() ? TypeDef.wildcard() : TypeDef.wildcardSubtypeOf(bounds.get(0)));
-        });
-        return requiresRawCast(TypeHierarchy.substituted(castType, asWildcards), valueType);
+        bounds.forEach((name, variableBounds) -> asWildcards.put(name,
+            variableBounds.isEmpty() ? TypeDef.wildcard() : TypeDef.wildcardSubtypeOf(variableBounds.get(0))));
+        if (requiresRawCast(TypeHierarchy.substituted(castType, asWildcards), valueType)) {
+            return true;
+        }
+        // Every bound of an intersection bounds the variable: `T extends Serializable & CharSequence` is no Integer
+        for (Map.Entry<String, List<TypeDef>> entry : bounds.entrySet()) {
+            for (TypeDef bound : entry.getValue()) {
+                Map<String, TypeDef> other = new HashMap<>(asWildcards);
+                other.put(entry.getKey(), TypeDef.wildcardSubtypeOf(bound));
+                if (requiresRawCast(TypeHierarchy.substituted(castType, other), valueType)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The raw bound a value is converted to before it is cast to a variable: a bound of the variable that does not
+     * accept the value - `List<String>`, or a variable of that bound, cast to a `T extends List<Object>`.
+     */
+    @Nullable
+    static TypeDef rawBoundConversion(TypeDef variable,
+                                      TypeDef valueType,
+                                      @Nullable ObjectDef objectDef,
+                                      @Nullable MethodDef methodDef) {
+        TypeDef resolved = TypeHierarchy.unwrap(valueType) instanceof TypeDef.TypeVariable
+            ? OverrideResolver.parameterizedBound(valueType, objectDef, methodDef) : TypeHierarchy.unwrap(valueType);
+        if (resolved == null) {
+            return null;
+        }
+        for (TypeDef bound : OverrideResolver.upperBounds(variable, objectDef, methodDef)) {
+            if (bound instanceof ClassTypeDef.Parameterized parameterized
+                && requiresRawConversion(parameterized, resolved, Set.of())) {
+                return parameterized.rawType();
+            }
+        }
+        return null;
     }
 
     /**
@@ -366,25 +403,32 @@ final class JavaExpressionRules {
      */
     static List<TypeDef> argumentCasts(TypeDef paramType,
                                        TypeDef valueType,
+                                       TypeDef sourceType,
                                        @Nullable TypeDef declaredType,
                                        boolean generated,
-                                       Set<String> inferred,
+                                       List<TypeDef.TypeVariable> inferred,
                                        @Nullable ObjectDef objectDef,
                                        @Nullable MethodDef methodDef) {
+        TypeDef.TypeVariable inferredVariable = TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable variable
+            ? inferred.stream().filter(declared -> declared.name().equals(variable.name())).findFirst().orElse(null)
+            : null;
+        if (generated && inferredVariable == null && TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable) {
+            TypeDef bound = rawBoundConversion(paramType, sourceType, objectDef, methodDef);
+            if (bound != null) {
+                return List.of(paramType, bound);
+            }
+        }
         if (requiresImplicitInvocationCast(paramType, valueType)) {
+            // A variable of the invoked method names the one of the class where it is called: its bound is cast to
+            return List.of(inferredVariable == null ? paramType
+                : OverrideResolver.upperBounds(inferredVariable, objectDef, methodDef).stream()
+                .findFirst().orElse(TypeDef.OBJECT));
+        }
+        if (generated && inferredVariable == null && requiresVariableCast(paramType, valueType)) {
             return List.of(paramType);
         }
-        if (generated && TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable variable
-            && !inferred.contains(variable.name())) {
-            ClassTypeDef.Parameterized bound = OverrideResolver.parameterizedBound(paramType, objectDef, methodDef);
-            if (bound != null && requiresRawConversion(bound, valueType, Set.of())) {
-                return List.of(paramType, bound.rawType());
-            }
-            if (requiresVariableCast(paramType, valueType)) {
-                return List.of(paramType);
-            }
-        }
-        if (declaredType != null && (generated ? requiresRawConversion(declaredType, valueType, inferred)
+        Set<String> inferredNames = inferred.stream().map(TypeDef.TypeVariable::name).collect(Collectors.toSet());
+        if (declaredType != null && (generated ? requiresRawConversion(declaredType, valueType, inferredNames)
             : requiresRawCast(declaredType, valueType))) {
             // Only an unchecked conversion accepts the value, which a cast to the declared raw type is
             return List.of(paramType instanceof ClassTypeDef.Parameterized parameterized ? parameterized.rawType() : paramType);
@@ -411,9 +455,9 @@ final class JavaExpressionRules {
         if (TypeDef.VOID.equals(returnType)) {
             return List.of();
         }
-        ClassTypeDef.Parameterized bound = OverrideResolver.parameterizedBound(returnType, objectDef, methodDef);
-        if (bound != null && requiresRawConversion(bound, sourceType, Set.of())) {
-            return List.of(returnType, bound.rawType());
+        TypeDef bound = rawBoundConversion(returnType, sourceType, objectDef, methodDef);
+        if (bound != null) {
+            return List.of(returnType, bound);
         }
         if (requiresImplicitReturnCast(returnType, valueType)) {
             // e.g. an interceptor chain proceeds to Object, which the verifier accepts for a reference return

@@ -2420,8 +2420,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         && (parameterType is TypeDef.Array || parameterType is TypeDef.TypeVariable)
                         // A value of a variable, or an array of another component, where an override narrowed the
                         // parameter
-                        || !vararg && valueType is TypeDef.TypeVariable && parameterType is ClassTypeDef
-                        && parameterType != TypeDef.OBJECT
+                        || !vararg && valueType is TypeDef.TypeVariable
+                        && (parameterType is ClassTypeDef && parameterType != TypeDef.OBJECT
+                        // A value of another variable, where an override narrowed the parameter to one of the class
+                        || parameterType is TypeDef.TypeVariable && parameterType != valueType)
                         || !vararg && valueType is TypeDef.Array && parameterType is TypeDef.Array
                         && valueType != parameterType)) {
                     value.cast(parameterType)

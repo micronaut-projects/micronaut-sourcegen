@@ -298,7 +298,8 @@ public final class OverrideResolver {
                 bound = TypeDef.OBJECT;
             }
         }
-        return declaring.erase(bound);
+        // A bound the receiver binds keeps its type arguments - `T extends List<A>` of a `Target<String, ?>`
+        return TypeHierarchy.containsVariableOtherThan(bound, Set.of()) ? declaring.erase(bound) : bound;
     }
 
     /**
@@ -383,11 +384,18 @@ public final class OverrideResolver {
                                            TypeDef value,
                                            @Nullable ObjectDef current,
                                            @Nullable MethodDef method) {
-        ClassTypeDef.Parameterized bound = parameterizedBound(variable, current, method);
-        if (bound != null && value instanceof ClassTypeDef.Parameterized && !bound.equals(value)) {
-            return bound.rawType();
+        // A value of a variable is of its own parameterized bound
+        TypeDef resolved = TypeHierarchy.unwrap(value) instanceof TypeDef.TypeVariable
+            ? parameterizedBound(value, current, method) : TypeHierarchy.unwrap(value);
+        if (!(resolved instanceof ClassTypeDef.Parameterized)) {
+            return null;
         }
-        return null;
+        // Every bound of an intersection has to accept the value
+        return upperBounds(variable, current, method).stream()
+            .filter(ClassTypeDef.Parameterized.class::isInstance)
+            .filter(bound -> !bound.equals(resolved))
+            .map(bound -> (TypeDef) ((ClassTypeDef.Parameterized) bound).rawType())
+            .findFirst().orElse(null);
     }
 
     /**

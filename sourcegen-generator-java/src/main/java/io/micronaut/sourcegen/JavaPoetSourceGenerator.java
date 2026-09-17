@@ -99,7 +99,6 @@ import java.io.Writer;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -1021,7 +1020,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return CodeBlock.concat(
                     CodeBlock.of("new $L(", asType(newInstance.type(), objectDef)),
                     renderInvocationArguments(objectDef, methodDef, scope, newInstance.type(), MethodDef.CONSTRUCTOR,
-                        newInstance.parameterTypes(), Set.of(), newInstance.values()),
+                        newInstance.parameterTypes(), List.of(), newInstance.values()),
                     CodeBlock.of(")")
                 );
             }
@@ -1233,9 +1232,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 List<StatementDef> statements = implementation.getStatements();
                 ExpressionDef body = singleExpressionBody(lambda);
                 if (body != null) {
+                    // The bounds of the enclosing method's variables are in scope of the lambda body
                     builder.add(renderConverted(objectDef, implementation, lambdaScope, body,
                         returnCasts(implementation.getReturnType(), body.type(),
-                            sourceTypeOf(body, implementation, objectDef), objectDef, implementation)));
+                            sourceTypeOf(body, implementation, objectDef), objectDef, methodDef)));
                 } else {
                     builder.add("{\n").indent();
                     for (int i = 0; i < statements.size(); i++) {
@@ -1400,10 +1400,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 parameterTypes = emitted.parameterTypes();
             }
         }
-        Set<String> inferred = new HashSet<>();
-        callMethod.getTypeVariables().forEach(variable -> inferred.add(variable.name()));
         return renderInvocationArguments(objectDef, enclosingMethod, scope, owner, callMethod.getName(),
-            parameterTypes, inferred, values);
+            parameterTypes, callMethod.getTypeVariables(), values);
     }
 
     /**
@@ -1429,7 +1427,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                                 @Nullable ClassTypeDef owner,
                                                 @Nullable String methodName,
                                                 @Nullable List<TypeDef> parameterTypes,
-                                                Set<String> inferred,
+                                                List<TypeDef.TypeVariable> inferred,
                                                 List<? extends ExpressionDef> values) {
         List<TypeDef> sameArityParameterTypes = parameterTypes != null && parameterTypes.size() == values.size()
             ? parameterTypes : null;
@@ -1467,7 +1465,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         return renderExpression(objectDef, enclosingMethod, scope, value);
                     }
                     TypeDef sourceType = sourceTypeOf(value, enclosingMethod, objectDef);
-                    if (!sourceType.equals(value.type()) && !paramType.equals(sourceType)) {
+                    List<TypeDef> casts = argumentCasts(paramType, value.type(), sourceType,
+                        declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null,
+                        generated, inferred, objectDef, enclosingMethod);
+                    if (casts.size() < 2 && !sourceType.equals(value.type()) && !paramType.equals(sourceType)) {
                         // An override narrowed the parameter the value names - `Object value` to `String value` -
                         // which would select another overload than the one the model calls: keep its type. Written
                         // out, since in the model the cast is to the type the value already has, which is dropped. A
@@ -1477,9 +1478,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                             renderCastOperand(objectDef, enclosingMethod, scope, value)
                         );
                     }
-                    return renderConverted(objectDef, enclosingMethod, scope, value, argumentCasts(paramType, value.type(),
-                        declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null,
-                        generated, inferred, objectDef, enclosingMethod));
+                    return renderConverted(objectDef, enclosingMethod, scope, value, casts);
                 }
                 return renderExpression(objectDef, enclosingMethod, scope, value);
             })
