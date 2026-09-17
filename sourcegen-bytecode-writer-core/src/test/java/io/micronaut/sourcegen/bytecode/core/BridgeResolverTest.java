@@ -499,6 +499,52 @@ class BridgeResolverTest {
         assertEquals(List.of("(Ljava/lang/Object;Ljava/lang/Number;)Ljava/lang/Object;"), descriptors(child, echo));
     }
 
+    @Test
+    void methodVariableBoundByAClassVariableIsBridgedAsTheTypeArgument() {
+        MethodDef echo = MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.STRING)
+            .returns(TypeDef.STRING)
+            .build((aThis, parameters) -> parameters.get(0).returning());
+        // `<T extends U> U echo(T)` erases to `CharSequence echo(CharSequence)`, and as a member of
+        // `Parent<String, String>` to `echo(String)`, which the child's method overrides
+        TypeDef.TypeVariable classU = TypeDef.variable("U", TypeDef.of(CharSequence.class));
+        ClassDef modelParent = ClassDef.builder("example.BoundByClassParent")
+            .addTypeVariable(TypeDef.variable("T"))
+            .addTypeVariable(classU)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(TypeDef.variable("T", TypeDef.variable("U")))
+                .addParameter("value", TypeDef.variable("T"))
+                .returns(TypeDef.variable("U"))
+                .build((aThis, parameters) -> ExpressionDef.nullValue().returning()))
+            .build();
+        ClassDef modelChild = ClassDef.builder("example.BoundByClassChild")
+            .superclass(TypeDef.parameterized(modelParent.asTypeDef(), TypeDef.STRING, TypeDef.STRING))
+            .addMethod(echo)
+            .build();
+        ClassDef reflectedChild = ClassDef.builder("example.ReflectedBoundByClassChild")
+            .superclass(TypeDef.parameterized(BoundByClassEcho.class, String.class, String.class))
+            .addMethod(echo)
+            .build();
+
+        String bridge = "(Ljava/lang/CharSequence;)Ljava/lang/CharSequence;";
+        assertEquals(List.of(bridge), descriptors(modelChild, echo));
+        assertEquals(List.of(bridge), descriptors(reflectedChild, echo));
+    }
+
+    /**
+     * A generic method whose own variable is bounded by a variable of the class.
+     *
+     * @param <T> Shadowed by the method's
+     * @param <U> The bound
+     */
+    public static class BoundByClassEcho<T, U extends CharSequence> {
+
+        @SuppressWarnings("TypeParameterHidesVisibleType")
+        public <T extends U> U echo(T value) {
+            return value;
+        }
+    }
+
     /**
      * A generic method whose own variable shadows the class's.
      *

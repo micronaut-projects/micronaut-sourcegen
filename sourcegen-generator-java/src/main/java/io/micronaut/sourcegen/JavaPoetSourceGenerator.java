@@ -1328,7 +1328,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return null;
         }
         RenderScope lambdaScope = scope.nested(null);
-        boolean captured = !(instance instanceof VariableDef.This || instance instanceof VariableDef.MethodParameter);
+        boolean captured = !(instance instanceof VariableDef.This || instance instanceof VariableDef.Super
+            || instance instanceof VariableDef.MethodParameter);
         String receiver = captured ? lambdaScope.allocate("target") : "";
         lambdaScope.declare(receiver);
         List<CodeBlock> parameters = new ArrayList<>();
@@ -1344,7 +1345,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             : renderExpression(objectDef, methodDef, scope, instance), reference.method().getName(),
             CodeBlock.join(arguments, ", "));
         if (adaptation.resultType() != null) {
-            call = CodeBlock.of("($T) $L", asType(adaptation.resultType(), objectDef, methodDef), call);
+            // Parameterizations that do not relate are cast through their erasure
+            call = CodeBlock.of(adaptation.resultType() instanceof ClassTypeDef.Parameterized ? "($T) (Object) $L"
+                : "($T) $L", asType(adaptation.resultType(), objectDef, methodDef), call);
         }
         CodeBlock lambda = CodeBlock.of("($L) -> $L", CodeBlock.join(parameters, ", "), call);
         return !captured ? lambda : CodeBlock.of("$T.of($L).<$T>map($L -> $L).get()", Optional.class,

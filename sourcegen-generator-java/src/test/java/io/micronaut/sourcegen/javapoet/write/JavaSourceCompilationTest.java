@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.ToIntFunction;
 import java.util.List;
 import java.util.Map;
 
@@ -1653,6 +1654,83 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         String source = writeClass(classDef);
 
         assertTrue(source.contains("(arg) -> (String) this.apply((CharSequence) arg)"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void superReferenceToANarrowedMethodIsNotCaptured() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        ClassDef parent = ClassDef.builder("test.SuperTarget")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(apply)
+            .build();
+        ClassTypeDef objectFunction = TypeDef.parameterized(Function.class, Object.class, Object.class);
+        ClassDef child = ClassDef.builder("test.SuperReferencing")
+            .superclass(parent.asTypeDef())
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .returns(objectFunction)
+                .build((aThis, methodParameters) -> objectFunction.methodReference(aThis.superRef(), apply)
+                    .returning()))
+            .build();
+
+        String source = writeClass(child);
+
+        assertTrue(source.contains("(arg) -> super.apply((String) arg)"), source);
+        assertCompiles(writeClass(parent), source);
+    }
+
+    @Test
+    void referenceResultsOfVariableAndPrimitiveTypes() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        TypeDef.TypeVariable variable = TypeDef.variable("U", TypeDef.of(Number.class));
+        ClassTypeDef variableFunction = TypeDef.parameterized(ClassTypeDef.of(Function.class), TypeDef.OBJECT, variable);
+        ClassTypeDef intFunction = TypeDef.parameterized(ToIntFunction.class, Object.class);
+        // `apply` is written as `Number apply(Number)`: a `Function<Object, U>` returns it cast to `U`, and a
+        // `ToIntFunction<Object>` unboxes it
+        ClassDef classDef = ClassDef.builder("test.NumberReferenced")
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(Function.class, Number.class, Number.class))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .returns(variableFunction)
+                .build((aThis, methodParameters) -> variableFunction.methodReference(aThis, apply).returning()))
+            .addMethod(MethodDef.builder("asIntFunction").addModifiers(Modifier.PUBLIC)
+                .returns(intFunction)
+                .build((aThis, methodParameters) -> intFunction.methodReference(aThis, apply).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(arg) -> (U) this.apply((Number) arg)"), source);
+        assertTrue(source.contains("(arg) -> (Integer) this.apply((Number) arg)"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void referenceResultOfAnUnrelatedParameterizationIsCastThroughObject() throws Exception {
+        var getMethod = Supplier.class.getMethod("get");
+        MethodDef get = MethodDef.override(getMethod)
+            .build((aThis, methodParameters) -> ExpressionDef.nullValue().returning());
+        ClassTypeDef objectsSupplier = TypeDef.parameterized(ClassTypeDef.of(Supplier.class),
+            TypeDef.parameterized(List.class, Object.class));
+        // `get` is written as `List<String> get()`, which a `Supplier<List<Object>>` cannot cast directly
+        ClassDef classDef = ClassDef.builder("test.ListSupplied")
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Supplier.class),
+                TypeDef.parameterized(List.class, String.class)))
+            .addMethod(get)
+            .addMethod(MethodDef.builder("asObjects").addModifiers(Modifier.PUBLIC)
+                .returns(objectsSupplier)
+                .build((aThis, methodParameters) -> objectsSupplier.methodReference(aThis, get).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("() -> (List<Object>) (Object) this.get()"), source);
         assertCompiles(source);
     }
 

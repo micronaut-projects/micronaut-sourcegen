@@ -254,6 +254,12 @@ public final class OverrideResolver {
         }
         List<TypeDef> parameterTypes = emitted.parameterTypes().stream().map(asSeen).toList();
         TypeDef returnType = asSeen.apply(emitted.returnType());
+        // A wildcard the receiver binds a variable to is captured: a parameter of that type takes no value it can be
+        // cast to
+        if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.unwrap(type) instanceof TypeDef.Wildcard)
+            || TypeHierarchy.unwrap(returnType) instanceof TypeDef.Wildcard) {
+            return null;
+        }
         if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.containsVariableOtherThan(type, inScope))
             || TypeHierarchy.containsVariableOtherThan(returnType, inScope)) {
             return null;
@@ -297,10 +303,10 @@ public final class OverrideResolver {
         TypeDef resultType = null;
         TypeDef functionalReturn = functionalReturnType(reference.type());
         TypeDef returned = TypeHierarchy.unwrap(emitted.returnType());
-        if (functionalReturn != null && !TypeDef.OBJECT.equals(functionalReturn)
-            && !(functionalReturn instanceof TypeDef.Primitive) && !(returned instanceof TypeDef.Primitive)
-            && !functionalReturn.equals(returned)) {
-            resultType = functionalReturn;
+        if (functionalReturn != null && !TypeDef.OBJECT.equals(functionalReturn) && !TypeDef.VOID.equals(functionalReturn)
+            && !(returned instanceof TypeDef.Primitive) && !functionalReturn.equals(returned)) {
+            // A primitive is unboxed from its wrapper, which the reference type is cast to
+            resultType = functionalReturn instanceof TypeDef.Primitive primitive ? primitive.wrapperType() : functionalReturn;
         }
         return converted || resultType != null ? new ReferenceAdaptation(argumentTypes, resultType) : null;
     }
@@ -310,7 +316,7 @@ public final class OverrideResolver {
         try {
             TypeDef type = TypeHierarchy.unwrap(functionalInterface.getLambda().getImplementation().getReturnType());
             return type instanceof ClassTypeDef || type instanceof TypeDef.Array || type instanceof TypeDef.Primitive
-                ? type : null;
+                || type instanceof TypeDef.TypeVariable ? type : null;
         } catch (RuntimeException e) {
             // A functional interface known only by name has no members to read
             return null;
@@ -594,7 +600,8 @@ public final class OverrideResolver {
         // for one of the declaring type
         Set<String> visibleVariables = declared.variables();
         Set<String> withMethodVariables = new HashSet<>(visibleVariables);
-        inherited.typeVariables().forEach(name -> withMethodVariables.add(TypeHierarchy.InheritedType.methodVariable(name)));
+        inherited.typeVariables().forEach(variable ->
+            withMethodVariables.add(TypeHierarchy.InheritedType.methodVariable(variable.name())));
         List<TypeDef> substitutedParameters = new ArrayList<>(declarationErasure.size());
         // A Java method overrides a generic one with the erasure of its signature, as a member of the supertype:
         // `String echo(String, Object)` for `<U> T echo(T, U)` of a `Parent<String>`. Kotlin cannot

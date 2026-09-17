@@ -138,17 +138,6 @@ public final class TypeHierarchy {
         return containsVariable(type, name -> !variables.contains(name));
     }
 
-    /**
-     * Whether a type refers to a variable a generic method declares, as renamed by
-     * {@link InheritedType#substitute(TypeDef, List)}.
-     *
-     * @param type The type
-     * @return true if a variable of the method is referenced
-     */
-    public static boolean containsMethodVariable(TypeDef type) {
-        return containsVariable(type, name -> name.endsWith(InheritedType.methodVariable("")));
-    }
-
     private static boolean containsVariable(TypeDef type, Predicate<String> matches) {
         TypeDef unwrapped = unwrap(type);
         if (unwrapped instanceof TypeDef.TypeVariable variable) {
@@ -513,7 +502,7 @@ public final class TypeHierarchy {
                                   TypeDef genericReturnType,
                                   boolean finalMethod,
                                   boolean packagePrivate,
-                                  List<String> typeVariables) {
+                                  List<TypeDef.TypeVariable> typeVariables) {
     }
 
     /**
@@ -582,19 +571,23 @@ public final class TypeHierarchy {
          * Substitutes the type arguments this type is inherited with, except for variables a generic method declares
          * of its own, which shadow the type's variables of the same name. Those are renamed to
          * {@link #methodVariable(String)}, so that they cannot be taken for a variable of the same name a type
-         * argument names.
+         * argument names, and keep their bounds with the type arguments substituted - so that they erase as the
+         * override's declaration does.
          *
          * @param type     A type in the scope of a method of this type
-         * @param shadowed The names of the variables the method declares
+         * @param shadowed The variables the method declares
          * @return The substituted type
          */
-        public TypeDef substitute(TypeDef type, List<String> shadowed) {
+        public TypeDef substitute(TypeDef type, List<TypeDef.TypeVariable> shadowed) {
             if (shadowed.isEmpty()) {
                 return substitute(type);
             }
-            Map<String, TypeDef> visible = new HashMap<>(substitution);
-            shadowed.forEach(name -> visible.put(name, TypeDef.variable(methodVariable(name))));
-            return TypeHierarchy.substitute(type, visible);
+            Map<String, TypeDef> inBounds = new HashMap<>(substitution);
+            shadowed.forEach(variable -> inBounds.put(variable.name(), TypeDef.variable(methodVariable(variable.name()))));
+            Map<String, TypeDef> renamed = new HashMap<>(substitution);
+            shadowed.forEach(variable -> renamed.put(variable.name(), TypeDef.variable(methodVariable(variable.name()),
+                variable.bounds().stream().map(bound -> TypeHierarchy.substitute(bound, inBounds)).toList())));
+            return TypeHierarchy.substitute(type, renamed);
         }
 
         /**
@@ -693,7 +686,7 @@ public final class TypeHierarchy {
                         parameters.stream().map(parameter -> substitute(parameter, declared)).toList(),
                         substitute(method.getReturnType(), declared), method.getReturnType(),
                         method.getModifiers().contains(Modifier.FINAL), packagePrivate,
-                        method.getTypeVariables().stream().map(TypeDef.TypeVariable::name).toList());
+                        method.getTypeVariables());
                 }).toList();
         }
 
@@ -752,7 +745,8 @@ public final class TypeHierarchy {
                         java.lang.reflect.Modifier.isFinal(modifiers),
                         !java.lang.reflect.Modifier.isPublic(modifiers)
                             && !java.lang.reflect.Modifier.isProtected(modifiers),
-                        Arrays.stream(method.getTypeParameters()).map(java.lang.reflect.TypeVariable::getName).toList());
+                        Arrays.stream(method.getTypeParameters()).map(variable -> TypeDef.variable(variable.getName(),
+                            Arrays.stream(variable.getBounds()).map(ReflectionInfo::convert).toList())).toList());
                 }).toList();
         }
 
@@ -861,7 +855,8 @@ public final class TypeHierarchy {
             return new InheritedMethod(method.getName(), overrideParameters, bridgeParameters,
                 TypeDef.erasure(method.getReturnType()), TypeDef.of(method.getGenericReturnType(), ignore -> null, false),
                 method.isFinal(), !method.isPublic() && !method.isProtected(),
-                method.getDeclaredTypeVariables().stream().map(GenericPlaceholderElement::getVariableName).toList());
+                method.getDeclaredTypeVariables().stream().map(variable -> TypeDef.variable(variable.getVariableName(),
+                    variable.getBounds().stream().map(bound -> TypeDef.of(bound, ignore -> null, false)).toList())).toList());
         }
     }
 }

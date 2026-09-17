@@ -990,4 +990,62 @@ class KotlinSourceCompilationTest {
         assertTrue(source.contains("(this.apply(arg as CharSequence) as String)"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun superReferenceToANarrowedMethodIsNotCaptured() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, parameters -> parameters[0].returning() }
+        // Abstract, so that Kotlin lets it be extended
+        val parent = ClassDef.builder("test.SuperTarget")
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addSuperinterface(TypeDef.parameterized(
+                java.util.function.Function::class.java, String::class.java, String::class.java))
+            .addMethod(apply)
+            .build()
+        val anyFunction = TypeDef.parameterized(
+            java.util.function.Function::class.java, Any::class.java, Any::class.java)
+        val child = ClassDef.builder("test.SuperReferencing")
+            .superclass(parent.asTypeDef())
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .returns(anyFunction)
+                .build { aThis, _ -> anyFunction.methodReference(aThis.superRef(), apply).returning() })
+            .build()
+
+        val source = writeClass(child)
+
+        assertTrue(source.contains("arg -> super.apply(arg as String)"), source)
+        assertCompiles(writeClass(parent), source)
+    }
+
+    @Test
+    fun referenceResultsOfVariableAndPrimitiveTypes() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, parameters -> parameters[0].returning() }
+        val variable = TypeDef.variable("U", TypeDef.of(Number::class.java))
+        val variableFunction = TypeDef.parameterized(
+            ClassTypeDef.of(java.util.function.Function::class.java), TypeDef.OBJECT, variable)
+        val intFunction = TypeDef.parameterized(java.util.function.ToIntFunction::class.java, Any::class.java)
+        // `apply` is written as `apply(Number): Number`: a `Function<Any, U>` returns it cast to `U`, and a
+        // `ToIntFunction<Any>` to `Int`
+        val classDef = ClassDef.builder("test.NumberReferenced")
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(
+                java.util.function.Function::class.java, Number::class.java, Number::class.java))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .returns(variableFunction)
+                .build { aThis, _ -> variableFunction.methodReference(aThis, apply).returning() })
+            .addMethod(MethodDef.builder("asIntFunction").addModifiers(Modifier.PUBLIC)
+                .returns(intFunction)
+                .build { aThis, _ -> intFunction.methodReference(aThis, apply).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("(this.apply(arg as Number) as U)"), source)
+        assertTrue(source.contains("(this.apply(arg as Number) as Int)"), source)
+        assertCompiles(source)
+    }
 }

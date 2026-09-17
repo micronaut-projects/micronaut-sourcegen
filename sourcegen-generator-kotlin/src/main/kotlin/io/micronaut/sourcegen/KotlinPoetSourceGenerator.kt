@@ -2442,7 +2442,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 ownerOf(objectDef, instance.type()), objectDef, methodDef, reference, VISITOR_CONTEXT.get(), true
             ) ?: return null
             val lambdaScope = scope.nested(null)
-            val captured = instance !is VariableDef.This && instance !is VariableDef.MethodParameter
+            val captured = instance !is VariableDef.This && instance !is VariableDef.Super
+                && instance !is VariableDef.MethodParameter
             val receiver = if (captured) lambdaScope.allocate("target").also { lambdaScope.declare(it) } else null
             val names = adaptation.argumentTypes().map { lambdaScope.allocate("arg").also { lambdaScope.declare(it) } }
             val arguments = adaptation.argumentTypes().mapIndexed { index, type ->
