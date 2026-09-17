@@ -627,6 +627,42 @@ class OverrideResolverSpec extends Specification {
         overridden.returnType() == childVariable
     }
 
+    void "resolves the erased signature of a generic method using its own variables next to the class's"() {
+        given:
+        def classVariable = TypeDef.variable("T")
+        def methodVariable = TypeDef.variable("U")
+        def parent = ClassDef.builder("example.MixedParent")
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(methodVariable)
+                .addParameter("value", classVariable)
+                .addParameter("other", methodVariable)
+                .returns(classVariable)
+                .build { aThis, parameters -> parameters[0].returning() })
+            .build()
+        def erased = MethodDef.builder("echo")
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.OBJECT)
+            .addParameter("other", TypeDef.OBJECT)
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        def classDef = ClassDef.builder("example.MixedChild")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(erased)
+            .build()
+
+        when:
+        def java = OverrideResolver.resolve(classDef, erased, null)
+
+        then: "Java overrides it with the erasure, as a member of Parent<String>"
+        java.parameterTypes() == [TypeDef.STRING, TypeDef.OBJECT]
+        java.returnType() == TypeDef.STRING
+
+        and: "Kotlin cannot"
+        OverrideResolver.resolve(classDef, erased, null, true) == null
+    }
+
     void "resolves a narrower return of a generated type next to a bounded erasure"() {
         given:
         def base = ClassDef.builder("example.BaseValue").build()

@@ -1322,6 +1322,179 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertCompiles(writeSource(arrays), source);
     }
 
+    @Test
+    void referenceToANarrowedMethodConvertsItsArguments() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        ClassTypeDef objectFunction = TypeDef.parameterized(Function.class, Object.class, Object.class);
+        // `apply` is written as `apply(String)`, which a `Function<Object, Object>` cannot reference
+        ClassDef classDef = ClassDef.builder("test.ReferencedFunction")
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .returns(objectFunction)
+                .build((aThis, methodParameters) -> objectFunction.methodReference(aThis, apply).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("(arg) -> this.apply((String) arg)"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void callThroughAReceiverNamingTheCallingMethodsVariable() throws Exception {
+        ClassDef target = genericTarget("test.MethodScopedTarget");
+        MethodDef apply = target.getMethods().get(0);
+        TypeDef.TypeVariable variable = TypeDef.variable("U", TypeDef.of(CharSequence.class));
+        // `apply(T)` on a `MethodScopedTarget<U>` takes the calling method's `U`
+        ClassDef caller = ClassDef.builder("test.MethodScopedCaller")
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(variable)
+                .addParameter("target", TypeDef.parameterized(target.asTypeDef(), variable))
+                .addParameter("value", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .invoke(apply, methodParameters.get(1))
+                    .returning()))
+            .build();
+
+        String source = writeClass(caller);
+
+        assertTrue(source.contains("target.apply((U) value)"), source);
+        assertCompiles(writeClass(target), source);
+    }
+
+    @Test
+    void callThroughAReceiverNamingAVariableOutOfScope() throws Exception {
+        ClassDef target = genericTarget("test.UnboundTarget");
+        MethodDef apply = target.getMethods().get(0);
+        // The receiver names the target's own `T`, written where it is out of scope as its bound
+        ClassDef caller = ClassDef.builder("test.UnboundCaller")
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", target.asTypeDef())
+                .addParameter("value", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .invoke(apply, methodParameters.get(1))
+                    .returning()))
+            .build();
+
+        String source = writeClass(caller);
+
+        assertTrue(source.contains("UnboundTarget<CharSequence> target"), source);
+        assertTrue(source.contains("target.apply((CharSequence) value)"), source);
+        assertCompiles(writeClass(target), source);
+    }
+
+    @Test
+    void callOfAnInheritedNarrowedDefaultMethodIsConverted() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .addModifiers(Modifier.DEFAULT)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        InterfaceDef parent = InterfaceDef.builder("test.DefaultTarget")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(apply)
+            .build();
+        ClassDef implementation = ClassDef.builder("test.DefaultTargetImpl")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(parent.asTypeDef())
+            .build();
+        // `DefaultTargetImpl` inherits the default `apply(String)`, which the caller's Object value is converted to
+        ClassDef caller = ClassDef.builder("test.DefaultCaller")
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", implementation.asTypeDef())
+                .addParameter("value", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .invoke(apply, methodParameters.get(1))
+                    .returning()))
+            .build();
+
+        String source = writeClass(caller);
+
+        assertTrue(source.contains("target.apply((String) value)"), source);
+        assertCompiles(writeSource(parent), writeClass(implementation), source);
+    }
+
+    @Test
+    void erasedOverrideOfAMixedGenericMethod() throws Exception {
+        TypeDef.TypeVariable classVariable = TypeDef.variable("T");
+        TypeDef.TypeVariable methodVariable = TypeDef.variable("U");
+        ClassDef parent = ClassDef.builder("test.MixedParent")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(methodVariable)
+                .addParameter("value", classVariable)
+                .addParameter("other", methodVariable)
+                .returns(classVariable)
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+        // The model declares `Object echo(Object, Object)`, which as source is `String echo(String, Object)`
+        ClassDef child = ClassDef.builder("test.MixedChild")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC).overrides()
+                .addParameter("value", Object.class)
+                .addParameter("other", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+
+        String source = writeClass(child);
+
+        assertTrue(source.contains("String echo(String value, Object other)"), source);
+        assertCompiles(writeClass(parent), source);
+    }
+
+    @Test
+    void switchOfANarrowedParameterOrNullKeepsTheOverload() throws Exception {
+        var apply = Function.class.getMethod("apply", Object.class);
+        // The switch is a String in the source, `null` aside
+        ClassDef classDef = chooser("test.NullSwitchChooser", chooseObject -> MethodDef.override(apply)
+            .build((aThis, methodParameters) -> aThis.invoke(chooseObject,
+                ExpressionDef.constant(1).asExpressionSwitch(TypeDef.OBJECT,
+                    Map.of(ExpressionDef.constant(1), methodParameters.get(0)),
+                    ExpressionDef.nullValue())).returning()));
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("choose((Object) "), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void conditionalOfDifferentTypesKeepsTheOverload() throws Exception {
+        MethodDef chooseObject = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", Object.class)
+            .returns(int.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant(1).returning());
+        MethodDef chooseSequence = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", CharSequence.class)
+            .returns(int.class)
+            .build((aThis, methodParameters) -> ExpressionDef.constant(2).returning());
+        // Java types the conditional as the CharSequence both branches are, where the model calls `choose(Object)`
+        ClassDef classDef = ClassDef.builder("test.MixedConditionalChooser")
+            .addMethod(chooseObject)
+            .addMethod(chooseSequence)
+            .addMethod(MethodDef.builder("pick").addModifiers(Modifier.PUBLIC)
+                .addParameter("flag", boolean.class)
+                .returns(int.class)
+                .build((aThis, methodParameters) -> aThis.invoke(chooseObject,
+                    methodParameters.get(0).isTrue().doIfElse(
+                        ExpressionDef.constant("a"),
+                        ClassTypeDef.of(StringBuilder.class).instantiate())).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("choose((Object) ("), source);
+        assertCompiles(source);
+    }
+
     private static ClassDef genericTarget(String name) throws NoSuchMethodException {
         var applyMethod = Function.class.getMethod("apply", Object.class);
         TypeDef.TypeVariable variable = TypeDef.variable("T", TypeDef.of(CharSequence.class));

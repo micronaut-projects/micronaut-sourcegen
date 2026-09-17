@@ -95,6 +95,7 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -1098,7 +1099,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     || canEliminateCastToObject(castExpressionDef, exp, castContext)) {
                     return renderExpression(objectDef, methodDef, scope, exp, castContext);
                 }
-                CodeBlock explicitCast = CodeBlock.of("($T)", asType(castExpressionDef.type(), objectDef));
+                CodeBlock explicitCast = CodeBlock.of("($T)", asType(castExpressionDef.type(), objectDef, methodDef));
                 CodeBlock rendered = renderExpression(objectDef, methodDef, scope, exp);
                 ExpressionDef castOperand = unwrapCasts(exp);
                 if (!requiresCastOperandParentheses(castOperand)) {
@@ -1287,6 +1288,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 if (instance == null) {
                     return CodeBlock.of("$T::$L", asType(methodReference.owner(), objectDef), name);
                 }
+                CodeBlock adapted = instance instanceof VariableDef.This && !methodReference.isConstructor()
+                    ? renderAdaptedReference(objectDef, methodDef, scope, methodReference.method()) : null;
+                if (adapted != null) {
+                    return adapted;
+                }
                 CodeBlock receiver = renderExpression(objectDef, methodDef, scope, instance);
                 if (requiresMethodCallTargetParentheses(instance)) {
                     receiver = addParentheses(receiver);
@@ -1306,6 +1312,36 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             case null, default -> throw new IllegalStateException("Unrecognized expression: " + expressionDef);
         }
+    }
+
+    /**
+     * A reference to a method of this class that override resolution narrowed, as a lambda converting its arguments:
+     * the functional interface passes the parameter types the model declares.
+     */
+    @Nullable
+    private CodeBlock renderAdaptedReference(@Nullable ObjectDef objectDef,
+                                             @Nullable MethodDef methodDef,
+                                             RenderScope scope,
+                                             MethodDef method) {
+        OverrideResolver.OverriddenMethod emitted = OverrideResolver.emittedSignature(ownerOf(objectDef, TypeDef.THIS),
+            objectDef, methodDef, method, JavaPoetNames.context(), false);
+        List<TypeDef> declared = method.getParameters().stream().map(ParameterDef::getType).toList();
+        if (emitted == null || emitted.parameterTypes().equals(declared)) {
+            return null;
+        }
+        RenderScope lambdaScope = scope.nested(null);
+        List<CodeBlock> parameters = new ArrayList<>();
+        List<CodeBlock> arguments = new ArrayList<>();
+        for (int i = 0; i < declared.size(); i++) {
+            String name = lambdaScope.allocate("arg");
+            lambdaScope.declare(name);
+            TypeDef type = emitted.parameterTypes().get(i);
+            parameters.add(CodeBlock.of("$L", name));
+            arguments.add(type.equals(declared.get(i)) ? CodeBlock.of("$L", name)
+                : CodeBlock.of("($T) $L", asType(type, objectDef, methodDef), name));
+        }
+        return CodeBlock.of("($L) -> this.$L($L)", CodeBlock.join(parameters, ", "), method.getName(),
+            CodeBlock.join(arguments, ", "));
     }
 
     private CodeBlock renderMathOperand(@Nullable ObjectDef objectDef,
@@ -1375,7 +1411,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             // A generated method that override resolution narrowed - of this class or another - is written with the
             // narrowed parameters, as the receiver sees them, which the values passed to it are converted to
             OverrideResolver.OverriddenMethod emitted =
-                OverrideResolver.emittedSignature(owner, objectDef, callMethod, JavaPoetNames.context(), false);
+                OverrideResolver.emittedSignature(owner, objectDef, enclosingMethod, callMethod, JavaPoetNames.context(), false);
             if (emitted != null) {
                 parameterTypes = emitted.parameterTypes();
             }

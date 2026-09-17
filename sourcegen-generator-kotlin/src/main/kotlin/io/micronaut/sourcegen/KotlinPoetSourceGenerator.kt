@@ -2381,7 +2381,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             // A method of this class that override resolution narrowed is written with the narrowed parameters,
             // which the values passed to it are converted to
             val emittedTypes = if (callMethod != null) {
-                OverrideResolver.emittedSignature(owner, objectDef, callMethod, VISITOR_CONTEXT.get(), true)
+                OverrideResolver.emittedSignature(owner, objectDef, methodDef, callMethod, VISITOR_CONTEXT.get(), true)
                     ?.parameterTypes()
             } else {
                 null
@@ -2437,7 +2437,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (value is InvokeInstanceMethod && !value.method.isConstructor) {
                 // The result of a generated method that override resolution narrowed has the narrowed type
                 OverrideResolver.emittedSignature(
-                    ownerOf(objectDef, value.instance.type()), objectDef, value.method, VISITOR_CONTEXT.get(), true
+                    ownerOf(objectDef, value.instance.type()), objectDef, methodDef, value.method, VISITOR_CONTEXT.get(), true
                 )?.let { return it.returnType }
             }
             if (value is IfElse) {

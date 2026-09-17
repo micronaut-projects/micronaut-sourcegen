@@ -81,33 +81,22 @@ final class JavaExpressionRules {
         if (value instanceof ExpressionDef.InvokeInstanceMethod invocation && !invocation.method().isConstructor()) {
             // The result of a generated method that override resolution narrowed has the narrowed type
             OverrideResolver.OverriddenMethod emitted = OverrideResolver.emittedSignature(
-                ownerOf(objectDef, invocation.instance().type()), objectDef, invocation.method(), JavaPoetNames.context(), false);
+                ownerOf(objectDef, invocation.instance().type()), objectDef, enclosingMethod, invocation.method(),
+                JavaPoetNames.context(), false);
             if (emitted != null) {
                 return emitted.returnType();
             }
         }
         if (value instanceof ExpressionDef.IfElse conditional) {
-            // A conditional has the type its branches have, where they agree, or that of the branch other than `null`
-            TypeDef ifType = sourceTypeOf(conditional.ifExpression(), enclosingMethod, objectDef);
-            TypeDef elseType = sourceTypeOf(conditional.elseExpression(), enclosingMethod, objectDef);
-            if (ifType.equals(elseType) || isNullLiteral(conditional.elseExpression())) {
-                return ifType;
-            }
-            if (isNullLiteral(conditional.ifExpression())) {
-                return elseType;
-            }
+            return branchesType(List.of(conditional.ifExpression(), conditional.elseExpression()), value.type(),
+                enclosingMethod, objectDef);
         }
         if (value instanceof ExpressionDef.Switch switchExpression) {
-            // A switch expression has the type its cases have, where they agree
             List<ExpressionDef> results = new ArrayList<>(switchExpression.cases().values());
             if (switchExpression.defaultCase() != null) {
                 results.add(switchExpression.defaultCase());
             }
-            List<TypeDef> types = results.stream().map(result -> sourceTypeOf(result, enclosingMethod, objectDef))
-                .distinct().toList();
-            if (types.size() == 1) {
-                return types.get(0);
-            }
+            return branchesType(results, value.type(), enclosingMethod, objectDef);
         }
         if (value instanceof ExpressionDef.ArrayElement element) {
             // An element of an array an override narrowed has the narrowed component type
@@ -126,6 +115,26 @@ final class JavaExpressionRules {
             }
         }
         return value.type();
+    }
+
+    /**
+     * The type of a conditional or a switch expression: the type its results other than `null` have, where they
+     * agree. Where they do not, Java types the expression by what they have in common, which need not be the type
+     * of the model; one that differs from it is returned, which says that the source type differs.
+     */
+    private static TypeDef branchesType(List<ExpressionDef> results,
+                                        TypeDef modelType,
+                                        @Nullable MethodDef enclosingMethod,
+                                        @Nullable ObjectDef objectDef) {
+        List<TypeDef> types = results.stream()
+            .filter(result -> !isNullLiteral(result))
+            .map(result -> sourceTypeOf(result, enclosingMethod, objectDef))
+            .distinct()
+            .toList();
+        if (types.size() == 1) {
+            return types.get(0);
+        }
+        return types.stream().filter(type -> !type.equals(modelType)).findFirst().orElse(modelType);
     }
 
     static boolean isNullLiteral(ExpressionDef expressionDef) {
