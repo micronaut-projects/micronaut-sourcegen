@@ -670,8 +670,13 @@ public final class TypeHierarchy {
                     List<TypeDef> parameters = method.getParameters().stream().map(ParameterDef::getType).toList();
                     boolean packagePrivate = !interfaceType && !method.getModifiers().contains(Modifier.PUBLIC)
                         && !method.getModifiers().contains(Modifier.PROTECTED);
-                    return new InheritedMethod(method.getName(), parameters, parameters, method.getReturnType(),
-                        method.getReturnType(), method.getModifiers().contains(Modifier.FINAL), packagePrivate,
+                    // A type can name a variable of the method without its bounds, which the method declares
+                    Map<String, TypeDef> declared = new HashMap<>();
+                    method.getTypeVariables().forEach(variable -> declared.put(variable.name(), variable));
+                    return new InheritedMethod(method.getName(), parameters,
+                        parameters.stream().map(parameter -> substitute(parameter, declared)).toList(),
+                        substitute(method.getReturnType(), declared), method.getReturnType(),
+                        method.getModifiers().contains(Modifier.FINAL), packagePrivate,
                         method.getTypeVariables().stream().map(TypeDef.TypeVariable::name).toList());
                 }).toList();
         }
@@ -725,9 +730,10 @@ public final class TypeHierarchy {
                     List<TypeDef> parameters = Arrays.stream(method.getGenericParameterTypes())
                         .map(ReflectionInfo::convert).toList();
                     int modifiers = method.getModifiers();
-                    TypeDef returnType = convert(method.getGenericReturnType());
-                    return new InheritedMethod(method.getName(), parameters, parameters,
-                        returnType, returnType, java.lang.reflect.Modifier.isFinal(modifiers),
+                    List<TypeDef> erasedParameters = Arrays.stream(method.getParameterTypes()).map(TypeDef::of).toList();
+                    return new InheritedMethod(method.getName(), parameters, erasedParameters,
+                        TypeDef.of(method.getReturnType()), convert(method.getGenericReturnType()),
+                        java.lang.reflect.Modifier.isFinal(modifiers),
                         !java.lang.reflect.Modifier.isPublic(modifiers)
                             && !java.lang.reflect.Modifier.isProtected(modifiers),
                         Arrays.stream(method.getTypeParameters()).map(java.lang.reflect.TypeVariable::getName).toList());

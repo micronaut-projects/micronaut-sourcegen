@@ -275,6 +275,13 @@ public final class OverrideResolver {
         if (unwrapped instanceof TypeDef.Array array) {
             return TypeDef.array(asWritten(array.componentType(), inScope), array.dimensions());
         }
+        if (unwrapped instanceof TypeDef.Wildcard wildcard) {
+            if (!wildcard.lowerBounds().isEmpty()) {
+                return TypeDef.wildcardSupertypeOf(asWritten(wildcard.lowerBounds().get(0), inScope));
+            }
+            return wildcard.upperBounds().isEmpty() ? wildcard
+                : TypeDef.wildcardSubtypeOf(asWritten(wildcard.upperBounds().get(0), inScope));
+        }
         return type;
     }
 

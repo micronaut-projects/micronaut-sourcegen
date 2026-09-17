@@ -829,4 +829,80 @@ class KotlinSourceCompilationTest {
         assertTrue(source.contains(" as Any)"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun conditionalOfDifferentTypesKeepsTheOverload() {
+        val chooseAny = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", Any::class.java)
+            .returns(TypeDef.Primitive.INT)
+            .build { _, _ -> ExpressionDef.constant(1).returning() }
+        val chooseSequence = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", CharSequence::class.java)
+            .returns(TypeDef.Primitive.INT)
+            .build { _, _ -> ExpressionDef.constant(2).returning() }
+        // Kotlin types the conditional as the CharSequence both branches are, where the model calls `choose(Any)`
+        val classDef = ClassDef.builder("test.MixedConditionalChooser")
+            .addMethod(chooseAny)
+            .addMethod(chooseSequence)
+            .addMethod(MethodDef.builder("pick").addModifiers(Modifier.PUBLIC)
+                .addParameter("flag", TypeDef.Primitive.BOOLEAN)
+                .returns(TypeDef.Primitive.INT)
+                .build { aThis, parameters -> aThis.invoke(chooseAny,
+                    parameters[0].isTrue().doIfElse(
+                        ExpressionDef.constant("a"),
+                        ClassTypeDef.of(java.lang.StringBuilder::class.java).instantiate())).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains(" as Any)"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun referenceToANarrowedMethodConvertsItsArguments() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, parameters -> parameters[0].returning() }
+        val anyFunction = TypeDef.parameterized(
+            java.util.function.Function::class.java, Any::class.java, Any::class.java)
+        // `apply` is written as `apply(String)`, which a `Function<Any, Any>` cannot reference
+        val classDef = ClassDef.builder("test.ReferencedFunction")
+            .addSuperinterface(TypeDef.parameterized(
+                java.util.function.Function::class.java, String::class.java, String::class.java))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .returns(anyFunction)
+                .build { aThis, _ -> anyFunction.methodReference(aThis, apply).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("arg0 -> this.apply(arg0 as String)"), source)
+        assertCompiles(source)
+    }
+
+    @Test
+    fun anyValueOfAParameterResolvedToATypeVariable() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, parameters -> parameters[0].returning() }
+        val variable = TypeDef.variable("T", TypeDef.of(CharSequence::class.java))
+        // `apply(Any)` is written as `apply(T)`, which the Any value passed to it is cast to
+        val classDef = ClassDef.builder("test.GenericTarget")
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(
+                ClassTypeDef.of(java.util.function.Function::class.java), variable, variable))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("value", Any::class.java)
+                .returns(Any::class.java)
+                .build { aThis, parameters -> aThis.invoke(apply, parameters[0]).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains("this.apply(`value` as T)"), source)
+        assertCompiles(source)
+    }
 }

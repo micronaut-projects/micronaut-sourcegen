@@ -1871,10 +1871,14 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return builder.add("}").build()
             }
             if (expressionDef is MethodReferenceExpression) {
+                val instance = expressionDef.instance()
+                if ((instance is VariableDef.This || instance is VariableDef.MethodParameter)
+                    && !expressionDef.isConstructor) {
+                    renderAdaptedReference(objectDef, methodDef, scope, expressionDef, instance)?.let { return it }
+                }
                 // A callable reference is not a functional interface on its own, so it is wrapped
                 // in the SAM constructor of the interface being implemented
                 val builder = CodeBlock.builder().add("%T(", asType(expressionDef.type(), objectDef))
-                val instance = expressionDef.instance()
                 when {
                     // Kotlin spells a constructor reference ::ClassName
                     expressionDef.isConstructor ->
@@ -2412,7 +2416,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     continue
                 }
                 val argument = if (parameterType != null && (requiresImplicitCast(parameterType, value.type())
-                        || !vararg && parameterType is TypeDef.Array && value.type() == TypeDef.OBJECT)) {
+                        || !vararg && value.type() == TypeDef.OBJECT
+                        && (parameterType is TypeDef.Array || parameterType is TypeDef.TypeVariable))) {
                     value.cast(parameterType)
                 } else {
                     value
@@ -2420,6 +2425,48 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 builder.add(renderExpressionCode(objectDef, methodDef, scope, argument))
             }
             return builder.build()
+        }
+
+        /**
+         * A reference to a generated method that override resolution narrowed, as a lambda converting its
+         * arguments: the functional interface passes the parameter types the model declares. The lambda reads
+         * `this` or a parameter, which the model never assigns, as the reference would.
+         */
+        private fun renderAdaptedReference(
+            objectDef: ObjectDef?,
+            methodDef: MethodDef,
+            scope: RenderScope,
+            reference: MethodReferenceExpression,
+            instance: ExpressionDef
+        ): CodeBlock? {
+            val method = reference.method()
+            val emitted = OverrideResolver.emittedSignature(
+                ownerOf(objectDef, instance.type()), objectDef, methodDef, method, VISITOR_CONTEXT.get(), true
+            ) ?: return null
+            val declared = method.parameters.map { it.type }
+            if (emitted.parameterTypes() == declared) {
+                return null
+            }
+            val taken = methodDef.parameters.map { it.name }.toSet()
+            val names = declared.indices.map { index ->
+                generateSequence(0) { it + 1 }.map { "arg$index" + if (it == 0) "" else "_$it" }.first { it !in taken }
+            }
+            val arguments = declared.indices.map { index ->
+                val type = emitted.parameterTypes()[index]
+                if (type == declared[index]) {
+                    CodeBlock.of("%N", names[index])
+                } else {
+                    CodeBlock.of("%N as %T", names[index], asType(type, objectDef, methodDef))
+                }
+            }
+            return CodeBlock.of(
+                "%T { %L -> %L.%N(%L) }",
+                asType(reference.type(), objectDef),
+                names.joinToString(", "),
+                renderExpressionCode(objectDef, methodDef, scope, instance),
+                method.name,
+                arguments.joinToCode(", ")
+            )
         }
 
         /**
@@ -2441,21 +2488,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 )?.let { return it.returnType }
             }
             if (value is IfElse) {
-                // A conditional has the type its branches have, where they agree. One with a `null` branch keeps its
-                // type: `null` cannot be cast to a non-null type
-                val ifType = sourceTypeOf(value.ifExpression, methodDef, objectDef)
-                if (ifType == sourceTypeOf(value.elseExpression, methodDef, objectDef)) {
-                    return ifType
-                }
+                return branchesType(listOf(value.ifExpression, value.elseExpression), value.type(), methodDef, objectDef)
             }
             if (value is Switch) {
-                // A switch expression has the type its cases have, where they agree
-                val types = (value.cases.values + listOfNotNull(value.defaultCase))
-                    .map { sourceTypeOf(it, methodDef, objectDef) }
-                    .distinct()
-                if (types.size == 1) {
-                    return types[0]
-                }
+                return branchesType(value.cases.values + listOfNotNull(value.defaultCase), value.type(), methodDef, objectDef)
             }
             if (value is ArrayElement) {
                 // An element of an array an override narrowed has the narrowed component type
@@ -2475,12 +2511,31 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         }
 
         /**
+         * The type of a conditional or a switch expression: the type its results have, where they agree. Where they
+         * do not, Kotlin types the expression by what they have in common, which need not be the type of the model;
+         * one that differs from it is returned, which says that the source type differs. One with a `null` result
+         * keeps its type: `null` cannot be cast to a non-null type.
+         */
+        private fun branchesType(
+            results: Collection<ExpressionDef>,
+            modelType: TypeDef,
+            methodDef: MethodDef,
+            objectDef: ObjectDef?
+        ): TypeDef {
+            if (results.any { it is Constant && it.value == null }) {
+                return modelType
+            }
+            val types = results.map { sourceTypeOf(it, methodDef, objectDef) }.distinct()
+            return types.singleOrNull() ?: types.firstOrNull { it != modelType } ?: modelType
+        }
+
+        /**
          * The type declaring an invoked method: the class being written or its superclass for `this` and `super`,
          * which the model names by placeholders.
          */
         private fun ownerOf(objectDef: ObjectDef?, type: TypeDef): ClassTypeDef? {
-            val resolved = if (objectDef != null && objectDef !is InterfaceDef
-                && (type == TypeDef.THIS || type == TypeDef.SUPER)) {
+            val resolved = if (objectDef != null
+                && (type == TypeDef.THIS || type == TypeDef.SUPER && objectDef !is InterfaceDef)) {
                 objectDef.getContextualType(type)
             } else {
                 type

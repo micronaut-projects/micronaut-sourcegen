@@ -46,4 +46,16 @@ public final class CompilationSignatures {
      */
     public static final class StringList extends ArrayList<String> {
     }
+
+    /**
+     * A generic method whose own variable is bounded, next to the class's.
+     *
+     * @param <T> The value type
+     */
+    public static class BoundedEcho<T> {
+
+        public <U extends Number> T echo(T value, U other) {
+            return value;
+        }
+    }
 }

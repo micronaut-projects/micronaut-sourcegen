@@ -1495,6 +1495,105 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
         assertCompiles(source);
     }
 
+    @Test
+    void referenceThroughAParameterToANarrowedMethodConvertsItsArguments() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        ClassDef target = ClassDef.builder("test.ReferencedTarget")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(apply)
+            .build();
+        ClassTypeDef objectFunction = TypeDef.parameterized(Function.class, Object.class, Object.class);
+        // `target::apply` names `apply(String)`, which a `Function<Object, Object>` cannot reference
+        ClassDef caller = ClassDef.builder("test.ReferencingCaller")
+            .addMethod(MethodDef.builder("asFunction").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", target.asTypeDef())
+                .returns(objectFunction)
+                .build((aThis, methodParameters) -> objectFunction.methodReference(methodParameters.get(0), apply)
+                    .returning()))
+            .build();
+
+        String source = writeClass(caller);
+
+        assertTrue(source.contains("(arg) -> target.apply((String) arg)"), source);
+        assertCompiles(writeClass(target), source);
+    }
+
+    @Test
+    void callOfANarrowedMethodInADefaultMethodIsConverted() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        MethodDef apply = MethodDef.override(applyMethod)
+            .addModifiers(Modifier.DEFAULT)
+            .build((aThis, methodParameters) -> methodParameters.get(0).returning());
+        // Within the interface, `this.apply` is its own `apply(String)`
+        InterfaceDef interfaceDef = InterfaceDef.builder("test.DefaultCalls")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .addParameter("value", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> aThis.invoke(apply, methodParameters.get(0)).returning()))
+            .build();
+
+        String source = writeSource(interfaceDef);
+
+        assertTrue(source.contains("this.apply((String) value)"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void erasedOverrideOfAGenericMethodWithABoundedVariable() throws Exception {
+        // The model declares the erasure `Object echo(Object, Number)`, which as source is
+        // `String echo(String, Number)` - `U` is erased to its bound
+        ClassDef classDef = ClassDef.builder("test.BoundedEchoChild")
+            .superclass(TypeDef.parameterized(CompilationSignatures.BoundedEcho.class, String.class))
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC).overrides()
+                .addParameter("value", Object.class)
+                .addParameter("other", Number.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+
+        String source = writeClass(classDef);
+
+        assertTrue(source.contains("String echo(String value, Number other)"), source);
+        assertCompiles(source);
+    }
+
+    @Test
+    void callThroughAReceiverNamingAVariableOutOfScopeInAWildcard() throws Exception {
+        var applyMethod = Function.class.getMethod("apply", Object.class);
+        TypeDef.TypeVariable variable = TypeDef.variable("T", TypeDef.of(List.class));
+        ClassDef target = ClassDef.builder("test.ListTarget")
+            .addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(variable)
+            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Function.class), variable, variable))
+            .addMethod(MethodDef.override(applyMethod)
+                .build((aThis, methodParameters) -> methodParameters.get(0).returning()))
+            .build();
+        MethodDef apply = target.getMethods().get(0);
+        // `U` is out of scope, so the receiver is written as `ListTarget<List<? extends CharSequence>>`
+        TypeDef.TypeVariable outOfScope = TypeDef.variable("U", TypeDef.of(CharSequence.class));
+        ClassDef caller = ClassDef.builder("test.WildcardCaller")
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", TypeDef.parameterized(ClassTypeDef.of(target),
+                    TypeDef.parameterized(ClassTypeDef.of(List.class), TypeDef.wildcardSubtypeOf(outOfScope))))
+                .addParameter("value", Object.class)
+                .returns(Object.class)
+                .build((aThis, methodParameters) -> methodParameters.get(0)
+                    .invoke(apply, methodParameters.get(1))
+                    .returning()))
+            .build();
+
+        String source = writeClass(caller);
+
+        assertTrue(source.contains("target.apply((List<? extends CharSequence>) value)"), source);
+        assertCompiles(writeClass(target), source);
+    }
+
     private static ClassDef genericTarget(String name) throws NoSuchMethodException {
         var applyMethod = Function.class.getMethod("apply", Object.class);
         TypeDef.TypeVariable variable = TypeDef.variable("T", TypeDef.of(CharSequence.class));

@@ -52,14 +52,14 @@ final class JavaExpressionRules {
     }
 
     /**
-     * The type declaring an invoked method: the class being written or its superclass for `this` and `super`,
-     * which the model names by placeholders.
+     * The type declaring an invoked method: the type being written for `this`, and the superclass of a class for
+     * `super`, which the model names by placeholders.
      */
     @Nullable
     static ClassTypeDef ownerOf(@Nullable ObjectDef objectDef, TypeDef type) {
         TypeDef resolved = type;
-        if (objectDef != null && (TypeDef.THIS.equals(type) || TypeDef.SUPER.equals(type))
-            && !(objectDef instanceof InterfaceDef)) {
+        if (objectDef != null && (TypeDef.THIS.equals(type)
+            || TypeDef.SUPER.equals(type) && !(objectDef instanceof InterfaceDef))) {
             resolved = objectDef.getContextualType(type);
         }
         return resolved instanceof ClassTypeDef classTypeDef && !TypeDef.SUPER.equals(classTypeDef)

@@ -663,6 +663,39 @@ class OverrideResolverSpec extends Specification {
         OverrideResolver.resolve(classDef, erased, null, true) == null
     }
 
+    void "erases a generic method's own variable to the bound its declaration gives it"() {
+        given:
+        def classVariable = TypeDef.variable("T")
+        def parent = ClassDef.builder("example.BoundedMixedParent")
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(TypeDef.variable("U", TypeDef.of(Number)))
+                // The parameter names `U` without its bound
+                .addParameter("other", TypeDef.variable("U"))
+                .addParameter("value", classVariable)
+                .returns(classVariable)
+                .build { aThis, parameters -> parameters[1].returning() })
+            .build()
+        def erased = MethodDef.builder("echo")
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("other", TypeDef.of(Number))
+            .addParameter("value", TypeDef.OBJECT)
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        def classDef = ClassDef.builder("example.BoundedMixedChild")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(erased)
+            .build()
+
+        when:
+        def overridden = OverrideResolver.resolve(classDef, erased, null)
+
+        then:
+        overridden.parameterTypes() == [TypeDef.of(Number), TypeDef.STRING]
+        overridden.returnType() == TypeDef.STRING
+    }
+
     void "resolves a narrower return of a generated type next to a bounded erasure"() {
         given:
         def base = ClassDef.builder("example.BaseValue").build()

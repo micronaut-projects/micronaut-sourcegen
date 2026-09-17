@@ -1288,8 +1288,10 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 if (instance == null) {
                     return CodeBlock.of("$T::$L", asType(methodReference.owner(), objectDef), name);
                 }
-                CodeBlock adapted = instance instanceof VariableDef.This && !methodReference.isConstructor()
-                    ? renderAdaptedReference(objectDef, methodDef, scope, methodReference.method()) : null;
+                // A lambda captures `this` and a parameter, which the model never assigns, as the reference would
+                CodeBlock adapted = (instance instanceof VariableDef.This || instance instanceof VariableDef.MethodParameter)
+                    && !methodReference.isConstructor()
+                    ? renderAdaptedReference(objectDef, methodDef, scope, instance, methodReference.method()) : null;
                 if (adapted != null) {
                     return adapted;
                 }
@@ -1315,15 +1317,16 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     /**
-     * A reference to a method of this class that override resolution narrowed, as a lambda converting its arguments:
+     * A reference to a generated method that override resolution narrowed, as a lambda converting its arguments:
      * the functional interface passes the parameter types the model declares.
      */
     @Nullable
     private CodeBlock renderAdaptedReference(@Nullable ObjectDef objectDef,
                                              @Nullable MethodDef methodDef,
                                              RenderScope scope,
+                                             ExpressionDef instance,
                                              MethodDef method) {
-        OverrideResolver.OverriddenMethod emitted = OverrideResolver.emittedSignature(ownerOf(objectDef, TypeDef.THIS),
+        OverrideResolver.OverriddenMethod emitted = OverrideResolver.emittedSignature(ownerOf(objectDef, instance.type()),
             objectDef, methodDef, method, JavaPoetNames.context(), false);
         List<TypeDef> declared = method.getParameters().stream().map(ParameterDef::getType).toList();
         if (emitted == null || emitted.parameterTypes().equals(declared)) {
@@ -1340,8 +1343,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             arguments.add(type.equals(declared.get(i)) ? CodeBlock.of("$L", name)
                 : CodeBlock.of("($T) $L", asType(type, objectDef, methodDef), name));
         }
-        return CodeBlock.of("($L) -> this.$L($L)", CodeBlock.join(parameters, ", "), method.getName(),
-            CodeBlock.join(arguments, ", "));
+        return CodeBlock.of("($L) -> $L.$L($L)", CodeBlock.join(parameters, ", "),
+            renderExpression(objectDef, methodDef, scope, instance), method.getName(), CodeBlock.join(arguments, ", "));
     }
 
     private CodeBlock renderMathOperand(@Nullable ObjectDef objectDef,
