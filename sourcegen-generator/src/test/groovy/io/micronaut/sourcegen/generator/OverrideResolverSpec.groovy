@@ -594,6 +594,39 @@ class OverrideResolverSpec extends Specification {
         OverrideResolver.resolve(classDef, erased, null) == null
     }
 
+    void "resolves a variable of the declaring type named like a method-local variable of the inherited method"() {
+        given:
+        def classVariable = TypeDef.variable("T")
+        def parent = ClassDef.builder("example.LocallyGenericParent")
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(TypeDef.variable("U"))
+                .addParameter("value", classVariable)
+                .returns(classVariable)
+                .build { aThis, parameters -> parameters[0].returning() })
+            .build()
+        def erased = MethodDef.builder("echo")
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.OBJECT)
+            .returns(TypeDef.OBJECT)
+            .overrides()
+            .build()
+        // `Parent<U>` binds the class's `T` to the child's `U`, which is not the `U` that `echo` declares
+        def childVariable = TypeDef.variable("U", TypeDef.of(CharSequence))
+        def classDef = ClassDef.builder("example.LocallyGenericChild")
+            .addTypeVariable(childVariable)
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), childVariable))
+            .addMethod(erased)
+            .build()
+
+        when:
+        def overridden = OverrideResolver.resolve(classDef, erased, null)
+
+        then:
+        overridden.parameterTypes() == [childVariable]
+        overridden.returnType() == childVariable
+    }
+
     void "resolves a narrower return of a generated type next to a bounded erasure"() {
         given:
         def base = ClassDef.builder("example.BaseValue").build()

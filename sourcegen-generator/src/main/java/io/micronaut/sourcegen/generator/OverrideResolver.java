@@ -19,6 +19,7 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
@@ -154,12 +155,35 @@ public final class OverrideResolver {
                                                     MethodDef callMethod,
                                                     @Nullable VisitorContext context,
                                                     boolean exact) {
+        MethodDef method = declaredMethod(objectDef, callMethod);
+        return method == null ? null : resolve(objectDef, method, context, exact);
+    }
+
+    @Nullable
+    private static MethodDef declaredMethod(ObjectDef objectDef, MethodDef callMethod) {
         List<TypeDef> callTypes = callMethod.getParameters().stream().map(ParameterDef::getType).toList();
         for (MethodDef method : objectDef.getMethods()) {
             if (method.getName().equals(callMethod.getName())
                 && method.getParameters().stream().map(ParameterDef::getType).toList().equals(callTypes)) {
-                return resolve(objectDef, method, context, exact);
+                return method;
             }
+        }
+        return null;
+    }
+
+    /**
+     * The signature of a method a definition inherits from the generated class it extends, in the scope of the
+     * definition: with the type arguments it extends that class with.
+     */
+    @Nullable
+    private static OverriddenMethod inheritedSignature(ObjectDef objectDef,
+                                                       MethodDef callMethod,
+                                                       @Nullable VisitorContext context,
+                                                       boolean exact) {
+        if (objectDef instanceof ClassDef classDef
+            && classDef.getSuperclass() != null
+            && definitionOf(classDef.getSuperclass(), null) != null) {
+            return emittedSignature(classDef.getSuperclass(), objectDef, callMethod, context, exact);
         }
         return null;
     }
@@ -186,24 +210,35 @@ public final class OverrideResolver {
         if (target == null) {
             return null;
         }
-        OverriddenMethod emitted = emittedSignature(target, callMethod, context, exact);
+        OverriddenMethod emitted = declaredMethod(target, callMethod) != null
+            ? emittedSignature(target, callMethod, context, exact)
+            : inheritedSignature(target, callMethod, context, exact);
         if (emitted == null || target == current && !(owner instanceof ClassTypeDef.Parameterized)) {
             // Within the definition itself, its variables are in scope
             return emitted;
         }
-        Map<String, TypeDef> substitution = new HashMap<>();
+        List<String> variables = TypeHierarchy.declaring(target).getTypeParameters();
+        Function<TypeDef, TypeDef> asSeen;
         if (owner instanceof ClassTypeDef.Parameterized parameterized) {
-            List<String> variables = TypeHierarchy.declaring(target).getTypeParameters();
-            for (int i = 0; i < variables.size() && i < parameterized.typeArguments().size(); i++) {
+            if (parameterized.typeArguments().size() != variables.size()) {
+                return null;
+            }
+            Map<String, TypeDef> substitution = new HashMap<>();
+            for (int i = 0; i < variables.size(); i++) {
                 substitution.put(variables.get(i), parameterized.typeArguments().get(i));
             }
+            asSeen = type -> TypeHierarchy.substituted(type, substitution);
+        } else {
+            // The members of a raw type are erased
+            TypeHierarchy.InheritedType declaring = TypeHierarchy.declaring(target);
+            asSeen = variables.isEmpty() ? Function.identity() : declaring::erase;
         }
-        List<TypeDef> parameterTypes = emitted.parameterTypes().stream()
-            .map(type -> TypeHierarchy.substituted(type, substitution)).toList();
-        TypeDef returnType = TypeHierarchy.substituted(emitted.returnType(), substitution);
-        // A variable the receiver does not bind - a raw one - has no meaning where the method is called
-        if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.containsVariableOtherThan(type, Set.of()))
-            || TypeHierarchy.containsVariableOtherThan(returnType, Set.of())) {
+        List<TypeDef> parameterTypes = emitted.parameterTypes().stream().map(asSeen).toList();
+        TypeDef returnType = asSeen.apply(emitted.returnType());
+        // The type arguments of the receiver can name the variables of the calling definition, and no others
+        Set<String> inScope = current == null ? Set.of() : new HashSet<>(TypeHierarchy.declaring(current).getTypeParameters());
+        if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.containsVariableOtherThan(type, inScope))
+            || TypeHierarchy.containsVariableOtherThan(returnType, inScope)) {
             return null;
         }
         return new OverriddenMethod(parameterTypes, returnType);
@@ -457,9 +492,9 @@ public final class OverrideResolver {
         if (!declarationErasure.equals(declared.parameterErasures())) {
             return null;
         }
-        // A variable the inherited method declares of its own is not one of the declaring type, whatever its name
-        Set<String> visibleVariables = new HashSet<>(declared.variables());
-        inherited.typeVariables().forEach(visibleVariables::remove);
+        // A variable the inherited method declares of its own is renamed by the substitution, so it is never taken
+        // for one of the declaring type
+        Set<String> visibleVariables = declared.variables();
         // For Java, only a substitution that changes an erasure - where the bytecode writer adds a bridge - needs the
         // resolved parameters. A difference in type arguments alone (a raw `Set` for `Set<Class<?>>`) is a valid
         // override as is, and keeping it leaves the body assigning to the declared, raw types

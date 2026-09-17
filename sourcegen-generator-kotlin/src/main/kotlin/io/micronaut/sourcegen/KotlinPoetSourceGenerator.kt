@@ -2441,10 +2441,31 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 )?.let { return it.returnType }
             }
             if (value is IfElse) {
-                // A conditional has the type its branches have, where they agree
+                // A conditional has the type its branches have, where they agree. One with a `null` branch keeps its
+                // type: `null` cannot be cast to a non-null type
                 val ifType = sourceTypeOf(value.ifExpression, methodDef, objectDef)
                 if (ifType == sourceTypeOf(value.elseExpression, methodDef, objectDef)) {
                     return ifType
+                }
+            }
+            if (value is Switch) {
+                // A switch expression has the type its cases have, where they agree
+                val types = (value.cases.values + listOfNotNull(value.defaultCase))
+                    .map { sourceTypeOf(it, methodDef, objectDef) }
+                    .distinct()
+                if (types.size == 1) {
+                    return types[0]
+                }
+            }
+            if (value is ArrayElement) {
+                // An element of an array an override narrowed has the narrowed component type
+                val arrayType = sourceTypeOf(value.expression, methodDef, objectDef)
+                if (arrayType != value.expression.type() && arrayType is TypeDef.Array) {
+                    return if (arrayType.dimensions == 1) {
+                        arrayType.componentType
+                    } else {
+                        TypeDef.array(arrayType.componentType, arrayType.dimensions - 1)
+                    }
                 }
             }
             if (value is VariableDef.MethodParameter) {

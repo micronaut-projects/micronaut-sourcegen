@@ -87,11 +87,35 @@ final class JavaExpressionRules {
             }
         }
         if (value instanceof ExpressionDef.IfElse conditional) {
-            // A conditional has the type its branches have, where they agree
+            // A conditional has the type its branches have, where they agree, or that of the branch other than `null`
             TypeDef ifType = sourceTypeOf(conditional.ifExpression(), enclosingMethod, objectDef);
             TypeDef elseType = sourceTypeOf(conditional.elseExpression(), enclosingMethod, objectDef);
-            if (ifType.equals(elseType)) {
+            if (ifType.equals(elseType) || isNullLiteral(conditional.elseExpression())) {
                 return ifType;
+            }
+            if (isNullLiteral(conditional.ifExpression())) {
+                return elseType;
+            }
+        }
+        if (value instanceof ExpressionDef.Switch switchExpression) {
+            // A switch expression has the type its cases have, where they agree
+            List<ExpressionDef> results = new ArrayList<>(switchExpression.cases().values());
+            if (switchExpression.defaultCase() != null) {
+                results.add(switchExpression.defaultCase());
+            }
+            List<TypeDef> types = results.stream().map(result -> sourceTypeOf(result, enclosingMethod, objectDef))
+                .distinct().toList();
+            if (types.size() == 1) {
+                return types.get(0);
+            }
+        }
+        if (value instanceof ExpressionDef.ArrayElement element) {
+            // An element of an array an override narrowed has the narrowed component type
+            TypeDef arrayType = sourceTypeOf(element.expression(), enclosingMethod, objectDef);
+            if (!arrayType.equals(element.expression().type())
+                && TypeHierarchy.unwrap(arrayType) instanceof TypeDef.Array array) {
+                return array.dimensions() == 1 ? array.componentType()
+                    : TypeDef.array(array.componentType(), array.dimensions() - 1);
             }
         }
         if (value instanceof VariableDef.MethodParameter parameter && enclosingMethod != null) {

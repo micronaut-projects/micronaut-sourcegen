@@ -769,4 +769,64 @@ class KotlinSourceCompilationTest {
         assertTrue(source.contains("as Array<String>"), source)
         assertCompiles(source)
     }
+
+    @Test
+    fun callOfAnInheritedNarrowedMethodIsConverted() {
+        val applyMethod = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        val apply = MethodDef.override(applyMethod)
+            .build { _, parameters -> parameters[0].returning() }
+        // Abstract, so that Kotlin lets it be extended
+        val parent = ClassDef.builder("test.ParentTarget")
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .addSuperinterface(TypeDef.parameterized(
+                java.util.function.Function::class.java, String::class.java, String::class.java))
+            .addMethod(apply)
+            .build()
+        val child = ClassDef.builder("test.ChildTarget")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(parent.asTypeDef())
+            .build()
+        // `ChildTarget` inherits `apply(String)`, which the Any value passed to it is converted to
+        val caller = ClassDef.builder("test.ChildCaller")
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", child.asTypeDef())
+                .addParameter("value", Any::class.java)
+                .returns(Any::class.java)
+                .build { _, parameters -> parameters[0].invoke(apply, parameters[1]).returning() })
+            .build()
+
+        val source = writeClass(caller)
+
+        assertTrue(source.contains("apply(`value` as String)"), source)
+        assertCompiles(writeClass(parent), writeClass(child), source)
+    }
+
+    @Test
+    fun switchOfNarrowedParametersKeepsTheOverload() {
+        val chooseAny = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", Any::class.java)
+            .returns(String::class.java)
+            .build { _, _ -> ExpressionDef.constant("object").returning() }
+        val chooseString = MethodDef.builder("choose").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", String::class.java)
+            .returns(String::class.java)
+            .build { _, _ -> ExpressionDef.constant("string").returning() }
+        val apply = java.util.function.Function::class.java.getMethod("apply", Any::class.java)
+        // Every case is the narrowed parameter, so the switch is a String in the source
+        val classDef = ClassDef.builder("test.SwitchChooser")
+            .addSuperinterface(TypeDef.parameterized(
+                java.util.function.Function::class.java, String::class.java, String::class.java))
+            .addMethod(chooseAny)
+            .addMethod(chooseString)
+            .addMethod(MethodDef.override(apply)
+                .build { aThis, parameters -> aThis.invoke(chooseAny,
+                    ExpressionDef.constant(1).asExpressionSwitch(TypeDef.OBJECT,
+                        mapOf(ExpressionDef.constant(1) to parameters[0]), parameters[0])).returning() })
+            .build()
+
+        val source = writeClass(classDef)
+
+        assertTrue(source.contains(" as Any)"), source)
+        assertCompiles(source)
+    }
 }

@@ -564,7 +564,9 @@ public final class TypeHierarchy {
 
         /**
          * Substitutes the type arguments this type is inherited with, except for variables a generic method declares
-         * of its own, which shadow the type's variables of the same name.
+         * of its own, which shadow the type's variables of the same name. Those are renamed to
+         * {@link #methodVariable(String)}, so that they cannot be taken for a variable of the same name a type
+         * argument names.
          *
          * @param type     A type in the scope of a method of this type
          * @param shadowed The names of the variables the method declares
@@ -575,8 +577,19 @@ public final class TypeHierarchy {
                 return substitute(type);
             }
             Map<String, TypeDef> visible = new HashMap<>(substitution);
-            shadowed.forEach(visible::remove);
+            shadowed.forEach(name -> visible.put(name, TypeDef.variable(methodVariable(name))));
             return TypeHierarchy.substitute(type, visible);
+        }
+
+        /**
+         * The name a variable declared by a generic method has after {@link #substitute(TypeDef, List)}, which no
+         * variable of a type can have.
+         *
+         * @param name The declared name
+         * @return The name
+         */
+        public static String methodVariable(String name) {
+            return name + " (method)";
         }
 
         /**
