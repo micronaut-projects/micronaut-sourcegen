@@ -262,7 +262,7 @@ public final class OverrideResolver {
         if (TypeHierarchy.unwrap(returnType) instanceof TypeDef.Wildcard wildcard) {
             returnType = wildcard.lowerBounds().isEmpty() && !wildcard.upperBounds().isEmpty()
                 && !TypeDef.OBJECT.equals(wildcard.upperBounds().get(0))
-                ? wildcard.upperBounds().get(0) : capturedBound(target, emitted.returnType(), substitution);
+                ? wildcard.upperBounds().get(0) : capturedBound(target, emitted.returnType(), substitution, inScope);
         }
         if (parameterTypes.stream().anyMatch(type -> TypeHierarchy.containsVariableOtherThan(type, inScope))
             || TypeHierarchy.containsVariableOtherThan(returnType, inScope)) {
@@ -275,7 +275,10 @@ public final class OverrideResolver {
      * The bound of a variable a wildcard is captured for, with the type arguments of the receiver substituted:
      * {@code T extends A} of a {@code Target<String, ?>} is a String.
      */
-    private static TypeDef capturedBound(ObjectDef target, TypeDef variable, Map<String, TypeDef> substitution) {
+    private static TypeDef capturedBound(ObjectDef target,
+                                         TypeDef variable,
+                                         Map<String, TypeDef> substitution,
+                                         Set<String> inScope) {
         TypeHierarchy.InheritedType declaring = TypeHierarchy.declaring(target);
         if (!(TypeHierarchy.unwrap(variable) instanceof TypeDef.TypeVariable typeVariable)) {
             return declaring.erase(variable);
@@ -293,13 +296,14 @@ public final class OverrideResolver {
                 && !boundVariable.name().equals(typeVariable.name())) {
                 // A bound naming another variable captured itself - `T extends A` of a `Target<?, ?>` - is that
                 // variable's bound
-                return capturedBound(target, boundVariable, substitution);
+                return capturedBound(target, boundVariable, substitution, inScope);
             } else {
                 bound = TypeDef.OBJECT;
             }
         }
-        // A bound the receiver binds keeps its type arguments - `T extends List<A>` of a `Target<String, ?>`
-        return TypeHierarchy.containsVariableOtherThan(bound, Set.of()) ? declaring.erase(bound) : bound;
+        // A bound the receiver binds keeps its type arguments - `T extends List<A>` of a `Target<String, ?>`, and
+        // the variables the caller declares
+        return TypeHierarchy.containsVariableOtherThan(bound, inScope) ? declaring.erase(bound) : bound;
     }
 
     /**
@@ -363,14 +367,14 @@ public final class OverrideResolver {
                 TypeDef passed = TypeHierarchy.unwrap(functional.getParameters().get(i).getType());
                 if (type != null && !TypeDef.OBJECT.equals(passed)) {
                     argumentTypes.set(i, asRaw(type));
-                    argumentBounds.set(i, boundConversion(type, passed, current, caller));
+                    argumentBounds.set(i, boundConversion(type, passed, current, caller, context));
                 }
             }
         }
         if (converted || resultType != null) {
             return new ReferenceAdaptation(argumentTypes, argumentBounds,
                 resultType == null || exact ? resultType : asRaw(resultType),
-                exact || resultType == null ? null : boundConversion(resultType, returned, current, caller));
+                exact || resultType == null ? null : boundConversion(resultType, returned, current, caller, context));
         }
         return null;
     }
@@ -383,19 +387,29 @@ public final class OverrideResolver {
     private static TypeDef boundConversion(TypeDef variable,
                                            TypeDef value,
                                            @Nullable ObjectDef current,
-                                           @Nullable MethodDef method) {
-        // A value of a variable is of its own parameterized bound
-        TypeDef resolved = TypeHierarchy.unwrap(value) instanceof TypeDef.TypeVariable
-            ? parameterizedBound(value, current, method) : TypeHierarchy.unwrap(value);
-        if (!(resolved instanceof ClassTypeDef.Parameterized)) {
-            return null;
-        }
+                                           @Nullable MethodDef method,
+                                           @Nullable VisitorContext context) {
+        // A value of a variable is of its own bounds
+        List<TypeDef> values = TypeHierarchy.unwrap(value) instanceof TypeDef.TypeVariable
+            ? upperBounds(value, current, method) : List.of(TypeHierarchy.unwrap(value));
+        Function<String, @Nullable ClassElement> lookup = context == null ? null
+            : name -> context.getClassElement(name).orElse(null);
         // Every bound of an intersection has to accept the value
-        return upperBounds(variable, current, method).stream()
-            .filter(ClassTypeDef.Parameterized.class::isInstance)
-            .filter(bound -> !bound.equals(resolved))
-            .map(bound -> (TypeDef) ((ClassTypeDef.Parameterized) bound).rawType())
-            .findFirst().orElse(null);
+        for (TypeDef bound : upperBounds(variable, current, method)) {
+            if (!(bound instanceof ClassTypeDef.Parameterized parameterized)) {
+                continue;
+            }
+            for (TypeDef candidate : values) {
+                // A class inheriting the bound is of the type arguments it inherits it with
+                TypeDef inherited = candidate instanceof ClassTypeDef.Parameterized ? candidate
+                    : candidate instanceof ClassTypeDef classType
+                    ? TypeHierarchy.asSupertype(classType, parameterized.rawType().getName(), lookup) : null;
+                if (inherited instanceof ClassTypeDef.Parameterized && !parameterized.equals(inherited)) {
+                    return parameterized.rawType();
+                }
+            }
+        }
+        return null;
     }
 
     /**

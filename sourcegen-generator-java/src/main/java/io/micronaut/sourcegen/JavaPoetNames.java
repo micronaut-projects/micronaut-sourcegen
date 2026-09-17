@@ -185,4 +185,25 @@ final class JavaPoetNames {
             case null, default -> false;
         };
     }
+
+    /**
+     * The method a lambda body is rendered as, which declares the type variables of the method the lambda is
+     * written in: its body reads them, and their bounds convert the values it returns.
+     */
+    static MethodDef withTypeVariables(MethodDef implementation, @Nullable MethodDef enclosing) {
+        if (enclosing == null || enclosing.getTypeVariables().isEmpty()) {
+            return implementation;
+        }
+        MethodDef.MethodDefBuilder builder = MethodDef.builder(implementation.getName())
+            .addModifiers(implementation.getModifiers())
+            .returns(implementation.getReturnType())
+            .addStatements(implementation.getStatements())
+            .synthetic(implementation.isSynthetic());
+        implementation.getParameters().forEach(builder::addParameter);
+        implementation.getTypeVariables().forEach(builder::addTypeVariable);
+        enclosing.getTypeVariables().stream()
+            .filter(variable -> implementation.getTypeVariables().stream().noneMatch(own -> own.name().equals(variable.name())))
+            .forEach(builder::addTypeVariable);
+        return builder.build();
+    }
 }

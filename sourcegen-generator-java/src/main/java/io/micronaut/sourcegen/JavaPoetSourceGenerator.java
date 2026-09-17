@@ -42,6 +42,7 @@ import static io.micronaut.sourcegen.JavaPoetNames.isVariablePartOfTheDefinition
 import static io.micronaut.sourcegen.JavaPoetNames.packageNameOf;
 import static io.micronaut.sourcegen.JavaPoetNames.resolveNestedClassName;
 import static io.micronaut.sourcegen.JavaPoetNames.simpleNameOf;
+import static io.micronaut.sourcegen.JavaPoetNames.withTypeVariables;
 import static io.micronaut.sourcegen.JavaSourceRules.cannotCompleteNormally;
 import static io.micronaut.sourcegen.JavaSourceRules.containsBlockBodyLambda;
 import static io.micronaut.sourcegen.JavaSourceRules.declaresField;
@@ -775,7 +776,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     return renderExpression(objectDef, methodDef, scope, aReturn.expression());
                 }
                 ExpressionDef returned = aReturn.expression();
-                List<TypeDef> casts = methodDef == null ? List.of() : returnCasts(methodDef.getReturnType(),
+                List<List<TypeDef>> casts = methodDef == null ? List.of() : returnCasts(methodDef.getReturnType(),
                     returned.type(), sourceTypeOf(returned, methodDef, objectDef), objectDef, methodDef);
                 return CodeBlock.concat(CodeBlock.of("return "),
                     renderConverted(objectDef, methodDef, scope, returned, casts));
@@ -1212,7 +1213,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return renderExpression(objectDef, methodDef, scope, JavaIdioms.hashCode(invokeHashCodeMethod));
             }
             case Lambda lambda -> {
-                MethodDef implementation = lambda.implementation();
+                // The variables the enclosing method declares are in scope of the body
+                MethodDef implementation = withTypeVariables(lambda.implementation(), methodDef);
                 // Java forbids a lambda parameter from shadowing a name that is already in scope, so a
                 // colliding parameter is emitted under an allocated name and its references remapped
                 RenderScope lambdaScope = scope.nested(implementation);
@@ -1232,10 +1234,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 List<StatementDef> statements = implementation.getStatements();
                 ExpressionDef body = singleExpressionBody(lambda);
                 if (body != null) {
-                    // The bounds of the enclosing method's variables are in scope of the lambda body
                     builder.add(renderConverted(objectDef, implementation, lambdaScope, body,
                         returnCasts(implementation.getReturnType(), body.type(),
-                            sourceTypeOf(body, implementation, objectDef), objectDef, methodDef)));
+                            sourceTypeOf(body, implementation, objectDef), objectDef, implementation)));
                 } else {
                     builder.add("{\n").indent();
                     for (int i = 0; i < statements.size(); i++) {
@@ -1412,13 +1413,17 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                       @Nullable MethodDef methodDef,
                                       RenderScope scope,
                                       ExpressionDef value,
-                                      List<TypeDef> casts) {
-        if (casts.size() < 2) {
-            return renderExpression(objectDef, methodDef, scope, casts.isEmpty() ? value : value.cast(casts.get(0)));
+                                      List<List<TypeDef>> casts) {
+        if (casts.isEmpty()) {
+            return renderExpression(objectDef, methodDef, scope, value);
         }
-        CodeBlock.Builder builder = CodeBlock.builder();
-        casts.forEach(cast -> builder.add("($T) ", asType(cast, objectDef, methodDef)));
-        return builder.add(renderCastOperand(objectDef, methodDef, scope, value)).build();
+        if (casts.size() == 1 && casts.get(0).size() == 1) {
+            return renderExpression(objectDef, methodDef, scope, value.cast(casts.get(0).get(0)));
+        }
+        // An intersection of bounds is cast to as `(Number & Runnable)`
+        return CodeBlock.concat(casts.stream().map(cast -> CodeBlock.of("($L) ", cast.stream()
+            .map(type -> CodeBlock.of("$T", asType(type, objectDef, methodDef))).collect(CodeBlock.joining(" & "))))
+            .collect(CodeBlock.joining("")), renderCastOperand(objectDef, methodDef, scope, value));
     }
 
     private CodeBlock renderInvocationArguments(@Nullable ObjectDef objectDef,
@@ -1465,10 +1470,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         return renderExpression(objectDef, enclosingMethod, scope, value);
                     }
                     TypeDef sourceType = sourceTypeOf(value, enclosingMethod, objectDef);
-                    List<TypeDef> casts = argumentCasts(paramType, value.type(), sourceType,
+                    List<List<TypeDef>> casts = argumentCasts(paramType, value.type(), sourceType,
                         declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null,
                         generated, inferred, objectDef, enclosingMethod);
                     if (casts.size() < 2 && !sourceType.equals(value.type()) && !paramType.equals(sourceType)) {
+                        if (!casts.isEmpty()) {
+                            return renderConverted(objectDef, enclosingMethod, scope, value, casts);
+                        }
                         // An override narrowed the parameter the value names - `Object value` to `String value` -
                         // which would select another overload than the one the model calls: keep its type. Written
                         // out, since in the model the cast is to the type the value already has, which is dropped. A
