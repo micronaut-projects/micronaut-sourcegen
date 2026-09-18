@@ -1019,7 +1019,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return CodeBlock.concat(
                     CodeBlock.of("new $L(", asType(newInstance.type(), objectDef)),
                     renderInvocationArguments(objectDef, methodDef, scope, newInstance.type(), MethodDef.CONSTRUCTOR,
-                        newInstance.parameterTypes(), List.of(), newInstance.values()),
+                        newInstance.parameterTypes(), List.of(), Map.of(), newInstance.values()),
                     CodeBlock.of(")")
                 );
             }
@@ -1399,15 +1399,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 parameterTypes = emitted.parameterTypes();
             }
         }
-        // The bounds of the invoked method's variables, with the receiver's type arguments for its class variables
-        // - not for the variables the method declares itself, which shadow the class's of the same name
+        // The receiver's type arguments bind the class variables the bounds of the invoked method's variables name -
+        // not the variables the method declares itself, which shadow the class's of the same name
         Map<String, TypeDef> receiverArguments = new HashMap<>(OverrideResolver.receiverArguments(owner, objectDef, callMethod));
         callMethod.getTypeVariables().forEach(variable -> receiverArguments.remove(variable.name()));
-        List<TypeDef.TypeVariable> inferred = callMethod.getTypeVariables().stream()
-            .map(variable -> TypeDef.variable(variable.name(), variable.bounds().stream()
-                .map(bound -> TypeHierarchy.substituted(bound, receiverArguments)).toList())).toList();
         return renderInvocationArguments(objectDef, enclosingMethod, scope, owner, callMethod.getName(),
-            parameterTypes, inferred, values);
+            parameterTypes, callMethod.getTypeVariables(), receiverArguments, values);
     }
 
     /**
@@ -1447,6 +1444,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                                                 @Nullable String methodName,
                                                 @Nullable List<TypeDef> parameterTypes,
                                                 List<TypeDef.TypeVariable> inferred,
+                                                Map<String, TypeDef> receiverArguments,
                                                 List<? extends ExpressionDef> values) {
         List<TypeDef> sameArityParameterTypes = parameterTypes != null && parameterTypes.size() == values.size()
             ? parameterTypes : null;
@@ -1486,7 +1484,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     TypeDef sourceType = sourceTypeOf(value, enclosingMethod, objectDef);
                     List<List<TypeDef>> casts = argumentCasts(paramType, value.type(), sourceType,
                         declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null,
-                        generated, inferred, objectDef, enclosingMethod);
+                        generated, inferred, receiverArguments, objectDef, enclosingMethod);
                     if (casts.size() < 2 && !sourceType.equals(value.type()) && !paramType.equals(sourceType)) {
                         if (!casts.isEmpty()) {
                             // Written out: the cast can be to the type the value has in the model

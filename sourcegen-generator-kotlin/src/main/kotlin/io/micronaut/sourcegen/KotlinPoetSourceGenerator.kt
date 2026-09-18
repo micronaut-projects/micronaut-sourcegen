@@ -2402,6 +2402,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     builder.add(", ")
                 }
                 val parameterType = sameArityTypes?.get(index)
+                // A variable the invoked method declares names the one of the caller: its bound is cast to
+                val castType = parameterType?.let { withoutCalleeVariables(it, callMethod) }
                 val sourceType = sourceTypeOf(value, methodDef, objectDef)
                 val vararg = varargs && index == values.size - 1 && parameterType is TypeDef.Array
                 if (parameterType != null && !vararg
@@ -2411,7 +2413,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     // the cast is to the type the value already has, which is dropped
                     builder.add("(")
                     builder.add(renderExpressionCode(objectDef, methodDef, scope, value))
-                    builder.add(" as %T)", asType(parameterType, objectDef))
+                    builder.add(" as %T)", asType(castType, objectDef))
                     continue
                 }
                 val valueType = value.type()
@@ -2420,7 +2422,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     && callMethod?.typeVariables?.none { it.name == parameterType.name } != false
                 val argument = if (parameterType != null && (requiresImplicitCast(parameterType, valueType)
                         || !vararg && valueType == TypeDef.OBJECT
-                        && (parameterType is TypeDef.Array || fixedVariable)
+                        && (parameterType is TypeDef.Array || fixedVariable
+                        || parameterType is TypeDef.TypeVariable && castType != TypeDef.OBJECT)
                         // A value of a variable, or an array of another component, where an override narrowed the
                         // parameter
                         || !vararg && valueType is TypeDef.TypeVariable
@@ -2433,6 +2436,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         || valueType is TypeDef.Array || valueType is TypeDef.Primitive)
                         || !vararg && valueType is TypeDef.Array && parameterType is TypeDef.Array
                         && valueType != parameterType)) {
+                    if (castType != null && castType != parameterType) {
+                        // The bound of a variable the invoked method declares: an unbounded wildcard of it is `*`
+                        builder.add("%L as %T", renderExpressionCode(objectDef, methodDef, scope, value),
+                            asStarProjected(castType, objectDef))
+                        continue
+                    }
                     value.cast(parameterType)
                 } else {
                     value
@@ -2440,6 +2449,38 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 builder.add(renderExpressionCode(objectDef, methodDef, scope, argument))
             }
             return builder.build()
+        }
+
+        private fun asStarProjected(type: TypeDef, objectDef: ObjectDef?): TypeName {
+            if (type !is ClassTypeDef.Parameterized) {
+                return asType(type, objectDef)
+            }
+            val raw = asType(type.rawType, objectDef) as? ClassName ?: return asType(type, objectDef)
+            return raw.parameterizedBy(type.typeArguments.map { argument ->
+                if (argument is TypeDef.Wildcard && argument.lowerBounds.isEmpty()
+                    && (argument.upperBounds.isEmpty() || argument.upperBounds[0] == TypeDef.OBJECT)) {
+                    STAR
+                } else {
+                    asType(argument, objectDef)
+                }
+            })
+        }
+
+        /**
+         * A parameter type with the variables the invoked method declares replaced by their bounds, which is how a
+         * cast to it reads where the method is called: a variable of the caller can have the same name.
+         */
+        private fun withoutCalleeVariables(type: TypeDef, callMethod: MethodDef?): TypeDef {
+            val variables = callMethod?.typeVariables.orEmpty()
+            if (variables.isEmpty()) {
+                return type
+            }
+            val bounds = variables.associate { variable ->
+                val bound = variable.bounds.firstOrNull()
+                variable.name to (bound?.takeIf { !TypeHierarchy.containsVariableOtherThan(it, emptySet()) }
+                    ?: TypeDef.OBJECT)
+            }
+            return TypeHierarchy.substituted(type, bounds)
         }
 
         /**

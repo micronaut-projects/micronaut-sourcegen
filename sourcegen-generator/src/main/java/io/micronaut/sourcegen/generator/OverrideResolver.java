@@ -450,18 +450,40 @@ public final class OverrideResolver {
             return Map.of();
         }
         Map<String, TypeDef> arguments = bind(target, owner, Map.of());
-        for (int depth = 0; depth < MAX_DEPTH && declaredMethod(target, callMethod) == null; depth++) {
-            if (!(target instanceof ClassDef classDef) || classDef.getSuperclass() == null) {
-                break;
-            }
-            ObjectDef superclass = definitionOf(classDef.getSuperclass(), null);
-            if (superclass == null) {
-                break;
-            }
-            arguments = bind(superclass, classDef.getSuperclass(), arguments);
-            target = superclass;
+        Map<String, TypeDef> declaring = declaringArguments(target, arguments, callMethod, 0);
+        return declaring == null ? arguments : declaring;
+    }
+
+    /**
+     * The type arguments of the generated type declaring the method, through the superclass and the interfaces.
+     */
+    @Nullable
+    private static Map<String, TypeDef> declaringArguments(ObjectDef definition,
+                                                           Map<String, TypeDef> arguments,
+                                                           MethodDef callMethod,
+                                                           int depth) {
+        if (declaredMethod(definition, callMethod) != null) {
+            return arguments;
         }
-        return arguments;
+        if (depth > MAX_DEPTH) {
+            return null;
+        }
+        List<TypeDef> supertypes = new ArrayList<>();
+        if (definition instanceof ClassDef classDef && classDef.getSuperclass() != null) {
+            supertypes.add(classDef.getSuperclass());
+        }
+        supertypes.addAll(definition.getSuperinterfaces());
+        for (TypeDef supertype : supertypes) {
+            ObjectDef superDefinition = supertype instanceof ClassTypeDef classType ? definitionOf(classType, null) : null;
+            if (superDefinition != null) {
+                Map<String, TypeDef> found = declaringArguments(superDefinition,
+                    bind(superDefinition, (ClassTypeDef) supertype, arguments), callMethod, depth + 1);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     private static Map<String, TypeDef> bind(ObjectDef definition,
