@@ -196,35 +196,34 @@ public final class EnumDef extends ObjectDef {
         }
 
         public EnumDef build() {
-            if (!enumConstants.isEmpty()) {
-                Set<Integer> valueCount = new HashSet<>();
-                for (EnumConstantDef constantDef : enumConstants) {
-                    if (constantDef.constructorArgs == null || constantDef.constructorArgs.isEmpty()) {
-                        continue;
-                    }
-
-                    int constCount = constantDef.constructorArgs.size();
-                    if (valueCount.contains(constCount)) {
-                        continue;
-                    } else {
-                        valueCount.add(constCount);
-                    }
-
-                    boolean hasConstructor = false;
-                    for (MethodDef methodDef: methods) {
-                        if (methodDef.isConstructor() && methodDef.getParameters().size() == constCount) {
-                            hasConstructor = true;
-                        }
-                        if (methodDef.isConstructor() && !methodDef.getModifiers().contains(Modifier.PRIVATE)) {
-                            throw new IllegalStateException("The constructor of enum: " + name + " has to be private.");
-                        }
-                    }
-                    if (!hasConstructor) {
-                        throw new IllegalStateException("Enum: " + name + " doesn't have a matching constructor for constant " + constantDef.name);
-                    }
+            Set<Integer> valueCount = new HashSet<>();
+            for (EnumConstantDef constantDef : enumConstants) {
+                if (constantDef.constructorArgs != null
+                    && !constantDef.constructorArgs.isEmpty()
+                    && valueCount.add(constantDef.constructorArgs.size())) {
+                    validateConstructor(constantDef);
                 }
             }
             return new EnumDef(new ClassTypeDef.ClassName(name), modifiers, fields, methods, properties, annotations, javadoc, enumConstants, superinterfaces, innerTypes, synthetic);
+        }
+
+        private void validateConstructor(EnumConstantDef constantDef) {
+            int constCount = constantDef.constructorArgs.size();
+            boolean hasConstructor = false;
+            for (MethodDef methodDef: methods) {
+                if (!methodDef.isConstructor()) {
+                    continue;
+                }
+                if (!methodDef.getModifiers().contains(Modifier.PRIVATE)) {
+                    throw new IllegalStateException("The constructor of enum: " + name + " has to be private.");
+                }
+                if (methodDef.getParameters().size() == constCount) {
+                    hasConstructor = true;
+                }
+            }
+            if (!hasConstructor) {
+                throw new IllegalStateException("Enum: " + name + " doesn't have a matching constructor for constant " + constantDef.name);
+            }
         }
 
         /**

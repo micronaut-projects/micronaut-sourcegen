@@ -74,6 +74,7 @@ public sealed interface ExpressionDef
      * @return The expressions
      * @since 1.7
      */
+    @SuppressWarnings("java:S1452") // public API, implementations return streams of specific expression types
     Stream<? extends ExpressionDef> nestedExpressionsStream();
 
     /**
@@ -443,7 +444,7 @@ public sealed interface ExpressionDef
      */
     default ExpressionDef.Switch asExpressionSwitch(TypeDef type,
                                                     Map<Constant, ? extends ExpressionDef> cases,
-                                                    ExpressionDef defaultCase) {
+                                                    @Nullable ExpressionDef defaultCase) {
         if (defaultCase == null) {
             cases = new LinkedHashMap<>(cases);
             defaultCase = cases.remove(nullValue());
@@ -1157,33 +1158,29 @@ public sealed interface ExpressionDef
 
         public ComparisonOperation(OpType opType, ExpressionDef left, ExpressionDef right) {
             if (opType != OpType.EQUAL_TO && opType != OpType.NOT_EQUAL_TO) {
-                if (isNull(left)) {
-                    throw new IllegalStateException("Comparison left type cannot be null for operation " + opType);
-                }
-                TypeDef leftType = TypeDef.Primitive.unboxIfPossible(left.type());
-                if (!(leftType instanceof TypeDef.Primitive leftPrimitive) || !leftPrimitive.isNumber()) {
-                    throw new IllegalStateException("Comparison left type should be a primitive number: " + leftType);
-                }
-                if (leftType != left.type()) {
-                    left = left.cast(leftType); // unbox
-                }
-                if (isNull(right)) {
-                    throw new IllegalStateException("Comparison right type cannot be null for operation " + opType);
-                }
-                TypeDef rightType = TypeDef.Primitive.unboxIfPossible(right.type());
-                if (!(rightType instanceof TypeDef.Primitive rightPrimitive) || !rightPrimitive.isNumber()) {
-                    throw new IllegalStateException("Comparison right type should be a primitive number: " + rightType);
-                }
-                if (rightType != right.type()) {
-                    right = right.cast(rightType); // unbox
-                }
+                left = toPrimitiveNumber(opType, left, "left");
+                right = toPrimitiveNumber(opType, right, "right");
             }
             this.opType = opType;
-            this.right = isNull(right) ? right : right.cast(left.type());
+            this.right = isNullConstant(right) ? right : right.cast(left.type());
             this.left = left;
         }
 
-        private boolean isNull(ExpressionDef v) {
+        private static ExpressionDef toPrimitiveNumber(OpType opType, ExpressionDef expression, String side) {
+            if (isNullConstant(expression)) {
+                throw new IllegalStateException("Comparison " + side + " type cannot be null for operation " + opType);
+            }
+            TypeDef type = TypeDef.Primitive.unboxIfPossible(expression.type());
+            if (!(type instanceof TypeDef.Primitive primitive) || !primitive.isNumber()) {
+                throw new IllegalStateException("Comparison " + side + " type should be a primitive number: " + type);
+            }
+            if (type != expression.type()) {
+                return expression.cast(type); // unbox
+            }
+            return expression;
+        }
+
+        private static boolean isNullConstant(ExpressionDef v) {
             return (v instanceof Constant constant) && constant.value == null;
         }
 

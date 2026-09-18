@@ -19,7 +19,7 @@ public final class DecompilerUtils {
         Fernflower fernflower = new Fernflower((s, s1) -> bytecode, new IResultSaver() {
             @Override
             public void saveFolder(String s) {
-
+                // only the decompiled class content is captured
             }
 
             @Override
@@ -43,27 +43,27 @@ public final class DecompilerUtils {
 
             @Override
             public void createArchive(String s, String s1, Manifest manifest) {
-
+                // only the decompiled class content is captured
             }
 
             @Override
             public void saveDirEntry(String s, String s1, String s2) {
-
+                // only the decompiled class content is captured
             }
 
             @Override
             public void copyEntry(String s, String s1, String s2, String s3) {
-
+                // only the decompiled class content is captured
             }
 
             @Override
             public void saveClassEntry(String s, String s1, String s2, String s3, String s4) {
-
+                // only the decompiled class content is captured
             }
 
             @Override
             public void closeArchive(String s, String s1) {
-
+                // only the decompiled class content is captured
             }
         }, Map.of(), new PrintStreamLogger(System.out));
         try {

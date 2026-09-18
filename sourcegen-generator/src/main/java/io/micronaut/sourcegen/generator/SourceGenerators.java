@@ -68,7 +68,8 @@ public final class SourceGenerators {
         @NonNull Class<? extends Annotation> annotation,
         @NonNull Exception exception,
         Consumer<RuntimeException> postponeCallback)  {
-        if (exception.getClass().getSimpleName().equals("PostponeToNextRoundException") && exception instanceof RuntimeException runtimeException) {
+        // Matched by name: the exception exists in both inject-java and inject-kotlin, neither of which is on the classpath
+        if (exception.getClass().getSimpleName().equals("PostponeToNextRoundException") && exception instanceof RuntimeException runtimeException) { // NOSONAR
             postponeCallback.accept(runtimeException);
         } else {
             String message = exception.getMessage() != null ? exception.getMessage() : exception.getClass().getSimpleName();

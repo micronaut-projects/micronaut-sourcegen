@@ -981,32 +981,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 );
             }
             case ExpressionDef.ArrayElement arrayElement -> {
-                CodeBlock array = renderExpression(objectDef, methodDef, scope, arrayElement.expression());
-                if (requiresMethodCallTargetParentheses(arrayElement.expression())) {
-                    array = addParentheses(array);
-                }
-                return CodeBlock.concat(
-                    array,
-                    CodeBlock.of("["),
-                    renderExpression(objectDef, methodDef, scope, arrayElement.indexExpression()),
-                    CodeBlock.of("]")
-                );
+                return renderArrayElement(objectDef, methodDef, scope, arrayElement);
             }
             case ExpressionDef.NewArrayOfSize newArray -> {
                 return CodeBlock.of("new $T[$L]", asType(newArray.type().componentType(), objectDef), newArray.size());
             }
             case ExpressionDef.NewArrayInitialized newArray -> {
-                CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("new $T[]{", asType(newArray.type().componentType(), objectDef));
-                for (Iterator<? extends ExpressionDef> iterator = newArray.nestedExpressionsStream().iterator(); iterator.hasNext(); ) {
-                    ExpressionDef expression = iterator.next();
-                    builder.add(renderExpression(objectDef, methodDef, scope, expression));
-                    if (iterator.hasNext()) {
-                        builder.add(",");
-                    }
-                }
-                builder.add("}");
-                return builder.build();
+                return renderNewArrayInitialized(objectDef, methodDef, scope, newArray);
             }
             case ExpressionDef.Cast castExpressionDef -> {
                 ExpressionDef exp = collapseNestedCasts(castExpressionDef.expressionDef());
@@ -1033,20 +1014,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return renderConstantExpression(scope, constant);
             }
             case ExpressionDef.InvokeInstanceMethod invokeInstanceMethod -> {
-                MethodDef callMethod = invokeInstanceMethod.method();
-                CodeBlock instance = renderExpression(objectDef, methodDef, scope, invokeInstanceMethod.instance());
-                if (!callMethod.isConstructor() && requiresMethodCallTargetParentheses(invokeInstanceMethod.instance())) {
-                    instance = addParentheses(instance);
-                }
-                return CodeBlock.concat(
-                    instance,
-                    CodeBlock.of((callMethod.isConstructor() ? "" : "." + callMethod.getName()) + "("),
-                    invokeInstanceMethod.values()
-                        .stream()
-                        .map(exp -> renderExpression(objectDef, methodDef, scope, exp))
-                        .collect(CodeBlock.joining(", ")),
-                    CodeBlock.of(")")
-                );
+                return renderInvokeInstanceMethod(objectDef, methodDef, scope, invokeInstanceMethod);
             }
             case ExpressionDef.InvokeStaticMethod staticMethod -> {
                 return CodeBlock.concat(
@@ -1075,70 +1043,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 );
             }
             case ExpressionDef.IfElse condition -> {
-                CodeBlock conditionBlock = renderExpression(objectDef, methodDef, scope, condition.condition());
-                if (unwrapCasts(condition.condition()) instanceof ExpressionDef.IfElse) {
-                    // `?:` is right-associative, a conditional used as a condition needs parentheses
-                    conditionBlock = addParentheses(conditionBlock);
-                }
-                return CodeBlock.concat(
-                    conditionBlock,
-                    CodeBlock.of(" ? "),
-                    renderExpression(objectDef, methodDef, scope, condition.ifExpression()),
-                    CodeBlock.of(" : "),
-                    renderExpression(objectDef, methodDef, scope, condition.elseExpression())
-                );
+                return renderIfElse(objectDef, methodDef, scope, condition);
             }
             case ExpressionDef.Switch aSwitch -> {
-                CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("switch (");
-                builder.add(renderExpression(objectDef, methodDef, scope, aSwitch.expression()));
-                builder.add(") {\n");
-                builder.indent();
-                for (Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef> e : aSwitch.cases().entrySet()) {
-                    builder.add("case ");
-                    builder.add(renderConstantExpression(scope, e.getKey()));
-                    builder.add(" -> ");
-                    ExpressionDef value = e.getValue();
-                    builder.add(renderExpression(objectDef, methodDef, scope, value));
-                    if (value instanceof ExpressionDef.SwitchYieldCase) {
-                        builder.add("\n");
-                    } else {
-                        builder.add(";\n");
-                    }
-                }
-                if (aSwitch.defaultCase() != null) {
-                    builder.add("default");
-                    builder.add(" -> ");
-                    builder.add(renderExpression(objectDef, methodDef, scope, aSwitch.defaultCase()));
-                    if (aSwitch.defaultCase() instanceof ExpressionDef.SwitchYieldCase) {
-                        builder.add("\n");
-                    } else {
-                        builder.add(";\n");
-                    }
-                }
-                builder.unindent();
-                builder.add("}");
-                return builder.build();
+                return renderSwitch(objectDef, methodDef, scope, aSwitch);
             }
             case ExpressionDef.SwitchYieldCase switchYieldCase -> {
-                CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("{\n");
-                builder.indent();
-                StatementDef statement = switchYieldCase.statement();
-                List<StatementDef> flatten = statement.flatten();
-                if (flatten.isEmpty()) {
-                    throw new IllegalStateException("SwitchYieldCase did not return any statements");
-                }
-                StatementDef last = flatten.getLast();
-                if (!hasSwitchYieldReturn(statement)) {
-                    throw new IllegalStateException("The last statement of SwitchYieldCase should be a return. Found: " + last);
-                }
-                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, scope, statement));
-                builder.unindent();
-                builder.add("}");
-                String str = builder.build().toString();
-                // Render the body to prevent nested statements
-                return CodeBlock.ofWithoutFormat(str);
+                return renderSwitchYieldCase(objectDef, methodDef, scope, switchYieldCase);
             }
             case VariableDef variableDef -> {
                 return renderVariable(objectDef, methodDef, scope, variableDef);
@@ -1150,61 +1061,186 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return renderExpression(objectDef, methodDef, scope, JavaIdioms.hashCode(invokeHashCodeMethod));
             }
             case Lambda lambda -> {
-                MethodDef implementation = lambda.implementation();
-                // Java forbids a lambda parameter from shadowing a name that is already in scope, so a
-                // colliding parameter is emitted under an allocated name and its references remapped
-                RenderScope lambdaScope = scope.nested(implementation);
-                CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("(");
-                Iterator<ParameterDef> parameter = implementation.getParameters().iterator();
-                while (parameter.hasNext()) {
-                    String name = parameter.next().getName();
-                    String emittedName = scope.isTaken(name) ? lambdaScope.allocate(name) : name;
-                    lambdaScope.rename(name, emittedName);
-                    builder.add(emittedName);
-                    if (parameter.hasNext()) {
-                        builder.add(", ");
-                    }
-                }
-                builder.add(") -> ");
-                List<StatementDef> statements = implementation.getStatements();
-                ExpressionDef body = singleExpressionBody(lambda);
-                if (body != null) {
-                    builder.add(renderExpression(objectDef, implementation, lambdaScope, body));
-                } else {
-                    builder.add("{\n").indent();
-                    for (StatementDef statement : statements) {
-                        builder.add(renderStatementCodeBlock(objectDef, implementation, lambdaScope, statement));
-                    }
-                    builder.unindent().add("}");
-                }
-                return builder.build();
+                return renderLambda(objectDef, scope, lambda);
             }
             case MethodReferenceExpression methodReference -> {
-                String name = methodReference.isConstructor() ? "new" : methodReference.method().getName();
-                ExpressionDef instance = methodReference.instance();
-                if (instance == null) {
-                    return CodeBlock.of("$T::" + name, asType(methodReference.owner(), objectDef));
-                }
-                CodeBlock receiver = renderExpression(objectDef, methodDef, scope, instance);
-                if (requiresMethodCallTargetParentheses(instance)) {
-                    receiver = addParentheses(receiver);
-                }
-                return CodeBlock.concat(receiver, CodeBlock.of("::" + name));
+                return renderMethodReference(objectDef, methodDef, scope, methodReference);
             }
             case ExpressionDef.StringConcatenation concat -> {
-                ExpressionDef left = concat.left();
-                if (!left.type().equals(TypeDef.STRING) && !concat.right().type().equals(TypeDef.STRING)) {
-                    left = TypeDef.STRING.invokeStatic("valueOf", TypeDef.STRING, left);
-                }
-                return CodeBlock.concat(
-                    renderExpression(objectDef, methodDef, scope, left),
-                    CodeBlock.of(" + "),
-                    renderExpression(objectDef, methodDef, scope, concat.right())
-                );
+                return renderStringConcatenation(objectDef, methodDef, scope, concat);
             }
             case null, default -> throw new IllegalStateException("Unrecognized expression: " + expressionDef);
         }
+    }
+
+    private CodeBlock renderArrayElement(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.ArrayElement arrayElement) {
+        CodeBlock array = renderExpression(objectDef, methodDef, scope, arrayElement.expression());
+        if (requiresMethodCallTargetParentheses(arrayElement.expression())) {
+            array = addParentheses(array);
+        }
+        return CodeBlock.concat(
+            array,
+            CodeBlock.of("["),
+            renderExpression(objectDef, methodDef, scope, arrayElement.indexExpression()),
+            CodeBlock.of("]")
+        );
+    }
+
+    private CodeBlock renderNewArrayInitialized(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.NewArrayInitialized newArray) {
+        CodeBlock.Builder builder = CodeBlock.builder();
+        builder.add("new $T[]{", asType(newArray.type().componentType(), objectDef));
+        for (Iterator<? extends ExpressionDef> iterator = newArray.nestedExpressionsStream().iterator(); iterator.hasNext(); ) {
+            ExpressionDef expression = iterator.next();
+            builder.add(renderExpression(objectDef, methodDef, scope, expression));
+            if (iterator.hasNext()) {
+                builder.add(",");
+            }
+        }
+        builder.add("}");
+        return builder.build();
+    }
+
+    private CodeBlock renderInvokeInstanceMethod(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.InvokeInstanceMethod invokeInstanceMethod) {
+        MethodDef callMethod = invokeInstanceMethod.method();
+        CodeBlock instance = renderExpression(objectDef, methodDef, scope, invokeInstanceMethod.instance());
+        if (!callMethod.isConstructor() && requiresMethodCallTargetParentheses(invokeInstanceMethod.instance())) {
+            instance = addParentheses(instance);
+        }
+        return CodeBlock.concat(
+            instance,
+            CodeBlock.of((callMethod.isConstructor() ? "" : "." + callMethod.getName()) + "("),
+            invokeInstanceMethod.values()
+                .stream()
+                .map(exp -> renderExpression(objectDef, methodDef, scope, exp))
+                .collect(CodeBlock.joining(", ")),
+            CodeBlock.of(")")
+        );
+    }
+
+    private CodeBlock renderIfElse(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.IfElse condition) {
+        CodeBlock conditionBlock = renderExpression(objectDef, methodDef, scope, condition.condition());
+        if (unwrapCasts(condition.condition()) instanceof ExpressionDef.IfElse) {
+            // `?:` is right-associative, a conditional used as a condition needs parentheses
+            conditionBlock = addParentheses(conditionBlock);
+        }
+        return CodeBlock.concat(
+            conditionBlock,
+            CodeBlock.of(" ? "),
+            renderExpression(objectDef, methodDef, scope, condition.ifExpression()),
+            CodeBlock.of(" : "),
+            renderExpression(objectDef, methodDef, scope, condition.elseExpression())
+        );
+    }
+
+    private CodeBlock renderSwitch(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.Switch aSwitch) {
+        CodeBlock.Builder builder = CodeBlock.builder();
+        builder.add("switch (");
+        builder.add(renderExpression(objectDef, methodDef, scope, aSwitch.expression()));
+        builder.add(") {\n");
+        builder.indent();
+        for (Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef> e : aSwitch.cases().entrySet()) {
+            builder.add("case ");
+            builder.add(renderConstantExpression(scope, e.getKey()));
+            builder.add(" -> ");
+            ExpressionDef value = e.getValue();
+            builder.add(renderExpression(objectDef, methodDef, scope, value));
+            if (value instanceof ExpressionDef.SwitchYieldCase) {
+                builder.add("\n");
+            } else {
+                builder.add(";\n");
+            }
+        }
+        if (aSwitch.defaultCase() != null) {
+            builder.add("default");
+            builder.add(" -> ");
+            builder.add(renderExpression(objectDef, methodDef, scope, aSwitch.defaultCase()));
+            if (aSwitch.defaultCase() instanceof ExpressionDef.SwitchYieldCase) {
+                builder.add("\n");
+            } else {
+                builder.add(";\n");
+            }
+        }
+        builder.unindent();
+        builder.add("}");
+        return builder.build();
+    }
+
+    private CodeBlock renderSwitchYieldCase(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.SwitchYieldCase switchYieldCase) {
+        CodeBlock.Builder builder = CodeBlock.builder();
+        builder.add("{\n");
+        builder.indent();
+        StatementDef statement = switchYieldCase.statement();
+        List<StatementDef> flatten = statement.flatten();
+        if (flatten.isEmpty()) {
+            throw new IllegalStateException("SwitchYieldCase did not return any statements");
+        }
+        StatementDef last = flatten.getLast();
+        if (!hasSwitchYieldReturn(statement)) {
+            throw new IllegalStateException("The last statement of SwitchYieldCase should be a return. Found: " + last);
+        }
+        builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, scope, statement));
+        builder.unindent();
+        builder.add("}");
+        String str = builder.build().toString();
+        // Render the body to prevent nested statements
+        return CodeBlock.ofWithoutFormat(str);
+    }
+
+    private CodeBlock renderLambda(@Nullable ObjectDef objectDef, RenderScope scope, Lambda lambda) {
+        MethodDef implementation = lambda.implementation();
+        // Java forbids a lambda parameter from shadowing a name that is already in scope, so a
+        // colliding parameter is emitted under an allocated name and its references remapped
+        RenderScope lambdaScope = scope.nested(implementation);
+        CodeBlock.Builder builder = CodeBlock.builder();
+        builder.add("(");
+        Iterator<ParameterDef> parameter = implementation.getParameters().iterator();
+        while (parameter.hasNext()) {
+            String name = parameter.next().getName();
+            String emittedName = scope.isTaken(name) ? lambdaScope.allocate(name) : name;
+            lambdaScope.rename(name, emittedName);
+            builder.add(emittedName);
+            if (parameter.hasNext()) {
+                builder.add(", ");
+            }
+        }
+        builder.add(") -> ");
+        List<StatementDef> statements = implementation.getStatements();
+        ExpressionDef body = singleExpressionBody(lambda);
+        if (body != null) {
+            builder.add(renderExpression(objectDef, implementation, lambdaScope, body));
+        } else {
+            builder.add("{\n").indent();
+            for (StatementDef statement : statements) {
+                builder.add(renderStatementCodeBlock(objectDef, implementation, lambdaScope, statement));
+            }
+            builder.unindent().add("}");
+        }
+        return builder.build();
+    }
+
+    private CodeBlock renderMethodReference(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, MethodReferenceExpression methodReference) {
+        String name = methodReference.isConstructor() ? "new" : methodReference.method().getName();
+        ExpressionDef instance = methodReference.instance();
+        if (instance == null) {
+            return CodeBlock.of("$T::" + name, asType(methodReference.owner(), objectDef));
+        }
+        CodeBlock receiver = renderExpression(objectDef, methodDef, scope, instance);
+        if (requiresMethodCallTargetParentheses(instance)) {
+            receiver = addParentheses(receiver);
+        }
+        return CodeBlock.concat(receiver, CodeBlock.of("::" + name));
+    }
+
+    private CodeBlock renderStringConcatenation(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.StringConcatenation concat) {
+        ExpressionDef left = concat.left();
+        if (!left.type().equals(TypeDef.STRING) && !concat.right().type().equals(TypeDef.STRING)) {
+            left = TypeDef.STRING.invokeStatic("valueOf", TypeDef.STRING, left);
+        }
+        return CodeBlock.concat(
+            renderExpression(objectDef, methodDef, scope, left),
+            CodeBlock.of(" + "),
+            renderExpression(objectDef, methodDef, scope, concat.right())
+        );
     }
 
     private static String getMathOp(ExpressionDef.MathBinaryOperation mathOperation) {
