@@ -45,7 +45,8 @@ public final class SourceGenerators {
     @NonNull
     public static synchronized List<SourceGenerator> getAll() {
         if (sourceGenerators == null) {
-            sourceGenerators = SoftServiceLoader.load(SourceGenerator.class).collectAll();
+            // A generator of a language that the Micronaut core version present at runtime does not know is never selected
+            sourceGenerators = SoftServiceLoader.load(SourceGenerator.class).collectAll(generator -> generator.getLanguage() != null);
         }
         return sourceGenerators;
     }
