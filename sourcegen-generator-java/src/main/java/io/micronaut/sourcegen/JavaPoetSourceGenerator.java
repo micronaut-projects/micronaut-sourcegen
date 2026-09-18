@@ -100,6 +100,7 @@ import java.io.Writer;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -1399,7 +1400,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
         }
         // The bounds of the invoked method's variables, with the receiver's type arguments for its class variables
-        Map<String, TypeDef> receiverArguments = OverrideResolver.receiverArguments(owner, objectDef);
+        // - not for the variables the method declares itself, which shadow the class's of the same name
+        Map<String, TypeDef> receiverArguments = new HashMap<>(OverrideResolver.receiverArguments(owner, objectDef, callMethod));
+        callMethod.getTypeVariables().forEach(variable -> receiverArguments.remove(variable.name()));
         List<TypeDef.TypeVariable> inferred = callMethod.getTypeVariables().stream()
             .map(variable -> TypeDef.variable(variable.name(), variable.bounds().stream()
                 .map(bound -> TypeHierarchy.substituted(bound, receiverArguments)).toList())).toList();

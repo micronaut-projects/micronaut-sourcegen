@@ -434,24 +434,47 @@ public final class OverrideResolver {
     }
 
     /**
-     * The type arguments a parameterized receiver binds the variables of the generated class it invokes with.
+     * The type arguments a receiver binds the variables of the generated class declaring the invoked method with:
+     * those of the receiver's type, carried through the generated classes it extends to the one declaring it.
      *
-     * @param owner   The type of the receiver, or {@code null}
-     * @param current The definition being written, or {@code null}
+     * @param owner      The type of the receiver, or {@code null}
+     * @param current    The definition being written, or {@code null}
+     * @param callMethod The invoked method
      * @return The type arguments by the variables they bind, empty where there are none
      */
-    public static Map<String, TypeDef> receiverArguments(@Nullable ClassTypeDef owner, @Nullable ObjectDef current) {
+    public static Map<String, TypeDef> receiverArguments(@Nullable ClassTypeDef owner,
+                                                         @Nullable ObjectDef current,
+                                                         MethodDef callMethod) {
         ObjectDef target = definitionOf(owner, current);
-        if (target == null || !(owner instanceof ClassTypeDef.Parameterized parameterized)) {
+        if (target == null) {
             return Map.of();
         }
-        List<String> variables = TypeHierarchy.declaring(target).getTypeParameters();
-        if (variables.size() != parameterized.typeArguments().size()) {
+        Map<String, TypeDef> arguments = bind(target, owner, Map.of());
+        for (int depth = 0; depth < MAX_DEPTH && declaredMethod(target, callMethod) == null; depth++) {
+            if (!(target instanceof ClassDef classDef) || classDef.getSuperclass() == null) {
+                break;
+            }
+            ObjectDef superclass = definitionOf(classDef.getSuperclass(), null);
+            if (superclass == null) {
+                break;
+            }
+            arguments = bind(superclass, classDef.getSuperclass(), arguments);
+            target = superclass;
+        }
+        return arguments;
+    }
+
+    private static Map<String, TypeDef> bind(ObjectDef definition,
+                                             @Nullable ClassTypeDef type,
+                                             Map<String, TypeDef> outer) {
+        List<String> variables = TypeHierarchy.declaring(definition).getTypeParameters();
+        if (!(type instanceof ClassTypeDef.Parameterized parameterized)
+            || variables.size() != parameterized.typeArguments().size()) {
             return Map.of();
         }
         Map<String, TypeDef> arguments = new HashMap<>();
         for (int i = 0; i < variables.size(); i++) {
-            arguments.put(variables.get(i), parameterized.typeArguments().get(i));
+            arguments.put(variables.get(i), TypeHierarchy.substituted(parameterized.typeArguments().get(i), outer));
         }
         return arguments;
     }

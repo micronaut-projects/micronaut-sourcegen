@@ -2415,9 +2415,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     continue
                 }
                 val valueType = value.type()
+                // A variable the invoked method declares is inferred from the value; one of the class is fixed
+                val fixedVariable = parameterType is TypeDef.TypeVariable
+                    && callMethod?.typeVariables?.none { it.name == parameterType.name } != false
                 val argument = if (parameterType != null && (requiresImplicitCast(parameterType, valueType)
                         || !vararg && valueType == TypeDef.OBJECT
-                        && (parameterType is TypeDef.Array || parameterType is TypeDef.TypeVariable)
+                        && (parameterType is TypeDef.Array || fixedVariable)
                         // A value of a variable, or an array of another component, where an override narrowed the
                         // parameter
                         || !vararg && valueType is TypeDef.TypeVariable
@@ -2425,8 +2428,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         // A value of another variable, a class, an array or a primitive, where an override narrowed
                         // the parameter to a variable of the class, which is fixed - not one the invoked method
                         // declares, which is inferred
-                        || !vararg && parameterType is TypeDef.TypeVariable && parameterType != valueType
-                        && callMethod?.typeVariables?.none { it.name == parameterType.name } != false
+                        || !vararg && fixedVariable && parameterType != valueType
                         && (valueType is TypeDef.TypeVariable || valueType is ClassTypeDef
                         || valueType is TypeDef.Array || valueType is TypeDef.Primitive)
                         || !vararg && valueType is TypeDef.Array && parameterType is TypeDef.Array
