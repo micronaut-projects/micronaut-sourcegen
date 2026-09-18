@@ -1522,7 +1522,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 val codeBuilder = CodeBlock.builder()
                 codeBuilder.add("%T.%N(", asStaticOwnerName(expressionDef.classDef), expressionDef.method.name)
                 codeBuilder.add(renderArguments(
-                    objectDef, methodDef, scope, expressionDef.classDef, expressionDef.method.name, null,
+                    objectDef, methodDef, scope, expressionDef.classDef, expressionDef.method.name, expressionDef.method,
                     expressionDef.method.parameters.map { it.type }, expressionDef.values
                 ))
                 codeBuilder.add(")")
@@ -2422,10 +2422,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         // parameter
                         || !vararg && valueType is TypeDef.TypeVariable
                         && parameterType is ClassTypeDef && parameterType != TypeDef.OBJECT
-                        // A value of another variable or of a class, where an override narrowed the parameter to a
-                        // variable of the class, which is fixed
+                        // A value of another variable, a class, an array or a primitive, where an override narrowed
+                        // the parameter to a variable of the class, which is fixed - not one the invoked method
+                        // declares, which is inferred
                         || !vararg && parameterType is TypeDef.TypeVariable && parameterType != valueType
-                        && (valueType is TypeDef.TypeVariable || valueType is ClassTypeDef)
+                        && callMethod?.typeVariables?.none { it.name == parameterType.name } != false
+                        && (valueType is TypeDef.TypeVariable || valueType is ClassTypeDef
+                        || valueType is TypeDef.Array || valueType is TypeDef.Primitive)
                         || !vararg && valueType is TypeDef.Array && parameterType is TypeDef.Array
                         && valueType != parameterType)) {
                     value.cast(parameterType)
@@ -2590,7 +2593,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             // `String` of a `Bounded<String>`, or for a `T : CharSequence`
             if (returnType is TypeDef.TypeVariable) {
                 return valueType != returnType
-                    && (valueType is ClassTypeDef || valueType is TypeDef.Array || valueType is TypeDef.TypeVariable)
+                    && (valueType is ClassTypeDef || valueType is TypeDef.Array || valueType is TypeDef.TypeVariable
+                    || valueType is TypeDef.Primitive && valueType != TypeDef.VOID)
             }
             return returnType is ClassTypeDef.JavaClass && valueType is ClassTypeDef.JavaClass
                 && !returnType.type.isAssignableFrom(valueType.type)

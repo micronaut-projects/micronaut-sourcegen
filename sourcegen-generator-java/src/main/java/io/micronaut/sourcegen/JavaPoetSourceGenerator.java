@@ -101,13 +101,10 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.IntStream;
 
 import static io.micronaut.sourcegen.javapoet.TypeSpec.anonymousClassBuilder;
@@ -1401,8 +1398,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 parameterTypes = emitted.parameterTypes();
             }
         }
+        // The bounds of the invoked method's variables, with the receiver's type arguments for its class variables
+        Map<String, TypeDef> receiverArguments = OverrideResolver.receiverArguments(owner, objectDef);
+        List<TypeDef.TypeVariable> inferred = callMethod.getTypeVariables().stream()
+            .map(variable -> TypeDef.variable(variable.name(), variable.bounds().stream()
+                .map(bound -> TypeHierarchy.substituted(bound, receiverArguments)).toList())).toList();
         return renderInvocationArguments(objectDef, enclosingMethod, scope, owner, callMethod.getName(),
-            parameterTypes, callMethod.getTypeVariables(), values);
+            parameterTypes, inferred, values);
     }
 
     /**
@@ -1417,7 +1419,16 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         if (casts.isEmpty()) {
             return renderExpression(objectDef, methodDef, scope, value);
         }
-        if (casts.size() == 1 && casts.get(0).size() == 1) {
+        return renderConverted(objectDef, methodDef, scope, value, casts, false);
+    }
+
+    private CodeBlock renderConverted(@Nullable ObjectDef objectDef,
+                                      @Nullable MethodDef methodDef,
+                                      RenderScope scope,
+                                      ExpressionDef value,
+                                      List<List<TypeDef>> casts,
+                                      boolean writtenOut) {
+        if (!writtenOut && casts.size() == 1 && casts.get(0).size() == 1) {
             return renderExpression(objectDef, methodDef, scope, value.cast(casts.get(0).get(0)));
         }
         // An intersection of bounds is cast to as `(Number & Runnable)`
@@ -1475,7 +1486,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         generated, inferred, objectDef, enclosingMethod);
                     if (casts.size() < 2 && !sourceType.equals(value.type()) && !paramType.equals(sourceType)) {
                         if (!casts.isEmpty()) {
-                            return renderConverted(objectDef, enclosingMethod, scope, value, casts);
+                            // Written out: the cast can be to the type the value has in the model
+                            return renderConverted(objectDef, enclosingMethod, scope, value, casts, true);
                         }
                         // An override narrowed the parameter the value names - `Object value` to `String value` -
                         // which would select another overload than the one the model calls: keep its type. Written
@@ -1864,137 +1876,4 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 throw new IllegalStateException("Field access not supported on the object definition: " + objectDef);
         }
     }
-
-
-    /**
-     * The naming scope of a method or lambda body being rendered.
-     *
-     * <p>A lambda body is rendered in a scope of its own, nested in the scope of the enclosing
-     * method, so that a name that is already in scope can be detected and a lambda parameter can be
-     * renamed to avoid shadowing it - Java forbids a lambda parameter from shadowing a name in
-     * scope - and so that a reference to an enclosing method's parameter resolves instead of
-     * failing.
-     */
-    private static final class RenderScope {
-
-        @Nullable
-        private final RenderScope parent;
-        @Nullable
-        private final MethodDef owner;
-        private final Map<String, String> renames = new LinkedHashMap<>();
-        private final Set<String> taken = new LinkedHashSet<>();
-
-        private RenderScope(@Nullable RenderScope parent, @Nullable MethodDef owner) {
-            this.parent = parent;
-            this.owner = owner;
-            if (owner != null) {
-                for (ParameterDef parameter : owner.getParameters()) {
-                    taken.add(parameter.getName());
-                }
-            }
-        }
-
-        /**
-         * @param owner The method the scope belongs to
-         * @return A root scope
-         */
-        static RenderScope root(@Nullable MethodDef owner) {
-            return new RenderScope(null, owner);
-        }
-
-        /**
-         * @param owner The method the nested scope belongs to
-         * @return A scope nested in this one
-         */
-        RenderScope nested(@Nullable MethodDef owner) {
-            return new RenderScope(this, owner);
-        }
-
-        /**
-         * Records a name as declared in this scope, so that a nested lambda does not reuse it.
-         *
-         * @param name The name
-         */
-        void declare(String name) {
-            taken.add(name);
-        }
-
-        /**
-         * Records that a name of the owning method is emitted under a different name.
-         *
-         * @param name        The name in the model
-         * @param emittedName The name to emit
-         */
-        void rename(String name, String emittedName) {
-            renames.put(name, emittedName);
-            taken.add(emittedName);
-        }
-
-        /**
-         * @param name The name
-         * @return True if the name is already used by this scope or any enclosing one
-         */
-        boolean isTaken(String name) {
-            for (RenderScope s = this; s != null; s = s.parent) {
-                if (s.taken.contains(name)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /**
-         * Allocates a name that is not used by this scope or any enclosing one.
-         *
-         * @param name The preferred name
-         * @return The preferred name, or a name derived from it
-         */
-        String allocate(String name) {
-            if (!isTaken(name)) {
-                return name;
-            }
-            int i = 1;
-            String candidate = name + i;
-            while (isTaken(candidate)) {
-                candidate = name + ++i;
-            }
-            return candidate;
-        }
-
-        /**
-         * Resolves the name a method parameter is emitted under, looking in the innermost scope that
-         * declares it and walking outwards so that a lambda body can capture a parameter of the
-         * enclosing method.
-         *
-         * @param name The parameter name
-         * @return The name to emit, or {@code null} if no scope declares the parameter
-         */
-        @Nullable
-        String resolveParameter(String name) {
-            for (RenderScope s = this; s != null; s = s.parent) {
-                if (s.owner != null && s.owner.findParameter(name) != null) {
-                    return s.renames.getOrDefault(name, name);
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Resolves a name recorded by {@link #rename(String, String)}, walking outwards.
-         *
-         * @param name The name in the model
-         * @return The name to emit, or {@code null} if no scope renamed it
-         */
-        @Nullable
-        String resolveRename(String name) {
-            for (RenderScope s = this; s != null; s = s.parent) {
-                String emittedName = s.renames.get(name);
-                if (emittedName != null) {
-                    return emittedName;
-                }
-            }
-            return null;
-        }
-    }
-
 }

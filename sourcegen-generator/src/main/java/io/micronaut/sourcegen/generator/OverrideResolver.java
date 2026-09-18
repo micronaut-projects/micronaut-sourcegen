@@ -401,15 +401,59 @@ public final class OverrideResolver {
             }
             for (TypeDef candidate : values) {
                 // A class inheriting the bound is of the type arguments it inherits it with
-                TypeDef inherited = candidate instanceof ClassTypeDef.Parameterized ? candidate
-                    : candidate instanceof ClassTypeDef classType
-                    ? TypeHierarchy.asSupertype(classType, parameterized.rawType().getName(), lookup) : null;
+                TypeDef inherited = inheritedAs(candidate, parameterized, lookup);
                 if (inherited instanceof ClassTypeDef.Parameterized && !parameterized.equals(inherited)) {
                     return parameterized.rawType();
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * A value type as the class a parameterized bound is of, with the type arguments it inherits it with -
+     * `GenericList<String> extends ArrayList<String>` as a `List<String>`.
+     *
+     * @param value  The value type
+     * @param bound  The bound
+     * @param lookup Looks up the element of a type only known by name, or {@code null}
+     * @return The type, or {@code null} where the value does not inherit the bound's class
+     */
+    @Nullable
+    public static TypeDef inheritedAs(TypeDef value,
+                                      ClassTypeDef.Parameterized bound,
+                                      @Nullable Function<String, @Nullable ClassElement> lookup) {
+        if (!(value instanceof ClassTypeDef classType)) {
+            return null;
+        }
+        if (classType instanceof ClassTypeDef.Parameterized parameterized
+            && parameterized.rawType().getName().equals(bound.rawType().getName())) {
+            return parameterized;
+        }
+        return TypeHierarchy.asSupertype(classType, bound.rawType().getName(), lookup);
+    }
+
+    /**
+     * The type arguments a parameterized receiver binds the variables of the generated class it invokes with.
+     *
+     * @param owner   The type of the receiver, or {@code null}
+     * @param current The definition being written, or {@code null}
+     * @return The type arguments by the variables they bind, empty where there are none
+     */
+    public static Map<String, TypeDef> receiverArguments(@Nullable ClassTypeDef owner, @Nullable ObjectDef current) {
+        ObjectDef target = definitionOf(owner, current);
+        if (target == null || !(owner instanceof ClassTypeDef.Parameterized parameterized)) {
+            return Map.of();
+        }
+        List<String> variables = TypeHierarchy.declaring(target).getTypeParameters();
+        if (variables.size() != parameterized.typeArguments().size()) {
+            return Map.of();
+        }
+        Map<String, TypeDef> arguments = new HashMap<>();
+        for (int i = 0; i < variables.size(); i++) {
+            arguments.put(variables.get(i), parameterized.typeArguments().get(i));
+        }
+        return arguments;
     }
 
     /**

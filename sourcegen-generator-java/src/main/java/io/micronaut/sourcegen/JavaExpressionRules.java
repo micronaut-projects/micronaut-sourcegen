@@ -410,9 +410,7 @@ final class JavaExpressionRules {
             }
             for (TypeDef value : values) {
                 // A class inheriting the bound is of the type arguments it inherits it with
-                TypeDef inherited = value instanceof ClassTypeDef.Parameterized ? value
-                    : value instanceof ClassTypeDef classType
-                    ? TypeHierarchy.asSupertype(classType, parameterized.rawType().getName(), elementLookup()) : null;
+                TypeDef inherited = OverrideResolver.inheritedAs(value, parameterized, elementLookup());
                 if (inherited != null && requiresRawConversion(parameterized, inherited, Set.of())) {
                     return parameterized.rawType();
                 }
@@ -438,6 +436,10 @@ final class JavaExpressionRules {
                 ? inferred.stream().filter(v -> v.name().equals(named.name())).findFirst().orElse(null) : null;
             if (declared != null) {
                 result.addAll(calleeBounds(declared, inferred.stream().filter(v -> v != declared).toList()));
+            } else if (unwrapped instanceof ClassTypeDef.Parameterized parameterized
+                && namesCalleeVariable(parameterized, inferred)) {
+                // `Comparable<T>` names the variable itself, which is out of scope where it is called
+                result.add(parameterized.rawType());
             } else if (!TypeDef.OBJECT.equals(unwrapped)) {
                 result.add(unwrapped);
             }
@@ -495,9 +497,21 @@ final class JavaExpressionRules {
                                              @Nullable MethodDef methodDef) {
         boolean callee = namesCalleeVariable(paramType, inferred);
         if (generated && !callee && TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable) {
+            if (valueType instanceof TypeDef.Primitive primitive) {
+                // A primitive is boxed before it is cast to a variable
+                return List.of(List.of(paramType), List.of(primitive.wrapperType()));
+            }
             TypeDef bound = rawBoundConversion(paramType, sourceType, objectDef, methodDef);
             if (bound != null) {
                 return List.of(List.of(paramType), List.of(bound));
+            }
+        }
+        if (callee && TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable
+            && !(valueType instanceof TypeDef.Primitive) && !TypeDef.OBJECT.equals(valueType)) {
+            // A value inferred as a variable of the invoked method has to satisfy every bound
+            List<TypeDef> bounds = withoutCalleeVariables(paramType, inferred);
+            if (bounds.stream().anyMatch(bound -> !isAssignable(bound, valueType))) {
+                return List.of(bounds);
             }
         }
         if (requiresImplicitInvocationCast(paramType, valueType)) {
@@ -536,6 +550,10 @@ final class JavaExpressionRules {
                                           @Nullable MethodDef methodDef) {
         if (TypeDef.VOID.equals(returnType)) {
             return List.of();
+        }
+        if (TypeHierarchy.unwrap(returnType) instanceof TypeDef.TypeVariable && valueType instanceof TypeDef.Primitive primitive) {
+            // A primitive is boxed before it is cast to a variable
+            return List.of(List.of(returnType), List.of(primitive.wrapperType()));
         }
         TypeDef bound = rawBoundConversion(returnType, sourceType, objectDef, methodDef);
         if (bound != null) {
