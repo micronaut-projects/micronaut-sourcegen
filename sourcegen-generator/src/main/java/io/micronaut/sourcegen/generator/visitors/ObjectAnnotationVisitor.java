@@ -98,7 +98,6 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
 
             // create the utils functions if they are annotated
             if (element.hasStereotype(ToString.class)) {
-                context.warn("@ToString annotation will only print out bean properties.", element);
                 List<PropertyElement> filteredProperties = element.getBeanProperties().stream()
                     .filter(property -> !property.hasAnnotation(ToString.Exclude.class)).toList();
                 createToStringMethod(objectBuilder, ClassTypeDef.of(element), filteredProperties);
