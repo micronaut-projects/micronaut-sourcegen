@@ -759,7 +759,8 @@ public sealed interface ClassTypeDef extends TypeDef {
         if (classElement.isPrimitive()) {
             throw new IllegalStateException("Primitive classes cannot be of type: " + ClassTypeDef.class.getName());
         }
-        if (!classElement.getTypeArguments().isEmpty()) {
+        // A raw type is still reported with its type arguments defaulted; keep it raw
+        if (!classElement.isRawType() && !classElement.getTypeArguments().isEmpty()) {
             return new Parameterized(
                 new ClassElementType(classElement, classElement.isNullable()),
                 classElement.getTypeArguments().values()

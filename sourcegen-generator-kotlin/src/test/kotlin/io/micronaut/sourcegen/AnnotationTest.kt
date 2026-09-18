@@ -41,7 +41,7 @@ class AnnotationTest {
         @Introspected
         public class SimpleClass {
           @Pattern(regex = "hii")
-          public var str: String
+          public lateinit var str: String
         }
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())
