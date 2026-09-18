@@ -132,6 +132,7 @@ public final class MethodSpecTest {
 
   final class FinalClass {
     void method() {
+      // empty fixture method
     }
   }
 

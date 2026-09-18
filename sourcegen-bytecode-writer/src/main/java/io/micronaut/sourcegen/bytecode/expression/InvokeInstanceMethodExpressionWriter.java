@@ -58,13 +58,7 @@ final class InvokeInstanceMethodExpressionWriter extends AbstractStatementAwareE
         Type methodOwnerType = TypeUtils.getType(instanceType, context.objectDef());
         MethodDef methodDef = invokeInstanceMethod.method();
         Method method = new Method(methodDef.getName(), TypeUtils.getMethodDescriptor(context.objectDef(), methodDef));
-        while (instanceType instanceof TypeDef.TypeVariable typeVariable) {
-            if (CollectionUtils.isEmpty(typeVariable.bounds())) {
-                instanceType = TypeDef.OBJECT;
-            } else {
-                instanceType = typeVariable.bounds().get(0);
-            }
-        }
+        instanceType = eraseTypeVariable(instanceType);
         if (instanceType instanceof ClassTypeDef classTypeDef) {
             if (instance instanceof VariableDef.Super aSuper) {
                 ClassTypeDef superType = getSuperType(context, aSuper);
@@ -89,6 +83,17 @@ final class InvokeInstanceMethodExpressionWriter extends AbstractStatementAwareE
             throw new IllegalStateException("Unsupported instance type: " + instanceType);
         }
         popValueIfNeeded(generatorAdapter, invokeInstanceMethod.method().getReturnType());
+    }
+
+    private static TypeDef eraseTypeVariable(TypeDef type) {
+        while (type instanceof TypeDef.TypeVariable typeVariable) {
+            if (CollectionUtils.isEmpty(typeVariable.bounds())) {
+                type = TypeDef.OBJECT;
+            } else {
+                type = typeVariable.bounds().get(0);
+            }
+        }
+        return type;
     }
 
     private ClassTypeDef getSuperType(MethodContext context, VariableDef.Super aSuper) {

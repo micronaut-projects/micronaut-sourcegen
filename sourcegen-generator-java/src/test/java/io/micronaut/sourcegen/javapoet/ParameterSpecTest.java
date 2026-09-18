@@ -104,6 +104,7 @@ public class ParameterSpecTest {
 
   final class VariableElementParameterClass {
     public void foo(@Nullable final String bar) {
+      // empty fixture method
     }
   }
 

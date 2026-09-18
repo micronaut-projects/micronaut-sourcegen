@@ -201,16 +201,7 @@ public final class RecordDef extends ObjectDef {
             return visitorContext.getClassElement(classDefType.getName())
                 .orElseGet(() -> ClassElement.of(classDefType.getName()));
         } else if (type instanceof ClassTypeDef.Parameterized parameterized) {
-            ClassTypeDef rawType = parameterized.rawType();
-            if (rawType instanceof ClassTypeDef.ClassElementType cet) {
-                return cet.classElement();
-            } else {
-                ClassElement classElement = toClassElement(rawType, visitorContext);
-                return classElement.withTypeArguments(
-                    parameterized.typeArguments().stream().map(tf -> toClassElement(tf, visitorContext)).toList()
-                );
-            }
-
+            return toParameterizedClassElement(parameterized, visitorContext);
         } else if (type instanceof TypeDef.Array array) {
             TypeDef typeDef = array.componentType();
             ClassElement componentType = toClassElement(typeDef, visitorContext);
@@ -218,19 +209,29 @@ public final class RecordDef extends ObjectDef {
                 return arrayableClassElement.withArrayDimensions(array.dimensions());
             }
         } else if (type instanceof TypeDef.AnnotatedTypeDef annotated) {
-            ClassElement element = toClassElement(annotated.typeDef(), visitorContext);
-            for (AnnotationDef annotation: annotated.annotations()) {
-                element.annotate(annotation.toAnnotationValue());
-            }
-            return element;
+            return annotate(toClassElement(annotated.typeDef(), visitorContext), annotated.annotations());
         } else if (type instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
-            ClassElement element = toClassElement(annotated.typeDef(), visitorContext);
-            for (AnnotationDef annotation: annotated.annotations()) {
-                element.annotate(annotation.toAnnotationValue());
-            }
-            return element;
+            return annotate(toClassElement(annotated.typeDef(), visitorContext), annotated.annotations());
         }
         throw new IllegalStateException("Only properties constructed from source elements are supported");
+    }
+
+    private static ClassElement toParameterizedClassElement(ClassTypeDef.Parameterized parameterized, VisitorContext visitorContext) {
+        ClassTypeDef rawType = parameterized.rawType();
+        if (rawType instanceof ClassTypeDef.ClassElementType cet) {
+            return cet.classElement();
+        }
+        ClassElement classElement = toClassElement(rawType, visitorContext);
+        return classElement.withTypeArguments(
+            parameterized.typeArguments().stream().map(tf -> toClassElement(tf, visitorContext)).toList()
+        );
+    }
+
+    private static ClassElement annotate(ClassElement element, List<AnnotationDef> annotations) {
+        for (AnnotationDef annotation: annotations) {
+            element.annotate(annotation.toAnnotationValue());
+        }
+        return element;
     }
 
     /**

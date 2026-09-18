@@ -36,7 +36,7 @@ public final class PropertyDef extends AbstractElement {
 
     private PropertyDef(String name,
                         EnumSet<Modifier> modifiers,
-                        TypeDef type,
+                        @Nullable TypeDef type,
                         List<AnnotationDef> annotations,
                         List<String> javadoc,
                         boolean synthetic) {

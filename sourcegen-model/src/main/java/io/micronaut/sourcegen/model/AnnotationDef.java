@@ -115,6 +115,7 @@ public final class AnnotationDef {
      * Convert to an annotation value.
      * @return The annotation value
      */
+    @SuppressWarnings("java:S1452") // the annotation type is only known at runtime
     AnnotationValue<?> toAnnotationValue() {
         AnnotationValueBuilder<?> builder = AnnotationValue.builder(getType().getName());
         Map<CharSequence, Object> members = new HashMap<>();

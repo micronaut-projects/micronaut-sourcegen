@@ -48,85 +48,77 @@ final class ConstantExpressionWriter implements ExpressionWriter {
             return;
         }
         if (type instanceof TypeDef.Primitive primitive) {
-            if (value instanceof Number number) {
-                switch (primitive.name()) {
-                    case "long" -> generatorAdapter.push(number.longValue());
-                    case "float" -> generatorAdapter.push(number.floatValue());
-                    case "double" -> generatorAdapter.push(number.doubleValue());
-                    case "byte" -> generatorAdapter.push(number.byteValue());
-                    case "int" -> generatorAdapter.push(number.intValue());
-                    case "short" -> generatorAdapter.push(number.shortValue());
-                    default ->
-                        throw new IllegalStateException("Unrecognized number primitive type: " + primitive.name());
-                }
-                return;
-            }
+            pushPrimitive(generatorAdapter, primitive, value);
+        } else {
+            pushObject(generatorAdapter, context, value);
+        }
+    }
+
+    private static void pushPrimitive(GeneratorAdapter generatorAdapter, TypeDef.Primitive primitive, Object value) {
+        if (value instanceof Number number) {
             switch (primitive.name()) {
-                case "boolean" -> generatorAdapter.push((Boolean) value);
-                case "char" -> generatorAdapter.push((Character) value);
+                case "long" -> generatorAdapter.push(number.longValue());
+                case "float" -> generatorAdapter.push(number.floatValue());
+                case "double" -> generatorAdapter.push(number.doubleValue());
+                case "byte" -> generatorAdapter.push(number.byteValue());
+                case "int" -> generatorAdapter.push(number.intValue());
+                case "short" -> generatorAdapter.push(number.shortValue());
                 default ->
-                    throw new IllegalStateException("Unrecognized primitive type: " + primitive.name());
+                    throw new IllegalStateException("Unrecognized number primitive type: " + primitive.name());
             }
             return;
         }
-        if (value instanceof String string) {
-            generatorAdapter.push(string);
-            return;
+        switch (primitive.name()) {
+            case "boolean" -> generatorAdapter.push((Boolean) value);
+            case "char" -> generatorAdapter.push((Character) value);
+            default ->
+                throw new IllegalStateException("Unrecognized primitive type: " + primitive.name());
         }
-        if (value instanceof Boolean aBoolean) {
-            generatorAdapter.push(aBoolean);
-            generatorAdapter.valueOf(Type.getType(boolean.class));
-            return;
+    }
+
+    private void pushObject(GeneratorAdapter generatorAdapter, MethodContext context, Object value) {
+        switch (value) {
+            case String string -> generatorAdapter.push(string);
+            case Boolean aBoolean -> {
+                generatorAdapter.push(aBoolean);
+                generatorAdapter.valueOf(Type.getType(boolean.class));
+            }
+            case Enum<?> enumConstant -> {
+                Type enumType = Type.getType(enumConstant.getDeclaringClass());
+                generatorAdapter.getStatic(enumType, enumConstant.name(), enumType);
+            }
+            case TypeDef typeDef -> generatorAdapter.push(TypeUtils.getType(typeDef, context.objectDef()));
+            case Class<?> aClass -> generatorAdapter.push(Type.getType(aClass));
+            case Integer integer -> {
+                generatorAdapter.push(integer);
+                generatorAdapter.valueOf(Type.getType(int.class));
+            }
+            case Long aLong -> {
+                generatorAdapter.push(aLong);
+                generatorAdapter.valueOf(Type.getType(long.class));
+            }
+            case Double aDouble -> {
+                generatorAdapter.push(aDouble);
+                generatorAdapter.valueOf(Type.getType(double.class));
+            }
+            case Float aFloat -> {
+                generatorAdapter.push(aFloat);
+                generatorAdapter.valueOf(Type.getType(float.class));
+            }
+            case Character character -> {
+                generatorAdapter.push(character);
+                generatorAdapter.valueOf(Type.getType(char.class));
+            }
+            case Short aShort -> {
+                generatorAdapter.push(aShort);
+                generatorAdapter.valueOf(Type.getType(short.class));
+            }
+            case Byte aByte -> {
+                generatorAdapter.push(aByte);
+                generatorAdapter.valueOf(Type.getType(byte.class));
+            }
+            default -> throw new UnsupportedOperationException("Unrecognized constant: " + constant);
         }
-        if (value instanceof Enum<?> enumConstant) {
-            Type enumType = Type.getType(enumConstant.getDeclaringClass());
-            generatorAdapter.getStatic(enumType, enumConstant.name(), enumType);
-            return;
-        }
-        if (value instanceof TypeDef typeDef) {
-            generatorAdapter.push(TypeUtils.getType(typeDef, context.objectDef()));
-            return;
-        }
-        if (value instanceof Class<?> aClass) {
-            generatorAdapter.push(Type.getType(aClass));
-            return;
-        }
-        if (value instanceof Integer integer) {
-            generatorAdapter.push(integer);
-            generatorAdapter.valueOf(Type.getType(int.class));
-            return;
-        }
-        if (value instanceof Long aLong) {
-            generatorAdapter.push(aLong);
-            generatorAdapter.valueOf(Type.getType(long.class));
-            return;
-        }
-        if (value instanceof Double aDouble) {
-            generatorAdapter.push(aDouble);
-            generatorAdapter.valueOf(Type.getType(double.class));
-            return;
-        }
-        if (value instanceof Float aFloat) {
-            generatorAdapter.push(aFloat);
-            generatorAdapter.valueOf(Type.getType(float.class));
-            return;
-        }
-        if (value instanceof Character character) {
-            generatorAdapter.push(character);
-            generatorAdapter.valueOf(Type.getType(char.class));
-            return;
-        }
-        if (value instanceof Short aShort) {
-            generatorAdapter.push(aShort);
-            generatorAdapter.valueOf(Type.getType(short.class));
-            return;
-        }
-        if (value instanceof Byte aByte) {
-            generatorAdapter.push(aByte);
-            generatorAdapter.valueOf(Type.getType(byte.class));
-            return;
-        }
-        throw new UnsupportedOperationException("Unrecognized constant: " + constant);
     }
 
     private static Object[] getArray(Object val) {

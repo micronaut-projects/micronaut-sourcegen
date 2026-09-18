@@ -48,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @ExtendWith(CompilationRule.class)
 public final class TypeSpecTest {
   private final String tacosPackage = "com.squareup.tacos";
-  private static final String donutsPackage = "com.squareup.donuts";
+  private static final String DONUTS_PACKAGE = "com.squareup.donuts";
 
   private TypeElement getElement(Class<?> clazz, CompilationRule compilation) {
     return compilation.getElements().getTypeElement(clazz.getCanonicalName());
@@ -1067,9 +1067,9 @@ public final class TypeSpecTest {
     FieldSpec internalBottom = FieldSpec.builder(
         ClassName.get(tacosPackage, "Top", "Middle", "Bottom"), "internalBottom").build();
     FieldSpec externalTop = FieldSpec.builder(
-        ClassName.get(donutsPackage, "Top"), "externalTop").build();
+        ClassName.get(DONUTS_PACKAGE, "Top"), "externalTop").build();
     FieldSpec externalBottom = FieldSpec.builder(
-        ClassName.get(donutsPackage, "Bottom"), "externalBottom").build();
+        ClassName.get(DONUTS_PACKAGE, "Bottom"), "externalBottom").build();
     TypeSpec top = TypeSpec.classBuilder("Top")
         .addField(internalTop)
         .addField(internalBottom)
@@ -1127,7 +1127,7 @@ public final class TypeSpecTest {
     FieldSpec internalOther = FieldSpec.builder(
         ClassName.get(tacosPackage, "Other"), "internalOther").build();
     FieldSpec externalOther = FieldSpec.builder(
-        ClassName.get(donutsPackage, "Other"), "externalOther").build();
+        ClassName.get(DONUTS_PACKAGE, "Other"), "externalOther").build();
     TypeSpec gen = TypeSpec.classBuilder("Gen")
         .addField(internalOther)
         .addField(externalOther)
