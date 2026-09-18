@@ -123,7 +123,7 @@
         <h1>Compilation time source code generators</h1>
         <p></p>
         <p>Micronaut SourceGen exposes a language-neutral API for source code generation.</p>
-        <p><strong>Version:</strong> 2.2.0 </p>
+        <p><strong>Version:</strong> 2.2.1 </p>
     </div>
     
 <h1 id="introduction"><a class="anchor" href="#introduction"></a>1 Introduction</h1>
@@ -1207,7 +1207,7 @@ with a static implementation of the java.utils.Object&#8217;s toString() method.
 <p>Properties that do not wish to be printed out should be annotated with @ToString.Exclude</p>
 </li>
 <li>
-<p>All bean properties (with getters) will be written in the form of a Java Record in the generated toString() method with signature:</p>
+<p>Only bean properties (with getters) are included; they will be written in the form of a Java Record in the generated toString() method with signature:</p>
 <div class="literalblock">
 <div class="content">
 <pre>`public static String [BeanName]Object.toString(BeanName object)`</pre>
