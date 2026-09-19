@@ -1,0 +1,11 @@
+package test;
+
+import java.lang.Object;
+import java.util.List;
+import java.util.function.Supplier;
+
+public class ArraySupplierCaller {
+  public Supplier<List<Object>[]> reference(ArraySupplier target) {
+    return () -> (List[]) target.get();
+  }
+}

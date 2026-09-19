@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
 import org.jetbrains.kotlin.config.Services
 import org.junit.jupiter.api.Assertions.fail
 import java.nio.file.Files
+import java.net.URLClassLoader
 
 /**
  * Compiles generated sources so that a test can assert the output is not only well formed but also
@@ -22,6 +23,11 @@ object KotlinCompileAssertions {
      * @param sources The Kotlin sources
      */
     fun assertCompiles(vararg sources: String) {
+        compileAndLoad(*sources).use { }
+    }
+
+    /** Compiles sources and exposes the generated classes for behavioral assertions. */
+    fun compileAndLoad(vararg sources: String): URLClassLoader {
         val sourceDir = Files.createTempDirectory("sourcegen-kotlin-sources")
         val outputDir = Files.createTempDirectory("sourcegen-kotlin-classes")
         sources.forEachIndexed { index, source ->
@@ -58,5 +64,6 @@ object KotlinCompileAssertions {
                     "\n\n" + sources.joinToString("\n\n")
             )
         }
+        return URLClassLoader(arrayOf(outputDir.toUri().toURL()), javaClass.classLoader)
     }
 }

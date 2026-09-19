@@ -1,0 +1,12 @@
+package test
+
+import java.util.function.Supplier
+import kotlin.Any
+import kotlin.Array
+import kotlin.collections.List
+
+public class ArraySupplierCaller {
+  public fun reference(target: ArraySupplier): Supplier<Array<List<Any>>> {
+    return Supplier<Array<List<Any>>> {  -> (target.`get`() as Array<List<Any>>) }
+  }
+}

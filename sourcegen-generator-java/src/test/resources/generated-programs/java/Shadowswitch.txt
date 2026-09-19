@@ -1,0 +1,16 @@
+package test;
+
+public class Shadowswitch {
+  public static int value;
+
+  static {
+    switch (0) {
+      case 0 -> {
+        int value = 1;
+      }
+      default -> {
+      }
+    }
+    Shadowswitch.value = 9;
+  }
+}

@@ -1,0 +1,11 @@
+package test
+
+import java.lang.StringBuilder
+import kotlin.Any
+import kotlin.CharSequence
+
+public class TypedConstructor {
+  public fun create(`value`: Any): StringBuilder {
+    return StringBuilder(`value` as CharSequence)
+  }
+}

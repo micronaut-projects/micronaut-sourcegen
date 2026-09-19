@@ -30,7 +30,9 @@ import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
@@ -38,8 +40,10 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -48,7 +52,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -1269,6 +1275,108 @@ public abstract class ByteCodeWriterTck {
         assertArrayEquals(new String[][] {{"a"}}, (String[][]) generated.getMethod("matrix").invoke(null));
     }
 
+    /**
+     * Verifies bounded generic calls preserve arrays of different ranks.
+     *
+     * @return The generated array invocation scenarios
+     * @since 2.2.2
+     */
+    @TestFactory
+    public Stream<DynamicTest> genericArrayCallsPreserveValuesAcrossRanks() {
+        return Stream.of(1, 2, 3).map(rank -> dynamicTest("rank " + rank, () -> {
+            var t = TypeDef.variable("T", TypeDef.of(Integer.class));
+            var identity = MethodDef.builder("identity").addModifiers(Modifier.PUBLIC).addTypeVariable(t)
+                .addParameter("value", t.array(rank)).returns(t.array(rank))
+                .build((self, p) -> p.getFirst().returning());
+            var def = ClassDef.builder("test.Rank" + rank).addModifiers(Modifier.PUBLIC).addMethod(identity)
+                .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                    .addParameter("value", TypeDef.of(Number.class).array(rank)).returns(Object.class)
+                    .build((self, p) -> self.invoke(identity, p.getFirst()).returning())).build();
+            var loader = loadPrograms(def);
+            var cls = loader.loadClass(def.getName());
+            Object value = Array.newInstance(Integer.class, new int[rank]);
+            Class<?> parameter = Array.newInstance(Number.class, new int[rank]).getClass();
+            assertSame(value, cls.getMethod("call", parameter).invoke(cls.getConstructor().newInstance(), value));
+        }));
+    }
+
+    /**
+     * Verifies generic bound chains preserve values through generated invocations.
+     *
+     * @return The generated bound-chain scenarios
+     * @since 2.2.2
+     */
+    @TestFactory
+    public Stream<DynamicTest> chainedBoundsKeepTheirRuntimeIdentity() {
+        return Stream.of(1, 2, 8, 9).map(length -> dynamicTest("chain length " + length, () -> {
+            var variables = new ArrayList<TypeDef.TypeVariable>();
+            TypeDef bound = TypeDef.of(CharSequence.class);
+            for (int i = length - 1; i >= 0; i--) {
+                var variable = TypeDef.variable("T" + i, bound);
+                variables.addFirst(variable);
+                bound = variable;
+            }
+            var method = MethodDef.builder("identity").addModifiers(Modifier.PUBLIC);
+            variables.forEach(method::addTypeVariable);
+            var identity = method.addParameter("value", variables.getFirst()).returns(variables.getFirst())
+                .build((self, p) -> p.getFirst().returning());
+            var def = ClassDef.builder("test.Chain" + length).addModifiers(Modifier.PUBLIC).addMethod(identity)
+                .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).addParameter("value", Object.class).returns(Object.class)
+                    .build((self, p) -> self.invoke(identity, p.getFirst()).returning())).build();
+            var loader = loadPrograms(def);
+            var cls = loader.loadClass(def.getName());
+            assertEquals("text", cls.getMethod("call", Object.class).invoke(cls.getConstructor().newInstance(), "text"));
+        }));
+    }
+
+    /**
+     * Verifies method references capture and evaluate their receivers exactly once.
+     *
+     * @return The generated receiver-capture scenarios
+     * @since 2.2.2
+     */
+    @TestFactory
+    public Stream<DynamicTest> referencesCaptureTheirReceiverBeforeItChanges() {
+        return Stream.of("field", "local", "result").map(kind -> dynamicTest(kind, () -> {
+            var label = FieldDef.builder("label", String.class).addModifiers(Modifier.PRIVATE).build();
+            var apply = MethodDef.builder("apply").addModifiers(Modifier.PUBLIC).overrides().addParameter("value", Object.class).returns(Object.class)
+                .build((self, p) -> self.field(label).returning());
+            var target = ClassDef.builder("test.CapturedTarget").addModifiers(Modifier.PUBLIC).addField(label)
+                .addAllFieldsConstructor(Modifier.PUBLIC).addSuperinterface(TypeDef.parameterized(Function.class, String.class, String.class)).addMethod(apply).build();
+            var receiver = FieldDef.builder("receiver", target.asTypeDef()).addModifiers(Modifier.PRIVATE)
+                .initializer(target.asTypeDef().instantiate(ExpressionDef.constant("first"))).build();
+            var count = FieldDef.builder("count", int.class).addModifiers(Modifier.PRIVATE).initializer(ExpressionDef.constant(0)).build();
+            var next = MethodDef.builder("next").addModifiers(Modifier.PUBLIC).returns(target.asTypeDef())
+                .build((self, p) -> StatementDef.multi(self.field(count).put(self.field(count).math(ExpressionDef.MathBinaryOperation.OpType.ADDITION, ExpressionDef.constant(1))), self.field(receiver).returning()));
+            var function = TypeDef.parameterized(Function.class, Object.class, Object.class);
+            var caller = ClassDef.builder("test.Capture" + kind).addModifiers(Modifier.PUBLIC).addField(receiver).addField(count).addMethod(next)
+                .addMethod(MethodDef.builder("reads").addModifiers(Modifier.PUBLIC).returns(int.class).build((self, p) -> self.field(count).returning()))
+                .addMethod(MethodDef.builder("replace").addModifiers(Modifier.PUBLIC).returns(void.class)
+                    .build((self, p) -> self.field(receiver).put(target.asTypeDef().instantiate(ExpressionDef.constant("second")))))
+                .addMethod(MethodDef.builder("capture").addModifiers(Modifier.PUBLIC).returns(function).build((self, p) -> switch (kind) {
+                    case "field" -> function.methodReference(self.field(receiver), apply).returning();
+                    case "local" -> self.field(receiver).newLocal("target", local -> function.methodReference(local, apply).returning());
+                    default -> function.methodReference(self.invoke(next), apply).returning();
+                })).build();
+            var loader = loadPrograms(target, caller);
+            var cls = loader.loadClass(caller.getName());
+            var instance = cls.getConstructor().newInstance();
+            @SuppressWarnings("unchecked") var captured = (Function<Object, Object>) cls.getMethod("capture").invoke(instance);
+            cls.getMethod("replace").invoke(instance);
+            assertEquals("first", captured.apply("one"));
+            assertEquals("first", captured.apply("two"));
+            assertEquals(kind.equals("result") ? 1 : 0, cls.getMethod("reads").invoke(instance));
+        }));
+    }
+
+    private MapClassLoader loadPrograms(ObjectDef... definitions) {
+        var classes = new LinkedHashMap<String, byte[]>();
+        for (var definition : definitions) {
+            classes.put(definition.getName(), write(definition));
+        }
+        return new MapClassLoader(classes);
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     private @interface ParameterMarker {
@@ -1320,4 +1428,3 @@ public abstract class ByteCodeWriterTck {
         }
     }
 }
-

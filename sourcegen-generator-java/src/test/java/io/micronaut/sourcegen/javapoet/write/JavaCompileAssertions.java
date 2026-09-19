@@ -9,6 +9,8 @@ import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -38,6 +40,15 @@ final class JavaCompileAssertions {
      * @param sources The Java sources
      */
     static void assertCompiles(String... sources) {
+        try (var ignored = compileAndLoad(sources)) {
+            // Compilation is sufficient for callers that only verify source validity.
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Compiles sources and exposes the generated classes for behavioral assertions. */
+    static URLClassLoader compileAndLoad(String... sources) {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
             fail("No system Java compiler available");
@@ -64,6 +75,11 @@ final class JavaCompileAssertions {
                     .collect(Collectors.joining("\n"))
                     + "\n\n" + String.join("\n\n", sources));
             }
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        try {
+            return new URLClassLoader(new URL[]{output.toUri().toURL()}, JavaCompileAssertions.class.getClassLoader());
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
