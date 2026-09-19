@@ -108,15 +108,13 @@ public final class TypeUtils {
         throw new IllegalStateException("Unsupported type: " + typeDef);
     }
 
+    /**
+     * The descriptor of the bound a variable erases to: the leftmost one, as javac erases it (JLS 4.6) - a variable
+     * declared {@code T extends Object & Comparable<T>} erases to {@code Object}, so that the classes it is written
+     * into link with the ones javac compiles from the same declaration.
+     */
     private static String getBoundsDescriptor(List<TypeDef> bounds, @Nullable ObjectDef objectDef) {
-        String objectDescriptor = "Ljava/lang/Object;";
-        for (TypeDef bound : bounds) {
-            String descriptor = getDescriptor(bound, objectDef);
-            if (!objectDescriptor.equals(descriptor)) {
-                return descriptor;
-            }
-        }
-        return objectDescriptor;
+        return bounds.isEmpty() ? "Ljava/lang/Object;" : getDescriptor(bounds.get(0), objectDef);
     }
 
     /**

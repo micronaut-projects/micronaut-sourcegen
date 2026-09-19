@@ -27,7 +27,6 @@ import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.util.TraceClassVisitor;
@@ -481,7 +480,6 @@ public class ReviewBytecodeTest {
     }
 
     // A lambda returning a lambda that calls super.name(): super is captured through two levels
-    @Disabled("Pre-existing: a nested lambda's captures are not propagated to the enclosing lambda (Lambda.nestedExpressionsStream is empty)")
     @Test
     void nestedLambdaCapturesSuper() throws Exception {
         Method name = NamedParent.class.getMethod("name");
@@ -500,7 +498,6 @@ public class ReviewBytecodeTest {
 
     // A lambda returning a lambda that calls this.name(): the same shape without super, to tell a capture that fails
     // for every nested lambda from one that fails for super
-    @Disabled("Pre-existing: a nested lambda's captures are not propagated to the enclosing lambda (Lambda.nestedExpressionsStream is empty)")
     @Test
     void nestedLambdaCapturesThis() throws Exception {
         Method name = NamedParent.class.getMethod("name");
@@ -592,7 +589,6 @@ public class ReviewBytecodeTest {
     }
 
     // A lambda in an interface default method calling `Described.super.describe()`: super is captured as the interface
-    @Disabled("Pre-existing: the implementation handle of a lambda in an interface is a class Methodref, not an InterfaceMethodref")
     @Test
     void lambdaCapturingSuperInAnInterfaceDefaultMethod() throws Exception {
         Method describe = Described.class.getMethod("describe");
@@ -660,7 +656,6 @@ public class ReviewBytecodeTest {
     }
 
     // A model class variable `T extends Object & Comparable<T>`: javac erases T pick(T) to Object pick(Object)
-    @Disabled("Pre-existing: a class variable listing Object before its bound is erased to the bound by TypeUtils.getBoundsDescriptor, where javac erases it to Object")
     @Test
     void modelMultiBoundClassVariableErasesToItsLeftmostBoundLikeJavac() throws Exception {
         TypeDef.TypeVariable t = TypeDef.variable("T", TypeDef.OBJECT, TypeDef.parameterized(ClassTypeDef.of(Comparable.class), TypeDef.variable("T")));
@@ -843,7 +838,6 @@ public class ReviewBytecodeTest {
 
     // A method of the same name and parameters as an inherited one but an unrelated return type hides it in bytecode
     // (javac rejects the source); it is no override, so no bridge casting one type to the other belongs there
-    @Disabled("Pre-existing: a method of the same name and parameters with an unrelated return type gets a bridge, which BridgeResolver only refuses for a primitive mismatch")
     @Test
     void sameNameMethodWithAnUnrelatedReturnTypeGetsNoBridge() throws Exception {
         ClassTypeDef supplierOfInteger = TypeDef.parameterized(Supplier.class, Integer.class);
@@ -859,7 +853,6 @@ public class ReviewBytecodeTest {
 
     // An abstract method with a parameter, written by the checking writer the TCK uses: the parameter must not go
     // into a local variable table of a method that has no code
-    @Disabled("Pre-existing: the checked writer visits the local variable table of an abstract method before visitCode")
     @Test
     void abstractMethodWithAParameterIsWrittenInCheckMode() throws Exception {
         ClassDef def = ClassDef.builder("test.AbstractTaker").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)

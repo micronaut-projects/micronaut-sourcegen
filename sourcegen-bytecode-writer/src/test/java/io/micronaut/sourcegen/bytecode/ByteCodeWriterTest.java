@@ -250,6 +250,7 @@ class MyClass extends ByteCodeWriterTest.MyAbstractClass {
 
               // access flags 0x0
               test(Ljava/lang/Object;)I
+                // parameter  arg1
                L0
                 ALOAD 0
                 INVOKEVIRTUAL test/IfPredicateGeneric.getIntegerValue ()Ljava/lang/Object;
@@ -323,6 +324,7 @@ class IfPredicateGeneric implements Predicate {
 
               // access flags 0x0
               test(Ljava/lang/Object;)I
+                // parameter  arg1
                L0
                 ALOAD 0
                 INVOKEVIRTUAL test/IfPredicateGeneric.getIntegerValue ()Ljava/lang/Object;
@@ -396,6 +398,7 @@ class test/IfPredicateGeneric implements java/util/function/Predicate {
 
   // access flags 0x0
   test(Ljava/lang/Object;)I
+    // parameter  arg1
    L0
     ALOAD 0
     INVOKEVIRTUAL test/IfPredicateGeneric.getIntegerValue ()Ljava/lang/Object;
@@ -469,6 +472,7 @@ class test/IfPredicateGeneric implements java/util/function/Predicate {
 
   // access flags 0x0
   test(Ljava/lang/Object;)I
+    // parameter  arg1
    L0
     ALOAD 0
     INVOKEVIRTUAL test/IfPredicateGeneric.getIntegerValue ()Ljava/lang/Object;
@@ -544,6 +548,7 @@ class test/IfPredicateGeneric implements java/util/function/Predicate {
 
   // access flags 0x0
   test(Ljava/lang/Object;)I
+    // parameter  arg1
    L0
     ALOAD 0
     INVOKEVIRTUAL test/IfPredicateGeneric.getIntegerValue ()Ljava/lang/Object;
@@ -609,6 +614,7 @@ class test/IfPredicateGeneric implements java/util/function/Predicate {
   // signature (Ljava/lang/Object;)Z
   // declaration: boolean test(java.lang.Object)
   test(Ljava/lang/Object;)Z
+    // parameter  arg1
    L0
     ALOAD 1
     ICONST_1
@@ -670,6 +676,8 @@ public class example/MyClassWithLambda {
   // signature (Ljava/util/function/Function<Ljava/lang/String;Ljava/lang/String;>;Ljava/lang/String;)Ljava/lang/String;
   // declaration: java.lang.String methodInvoker(java.util.function.Function<java.lang.String, java.lang.String>, java.lang.String)
   methodInvoker(Ljava/util/function/Function;Ljava/lang/String;)Ljava/lang/String;
+    // parameter  arg1
+    // parameter  arg2
    L0
     ALOAD 1
     ALOAD 2
@@ -687,6 +695,7 @@ public class example/MyClassWithLambda {
 
   // access flags 0x1
   public callLambda(Ljava/lang/String;)Ljava/lang/String;
+    // parameter  input
    L0
    L1
     INVOKEDYNAMIC apply()Lexample/StringFunction; [
@@ -719,6 +728,7 @@ public class example/MyClassWithLambda {
 
   // access flags 0x1
   public callStatefulLambda(Ljava/lang/String;)Ljava/lang/String;
+    // parameter  input
    L0
    L1
     LDC "prefix_"
@@ -771,6 +781,7 @@ public class example/MyClassWithLambda {
 
   // access flags 0x1
   public callGenericLambda(Ljava/lang/String;)Ljava/lang/String;
+    // parameter  input
    L0
    L1
     LDC "prefix_"
@@ -816,6 +827,7 @@ public class example/MyClassWithLambda {
 
   // access flags 0x1
   public callGenericLambda2(Ljava/lang/String;)Ljava/lang/String;
+    // parameter  input
    L0
    L1
     LDC "prefix_"
@@ -857,6 +869,7 @@ public class example/MyClassWithLambda {
 
   // access flags 0x9
   public static staticShout(Ljava/lang/String;)Ljava/lang/String;
+    // parameter  value
    L0
     NEW java/lang/StringBuilder
     DUP
@@ -871,6 +884,7 @@ public class example/MyClassWithLambda {
 
   // access flags 0x1
   public instanceShout(Ljava/lang/String;)Ljava/lang/String;
+    // parameter  value
    L0
     NEW java/lang/StringBuilder
     DUP
@@ -885,6 +899,7 @@ public class example/MyClassWithLambda {
 
   // access flags 0x1
   public callStaticMethodReference(Ljava/lang/String;)Ljava/lang/String;
+    // parameter  input
    L0
    L1
     INVOKEDYNAMIC apply()Lexample/StringFunction; [
@@ -907,6 +922,7 @@ public class example/MyClassWithLambda {
 
   // access flags 0x1
   public callBoundMethodReference(Ljava/lang/String;)Ljava/lang/String;
+    // parameter  input
    L0
    L1
     ALOAD 0
@@ -1130,6 +1146,9 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(ZILjava/lang/String;)Ljava/lang/Object;
+    // parameter  arg1
+    // parameter  arg2
+    // parameter  arg3
    L0
     ILOAD 1
     ICONST_1
@@ -1199,6 +1218,8 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(ID)[Ljava/lang/Object;
+    // parameter  arg1
+    // parameter  arg2
    L0
     BIPUSH 6
     ANEWARRAY java/lang/Object
@@ -1337,6 +1358,8 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(II)[Ljava/lang/Object;
+    // parameter  arg1
+    // parameter  arg2
    L0
     BIPUSH 6
     ANEWARRAY java/lang/Object
@@ -1473,6 +1496,8 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(IF)[Ljava/lang/Object;
+    // parameter  arg1
+    // parameter  arg2
    L0
     BIPUSH 11
     ANEWARRAY java/lang/Object
@@ -1619,6 +1644,8 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(DD)Ljava/lang/Object;
+    // parameter  arg1
+    // parameter  arg2
    L0
     DLOAD 1
     DLOAD 3
@@ -1687,6 +1714,8 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(II)[Ljava/lang/Object;
+    // parameter  arg1
+    // parameter  arg2
    L0
     BIPUSH 11
     ANEWARRAY java/lang/Object
@@ -1818,6 +1847,7 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(I)[Ljava/lang/Object;
+    // parameter  arg1
    L0
     ICONST_1
     ANEWARRAY java/lang/Object
@@ -1880,6 +1910,8 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(Ljava/lang/Object;Ljava/lang/Object;)[Ljava/lang/Object;
+    // parameter  arg1
+    // parameter  arg2
    L0
     ICONST_4
     ANEWARRAY java/lang/Object
@@ -1994,6 +2026,12 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(IIFFDD)[Ljava/lang/Object;
+    // parameter  arg1
+    // parameter  arg2
+    // parameter  arg3
+    // parameter  arg4
+    // parameter  arg5
+    // parameter  arg6
    L0
     ICONST_3
     ANEWARRAY java/lang/Object
@@ -2071,6 +2109,9 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(Ljava/lang/String;Ljava/lang/Object;[Ljava/lang/String;)Ljava/lang/String;
+    // parameter  arg1
+    // parameter  arg2
+    // parameter  arg3
    L0
     NEW java/lang/StringBuilder
     DUP
@@ -2133,6 +2174,7 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(Ljava/lang/Object;)Ljava/lang/String;
+    // parameter  arg1
    L0
     ALOAD 1
     INVOKESTATIC java/lang/String.valueOf (Ljava/lang/Object;)Ljava/lang/String;
@@ -2182,6 +2224,7 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(Ljava/lang/Object;)Z
+    // parameter  arg1
    L0
     ALOAD 1
     INSTANCEOF java/lang/String
@@ -2231,6 +2274,7 @@ public class example/Example {
 
   // access flags 0x0
   myMethod(I)Z
+    // parameter  arg1
    L0
     ILOAD 1
     INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
@@ -2281,6 +2325,7 @@ public class example/Example {
 
   // access flags 0x0
   myMethod([Ljava/lang/String;)Ljava/lang/String;
+    // parameter  arg1
    L0
     ALOAD 1
     ICONST_1
@@ -2331,6 +2376,8 @@ public class example/Example {
 
   // access flags 0x0
   myMethod([Ljava/lang/String;I)Ljava/lang/String;
+    // parameter  arg1
+    // parameter  arg2
    L0
     ALOAD 1
     ILOAD 2
@@ -2507,6 +2554,7 @@ class example/IfPredicate {
 
   // access flags 0x1
   public test(Ljava/lang/Object;)Z
+    // parameter  param
    L0
     ALOAD 1
     IFNONNULL L1
@@ -2562,6 +2610,7 @@ class example/IfPredicate {
 
   // access flags 0x1
   public test(Ljava/lang/Integer;)I
+    // parameter  param
    L0
     ALOAD 1
     CHECKCAST java/lang/Number
@@ -2614,6 +2663,7 @@ class example/IfPredicate {
 
   // access flags 0x1
   public test(I)Ljava/lang/Integer;
+    // parameter  param
    L0
     ILOAD 1
     INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
@@ -2686,6 +2736,8 @@ final enum MyEnum extends java/lang/Enum {
 
   // access flags 0x2
   private <init>(Ljava/lang/String;I)V
+    // parameter  arg0
+    // parameter  arg1
    L0
     ALOAD 0
     ALOAD 1
@@ -2723,6 +2775,7 @@ final enum MyEnum extends java/lang/Enum {
 
   // access flags 0x9
   public static valueOf(Ljava/lang/String;)LMyEnum;
+    // parameter  value
    L0
     LDC LMyEnum;.class
     ALOAD 0
@@ -3052,6 +3105,7 @@ class test/MyClass {
 
   // access flags 0x1
   public swap(Ljava/lang/Object;)Ljava/lang/Object;
+    // parameter  arg1
    L0
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Hello"
@@ -3331,6 +3385,7 @@ class test/MyClass {
 
   // access flags 0x1
   public bothReturn(Z)Ljava/lang/String;
+    // parameter  flag
    L0
     TRYCATCHBLOCK L1 L2 L3 null
    L1
@@ -3344,7 +3399,6 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 2
     ARETURN
-   L5
    L4
     LDC "b"
     ASTORE 3
@@ -3354,7 +3408,7 @@ class test/MyClass {
     ALOAD 3
     ARETURN
    L2
-    GOTO L6
+    GOTO L5
    L3
     ASTORE 4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
@@ -3362,13 +3416,14 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 4
     ATHROW
-    GOTO L6
+    GOTO L5
+   L5
    L6
-   L7
-    LOCALVARIABLE flag Z L0 L7 1
+    LOCALVARIABLE flag Z L0 L6 1
 
   // access flags 0x1
   public elseFallsThrough(Z)V
+    // parameter  flag
    L0
     TRYCATCHBLOCK L1 L2 L3 null
    L1
@@ -3379,7 +3434,6 @@ class test/MyClass {
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     RETURN
-   L5
    L4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Else"
@@ -3388,7 +3442,7 @@ class test/MyClass {
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
-    GOTO L6
+    GOTO L5
    L3
     ASTORE 2
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
@@ -3396,14 +3450,15 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 2
     ATHROW
-    GOTO L6
-   L6
+    GOTO L5
+   L5
     RETURN
-   L7
-    LOCALVARIABLE flag Z L0 L7 1
+   L6
+    LOCALVARIABLE flag Z L0 L6 1
 
   // access flags 0x1
   public thenFallsThrough(Z)V
+    // parameter  flag
    L0
     TRYCATCHBLOCK L1 L2 L3 null
    L1
@@ -3413,12 +3468,13 @@ class test/MyClass {
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Then"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
-   L5
+    GOTO L5
    L4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     RETURN
+   L5
    L2
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
@@ -3475,14 +3531,16 @@ class MyClass {
 
    public void thenFallsThrough(boolean flag) {
       try {
-         if (flag) {
-            System.out.println("Then");
+         if (!flag) {
+            System.out.println("World");
+            return;
          }
 
-         System.out.println("World");
+         System.out.println("Then");
       } finally {
          System.out.println("World");
       }
+
    }
 }
 """, decompileToJava(bytes));
@@ -3527,6 +3585,7 @@ class test/MyClass {
 
   // access flags 0x1
   public run(Ljava/lang/Object;)V
+    // parameter  monitor
    L0
     TRYCATCHBLOCK L1 L2 L3 null
    L1
@@ -3636,6 +3695,7 @@ class test/MyClass {
 
   // access flags 0x1
   public swap(I)I
+    // parameter  arg1
    L0
     ILOAD 1
     TABLESWITCH
@@ -3733,6 +3793,7 @@ class test/MyClass {
 
   // access flags 0x1
   public swap(I)I
+    // parameter  arg1
    L0
     ILOAD 1
     LOOKUPSWITCH
@@ -3964,6 +4025,8 @@ public final enum example/MyEnumWithInnerTypes extends java/lang/Enum {
 
   // access flags 0x2
   private <init>(Ljava/lang/String;I)V
+    // parameter  arg0
+    // parameter  arg1
    L0
     ALOAD 0
     ALOAD 1
@@ -4001,6 +4064,7 @@ public final enum example/MyEnumWithInnerTypes extends java/lang/Enum {
 
   // access flags 0x9
   public static valueOf(Ljava/lang/String;)Lexample/MyEnumWithInnerTypes;
+    // parameter  value
    L0
     LDC Lexample/MyEnumWithInnerTypes;.class
     ALOAD 0
@@ -4072,6 +4136,7 @@ class example/Test {
 
   // access flags 0x0
   test(Ljava/lang/String;)I
+    // parameter  myIn
    L0
    L1
     ALOAD 1
@@ -4134,6 +4199,7 @@ class example/Test {
 
   // access flags 0x0
   test(Ljava/lang/Object;)Ljava/lang/Integer;
+    // parameter  myIn
    L0
     ALOAD 1
     CHECKCAST java/lang/Integer
@@ -4183,6 +4249,7 @@ class example/Test {
 
   // access flags 0x0
   test(Ljava/lang/Object;)Ljava/lang/Integer;
+    // parameter  myIn
    L0
     ACONST_NULL
     ARETURN
@@ -4474,6 +4541,7 @@ class example/Test {
 
   // access flags 0x0
   acceptValue(Ljava/lang/Integer;)Ljava/lang/Object;
+    // parameter  arg1
    L0
     ALOAD 1
     ARETURN
@@ -4738,6 +4806,7 @@ public class example/MyClass {
 
   // access flags 0x1
   public testConcatenation(Ljava/lang/Object;)Ljava/lang/String;
+    // parameter  arg
    L0
     ALOAD 1
     INVOKEDYNAMIC makeConcatWithConstants(Ljava/lang/Object;)Ljava/lang/String; [
@@ -4904,6 +4973,8 @@ public class example/MyClass {
 
   // access flags 0x1
   public describe(ID)Ljava/lang/String;
+    // parameter  count
+    // parameter  price
    L0
     ILOAD 1
     DLOAD 2
@@ -5041,6 +5112,7 @@ class example/Test implements java/util/function/Function {
 
   // access flags 0x0
   apply(Ljava/lang/Object;)Ljava/lang/Object;
+    // parameter  arg1
    L0
     ALOAD 1
     ARETURN
@@ -5411,6 +5483,7 @@ public final class example/MyRecord extends java/lang/Record {
   // signature (TT;)Lexample/MyRecord<TT;>;
   // declaration: example.MyRecord<T> withValue(T)
   public withValue(Ljava/lang/Object;)Lexample/MyRecord;
+    // parameter  value
    L0
     NEW example/MyRecord
     DUP
@@ -5647,6 +5720,7 @@ public final class example/MyRecord extends java/lang/Record {
 
   // access flags 0x1
   public <init>(Ljava/lang/String;)V
+    // parameter  name
    L0
     ALOAD 0
     ALOAD 1
@@ -5994,6 +6068,7 @@ public final class example/MyRecord extends java/lang/Record {
 
   // access flags 0x9
   public static of(Ljava/lang/String;)Lexample/MyRecord;
+    // parameter  name
    L0
     NEW example/MyRecord
     DUP

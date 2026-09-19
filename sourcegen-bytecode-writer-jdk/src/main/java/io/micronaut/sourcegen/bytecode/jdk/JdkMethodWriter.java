@@ -19,6 +19,7 @@ import io.micronaut.sourcegen.bytecode.core.TypeUtils;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.MethodReferenceExpression;
@@ -703,7 +704,7 @@ final class JdkMethodWriter {
         List<VariableDef> captured = captureVariables(lambda.implementation());
         List<ParameterDef> parameters = new ArrayList<>();
         for (VariableDef variable : captured) {
-            parameters.add(ParameterDef.builder(captureName(variable), capturedType(variable)).build());
+            parameters.add(ParameterDef.builder(Objects.requireNonNull(captureName(variable)), capturedType(variable)).build());
         }
         parameters.addAll(lambda.implementation().getParameters());
         MethodDef implementation = MethodDef.builder("lambda$" + lambdaOwnerName(methodDef) + "$" + lambdaMethods.size())
@@ -722,7 +723,10 @@ final class JdkMethodWriter {
             ConstantDescs.CD_MethodType, ConstantDescs.CD_MethodHandle, ConstantDescs.CD_MethodType);
         DirectMethodHandleDesc bootstrap = MethodHandleDesc.ofMethod(DirectMethodHandleDesc.Kind.STATIC,
             factory, "metafactory", bootstrapType);
-        MethodHandleDesc implementationHandle = MethodHandleDesc.ofMethod(DirectMethodHandleDesc.Kind.STATIC,
+        // The implementation of a lambda written into an interface is a static method of that interface, which
+        // is linked as an interface method
+        MethodHandleDesc implementationHandle = MethodHandleDesc.ofMethod(
+            objectDef instanceof InterfaceDef ? DirectMethodHandleDesc.Kind.INTERFACE_STATIC : DirectMethodHandleDesc.Kind.STATIC,
             owner, implementation.getName(), methodType(implementation));
         DynamicCallSiteDesc callSite = DynamicCallSiteDesc.of(bootstrap, lambda.target().getName(),
             methodType(captured.stream().map(this::capturedType).toList(), lambda.type()),
@@ -809,7 +813,12 @@ final class JdkMethodWriter {
             factory, "metafactory", bootstrapType);
     }
 
-    private List<VariableDef> captureVariables(MethodDef implementation) {
+    /**
+     * The variables a lambda body uses that it does not declare itself - through its parameters or its locals -
+     * which the enclosing method has to pass to it. A nested lambda captures from this one whatever its own body
+     * uses and does not declare, so its captures are this lambda's captures as well.
+     */
+    private static List<VariableDef> captureVariables(MethodDef implementation) {
         Set<String> variables = new LinkedHashSet<>(implementation.getParameters().stream()
             .map(ParameterDef::getName).toList());
         List<VariableDef> captured = new ArrayList<>();
@@ -819,39 +828,89 @@ final class JdkMethodWriter {
         return captured;
     }
 
-    private void captureVariables(StatementDef statement, Set<String> variables, List<VariableDef> captured) {
-        statement.nestedExpressionsStream().forEach(expression -> captureVariables(expression, variables, captured));
+    private static void captureVariables(StatementDef statement, Set<String> variables, List<VariableDef> captured) {
+        switch (statement) {
+            case StatementDef.Multi multi -> multi.statements().forEach(nested -> captureVariables(nested, variables, captured));
+            case StatementDef.DefineAndAssign define -> {
+                // A local the body defines is its own, not one to capture
+                captureVariables(define.expression(), variables, captured);
+                variables.add(define.variable().name());
+            }
+            case StatementDef.If anIf -> {
+                captureVariables(anIf.condition(), variables, captured);
+                captureVariables(anIf.statement(), variables, captured);
+            }
+            case StatementDef.IfElse ifElse -> {
+                captureVariables(ifElse.condition(), variables, captured);
+                captureVariables(ifElse.statement(), variables, captured);
+                captureVariables(ifElse.elseStatement(), variables, captured);
+            }
+            case StatementDef.Switch aSwitch -> {
+                captureVariables(aSwitch.expression(), variables, captured);
+                aSwitch.cases().values().forEach(nested -> captureVariables(nested, variables, captured));
+                if (aSwitch.defaultCase() != null) {
+                    captureVariables(aSwitch.defaultCase(), variables, captured);
+                }
+            }
+            case StatementDef.While aWhile -> {
+                captureVariables(aWhile.expression(), variables, captured);
+                captureVariables(aWhile.statement(), variables, captured);
+            }
+            case StatementDef.Try aTry -> {
+                captureVariables(aTry.statement(), variables, captured);
+                aTry.catches().forEach(aCatch -> captureVariables(aCatch.statement(), variables, captured));
+                if (aTry.finallyStatement() != null) {
+                    captureVariables(aTry.finallyStatement(), variables, captured);
+                }
+            }
+            case StatementDef.Synchronized aSynchronized -> {
+                captureVariables(aSynchronized.monitor(), variables, captured);
+                captureVariables(aSynchronized.statement(), variables, captured);
+            }
+            default -> statement.nestedExpressionsStream().forEach(expression -> captureVariables(expression, variables, captured));
+        }
     }
 
-    private void captureVariables(ExpressionDef expression, Set<String> variables, List<VariableDef> captured) {
+    private static void captureVariables(ExpressionDef expression, Set<String> variables, List<VariableDef> captured) {
         if (expression instanceof VariableDef variable) {
-            String name = switch (variable) {
-                case VariableDef.Local local -> local.name();
-                case VariableDef.MethodParameter parameter -> parameter.name();
-                case VariableDef.This _ -> "this";
-                case VariableDef.Super _ -> SUPER;
-                case VariableDef.ExceptionVar _ -> "exception";
-                default -> null;
-            };
-            if (name != null && variables.add(name)) {
-                captured.add(variable);
-            }
             if (variable instanceof VariableDef.Field field) {
                 captureVariables(field.instance(), variables, captured);
+            } else {
+                String name = captureName(variable);
+                if (name != null && variables.add(name)) {
+                    captured.add(variable);
+                }
+            }
+        } else if (expression instanceof ExpressionDef.Lambda nested) {
+            // The nested lambda's own parameters and locals shadow this scope; what remains it captures from here
+            Set<String> nestedVariables = new LinkedHashSet<>(variables);
+            nested.implementation().getParameters().forEach(parameter -> nestedVariables.add(parameter.getName()));
+            List<VariableDef> nestedCaptures = new ArrayList<>();
+            for (StatementDef statement : nested.implementation().getStatements()) {
+                captureVariables(statement, nestedVariables, nestedCaptures);
+            }
+            for (VariableDef variable : nestedCaptures) {
+                if (variables.add(Objects.requireNonNull(captureName(variable)))) {
+                    captured.add(variable);
+                }
             }
         } else {
             expression.nestedExpressionsStream().forEach(child -> captureVariables(child, variables, captured));
         }
     }
 
+    /**
+     * The name a variable is captured under, or {@code null} for one that is not captured by itself.
+     */
+    @Nullable
     private static String captureName(VariableDef variable) {
         return switch (variable) {
             case VariableDef.Local local -> local.name();
             case VariableDef.MethodParameter parameter -> parameter.name();
             case VariableDef.This _ -> "this";
-                case VariableDef.Super _ -> SUPER;
+            case VariableDef.Super _ -> SUPER;
             case VariableDef.ExceptionVar _ -> "exception";
-            default -> variable.type().toString();
+            default -> null;
         };
     }
 

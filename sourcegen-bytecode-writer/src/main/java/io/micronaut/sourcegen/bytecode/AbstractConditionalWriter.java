@@ -21,6 +21,7 @@ import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Label;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
@@ -103,6 +104,39 @@ public abstract class AbstractConditionalWriter {
         }
     }
 
+    /**
+     * Jumps on the outcome of a comparison, or on its opposite. A float or double is compared as javac compares it:
+     * {@code <} and {@code <=} through {@code cmpg}, {@code >} and {@code >=} through {@code cmpl}, so that a NaN
+     * makes the ordered test false whichever way the jump goes - picking the instruction for the negated jump, as
+     * {@link GeneratorAdapter#ifCmp} does, would make {@code NaN < 3} true.
+     */
+    private static void pushComparison(GeneratorAdapter generatorAdapter,
+                                       MethodContext context,
+                                       ExpressionDef.ComparisonOperation comparison,
+                                       boolean negated,
+                                       Label label) {
+        ExpressionWriter.writeExpression(generatorAdapter, context, comparison.left());
+        ExpressionWriter.writeExpression(generatorAdapter, context, comparison.right());
+        Type conditionType = TypeUtils.getType(comparison.left().type(), context.objectDef());
+        int jump = negated ? getInvertConditionOp(comparison.opType()) : getConditionOp(comparison.opType());
+        int sort = conditionType.getSort();
+        if (sort != Type.FLOAT && sort != Type.DOUBLE) {
+            generatorAdapter.ifCmp(conditionType, jump, label);
+            return;
+        }
+        boolean cmpg = switch (comparison.opType()) {
+            case LESS_THAN, LESS_THAN_OR_EQUAL -> true;
+            case EQUAL_TO, NOT_EQUAL_TO, GREATER_THAN, GREATER_THAN_OR_EQUAL -> false;
+        };
+        if (sort == Type.DOUBLE) {
+            generatorAdapter.visitInsn(cmpg ? Opcodes.DCMPG : Opcodes.DCMPL);
+        } else {
+            generatorAdapter.visitInsn(cmpg ? Opcodes.FCMPG : Opcodes.FCMPL);
+        }
+        // The modes of the adapter are the opcodes of the jumps against zero
+        generatorAdapter.visitJumpInsn(jump, label);
+    }
+
     private static int getInvertConditionOp(ExpressionDef.ComparisonOperation.OpType op) {
         return switch (op) {
             case EQUAL_TO -> GeneratorAdapter.NE;
@@ -147,12 +181,8 @@ public abstract class AbstractConditionalWriter {
                 generatorAdapter.goTo(elseLabel);
                 generatorAdapter.visitLabel(ifLabel);
             }
-            case ExpressionDef.ComparisonOperation comparisonOperation -> {
-                ExpressionWriter.writeExpression(generatorAdapter, context, comparisonOperation.left());
-                ExpressionWriter.writeExpression(generatorAdapter, context, comparisonOperation.right());
-                Type conditionType = TypeUtils.getType(comparisonOperation.left().type(), context.objectDef());
-                generatorAdapter.ifCmp(conditionType, getInvertConditionOp(comparisonOperation.opType()), elseLabel);
-            }
+            case ExpressionDef.ComparisonOperation comparisonOperation ->
+                pushComparison(generatorAdapter, context, comparisonOperation, true, elseLabel);
             case ExpressionDef.IsNull isNull -> {
                 ExpressionWriter.writeExpression(generatorAdapter, context, isNull.expression());
                 generatorAdapter.ifNonNull(elseLabel);
@@ -209,12 +239,8 @@ public abstract class AbstractConditionalWriter {
                 pushIfConditionalExpression(generatorAdapter, context, orExpressionDef.left(), ifLabel);
                 pushIfConditionalExpression(generatorAdapter, context, orExpressionDef.right(), ifLabel);
             }
-            case ExpressionDef.ComparisonOperation comparisonOperation -> {
-                ExpressionWriter.writeExpression(generatorAdapter, context, comparisonOperation.left());
-                ExpressionWriter.writeExpression(generatorAdapter, context, comparisonOperation.right());
-                Type conditionType = TypeUtils.getType(comparisonOperation.left().type(), context.objectDef());
-                generatorAdapter.ifCmp(conditionType, getConditionOp(comparisonOperation.opType()), ifLabel);
-            }
+            case ExpressionDef.ComparisonOperation comparisonOperation ->
+                pushComparison(generatorAdapter, context, comparisonOperation, false, ifLabel);
             case ExpressionDef.IsNull isNull -> {
                 ExpressionWriter.writeExpression(generatorAdapter, context, isNull.expression());
                 generatorAdapter.ifNull(ifLabel);

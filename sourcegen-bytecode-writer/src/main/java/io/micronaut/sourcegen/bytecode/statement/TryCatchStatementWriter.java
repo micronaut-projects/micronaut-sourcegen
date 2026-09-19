@@ -90,7 +90,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
 
         generatorAdapter.visitLabel(tryEnd);
 
-        if (finallyStatement != null && canCompleteNormally(aTry.statement())) {
+        if (finallyStatement != null && StatementWriter.canCompleteNormally(aTry.statement())) {
             // The body fell through, the finally is outside of the protected range
             StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, finallyBlock);
         }
@@ -138,28 +138,6 @@ public final class TryCatchStatementWriter implements StatementWriter {
         }
 
         generatorAdapter.visitLabel(end);
-    }
-
-    /**
-     * Checks if the statement can complete normally, a statement that cannot would make the following
-     * bytecode unreachable.
-     *
-     * @param statement The statement
-     * @return true if the execution can continue after the statement
-     */
-    private static boolean canCompleteNormally(StatementDef statement) {
-        List<StatementDef> statements = statement.flatten();
-        if (statements.isEmpty()) {
-            return true;
-        }
-        StatementDef last = statements.get(statements.size() - 1);
-        if (last instanceof StatementDef.IfElse ifElse) {
-            return canCompleteNormally(ifElse.statement()) || canCompleteNormally(ifElse.elseStatement());
-        }
-        if (last instanceof StatementDef.Synchronized aSynchronized) {
-            return canCompleteNormally(aSynchronized.statement());
-        }
-        return !(last instanceof StatementDef.Return || last instanceof StatementDef.Throw);
     }
 
     private static final class CatchBlock {

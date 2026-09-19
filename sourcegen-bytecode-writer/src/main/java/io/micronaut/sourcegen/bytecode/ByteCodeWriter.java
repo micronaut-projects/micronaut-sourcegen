@@ -349,6 +349,7 @@ public final class ByteCodeWriter {
             classVisitor,
             annotationDef,
             accessor,
+            false,
             ACC_PUBLIC | ACC_ABSTRACT,
             accessor.getName(),
             TypeUtils.getMethodDescriptor(annotationDef, accessor)
@@ -970,7 +971,7 @@ public final class ByteCodeWriter {
         if (methodDef.isSynthetic()) {
             modifiersFlag |= ACC_SYNTHETIC;
         }
-        MethodVisitor methodVisitor = visitMethodHeader(classVisitor, objectDef, methodDef, modifiersFlag, name, methodDescriptor);
+        MethodVisitor methodVisitor = visitMethodHeader(classVisitor, objectDef, methodDef, isLambda, modifiersFlag, name, methodDescriptor);
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, methodDescriptor);
         writeMethodAnnotations(generatorAdapter, methodDef);
 
@@ -983,10 +984,11 @@ public final class ByteCodeWriter {
         }
         if (!statements.isEmpty()) {
             writeStatements(generatorAdapter, objectDef, methodDef, context, statements, startMethod);
-        }
-        writeLocalVariableTable(methodVisitor, generatorAdapter, context);
-        if (visitMaxs && !statements.isEmpty()) {
-            generatorAdapter.visitMaxs(20, 20);
+            // A local variable table belongs to the code: an abstract method has none, so its parameters get no entry
+            writeLocalVariableTable(methodVisitor, generatorAdapter, context);
+            if (visitMaxs) {
+                generatorAdapter.visitMaxs(20, 20);
+            }
         }
         generatorAdapter.visitEnd();
 
@@ -1007,6 +1009,7 @@ public final class ByteCodeWriter {
      * @param classVisitor     The class visitor
      * @param objectDef        The object definition
      * @param methodDef        The method definition
+     * @param isLambda         Whether the method implements a lambda
      * @param modifiersFlag    The access flags
      * @param name             The method name
      * @param methodDescriptor The method descriptor
@@ -1015,6 +1018,7 @@ public final class ByteCodeWriter {
     private static MethodVisitor visitMethodHeader(ClassVisitor classVisitor,
                                                    @Nullable ObjectDef objectDef,
                                                    MethodDef methodDef,
+                                                   boolean isLambda,
                                                    int modifiersFlag,
                                                    String name,
                                                    String methodDescriptor) {
@@ -1029,8 +1033,9 @@ public final class ByteCodeWriter {
             (modifiersFlag & ACC_BRIDGE) == 0 ? SignatureWriterUtils.getMethodSignature(objectDef, methodDef) : null,
             exceptions
         );
-        if (objectDef instanceof RecordDef recordDef && isCanonicalRecordConstructor(recordDef, methodDef)) {
-            writeCanonicalRecordParameters(methodVisitor, methodDef);
+        if (!isLambda) {
+            // The implementation of a lambda is the compiler's, and javac names its parameters nowhere
+            writeParameterNames(methodVisitor, methodDef);
         }
         return methodVisitor;
     }
@@ -1056,13 +1061,14 @@ public final class ByteCodeWriter {
     }
 
     /**
-     * Write the MethodParameters attribute of a record's canonical constructor, so the component names
-     * survive into the class file and reflection can recover them.
+     * Write the MethodParameters attribute of a method, so the parameter names survive into the class file and
+     * reflection can recover them - the names of a record's components among them, and those of any parameter
+     * of a class the JDK writer produces.
      *
      * @param methodVisitor The method visitor
-     * @param methodDef     The canonical constructor
+     * @param methodDef     The method
      */
-    private static void writeCanonicalRecordParameters(MethodVisitor methodVisitor, MethodDef methodDef) {
+    private static void writeParameterNames(MethodVisitor methodVisitor, MethodDef methodDef) {
         for (ParameterDef parameter : methodDef.getParameters()) {
             int parameterModifiers = parameter.getModifiers().contains(Modifier.FINAL) ? ACC_FINAL : 0;
             if (parameter.isSynthetic()) {
@@ -1070,21 +1076,6 @@ public final class ByteCodeWriter {
             }
             methodVisitor.visitParameter(parameter.getName(), parameterModifiers);
         }
-    }
-
-    private static boolean isCanonicalRecordConstructor(RecordDef recordDef, MethodDef methodDef) {
-        if (!methodDef.isConstructor() || methodDef.getParameters().size() != recordDef.getProperties().size()) {
-            return false;
-        }
-        for (int i = 0; i < methodDef.getParameters().size(); i++) {
-            ParameterDef parameter = methodDef.getParameters().get(i);
-            PropertyDef property = recordDef.getProperties().get(i);
-            if (!parameter.getName().equals(property.getName())
-                || !TypeUtils.getType(parameter.getType(), recordDef).equals(TypeUtils.getType(property.getType(), recordDef))) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /**
@@ -1262,6 +1253,15 @@ public final class ByteCodeWriter {
             .toList()
             : List.of();
         Optional<StatementDef> constructorInvocation = statements.stream().filter(this::isConstructorInvocation).findFirst();
+        // A constructor delegating to this(...) leaves the field initializers to the constructor it delegates to,
+        // which runs them after the super call: repeating them here would run them twice. Only a call on `this`
+        // delegates; the deprecated form of a super call is an instance invocation too
+        boolean delegatesToThis = constructorInvocation
+            .map(statement -> statement instanceof ExpressionDef.InvokeInstanceMethod call && !(call.instance() instanceof VariableDef.Super))
+            .orElse(false);
+        if (delegatesToThis) {
+            return statements;
+        }
         if (constructorInvocation.isEmpty() || !fieldInitializers.isEmpty()) {
             // Add the constructor or reshuffle the statements to have the field initializers right after the constructor call
             List<StatementDef> newStatements = new ArrayList<>();

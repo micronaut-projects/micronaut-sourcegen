@@ -25,6 +25,8 @@ import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import java.util.Objects;
+
 final class ReturnStatementWriter implements StatementWriter {
     private final StatementDef.Return aReturn;
 
@@ -39,16 +41,32 @@ final class ReturnStatementWriter implements StatementWriter {
             writeYield(generatorAdapter, context, finallyBlock, yieldTarget);
             return;
         }
-        aReturn.validate(context.methodDef());
-        if (aReturn.expression() != null) {
-            ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aReturn.expression(), context.methodDef().getReturnType());
-            pushFinallyStatement(generatorAdapter, context, finallyBlock, context.methodDef().getReturnType());
-        } else {
+        TypeDef returnType = context.methodDef().getReturnType();
+        if (returnType.equals(TypeDef.VOID)) {
+            // A void method may still return the result of an expression, which is evaluated for its effect and
+            // discarded; there is no value to hold across the finally block
+            if (aReturn.expression() != null) {
+                ExpressionWriter.writeExpression(generatorAdapter, context, aReturn.expression());
+                popValue(generatorAdapter, TypeUtils.getType(aReturn.expression().type(), context.objectDef()));
+            }
             if (finallyBlock != null) {
                 finallyBlock.run();
             }
+            generatorAdapter.returnValue();
+            return;
         }
+        aReturn.validate(context.methodDef());
+        ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, Objects.requireNonNull(aReturn.expression()), returnType);
+        pushFinallyStatement(generatorAdapter, context, finallyBlock, returnType);
         generatorAdapter.returnValue();
+    }
+
+    private static void popValue(GeneratorAdapter generatorAdapter, Type type) {
+        if (type.getSize() == 2) {
+            generatorAdapter.pop2();
+        } else if (type.getSize() == 1) {
+            generatorAdapter.pop();
+        }
     }
 
     /**

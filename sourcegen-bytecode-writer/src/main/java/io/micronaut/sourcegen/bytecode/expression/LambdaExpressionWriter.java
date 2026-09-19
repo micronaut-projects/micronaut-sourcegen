@@ -19,10 +19,12 @@ import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
+import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.VariableDef;
+import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -66,12 +68,14 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
         if (descriptor.startsWith("L")) {
             descriptor = descriptor.substring(1);
         }
+        // The implementation of a lambda written into an interface is a static method of that interface, which
+        // is linked as an interface method
         Handle lambdaMethodHandle = new Handle(
             Opcodes.H_INVOKESTATIC,
             descriptor,
             implementationMethodDef.getName(),
             TypeUtils.getMethodDescriptor(objectDef, implementationMethodDef),
-            false
+            objectDef instanceof InterfaceDef
         );
         generatorAdapter.visitInvokeDynamicInsn(
             lambda.implementation().getName(),
@@ -132,9 +136,14 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
             .build();
     }
 
-    private List<VariableDef> captureVariables(MethodDef method) {
+    /**
+     * The variables a lambda body uses that it does not declare itself - through its parameters or its locals -
+     * which the enclosing method has to pass to it. A nested lambda captures from this one whatever its own body
+     * uses and does not declare, so its captures are this lambda's captures as well.
+     */
+    private static List<VariableDef> captureVariables(MethodDef method) {
         Set<String> variables = new LinkedHashSet<>(
-            method.getParameters().stream().map(v -> v.getName()).toList()
+            method.getParameters().stream().map(ParameterDef::getName).toList()
         );
         List<VariableDef> capturedVariables = new ArrayList<>();
         for (StatementDef statement : method.getStatements()) {
@@ -143,30 +152,90 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
         return capturedVariables;
     }
 
-    private void captureVariables(StatementDef statement, Set<String> variables, List<VariableDef> capturedVariables) {
-        statement.nestedExpressionsStream()
-            .forEach(expressionDef -> captureVariables(expressionDef, variables, capturedVariables));
+    private static void captureVariables(StatementDef statement, Set<String> variables, List<VariableDef> capturedVariables) {
+        switch (statement) {
+            case StatementDef.Multi multi -> multi.statements().forEach(nested -> captureVariables(nested, variables, capturedVariables));
+            case StatementDef.DefineAndAssign define -> {
+                // A local the body defines is its own, not one to capture
+                captureVariables(define.expression(), variables, capturedVariables);
+                variables.add(define.variable().name());
+            }
+            case StatementDef.If anIf -> {
+                captureVariables(anIf.condition(), variables, capturedVariables);
+                captureVariables(anIf.statement(), variables, capturedVariables);
+            }
+            case StatementDef.IfElse ifElse -> {
+                captureVariables(ifElse.condition(), variables, capturedVariables);
+                captureVariables(ifElse.statement(), variables, capturedVariables);
+                captureVariables(ifElse.elseStatement(), variables, capturedVariables);
+            }
+            case StatementDef.Switch aSwitch -> {
+                captureVariables(aSwitch.expression(), variables, capturedVariables);
+                aSwitch.cases().values().forEach(nested -> captureVariables(nested, variables, capturedVariables));
+                if (aSwitch.defaultCase() != null) {
+                    captureVariables(aSwitch.defaultCase(), variables, capturedVariables);
+                }
+            }
+            case StatementDef.While aWhile -> {
+                captureVariables(aWhile.expression(), variables, capturedVariables);
+                captureVariables(aWhile.statement(), variables, capturedVariables);
+            }
+            case StatementDef.Try aTry -> {
+                captureVariables(aTry.statement(), variables, capturedVariables);
+                aTry.catches().forEach(aCatch -> captureVariables(aCatch.statement(), variables, capturedVariables));
+                if (aTry.finallyStatement() != null) {
+                    captureVariables(aTry.finallyStatement(), variables, capturedVariables);
+                }
+            }
+            case StatementDef.Synchronized aSynchronized -> {
+                captureVariables(aSynchronized.monitor(), variables, capturedVariables);
+                captureVariables(aSynchronized.statement(), variables, capturedVariables);
+            }
+            default -> statement.nestedExpressionsStream()
+                .forEach(expressionDef -> captureVariables(expressionDef, variables, capturedVariables));
+        }
     }
 
-    private void captureVariables(ExpressionDef expression, Set<String> variables, List<VariableDef> capturedVariables) {
+    private static void captureVariables(ExpressionDef expression, Set<String> variables, List<VariableDef> capturedVariables) {
         if (expression instanceof VariableDef variable) {
-            if (variable instanceof VariableDef.Local local) {
-                captureVariable(local, local.name(), variables, capturedVariables);
-            } else if (variable instanceof VariableDef.MethodParameter parameter) {
-                captureVariable(parameter, parameter.name(), variables, capturedVariables);
-            } else if (variable instanceof VariableDef.Field field) {
+            if (variable instanceof VariableDef.Field field) {
                 captureVariables(field.instance(), variables, capturedVariables);
-            } else if (variable instanceof VariableDef.This) {
-                captureVariable(variable, THIS_VAR_NAME, variables, capturedVariables);
-            } else if (variable instanceof VariableDef.Super) {
-                captureVariable(variable, SUPER_VAR_NAME, variables, capturedVariables);
-            } else if (variable instanceof VariableDef.ExceptionVar) {
-                captureVariable(variable, EXCEPTION_VAR_NAME, variables, capturedVariables);
+            } else {
+                String name = captureName(variable);
+                if (name != null) {
+                    captureVariable(variable, name, variables, capturedVariables);
+                }
+            }
+        } else if (expression instanceof Lambda nested) {
+            // The nested lambda's own parameters and locals shadow this scope; what remains it captures from here
+            Set<String> nestedVariables = new LinkedHashSet<>(variables);
+            nested.implementation().getParameters().forEach(parameter -> nestedVariables.add(parameter.getName()));
+            List<VariableDef> nestedCaptures = new ArrayList<>();
+            for (StatementDef statement : nested.implementation().getStatements()) {
+                captureVariables(statement, nestedVariables, nestedCaptures);
+            }
+            for (VariableDef captured : nestedCaptures) {
+                captureVariable(captured, Objects.requireNonNull(captureName(captured)), variables, capturedVariables);
             }
         } else {
             expression.nestedExpressionsStream()
                 .forEach(expressionDef -> captureVariables(expressionDef, variables, capturedVariables));
         }
+    }
+
+    /**
+     * The name a variable is captured under, or {@code null} for one that is not captured by itself.
+     */
+    @Nullable
+    private static String captureName(VariableDef variable) {
+        return switch (variable) {
+            case VariableDef.Local local -> local.name();
+            case VariableDef.MethodParameter parameter -> parameter.name();
+            case VariableDef.This _ -> THIS_VAR_NAME;
+            case VariableDef.Super _ -> SUPER_VAR_NAME;
+            case VariableDef.ExceptionVar _ -> EXCEPTION_VAR_NAME;
+            default -> null;
+        };
     }
 
     private static void captureVariable(VariableDef variable, String name, Set<String> variables, List<VariableDef> capturedVariables) {

@@ -33,10 +33,17 @@ final class IfElseStatementWriter extends AbstractConditionalWriter implements S
     public void write(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock) {
         Label elseLabel = new Label();
         pushElseConditionalExpression(generatorAdapter, context, ifStatement.condition(), elseLabel);
-        Label end = new Label();
         StatementWriter.of(ifStatement.statement()).writeScoped(generatorAdapter, context, finallyBlock);
-        generatorAdapter.visitLabel(end);
+        // A branch that completes, such as a try whose catch falls through, skips the else branch
+        Label end = null;
+        if (StatementWriter.canCompleteNormally(ifStatement.statement())) {
+            end = new Label();
+            generatorAdapter.goTo(end);
+        }
         generatorAdapter.visitLabel(elseLabel);
         StatementWriter.of(ifStatement.elseStatement()).writeScoped(generatorAdapter, context, finallyBlock);
+        if (end != null) {
+            generatorAdapter.visitLabel(end);
+        }
     }
 }

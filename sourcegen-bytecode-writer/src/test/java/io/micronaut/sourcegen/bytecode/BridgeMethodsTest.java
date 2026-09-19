@@ -132,6 +132,7 @@ public class example/Example extends example/Parent {
 
   // access flags 0x1
   public value(Ljava/lang/Integer;)Ljava/lang/Integer;
+    // parameter  value
    L0
     ALOAD 1
     ARETURN
@@ -140,6 +141,7 @@ public class example/Example extends example/Parent {
 
   // access flags 0x1041
   public synthetic bridge value(Ljava/lang/Number;)Ljava/lang/Number;
+    // parameter  value
    L0
     ALOAD 0
     ALOAD 1
@@ -185,6 +187,7 @@ public class example/Example implements java/util/function/Function {
 
   // access flags 0x1
   public apply(Ljava/lang/String;)Ljava/lang/Integer;
+    // parameter  value
    L0
     ALOAD 1
     INVOKEVIRTUAL java/lang/String.length ()I
@@ -195,6 +198,7 @@ public class example/Example implements java/util/function/Function {
 
   // access flags 0x1041
   public synthetic bridge apply(Ljava/lang/Object;)Ljava/lang/Object;
+    // parameter  value
    L0
     ALOAD 0
     ALOAD 1
@@ -239,6 +243,8 @@ public class example/Example implements java/util/Comparator {
 
   // access flags 0x1
   public compare(Ljava/lang/String;Ljava/lang/String;)I
+    // parameter  first
+    // parameter  second
    L0
     ALOAD 1
     ALOAD 2
@@ -250,6 +256,8 @@ public class example/Example implements java/util/Comparator {
 
   // access flags 0x1041
   public synthetic bridge compare(Ljava/lang/Object;Ljava/lang/Object;)I
+    // parameter  first
+    // parameter  second
    L0
     ALOAD 0
     ALOAD 1
@@ -303,6 +311,7 @@ public class example/Example extends example/Parent {
 
   // access flags 0x1
   public toArray([Ljava/lang/String;)[Ljava/lang/String;
+    // parameter  values
    L0
     ALOAD 1
     ARETURN
@@ -311,6 +320,7 @@ public class example/Example extends example/Parent {
 
   // access flags 0x1041
   public synthetic bridge toArray([Ljava/lang/Object;)[Ljava/lang/Object;
+    // parameter  values
    L0
     ALOAD 0
     ALOAD 1
@@ -577,6 +587,7 @@ public class example/Example extends example/Parent implements example/Id {
 
   // access flags 0x1
   public id(Ljava/lang/String;)Ljava/lang/String;
+    // parameter  value
    L0
     ALOAD 1
     ARETURN
@@ -585,6 +596,7 @@ public class example/Example extends example/Parent implements example/Id {
 
   // access flags 0x1041
   public synthetic bridge id(Ljava/lang/Object;)Ljava/lang/Object;
+    // parameter  value
    L0
     ALOAD 0
     ALOAD 1
@@ -641,6 +653,7 @@ public class example/Example extends example/Parent {
 
   // access flags 0x1
   public handle(Ljava/lang/String;)Ljava/lang/String; throws java/io/IOException
+    // parameter  value
   @Ljava/lang/Deprecated;()
     // annotable parameter count: 1 (visible)
     @Ljava/lang/Deprecated;() // parameter 0
@@ -652,6 +665,7 @@ public class example/Example extends example/Parent {
 
   // access flags 0x1041
   public synthetic bridge handle(Ljava/lang/Object;)Ljava/lang/Object; throws java/io/IOException
+    // parameter  value
   @Ljava/lang/Deprecated;()
     // annotable parameter count: 1 (visible)
     @Ljava/lang/Deprecated;() // parameter 0

@@ -27,7 +27,6 @@ import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
@@ -429,7 +428,6 @@ public class ReviewJdkBytecodeTest {
     }
 
     // A lambda returning a lambda that calls super.name()
-    @Disabled("Pre-existing: a nested lambda's captures are not propagated to the enclosing lambda (Lambda.nestedExpressionsStream is empty)")
     @Test
     void nestedLambdaCapturesSuper() throws Exception {
         Method name = NamedParent.class.getMethod("name");
@@ -447,7 +445,6 @@ public class ReviewJdkBytecodeTest {
     }
 
     // A lambda returning a lambda that calls this.name(): the same shape without super
-    @Disabled("Pre-existing: a nested lambda's captures are not propagated to the enclosing lambda (Lambda.nestedExpressionsStream is empty)")
     @Test
     void nestedLambdaCapturesThis() throws Exception {
         Method name = NamedParent.class.getMethod("name");
@@ -539,7 +536,6 @@ public class ReviewJdkBytecodeTest {
     }
 
     // A lambda in an interface default method calling `Described.super.describe()`
-    @Disabled("Pre-existing: the implementation handle of a lambda in an interface is a static class handle, not an interface one")
     @Test
     void lambdaCapturingSuperInAnInterfaceDefaultMethod() throws Exception {
         Method describe = Described.class.getMethod("describe");
@@ -606,7 +602,6 @@ public class ReviewJdkBytecodeTest {
     }
 
     // A model class variable `T extends Object & Comparable<T>`: javac erases T pick(T) to Object pick(Object)
-    @Disabled("Pre-existing: a class variable listing Object before its bound is erased to the bound by TypeUtils.getBoundsDescriptor, where javac erases it to Object")
     @Test
     void modelMultiBoundClassVariableErasesToItsLeftmostBoundLikeJavac() throws Exception {
         TypeDef.TypeVariable t = TypeDef.variable("T", TypeDef.OBJECT, TypeDef.parameterized(ClassTypeDef.of(Comparable.class), TypeDef.variable("T")));
@@ -730,7 +725,6 @@ public class ReviewJdkBytecodeTest {
     }
 
     // An interface narrowing Function<String, String>.apply: javac writes the bridge as a concrete default method
-    @Disabled("Pre-existing: the JDK writer writes the bridge of an interface as abstract, where javac writes a default one")
     @Test
     void bridgeInAnInterfaceMatchesJavac() throws Exception {
         InterfaceDef def = InterfaceDef.builder("test.UpperFunction").addModifiers(Modifier.PUBLIC)
@@ -788,7 +782,6 @@ public class ReviewJdkBytecodeTest {
 
     // A method of the same name and parameters as an inherited one but an unrelated return type hides it in bytecode
     // (javac rejects the source); it is no override, so no bridge casting one type to the other belongs there
-    @Disabled("Pre-existing: a method of the same name and parameters with an unrelated return type gets a bridge, which BridgeResolver only refuses for a primitive mismatch")
     @Test
     void sameNameMethodWithAnUnrelatedReturnTypeGetsNoBridge() throws Exception {
         ClassTypeDef supplierOfInteger = TypeDef.parameterized(Supplier.class, Integer.class);

@@ -485,11 +485,10 @@ public class ReviewOverridesTest {
     }
 
     /**
-     * A generated `Picker<T extends Object & Comparable<T>>`: the bytecode writer erases `T` to `Comparable` (the
-     * first bound that is not Object), so the bytecode model declares `Comparable pick(Comparable)`, which the
-     * resolver rewrites to `Integer pick(Integer)`. JavaPoet drops the `Object` bound from the written interface,
-     * so javac erases it to `Comparable` as well; a compiled type erases to Object (JLS 4.6): see
-     * reflectedMethodVariableListingObjectBeforeItsBound.
+     * A generated `Picker<T extends Object & Comparable<T>>`: the bytecode writer erases `T` to `Object`, its
+     * leftmost bound (JLS 4.6), so the bytecode model declares `Object pick(Object)`, which the resolver rewrites
+     * to `Integer pick(Integer)`. The written interface keeps the `Object` bound, so javac erases it to `Object`
+     * as well, as it does for a compiled type: see reflectedMethodVariableListingObjectBeforeItsBound.
      */
     @Test
     void generatedVariableListingObjectBeforeItsBound() throws Exception {
@@ -499,13 +498,14 @@ public class ReviewOverridesTest {
             .build();
         var def = ClassDef.builder("test.IntPicker").addModifiers(Modifier.PUBLIC)
             .addSuperinterface(TypeDef.parameterized(picker.asTypeDef(), TypeDef.of(Integer.class)))
-            .addMethod(erased("pick", TypeDef.of(Comparable.class), p -> p.get(0).returning(), TypeDef.of(Comparable.class)))
+            .addMethod(erased("pick", TypeDef.OBJECT, p -> p.get(0).returning(), TypeDef.OBJECT))
             .build();
         try (var compiled = compile(picker, def)) {
+            assertTrue(compiled.source(0).contains("<T extends Object & Comparable<T>>"), compiled.source(0));
             assertTrue(compiled.source(1).contains("public Integer pick(Integer p0)"), compiled.source(1));
             Object instance = compiled.newInstance(def.getName());
             var pick = java.util.Arrays.stream(compiled.load(picker.getName()).getMethods()).filter(m -> m.getName().equals("pick")).findFirst().orElseThrow();
-            assertEquals(Comparable.class, pick.getParameterTypes()[0]);
+            assertEquals(Object.class, pick.getParameterTypes()[0]);
             assertEquals(3, pick.invoke(instance, 3));
         }
     }

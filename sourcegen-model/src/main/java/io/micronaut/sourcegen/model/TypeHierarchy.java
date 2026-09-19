@@ -249,19 +249,14 @@ public final class TypeHierarchy {
     }
 
     /**
-     * The bound a type variable erases to: the first one that is not {@code Object}, as a JVM descriptor takes it -
-     * a variable can list {@code Object} ahead of its real bound.
+     * The bound a type variable erases to: the leftmost one, as javac erases it (JLS 4.6) - a variable declared
+     * {@code T extends Object & Comparable<T>} erases to {@code Object}, and the JVM descriptor takes the same.
      *
      * @param bounds The bounds
      * @return The bound, or {@code null} without bounds
      */
     @Nullable
     private static TypeDef erasureBound(List<TypeDef> bounds) {
-        for (TypeDef bound : bounds) {
-            if (!(unwrap(bound) instanceof ClassTypeDef classTypeDef) || !classTypeDef.getName().equals(TypeDef.OBJECT.getName())) {
-                return bound;
-            }
-        }
         return bounds.isEmpty() ? null : bounds.get(0);
     }
 
@@ -488,8 +483,8 @@ public final class TypeHierarchy {
     /**
      * The bounds of a variable a compiled or compiling method declares, as its erasure sees them: javac erases a
      * variable to its leftmost bound, so one declared as {@code Collections.max} declares its own - bounded by
-     * {@code Object} and then {@code Comparable} - erases to {@code Object}, and keeps only that bound here. A variable of the model
-     * lists {@code Object} ahead of the bound it erases to, which {@link #erasureBound(List)} skips.
+     * {@code Object} and then {@code Comparable} - erases to {@code Object}, and keeps only that bound here, as
+     * {@link #erasureBound(List)} takes it for a variable of the model as well.
      *
      * @param bounds The declared bounds
      * @return The bounds the erasure sees

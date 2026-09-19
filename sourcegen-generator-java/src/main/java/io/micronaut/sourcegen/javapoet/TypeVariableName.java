@@ -68,10 +68,20 @@ public final class TypeVariableName extends TypeName {
   }
 
   private static TypeVariableName of(String name, List<TypeName> bounds) {
-    // Strip java.lang.Object from bounds if it is present.
     List<TypeName> boundsNoObject = new ArrayList<>(bounds);
-    boundsNoObject.remove(OBJECT);
+    stripImplicitObject(boundsNoObject);
     return new TypeVariableName(name, Collections.unmodifiableList(boundsNoObject));
+  }
+
+  /**
+   * Strips a {@code java.lang.Object} bound that stands alone: it is the implicit bound of an unbounded variable.
+   * One followed by other bounds is kept, as {@code <T extends Object & Comparable<T>>} declares a variable javac
+   * erases to {@code Object} (JLS 4.6), where dropping it would make {@code Comparable} the erasure.
+   */
+  private static void stripImplicitObject(List<TypeName> bounds) {
+    if (bounds.size() == 1 && OBJECT.equals(bounds.get(0))) {
+      bounds.clear();
+    }
   }
 
   @Override
@@ -122,7 +132,7 @@ public final class TypeVariableName extends TypeName {
       for (TypeMirror typeMirror : element.getBounds()) {
         bounds.add(TypeName.get(typeMirror, typeVariables));
       }
-      bounds.remove(OBJECT);
+      stripImplicitObject(bounds);
     }
     return typeVariableName;
   }
@@ -157,7 +167,7 @@ public final class TypeVariableName extends TypeName {
       for (Type bound : type.getBounds()) {
         bounds.add(TypeName.get(bound, map));
       }
-      bounds.remove(OBJECT);
+      stripImplicitObject(bounds);
     }
     return result;
   }

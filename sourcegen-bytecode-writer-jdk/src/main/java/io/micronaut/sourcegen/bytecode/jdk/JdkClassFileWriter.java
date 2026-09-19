@@ -1051,9 +1051,12 @@ final class JdkClassFileWriter {
 
     private void writeBridgeMethods(ClassBuilder builder, ObjectDef objectDef, MethodDef method, ClassDesc owner) {
         List<BridgeResolver.BridgeMethod> bridges = BridgeResolver.resolve(objectDef, method);
+        // An interface bridge is a concrete default method delegating through the interface even when the method
+        // it bridges is abstract, as javac writes it: interface dispatch reaches the implementation either way
+        boolean abstractBridge = !(objectDef instanceof InterfaceDef) && method.getModifiers().contains(Modifier.ABSTRACT);
         for (BridgeResolver.BridgeMethod bridge : bridges) {
             MethodDef.MethodDefBuilder bridgeBuilder = MethodDef.builder(method.getName())
-                .addModifiers(bridgeModifiers(method))
+                .addModifiers(bridgeModifiers(method, abstractBridge))
                 .returns(bridge.returnType())
                 .addAnnotations(method.getAnnotations())
                 .addThrows(method.getThrowTypes());
@@ -1064,7 +1067,7 @@ final class JdkClassFileWriter {
                     .addAnnotations(parameter.getAnnotations())
                     .build());
             }
-            if (!method.getModifiers().contains(Modifier.ABSTRACT)) {
+            if (!abstractBridge) {
                 bridgeBuilder.addStatement((aThis, parameters) -> {
                     ExpressionDef.InvokeInstanceMethod invocation = aThis.invoke(method, parameters);
                     return bridge.returnType().equals(TypeDef.VOID) ? invocation : invocation.returning();
@@ -1072,7 +1075,7 @@ final class JdkClassFileWriter {
             }
             MethodDef bridgeMethod = bridgeBuilder.build();
             int flags = ModifierUtils.ACC_BRIDGE | ModifierUtils.ACC_SYNTHETIC;
-            if (method.getModifiers().contains(Modifier.ABSTRACT)) {
+            if (abstractBridge) {
                 writeAbstractMethod(builder, objectDef, bridgeMethod, flags);
             } else {
                 writeMethod(builder, objectDef, bridgeMethod, owner, flags);
@@ -1080,10 +1083,10 @@ final class JdkClassFileWriter {
         }
     }
 
-    private static List<Modifier> bridgeModifiers(MethodDef method) {
+    private static List<Modifier> bridgeModifiers(MethodDef method, boolean abstractBridge) {
         return method.getModifiers().stream()
             .filter(modifier -> modifier == Modifier.PUBLIC || modifier == Modifier.PROTECTED
-                || modifier == Modifier.PRIVATE || modifier == Modifier.ABSTRACT)
+                || modifier == Modifier.PRIVATE || (abstractBridge && modifier == Modifier.ABSTRACT))
             .toList();
     }
 

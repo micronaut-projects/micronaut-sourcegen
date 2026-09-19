@@ -24,6 +24,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -87,6 +88,39 @@ public sealed interface StatementWriter permits AssignVariableStatementWriter, D
             return new ExpressionAsStatementWriter(expressionDef);
         }
         throw new UnsupportedOperationException("Unrecognized statement: " + statementDef);
+    }
+
+    /**
+     * Whether a statement can complete normally, so that the code following it is reachable: one ending in a
+     * return or a throw cannot, and a compound statement can where one of its ways through can.
+     *
+     * @param statement The statement
+     * @return true if the execution can continue after the statement
+     */
+    static boolean canCompleteNormally(StatementDef statement) {
+        List<StatementDef> statements = statement.flatten();
+        if (statements.isEmpty()) {
+            return true;
+        }
+        StatementDef last = statements.get(statements.size() - 1);
+        if (last instanceof StatementDef.IfElse ifElse) {
+            return canCompleteNormally(ifElse.statement()) || canCompleteNormally(ifElse.elseStatement());
+        }
+        if (last instanceof StatementDef.Try aTry) {
+            boolean bodyOrCatchCompletes = canCompleteNormally(aTry.statement())
+                || aTry.catches().stream().anyMatch(aCatch -> canCompleteNormally(aCatch.statement()));
+            return bodyOrCatchCompletes
+                && (aTry.finallyStatement() == null || canCompleteNormally(aTry.finallyStatement()));
+        }
+        if (last instanceof StatementDef.Synchronized aSynchronized) {
+            return canCompleteNormally(aSynchronized.statement());
+        }
+        if (last instanceof StatementDef.Switch aSwitch) {
+            return aSwitch.defaultCase() == null
+                || canCompleteNormally(aSwitch.defaultCase())
+                || aSwitch.cases().values().stream().anyMatch(StatementWriter::canCompleteNormally);
+        }
+        return !(last instanceof StatementDef.Return || last instanceof StatementDef.Throw);
     }
 
     /**

@@ -55,14 +55,18 @@ class TypeHierarchyTest {
     }
 
     @Test
-    void erasesATypeVariableToItsFirstBoundThatIsNotObject() {
-        // A variable can list Object ahead of its real bound; the JVM descriptor takes the real one
+    void erasesATypeVariableToItsLeftmostBoundLikeJavac() {
+        // A variable listing Object ahead of its other bound erases to Object, as javac erases it (JLS 4.6), so
+        // that a class compiled from the same declaration links with the generated one
         TypeDef.TypeVariable variable = new TypeDef.TypeVariable("N", List.of(TypeDef.OBJECT, TypeDef.of(Number.class)), false);
-        ClassDef classDef = ClassDef.builder("example.Numbers").addTypeVariable(variable).build();
+        TypeDef.TypeVariable bounded = new TypeDef.TypeVariable("M", List.of(TypeDef.of(Number.class), TypeDef.of(Comparable.class)), false);
+        ClassDef classDef = ClassDef.builder("example.Numbers").addTypeVariable(variable).addTypeVariable(bounded).build();
         TypeHierarchy.InheritedType declaring = TypeHierarchy.declaring(classDef);
 
-        assertEquals(TypeDef.of(Number.class), declaring.erase(variable));
-        assertEquals(TypeDef.of(Number.class), declaring.erase(TypeDef.variable("N")));
+        assertEquals(TypeDef.OBJECT, declaring.erase(variable));
+        assertEquals(TypeDef.OBJECT, declaring.erase(TypeDef.variable("N")));
+        assertEquals(TypeDef.of(Number.class), declaring.erase(bounded));
+        assertEquals(TypeDef.of(Number.class), declaring.erase(TypeDef.variable("M")));
     }
 
     @Test
