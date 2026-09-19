@@ -1,0 +1,11 @@
+package test
+
+import io.micronaut.sourcegen.InvocationProgramRegressionTest
+import kotlin.Any
+import kotlin.String
+
+public class DeepCompiledCall {
+  public fun call(target: InvocationProgramRegressionTest.DeepChild9, `value`: Any): Any {
+    return target.identity(`value` as String)
+  }
+}

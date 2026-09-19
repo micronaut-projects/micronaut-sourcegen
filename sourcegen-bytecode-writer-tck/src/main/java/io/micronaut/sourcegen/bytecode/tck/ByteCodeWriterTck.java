@@ -36,6 +36,7 @@ import org.junit.jupiter.api.TestFactory;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -1367,6 +1368,25 @@ public abstract class ByteCodeWriterTck {
             assertEquals("first", captured.apply("two"));
             assertEquals(kind.equals("result") ? 1 : 0, cls.getMethod("reads").invoke(instance));
         }));
+    }
+
+    /**
+     * Verifies an erased invocation preserves arrays whose elements have intersection bounds.
+     *
+     * @throws Exception If the generated program cannot be loaded or invoked
+     * @since 2.2.2
+     */
+    @Test
+    public void genericArrayCallsPreserveIntersectionBoundValues() throws Exception {
+        var t = TypeDef.variable("T", TypeDef.of(CharSequence.class), TypeDef.of(Serializable.class));
+        var identity = MethodDef.builder("identity").addModifiers(Modifier.PUBLIC).addTypeVariable(t)
+            .addParameter("value", t.array()).returns(Object.class).build((self, p) -> p.getFirst().returning());
+        var def = ClassDef.builder("test.IntersectionArrayCall").addModifiers(Modifier.PUBLIC).addMethod(identity)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).addParameter("value", Object.class).returns(Object.class)
+                .build((self, p) -> self.invoke(identity, p.getFirst()).returning())).build();
+        var cls = loadPrograms(def).loadClass(def.getName());
+        var value = new String[]{"text"};
+        assertSame(value, cls.getMethod("call", Object.class).invoke(cls.getConstructor().newInstance(), (Object) value));
     }
 
     private MapClassLoader loadPrograms(ObjectDef... definitions) {

@@ -1,0 +1,11 @@
+package test;
+
+import java.lang.String;
+
+public class Terminalloop {
+  public String call() {
+    while (true) {
+      return "reached";
+    }
+  }
+}

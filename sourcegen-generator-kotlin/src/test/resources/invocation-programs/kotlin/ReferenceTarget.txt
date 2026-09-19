@@ -1,0 +1,10 @@
+package test
+
+import java.util.function.Function
+import kotlin.String
+
+public class ReferenceTarget : Function<String, String> {
+  public override fun apply(`value`: String): String {
+    return `value` as String
+  }
+}

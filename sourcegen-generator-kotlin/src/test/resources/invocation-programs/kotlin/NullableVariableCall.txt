@@ -1,0 +1,11 @@
+package test
+
+import io.micronaut.sourcegen.InvocationProgramRegressionTest
+import kotlin.Any
+import kotlin.CharSequence
+
+public class NullableVariableCall {
+  public fun call(): Any? {
+    return InvocationProgramRegressionTest.Calls.nullable(null as CharSequence?)
+  }
+}

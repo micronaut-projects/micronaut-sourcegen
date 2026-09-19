@@ -1,0 +1,11 @@
+package test
+
+import java.util.function.Function
+import kotlin.Any
+import kotlin.String
+
+public class NullableReferenceCall {
+  public fun reference(target: ReferenceTarget?): Function<Any, Any> {
+    return target!!.let { target1 -> Function<Any, Any> { arg0 -> target1.apply(arg0 as String) } }
+  }
+}

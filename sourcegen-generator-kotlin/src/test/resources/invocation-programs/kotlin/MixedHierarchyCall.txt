@@ -1,0 +1,10 @@
+package test
+
+import kotlin.Any
+import kotlin.String
+
+public class MixedHierarchyCall {
+  public fun call(target: GeneratedChild, `value`: Any): Any {
+    return target.identity(`value` as String)
+  }
+}

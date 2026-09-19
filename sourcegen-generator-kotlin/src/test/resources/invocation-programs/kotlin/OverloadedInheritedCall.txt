@@ -1,0 +1,11 @@
+package test
+
+import io.micronaut.sourcegen.InvocationProgramRegressionTest
+import kotlin.Any
+import kotlin.String
+
+public class OverloadedInheritedCall {
+  public fun call(target: InvocationProgramRegressionTest.OverloadedChild, `value`: Any): Any {
+    return target.identity(`value` as String)
+  }
+}
