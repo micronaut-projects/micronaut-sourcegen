@@ -6,8 +6,8 @@ import kotlin.Any
 import kotlin.CharSequence
 import kotlin.String
 
-public class AfterCastvarargs {
-  public fun call(`value`: Any): String {
+public open class AfterCastvarargs {
+  public open fun call(`value`: Any): String {
     CalleeBoundsRegressionTest.Calls.text(`value` as CharSequence)
     return InvocationProgramRegressionTest.Calls.varargs(`value` as Any)
   }

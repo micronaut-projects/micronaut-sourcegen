@@ -47,8 +47,8 @@ class BackendConsistencyRegressionTest {
             |import kotlin.Int
             |import kotlin.String
             |
-            |public class PrimitiveBoundCall {
-            |  public fun call(`value`: Int): Any {
+            |public open class PrimitiveBoundCall {
+            |  public open fun call(`value`: Int): Any {
             |    return BackendConsistencyRegressionTest.Calls.comparable(`value` as Comparable<String>)
             |  }
             |}
@@ -72,8 +72,8 @@ class BackendConsistencyRegressionTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class ParameterizedBoundCall {
-            |  public fun call(`value`: List<Int>): Any {
+            |public open class ParameterizedBoundCall {
+            |  public open fun call(`value`: List<Int?>): Any {
             |    return BackendConsistencyRegressionTest.Calls.list(`value` as List<String>)
             |  }
             |}
@@ -96,8 +96,8 @@ class BackendConsistencyRegressionTest {
             |import kotlin.Any
             |import kotlin.CharSequence
             |
-            |public class InterfaceBoundCall {
-            |  public fun call(`value`: Runnable): Any {
+            |public open class InterfaceBoundCall {
+            |  public open fun call(`value`: Runnable): Any {
             |    return BackendConsistencyRegressionTest.Calls.text(`value` as CharSequence)
             |  }
             |}
@@ -120,8 +120,8 @@ class BackendConsistencyRegressionTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class NullableListBound {
-            |  public fun call(): Any? {
+            |public open class NullableListBound {
+            |  public open fun call(): Any? {
             |    return BackendConsistencyRegressionTest.Calls.nullableList(null as List<String>?)
             |  }
             |}

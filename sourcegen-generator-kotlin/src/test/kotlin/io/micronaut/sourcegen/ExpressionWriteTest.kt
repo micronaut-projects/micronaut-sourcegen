@@ -212,7 +212,7 @@ class ExpressionWriteTest {
         val fnType = ClassTypeDef.of(java.util.function.Supplier::class.java)
         Assertions.assertEquals(
             """
-            return Supplier { `value`}
+            return Supplier<*> { `value`}
             """.trimIndent(),
             writeBody(fnType, TypeDef.STRING) { _, params ->
                 fnType.getLambda().implement { _, _ -> params[0].returning() }.returning()

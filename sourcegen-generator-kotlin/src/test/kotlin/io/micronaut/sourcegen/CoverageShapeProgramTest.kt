@@ -44,7 +44,6 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.io.StringWriter
 import java.io.Writer
@@ -206,7 +205,6 @@ class CoverageShapeProgramTest {
 
     // KotlinPoetSourceGenerator 197-218: a property of an interface, nullable or not, is written with an initializer,
     // which an interface property cannot have
-    @Disabled("Pre-existing: a property of an interface is written with an initializer, which Kotlin prohibits")
     @Test
     fun interfacePropertiesAreWritten() {
         val labelled = InterfaceDef.builder("test.LabelledThing").addModifiers(Modifier.PUBLIC)
@@ -284,7 +282,6 @@ class CoverageShapeProgramTest {
 
     // KotlinPoetSourceGenerator 587-598: the primary constructor of a sealed class with properties is written public,
     // which a sealed class cannot have
-    @Disabled("Pre-existing: the constructor of a sealed class is written public, which Kotlin rejects")
     @Test
     fun sealedClassWithPropertiesIsConstructed() {
         val def = ClassDef.builder("test.NamedShape").addModifiers(Modifier.PUBLIC, Modifier.SEALED)
@@ -477,7 +474,6 @@ class CoverageShapeProgramTest {
     // KotlinPoetSourceGenerator 1620-1631, 1787-1788: a super constructor call that is not the first statement of the
     // constructor - a field of the class is assigned before it, which the verifier allows - is written as a
     // statement, which Kotlin has no place for
-    @Disabled("A constructor assigning a field before it calls super, which the verifier accepts, has no Kotlin form: the super call is written as a statement")
     @Test
     fun superConstructorCallAfterAFieldAssignment() {
         val count = FieldDef.builder("count", intType).addModifiers(Modifier.PUBLIC).build()
@@ -609,7 +605,6 @@ class CoverageShapeProgramTest {
     // KotlinPoetSourceGenerator 3033-3035: an `Object` passed to a method of another generated class, known by name
     // only - not loadable, so not known to be a Kotlin class - is cast to the nullable parameter type a Java method
     // would take, which the Kotlin method does not
-    @Disabled("A generated class known only by name cannot be told from a Java one, so an Object is cast to the nullable parameter a Java method would take")
     @Test
     fun objectPassedToANamedGeneratedClass() {
         val greet = MethodDef.builder("greet").addModifiers(Modifier.PUBLIC).addParameter("name", String::class.java).returns(String::class.java)
@@ -759,7 +754,6 @@ class CoverageShapeProgramTest {
 
     // KotlinPoetSourceGenerator 1796-1800: `getMessage()` of a throwable is read as the `message` property Kotlin maps it
     // to, which is nullable where the model's `String` result is not
-    @Disabled("Throwable.getMessage is mapped to the nullable property message, which a non-null return type cannot hold")
     @Test
     fun throwableMessageIsReadAsAProperty() {
         val getMessage = Throwable::class.java.getMethod("getMessage")

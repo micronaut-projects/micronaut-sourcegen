@@ -30,8 +30,8 @@ class SuperCallTest {
 
             import kotlin.String
 
-            public class SuperTypeReferenceClass {
-              public fun simpleSuperCall(): String {
+            public open class SuperTypeReferenceClass {
+              public open fun simpleSuperCall(): String {
                 return super.toString()
                     .toUpperCase()
               }
@@ -59,8 +59,8 @@ class SuperCallTest {
         val expectedString = """
             package test
 
-            public class SpecificSuperTypeReferenceClass : ParentClass() {
-              public fun specificSuperCall() {
+            public open class SpecificSuperTypeReferenceClass : ParentClass() {
+              public open fun specificSuperCall() {
                 super<ParentClass>.specificMethod()
               }
             }
@@ -87,7 +87,7 @@ class SuperCallTest {
         val expectedString = """
             package test
 
-            public class NoParamChildClass public constructor() : NoParamParent()
+            public open class NoParamChildClass public constructor() : NoParamParent()
         """.trimIndent()
         val parentType = ClassTypeDef.of("test." + "NoParamParent")
         val constructor = MethodDef.constructor()
@@ -111,7 +111,7 @@ class SuperCallTest {
             import kotlin.Int
             import kotlin.Long
 
-            public class MultiParamChildClass public constructor(
+            public open class MultiParamChildClass public constructor(
               childParam1: Int,
               childParam2: Long,
             ) : MultiParamParent(childParam1, childParam2)

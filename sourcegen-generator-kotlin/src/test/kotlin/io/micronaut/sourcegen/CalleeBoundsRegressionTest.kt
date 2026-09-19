@@ -49,8 +49,8 @@ class CalleeBoundsRegressionTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class InheritedReceiverCall {
-            |  public fun call(target: CalleeBoundsRegressionTest.Child, `value`: Any): Any {
+            |public open class InheritedReceiverCall {
+            |  public open fun call(target: CalleeBoundsRegressionTest.Child, `value`: Any): Any {
             |    return target.identity(`value` as String)
             |  }
             |}
@@ -73,8 +73,8 @@ class CalleeBoundsRegressionTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class MixedReceiverCall {
-            |  public fun call(target: CalleeBoundsRegressionTest.Mixed<String>, `value`: Any): Any {
+            |public open class MixedReceiverCall {
+            |  public open fun call(target: CalleeBoundsRegressionTest.Mixed<String>, `value`: Any): Any {
             |    return target.identity(`value` as CalleeBoundsRegressionTest.Link<String, Any>)
             |  }
             |}
@@ -97,8 +97,8 @@ class CalleeBoundsRegressionTest {
             |import kotlin.Any
             |import kotlin.CharSequence
             |
-            |public class IntersectionResultCall {
-            |  public fun call(): Any {
+            |public open class IntersectionResultCall {
+            |  public open fun call(): Any {
             |    return CalleeBoundsRegressionTest.Calls.intersection(CalleeBoundsRegressionTest.Calls.next().let { arg ->
             |      arg as CharSequence
             |      arg as Runnable
@@ -126,10 +126,10 @@ class CalleeBoundsRegressionTest {
             |import kotlin.Any
             |import kotlin.CharSequence
             |
-            |public class IntersectionFieldCall {
+            |public open class IntersectionFieldCall {
             |  public var `value`: Any = CalleeBoundsRegressionTest.Calls.next()
             |
-            |  public fun call(): Any {
+            |  public open fun call(): Any {
             |    return CalleeBoundsRegressionTest.Calls.intersection(this. `value`.let { arg ->
             |      arg as CharSequence
             |      arg as Runnable
@@ -156,8 +156,8 @@ class CalleeBoundsRegressionTest {
             |import kotlin.Array
             |import kotlin.CharSequence
             |
-            |public class NullableArrayCall {
-            |  public fun call(): Any? {
+            |public open class NullableArrayCall {
+            |  public open fun call(): Any? {
             |    return CalleeBoundsRegressionTest.Calls.nullableArray(null as Array<CharSequence>?)
             |  }
             |}
@@ -179,8 +179,8 @@ class CalleeBoundsRegressionTest {
             |import kotlin.Any
             |import kotlin.CharSequence
             |
-            |public class VariableBoundCall<V> {
-            |  public fun call(`value`: V): Any {
+            |public open class VariableBoundCall<V> {
+            |  public open fun call(`value`: V): Any {
             |    return CalleeBoundsRegressionTest.Calls.text(`value` as CharSequence)
             |  }
             |}
@@ -202,8 +202,8 @@ class CalleeBoundsRegressionTest {
             |import kotlin.CharSequence
             |import kotlin.String
             |
-            |public class NullableSubtypeCall {
-            |  public fun call(`value`: String?): Any {
+            |public open class NullableSubtypeCall {
+            |  public open fun call(`value`: String?): Any {
             |    return CalleeBoundsRegressionTest.Calls.text(`value` as CharSequence)
             |  }
             |}
@@ -226,8 +226,8 @@ class CalleeBoundsRegressionTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class NullableListArgumentCall {
-            |  public fun call(`value`: List<String>?): Any {
+            |public open class NullableListArgumentCall {
+            |  public open fun call(`value`: List<String>?): Any {
             |    return CalleeBoundsRegressionTest.Calls.list(`value` as List<String>)
             |  }
             |}
@@ -243,8 +243,8 @@ class CalleeBoundsRegressionTest {
             |import kotlin.Any
             |import kotlin.CharSequence
             |
-            |public class AnnotatedVariableCall {
-            |  public fun call(`value`: Any): Any {
+            |public open class AnnotatedVariableCall {
+            |  public open fun call(`value`: Any): Any {
             |    return CalleeBoundsRegressionTest.Calls.text(`value` as CharSequence)
             |  }
             |}
@@ -261,8 +261,8 @@ class CalleeBoundsRegressionTest {
             |import kotlin.Array
             |import kotlin.CharSequence
             |
-            |public class AnnotatedArrayCall {
-            |  public fun call(`value`: Any): Any {
+            |public open class AnnotatedArrayCall {
+            |  public open fun call(`value`: Any): Any {
             |    return CalleeBoundsRegressionTest.Calls.array(`value` as Array<CharSequence>)
             |  }
             |}
@@ -289,16 +289,16 @@ class CalleeBoundsRegressionTest {
             |import kotlin.CharSequence
             |import kotlin.String
             |
-            |public class SingleBoundOverloadCall {
-            |  public fun choose(`value`: Any): String {
+            |public open class SingleBoundOverloadCall {
+            |  public open fun choose(`value`: Any): String {
             |    return "object"
             |  }
             |
-            |  public fun choose(`value`: CharSequence): String {
+            |  public open fun choose(`value`: CharSequence): String {
             |    return "text"
             |  }
             |
-            |  public fun call(`value`: Any): String {
+            |  public open fun call(`value`: Any): String {
             |    CalleeBoundsRegressionTest.Calls.text(`value` as CharSequence)
             |    return this.choose(`value` as Any)
             |  }

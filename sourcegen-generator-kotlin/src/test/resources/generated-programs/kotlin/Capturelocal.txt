@@ -5,25 +5,25 @@ import kotlin.Any
 import kotlin.Int
 import kotlin.String
 
-public class Capturelocal {
+public open class Capturelocal {
   private var `receiver`: CapturedTarget = CapturedTarget("first")
 
   private var count: Int = 0
 
-  public fun next(): CapturedTarget {
+  public open fun next(): CapturedTarget {
     this. count = this. count + 1
     return this. `receiver`
   }
 
-  public fun reads(): Int {
+  public open fun reads(): Int {
     return this. count
   }
 
-  public fun replace() {
+  public open fun replace() {
     this. `receiver` = CapturedTarget("second")
   }
 
-  public fun capture(): Function<Any, Any> {
+  public open fun capture(): Function<Any, Any> {
     var target:CapturedTarget = this. `receiver`
     return target.let { target1 -> Function<Any, Any> { arg0 -> target1.apply(arg0 as String) } }
   }

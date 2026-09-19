@@ -46,11 +46,11 @@ class GenericConversionEdgeRegressionTest {
             |import java.util.function.Consumer
             |import kotlin.CharSequence
             |
-            |public class ClassBoundArgument<T : CharSequence> : Consumer<T> {
+            |public open class ClassBoundArgument<T : CharSequence> : Consumer<T> {
             |  public override fun accept(`value`: T) {
             |  }
             |
-            |  public fun call(`value`: CharSequence) {
+            |  public open fun call(`value`: CharSequence) {
             |    this.accept(`value` as T)
             |  }
             |}
@@ -73,11 +73,11 @@ class GenericConversionEdgeRegressionTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class ParameterizedBoundArgument<T : List<Any>> : Consumer<T> {
+            |public open class ParameterizedBoundArgument<T : List<Any>> : Consumer<T> {
             |  public override fun accept(`value`: T) {
             |  }
             |
-            |  public fun call(`value`: List<String>) {
+            |  public open fun call(`value`: List<String>) {
             |    this.accept(`value` as T)
             |  }
             |}

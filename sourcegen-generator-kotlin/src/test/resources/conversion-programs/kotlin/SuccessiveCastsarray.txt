@@ -6,8 +6,8 @@ import kotlin.Any
 import kotlin.Array
 import kotlin.CharSequence
 
-public class SuccessiveCastsarray {
-  public fun call(`value`: Any): Any {
+public open class SuccessiveCastsarray {
+  public open fun call(`value`: Any): Any {
     ConversionProgramRegressionTest.Calls.serializable(`value` as Serializable)
     return ConversionProgramRegressionTest.Calls.arrays(object { @Suppress("UNCHECKED_CAST") fun <T> cast(value: Any?): Array<T> where T : CharSequence, T : Serializable = value as Array<T> }.cast(`value`))
   }

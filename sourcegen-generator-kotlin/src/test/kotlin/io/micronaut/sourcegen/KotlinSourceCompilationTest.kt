@@ -49,7 +49,7 @@ class KotlinSourceCompilationTest {
             """
             |package test
             |
-            |public class Child()
+            |public open class Child()
             |""".trimMargin(),
             classDefSource
         )
@@ -88,7 +88,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.Int
             |import kotlin.String
             |
-            |public class Predicate : IntPredicate {
+            |public open class Predicate : IntPredicate {
             |  public override fun test(`value`: Int): Boolean {
             |    return true
             |  }
@@ -135,7 +135,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.String
             |import kotlin.Throwable
             |
-            |public class Holder {
+            |public open class Holder {
             |  public companion object {
             |    private final lateinit var VALUE: String
             |
@@ -185,16 +185,16 @@ class KotlinSourceCompilationTest {
             |
             |import kotlin.String
             |
-            |public class `${'$'}Holder${'$'}Definition` {
-            |  private lateinit var `${'$'}field`: String
+            |public open class `${'$'}Holder${'$'}Definition` {
+            |  private var `${'$'}field`: String? = null
             |
-            |  public fun `${'$'}get`(): String {
+            |  public open fun `${'$'}get`(): String? {
             |    return this. `${'$'}field`
             |  }
             |
-            |  public fun `${'$'}copy`(`${'$'}value`: String): String {
+            |  public open fun `${'$'}copy`(`${'$'}value`: String): String {
             |    this. `${'$'}field` = `${'$'}value`
-            |    var `${'$'}local`:String = this.`${'$'}get`()
+            |    var `${'$'}local`:String = this.`${'$'}get`()!!
             |    return `${'$'}local`
             |  }
             |}
@@ -232,19 +232,19 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class Dispatch {
-            |  public fun take(text: String) {
+            |public open class Dispatch {
+            |  public open fun take(text: String) {
             |  }
             |
-            |  public fun dispatch(`value`: Any) {
+            |  public open fun dispatch(`value`: Any) {
             |    this.take(`value` as String)
             |  }
             |
-            |  public fun create(`value`: Any): StringBuilder {
+            |  public open fun create(`value`: Any): StringBuilder {
             |    return StringBuilder(`value` as String?)
             |  }
             |
-            |  public fun narrow(`value`: Any): String {
+            |  public open fun narrow(`value`: Any): String {
             |    return `value` as String
             |  }
             |}
@@ -294,15 +294,15 @@ class KotlinSourceCompilationTest {
             |import kotlin.Int
             |import kotlin.Throwable
             |
-            |public class Flow {
-            |  public fun run() {
+            |public open class Flow {
+            |  public open fun run() {
             |  }
             |
-            |  public fun `delegate`() {
+            |  public open fun `delegate`() {
             |    this.run()
             |  }
             |
-            |  public fun select(index: Int): Any {
+            |  public open fun select(index: Int): Any? {
             |    when (index) {
             |      0-> {
             |        return "zero"
@@ -313,7 +313,7 @@ class KotlinSourceCompilationTest {
             |    }
             |  }
             |
-            |  public fun guarded(): Any {
+            |  public open fun guarded(): Any? {
             |    try {
             |      return "value"
             |    } catch (e: Throwable) {
@@ -346,8 +346,8 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.Boolean
             |
-            |public class Check {
-            |  public fun isEntry(`value`: Any): Boolean {
+            |public open class Check {
+            |  public open fun isEntry(`value`: Any): Boolean {
             |    return `value` is Map.Entry<*, *>
             |  }
             |}
@@ -378,7 +378,7 @@ class KotlinSourceCompilationTest {
             |
             |import kotlin.String
             |
-            |public class Other {
+            |public open class Other {
             |  public lateinit var name: String
             |}
             |""".trimMargin(),
@@ -392,8 +392,8 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class Accessor {
-            |  public fun read(`value`: Any): String {
+            |public open class Accessor {
+            |  public open fun read(`value`: Any): String {
             |    return (`value` as Other). name
             |  }
             |}
@@ -428,8 +428,8 @@ class KotlinSourceCompilationTest {
             |
             |@SuppressWarnings(value = ["unchecked",
             |"rawtypes"])
-            |public class Arrays2 {
-            |  public fun matrix(): Array<Array<String>> {
+            |public open class Arrays2 {
+            |  public open fun matrix(): Array<Array<String>> {
             |    return arrayOf<Array<String>>(arrayOf<String>("a"))
             |  }
             |}
@@ -464,7 +464,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.Int
             |import kotlin.String
             |
-            |public class Typed : Comparable<String>, Supplier<String> {
+            |public open class Typed : Comparable<String>, Supplier<String> {
             |  public override fun compareTo(arg0: String): Int {
             |    return 0
             |  }
@@ -504,7 +504,7 @@ class KotlinSourceCompilationTest {
             |import java.util.function.Consumer
             |import java.util.function.Supplier
             |
-            |public class Box<T> : Supplier<T>, Consumer<T> {
+            |public open class Box<T> : Supplier<T>, Consumer<T> {
             |  public override fun `get`(): T {
             |    return null as T
             |  }
@@ -551,7 +551,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.String
             |import kotlin.collections.Set
             |
-            |public class RawNames : Names {
+            |public open class RawNames : Names {
             |  public override fun names(): Set<String> {
             |    return Collections.emptySet()
             |  }
@@ -601,11 +601,11 @@ class KotlinSourceCompilationTest {
             |
             |import kotlin.Boolean
             |
-            |public class Branch {
+            |public open class Branch {
             |  private fun run() {
             |  }
             |
-            |  public fun dispatch(stop: Boolean) {
+            |  public open fun dispatch(stop: Boolean) {
             |    if (stop) {
             |      this.run()
             |      return
@@ -642,11 +642,11 @@ class KotlinSourceCompilationTest {
             |
             |import java.lang.IllegalStateException
             |
-            |public class Finally {
+            |public open class Finally {
             |  private fun run() {
             |  }
             |
-            |  public fun guarded() {
+            |  public open fun guarded() {
             |    try {
             |      throw IllegalStateException()
             |    } finally {
@@ -682,9 +682,9 @@ class KotlinSourceCompilationTest {
             |
             |import kotlin.Int
             |
-            |public class Counter {
+            |public open class Counter {
             |  public companion object {
-            |    private var count: Int = 0
+            |    private var count: Int? = null
             |
             |    init {
             |      Counter.count = 1
@@ -717,7 +717,7 @@ class KotlinSourceCompilationTest {
             |
             |import kotlin.String
             |
-            |public class Named {
+            |public open class Named {
             |  public final val name: String
             |
             |  public constructor(name: String) {
@@ -758,7 +758,7 @@ class KotlinSourceCompilationTest {
             |
             |import java.util.function.Supplier
             |
-            |public class AnyBox<T> : Supplier<T> {
+            |public open class AnyBox<T> : Supplier<T> {
             |  public override fun `get`(): T {
             |    return "value" as T
             |  }
@@ -775,7 +775,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.Array
             |import kotlin.String
             |
-            |public class AnyStrings : Supplier<Array<String>> {
+            |public open class AnyStrings : Supplier<Array<String>> {
             |  public override fun `get`(): Array<String> {
             |    return arrayOf<String>("a")
             |  }
@@ -809,7 +809,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.String
             |import kotlin.jvm.JvmField
             |
-            |public class JvmNamed {
+            |public open class JvmNamed {
             |  @JvmField
             |  public var name: String
             |
@@ -863,7 +863,7 @@ class KotlinSourceCompilationTest {
             |
             |import kotlin.String
             |
-            |public class BoundedString : Bounded<String> {
+            |public open class BoundedString : Bounded<String> {
             |  public override fun `get`(): String {
             |    return "value"
             |  }
@@ -896,7 +896,7 @@ class KotlinSourceCompilationTest {
             |
             |import kotlin.String
             |
-            |public class Other {
+            |public open class Other {
             |  public lateinit var name: String
             |
             |  public constructor(other: Other) {
@@ -938,7 +938,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.String
             |import kotlin.jvm.JvmField
             |
-            |public class Branched {
+            |public open class Branched {
             |  @JvmField
             |  public var name: String
             |
@@ -984,7 +984,7 @@ class KotlinSourceCompilationTest {
             |
             |import kotlin.String
             |
-            |public class EarlyReturn {
+            |public open class EarlyReturn {
             |  public lateinit var name: String
             |
             |  public constructor() {
@@ -1039,7 +1039,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.String
             |import kotlin.jvm.JvmField
             |
-            |public class BranchReturns {
+            |public open class BranchReturns {
             |  @JvmField
             |  public var name: String
             |
@@ -1109,7 +1109,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.CharSequence
             |import kotlin.String
             |
-            |public class StringArray : BoundedArray<String> {
+            |public open class StringArray : BoundedArray<String> {
             |  private var values: Array<CharSequence> = arrayOf<CharSequence>("a")
             |
             |  public override fun `get`(): Array<String> {
@@ -1157,7 +1157,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.String
             |import kotlin.jvm.JvmField
             |
-            |public class BeforeSwitch {
+            |public open class BeforeSwitch {
             |  @JvmField
             |  public var name: String
             |
@@ -1207,7 +1207,7 @@ class KotlinSourceCompilationTest {
             |import java.lang.IllegalStateException
             |import kotlin.String
             |
-            |public class FinallyReturns {
+            |public open class FinallyReturns {
             |  public lateinit var name: String
             |
             |  public constructor() {
@@ -1258,7 +1258,7 @@ class KotlinSourceCompilationTest {
             |import kotlin.String
             |import kotlin.jvm.JvmField
             |
-            |public class TryAssigns {
+            |public open class TryAssigns {
             |  @JvmField
             |  public var name: String
             |
@@ -1306,15 +1306,15 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.Int
             |
-            |public class Unboxed {
+            |public open class Unboxed {
             |  private fun take(count: Int) {
             |  }
             |
-            |  public fun pass(`value`: Any) {
+            |  public open fun pass(`value`: Any) {
             |    this.take(`value` as Int)
             |  }
             |
-            |  public fun count(`value`: Any): Int {
+            |  public open fun count(`value`: Any): Int {
             |    return `value` as Int
             |  }
             |}
@@ -1355,12 +1355,12 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class Chooser : Function<String, String> {
-            |  public fun choose(`value`: Any): String {
+            |public open class Chooser : Function<String, String> {
+            |  public open fun choose(`value`: Any): String {
             |    return "object"
             |  }
             |
-            |  public fun choose(`value`: String): String {
+            |  public open fun choose(`value`: String): String {
             |    return "string"
             |  }
             |
@@ -1400,12 +1400,12 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class Caller : Function<String, String> {
+            |public open class Caller : Function<String, String> {
             |  public override fun apply(arg0: String): String {
             |    return arg0 as String
             |  }
             |
-            |  public fun call(`value`: Any): Any {
+            |  public open fun call(`value`: Any): Any {
             |    return this.apply(`value` as String)
             |  }
             |}
@@ -1447,12 +1447,12 @@ class KotlinSourceCompilationTest {
             |import kotlin.Array
             |import kotlin.String
             |
-            |public class ArrayChooser : Function<Array<String>, String> {
-            |  public fun choose(values: Array<Any>): String {
+            |public open class ArrayChooser : Function<Array<String>, String> {
+            |  public open fun choose(values: Array<Any>): String {
             |    return "object"
             |  }
             |
-            |  public fun choose(values: Array<String>): String {
+            |  public open fun choose(values: Array<String>): String {
             |    return "string"
             |  }
             |
@@ -1493,12 +1493,12 @@ class KotlinSourceCompilationTest {
             |import kotlin.Array
             |import kotlin.String
             |
-            |public class ArrayCaller : Function<Array<String>, String> {
+            |public open class ArrayCaller : Function<Array<String>, String> {
             |  public override fun apply(arg0: Array<String>): String {
             |    return "value"
             |  }
             |
-            |  public fun call(`value`: Any): Any {
+            |  public open fun call(`value`: Any): Any {
             |    return this.apply(`value` as Array<String>)
             |  }
             |}
@@ -1542,8 +1542,8 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class ChildCaller {
-            |  public fun call(target: ChildTarget, `value`: Any): Any {
+            |public open class ChildCaller {
+            |  public open fun call(target: ChildTarget, `value`: Any): Any {
             |    return target.apply(`value` as String)
             |  }
             |}
@@ -1571,7 +1571,7 @@ class KotlinSourceCompilationTest {
             """
             |package test
             |
-            |public class ChildTarget : ParentTarget()
+            |public open class ChildTarget : ParentTarget()
             |""".trimMargin(),
             childSource
         )
@@ -1611,12 +1611,12 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class SwitchChooser : Function<String, String> {
-            |  public fun choose(`value`: Any): String {
+            |public open class SwitchChooser : Function<String, String> {
+            |  public open fun choose(`value`: Any): String {
             |    return "object"
             |  }
             |
-            |  public fun choose(`value`: String): String {
+            |  public open fun choose(`value`: String): String {
             |    return "string"
             |  }
             |
@@ -1667,16 +1667,16 @@ class KotlinSourceCompilationTest {
             |import kotlin.CharSequence
             |import kotlin.Int
             |
-            |public class MixedConditionalChooser {
-            |  public fun choose(`value`: Any): Int {
+            |public open class MixedConditionalChooser {
+            |  public open fun choose(`value`: Any): Int {
             |    return 1
             |  }
             |
-            |  public fun choose(`value`: CharSequence): Int {
+            |  public open fun choose(`value`: CharSequence): Int {
             |    return 2
             |  }
             |
-            |  public fun pick(flag: Boolean): Int {
+            |  public open fun pick(flag: Boolean): Int {
             |    return this.choose((if (flag) "a" else StringBuilder() as Any))
             |  }
             |}
@@ -1713,12 +1713,12 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class ReferencedFunction : Function<String, String> {
+            |public open class ReferencedFunction : Function<String, String> {
             |  public override fun apply(arg0: String): String {
             |    return arg0 as String
             |  }
             |
-            |  public fun asFunction(): Function<Any, Any> {
+            |  public open fun asFunction(): Function<Any, Any> {
             |    return Function<Any, Any> { arg0 -> this.apply(arg0 as String) }
             |  }
             |}
@@ -1756,12 +1756,12 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.CharSequence
             |
-            |public class GenericTarget<T : CharSequence> : Function<T, T> {
+            |public open class GenericTarget<T : CharSequence> : Function<T, T> {
             |  public override fun apply(arg0: T): T {
             |    return arg0 as T
             |  }
             |
-            |  public fun call(`value`: Any): Any {
+            |  public open fun call(`value`: Any): Any {
             |    return this.apply(`value` as T)
             |  }
             |}
@@ -1804,10 +1804,10 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class CapturingCaller {
+            |public open class CapturingCaller {
             |  private var target: CapturedTarget = CapturedTarget()
             |
-            |  public fun fromField(): Function<Any, Any> {
+            |  public open fun fromField(): Function<Any, Any> {
             |    return this. target.let { target -> Function<Any, Any> { arg0 -> target.apply(arg0 as String) } }
             |  }
             |}
@@ -1822,7 +1822,7 @@ class KotlinSourceCompilationTest {
             |import java.util.function.Function
             |import kotlin.String
             |
-            |public class CapturedTarget : Function<String, String> {
+            |public open class CapturedTarget : Function<String, String> {
             |  public override fun apply(arg0: String): String {
             |    return arg0 as String
             |  }
@@ -1869,8 +1869,8 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class NestedCaller {
-            |  public fun factory(): Function<NamedTarget, Function<Any, Any>> {
+            |public open class NestedCaller {
+            |  public open fun factory(): Function<NamedTarget, Function<Any, Any>> {
             |    return Function<NamedTarget, Function<Any, Any>> {arg0: NamedTarget -> Function<Any, Any> { arg0_1 -> arg0.apply(arg0_1 as String) }}
             |  }
             |}
@@ -1885,7 +1885,7 @@ class KotlinSourceCompilationTest {
             |import java.util.function.Function
             |import kotlin.String
             |
-            |public class NamedTarget : Function<String, String> {
+            |public open class NamedTarget : Function<String, String> {
             |  public override fun apply(arg0: String): String {
             |    return arg0 as String
             |  }
@@ -1924,12 +1924,12 @@ class KotlinSourceCompilationTest {
             |import kotlin.CharSequence
             |import kotlin.String
             |
-            |public class ResultReferenced : Function<CharSequence, CharSequence> {
+            |public open class ResultReferenced : Function<CharSequence, CharSequence> {
             |  public override fun apply(arg0: CharSequence): CharSequence {
             |    return arg0 as CharSequence
             |  }
             |
-            |  public fun asFunction(): Function<Any, String> {
+            |  public open fun asFunction(): Function<Any, String> {
             |    return Function<Any, String> { arg0 -> (this.apply(arg0 as CharSequence) as String) }
             |  }
             |}
@@ -1970,8 +1970,8 @@ class KotlinSourceCompilationTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class SuperReferencing : SuperTarget() {
-            |  public fun asFunction(): Function<Any, Any> {
+            |public open class SuperReferencing : SuperTarget() {
+            |  public open fun asFunction(): Function<Any, Any> {
             |    return Function<Any, Any> { arg0 -> super.apply(arg0 as String) }
             |  }
             |}
@@ -2033,16 +2033,16 @@ class KotlinSourceCompilationTest {
             |import kotlin.Int
             |import kotlin.Number
             |
-            |public class NumberReferenced<U : Number> : Function<Number, Number> {
+            |public open class NumberReferenced<U : Number> : Function<Number, Number> {
             |  public override fun apply(arg0: Number): Number {
             |    return arg0 as Number
             |  }
             |
-            |  public fun asFunction(): Function<Any, U> {
+            |  public open fun asFunction(): Function<Any, U> {
             |    return Function<Any, U> { arg0 -> (this.apply(arg0 as Number) as U) }
             |  }
             |
-            |  public fun asIntFunction(): ToIntFunction<Any> {
+            |  public open fun asIntFunction(): ToIntFunction<Any> {
             |    return ToIntFunction<Any> { arg0 -> (this.apply(arg0 as Number) as Int) }
             |  }
             |}
@@ -2079,12 +2079,12 @@ class KotlinSourceCompilationTest {
             |import kotlin.Array
             |import kotlin.String
             |
-            |public class ArrayArguments : Function<Array<String>, Any> {
+            |public open class ArrayArguments : Function<Array<String>, Any> {
             |  public override fun apply(arg0: Array<String>): Any {
             |    return "value"
             |  }
             |
-            |  public fun call(values: Array<Any>): Any {
+            |  public open fun call(values: Array<Any>): Any {
             |    return this.apply(values as Array<String>)
             |  }
             |}
@@ -2122,12 +2122,12 @@ class KotlinSourceCompilationTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class ListReferenced : Function<List<String>, Any> {
+            |public open class ListReferenced : Function<List<String>, Any> {
             |  public override fun apply(arg0: List<String>): Any {
             |    return "value"
             |  }
             |
-            |  public fun asFunction(): Function<List<Any>, Any> {
+            |  public open fun asFunction(): Function<List<Any>, Any> {
             |    return Function<List<Any>, Any> { arg0 -> this.apply(arg0 as List<String>) }
             |  }
             |}

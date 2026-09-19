@@ -6,8 +6,8 @@ import kotlin.Any
 import kotlin.Array
 import kotlin.CharSequence
 
-public class NullableIntersectionArray {
-  public fun call(): Any? {
+public open class NullableIntersectionArray {
+  public open fun call(): Any? {
     return ConversionProgramRegressionTest.Calls.nullableArrays(object { @Suppress("UNCHECKED_CAST") fun <T> cast(value: Any?): Array<T>? where T : CharSequence, T : Serializable = value as Array<T>? }.cast(null))
   }
 }

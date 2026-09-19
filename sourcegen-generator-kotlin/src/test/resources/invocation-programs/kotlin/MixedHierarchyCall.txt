@@ -3,8 +3,8 @@ package test
 import kotlin.Any
 import kotlin.String
 
-public class MixedHierarchyCall {
-  public fun call(target: GeneratedChild, `value`: Any): Any {
+public open class MixedHierarchyCall {
+  public open fun call(target: GeneratedChild, `value`: Any): Any {
     return target.identity(`value` as String)
   }
 }

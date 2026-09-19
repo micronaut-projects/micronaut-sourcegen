@@ -37,8 +37,8 @@ class StatementWriteTest {
             import java.lang.IllegalStateException
             import kotlin.String
 
-            public class MyClass {
-              public fun run(): String {
+            public open class MyClass {
+              public open fun run(): String {
                 try {
                   return "value"
                 } catch (e: IllegalStateException) {
@@ -78,8 +78,8 @@ class StatementWriteTest {
             import java.lang.RuntimeException
             import kotlin.String
 
-            public class MyClass {
-              public fun run(): String {
+            public open class MyClass {
+              public open fun run(): String {
                 try {
                   return "value"
                 } catch (e: IllegalStateException) {
@@ -116,8 +116,8 @@ class StatementWriteTest {
 
             import kotlin.String
 
-            public class MyClass {
-              public fun run(): String {
+            public open class MyClass {
+              public open fun run(): String {
                 var result:String = "before"
                 synchronized(this) {
                   result = "locked"
@@ -144,8 +144,8 @@ class StatementWriteTest {
             """
             package test
 
-            public class MyClass {
-              public fun run() {
+            public open class MyClass {
+              public open fun run() {
                 Owner.NAME = "value"
               }
             }

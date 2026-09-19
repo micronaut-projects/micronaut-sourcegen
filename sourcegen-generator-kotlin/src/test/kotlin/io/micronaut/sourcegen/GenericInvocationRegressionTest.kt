@@ -50,8 +50,8 @@ class GenericInvocationRegressionTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class InferredLibraryCall {
-            |  public fun call(): List<String> {
+            |public open class InferredLibraryCall {
+            |  public open fun call(): List<String> {
             |    return Collections.singletonList("text")
             |  }
             |}
@@ -73,11 +73,11 @@ class GenericInvocationRegressionTest {
             |import kotlin.Array
             |import kotlin.String
             |
-            |public class ArrayVariableArgument<T> : Consumer<T> {
+            |public open class ArrayVariableArgument<T> : Consumer<T> {
             |  public override fun accept(`value`: T) {
             |  }
             |
-            |  public fun call(`value`: Array<String>) {
+            |  public open fun call(`value`: Array<String>) {
             |    this.accept(`value` as T)
             |  }
             |}
@@ -99,11 +99,11 @@ class GenericInvocationRegressionTest {
             |import kotlin.Int
             |import kotlin.Number
             |
-            |public class PrimitiveVariableArgument<T : Number> : Consumer<T> {
+            |public open class PrimitiveVariableArgument<T : Number> : Consumer<T> {
             |  public override fun accept(`value`: T) {
             |  }
             |
-            |  public fun call(`value`: Int) {
+            |  public open fun call(`value`: Int) {
             |    this.accept(`value` as T)
             |  }
             |}
@@ -123,7 +123,7 @@ class GenericInvocationRegressionTest {
             |import java.util.function.Supplier
             |import kotlin.Number
             |
-            |public class PrimitiveVariableReturn<T : Number> : Supplier<T> {
+            |public open class PrimitiveVariableReturn<T : Number> : Supplier<T> {
             |  public override fun `get`(): T {
             |    return 1 as T
             |  }

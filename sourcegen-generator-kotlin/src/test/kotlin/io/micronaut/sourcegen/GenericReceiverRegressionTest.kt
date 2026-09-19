@@ -47,8 +47,8 @@ class GenericReceiverRegressionTest {
             |import kotlin.Number
             |import kotlin.collections.List
             |
-            |public class ShadowedLibraryCall<T : Number> {
-            |  public fun call(`value`: Any): List<Any> {
+            |public open class ShadowedLibraryCall<T : Number> {
+            |  public open fun call(`value`: Any): List<Any> {
             |    return Collections.singletonList(`value`)
             |  }
             |}

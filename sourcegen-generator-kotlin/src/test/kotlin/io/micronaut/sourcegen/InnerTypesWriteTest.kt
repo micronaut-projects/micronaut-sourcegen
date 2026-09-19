@@ -31,9 +31,10 @@ class InnerTypesWriteTest {
             "enum" -> className = "enum class"
             else -> className = classType
         }
+        // A generated class is open, as the bytecode writer's can be extended
         val CLASS_REGEX = Pattern.compile(
             "package test[\\s\\S]+" +
-                    "public " + className + " " + classDef.simpleName + " \\{\\s+" +
+                    "public " + (if (classType == "class") "open " else "") + className + " " + classDef.simpleName + " \\{\\s+" +
                     "([\\s\\S]+)\\s+}\\s+"
         )
         val matcher = CLASS_REGEX.matcher(result)
@@ -140,7 +141,7 @@ class InnerTypesWriteTest {
               HELLO,
               ;
 
-              public class Inner
+              public open class Inner
             }
             """.trimIndent()
         val innerClassBuilder = ClassDef.builder("Inner")
@@ -181,7 +182,7 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
-            public class StatusClass {
+            public open class StatusClass {
               public enum class Status {
                 SINGLE,
                 MARRIED,
@@ -204,7 +205,7 @@ class InnerTypesWriteTest {
 
             import kotlin.Int
 
-            public class ExampleRecordClass {
+            public open class ExampleRecordClass {
               public data class ExampleRecord public constructor(
                 public final val id: Int,
               )
@@ -225,8 +226,8 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
-            public class InnerClass {
-              public class Inner
+            public open class InnerClass {
+              public open class Inner
             }
             """.trimIndent()
         val innerClassBuilder = ClassDef.builder("Inner")
@@ -244,8 +245,8 @@ class InnerTypesWriteTest {
 
             import kotlin.String
 
-            public class InnerClass {
-              private class Inner {
+            public open class InnerClass {
+              private open class Inner {
                 public lateinit var name: String
 
                 public constructor(name: String) {
@@ -273,7 +274,7 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
-            public class InterfaceClass {
+            public open class InterfaceClass {
               public interface Interface
             }
             """.trimIndent()
@@ -340,7 +341,7 @@ class InnerTypesWriteTest {
             package test
 
             public data class InnerRecord {
-              public class Inner
+              public open class Inner
             }
             """.trimIndent()
         val innerClassBuilder = ClassDef.builder("Inner")
@@ -423,7 +424,7 @@ class InnerTypesWriteTest {
             package test
 
             public interface InnerInterface {
-              public class Inner
+              public open class Inner
             }
             """.trimIndent()
         val innerClassBuilder = ClassDef.builder("Inner")

@@ -4,8 +4,8 @@ import io.micronaut.sourcegen.GeneratedProgramTest
 import kotlin.Any
 import kotlin.String
 
-public class Compatibletext {
-  public fun call(`value`: String): Any {
+public open class Compatibletext {
+  public open fun call(`value`: String): Any {
     return GeneratedProgramTest.Calls.text(`value`)
   }
 }

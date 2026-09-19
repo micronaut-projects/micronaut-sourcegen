@@ -3,8 +3,8 @@ package test
 import kotlin.Boolean
 import kotlin.String
 
-public class ExhaustiveBranches {
-  public fun call(flag: Boolean): String {
+public open class ExhaustiveBranches {
+  public open fun call(flag: Boolean): String {
     if (flag) {
       return "yes"
     } else {

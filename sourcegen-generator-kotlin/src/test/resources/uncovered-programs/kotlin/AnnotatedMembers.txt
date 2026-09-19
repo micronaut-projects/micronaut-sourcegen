@@ -16,4 +16,4 @@ import io.micronaut.sourcegen.UncoveredShapeProgramTest
   ratio = 1.5f,
   nested = io.micronaut.sourcegen.UncoveredShapeProgramTest.Nested(value = "inner"),
 )
-public class AnnotatedMembers
+public open class AnnotatedMembers

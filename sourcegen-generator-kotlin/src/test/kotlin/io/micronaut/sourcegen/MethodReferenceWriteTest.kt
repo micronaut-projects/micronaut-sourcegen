@@ -70,8 +70,8 @@ class MethodReferenceWriteTest {
             """
             package test
 
-            public class MyClass {
-              public fun evaluate(): StringFunction {
+            public open class MyClass {
+              public open fun evaluate(): StringFunction {
                 return StringFunction(Owner::shout)
               }
             }
@@ -86,8 +86,8 @@ class MethodReferenceWriteTest {
             """
             package test
 
-            public class MyClass {
-              public fun evaluate(): StringFunction {
+            public open class MyClass {
+              public open fun evaluate(): StringFunction {
                 return StringFunction("prefix_"::trim)
               }
             }
@@ -112,8 +112,8 @@ class MethodReferenceWriteTest {
             """
             package test
 
-            public class MyClass {
-              public fun evaluate(): StringFunction {
+            public open class MyClass {
+              public open fun evaluate(): StringFunction {
                 return StringFunction("prefix_"::plus)
               }
             }
@@ -133,8 +133,8 @@ class MethodReferenceWriteTest {
             """
             package test
 
-            public class MyClass {
-              public fun evaluate(): StringFunction {
+            public open class MyClass {
+              public open fun evaluate(): StringFunction {
                 return StringFunction(::Owner)
               }
             }

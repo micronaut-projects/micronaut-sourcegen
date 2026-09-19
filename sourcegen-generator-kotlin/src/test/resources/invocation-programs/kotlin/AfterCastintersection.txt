@@ -7,8 +7,8 @@ import kotlin.Any
 import kotlin.CharSequence
 import kotlin.String
 
-public class AfterCastintersection {
-  public fun call(`value`: Any): String {
+public open class AfterCastintersection {
+  public open fun call(`value`: Any): String {
     CalleeBoundsRegressionTest.Calls.intersection(run {
       `value` as CharSequence
       `value` as Runnable

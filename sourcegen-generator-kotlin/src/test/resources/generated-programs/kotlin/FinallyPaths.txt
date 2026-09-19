@@ -5,8 +5,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.Boolean
 import kotlin.Int
 
-public class FinallyPaths {
-  public fun call(counter: AtomicInteger, fail: Boolean): Int {
+public open class FinallyPaths {
+  public open fun call(counter: AtomicInteger, fail: Boolean): Int {
     try {
       if (fail) {
         throw IllegalStateException()

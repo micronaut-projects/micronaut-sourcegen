@@ -25,7 +25,7 @@ class ControlFlowWriteTest {
             if (`value` == null) {
               return "empty"
             }
-            return `value`
+            return `value`!!
             """.trimIndent(),
             writeBody(TypeDef.STRING, TypeDef.STRING) { _, params ->
                 StatementDef.multi(
@@ -43,7 +43,7 @@ class ControlFlowWriteTest {
             if (`value` == null) {
               return "empty"
             } else {
-              return `value`
+              return `value`!!
             }
             """.trimIndent(),
             writeBody(TypeDef.STRING, TypeDef.STRING) { _, params ->
@@ -175,7 +175,7 @@ class ControlFlowWriteTest {
         val fnType = ClassTypeDef.of(java.util.function.Function::class.java)
         Assertions.assertEquals(
             """
-            return Function {arg0: Any -> arg0}
+            return Function<*, *> {arg0: Any -> arg0}
             """.trimIndent(),
             writeBody(fnType) { _, _ ->
                 fnType.getLambda().implement { _, params -> params[0].returning() }.returning()
@@ -197,7 +197,7 @@ class ControlFlowWriteTest {
         val body = writeMethod(method)
         Assertions.assertEquals(
             """
-            return Function {arg01: Any -> arg01}
+            return Function<*, *> {arg01: Any -> arg01}
             """.trimIndent(),
             body
         )

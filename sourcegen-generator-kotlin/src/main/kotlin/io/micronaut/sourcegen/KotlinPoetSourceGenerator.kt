@@ -48,6 +48,7 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
 import kotlin.reflect.KClass
+import kotlin.streams.asSequence
 
 /**
  * Kotlin source code generator.
@@ -77,29 +78,41 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
     @Throws(IOException::class)
     override fun write(objectDef: ObjectDef, writer: Writer) {
-        when (objectDef) {
-            is ClassDef -> {
-                writeClass(writer, objectDef)
-            }
+        // The definition being written, whose types call each other: what they pass says what they take
+        val previous = WRITTEN_DEFINITION.get()
+        WRITTEN_DEFINITION.set(objectDef)
+        NULLABLE_RESULTS.get().clear()
+        try {
+            when (objectDef) {
+                is ClassDef -> {
+                    writeClass(writer, objectDef)
+                }
 
-            is RecordDef -> {
-                writeRecordDef(writer, objectDef)
-            }
+                is RecordDef -> {
+                    writeRecordDef(writer, objectDef)
+                }
 
-            is InterfaceDef -> {
-                writeInterface(writer, objectDef)
-            }
+                is InterfaceDef -> {
+                    writeInterface(writer, objectDef)
+                }
 
-            is EnumDef -> {
-                writeEnumDef(writer, objectDef)
-            }
+                is EnumDef -> {
+                    writeEnumDef(writer, objectDef)
+                }
 
-            is AnnotationObjectDef -> {
-                writeAnnotationObject(writer, objectDef)
-            }
+                is AnnotationObjectDef -> {
+                    writeAnnotationObject(writer, objectDef)
+                }
 
-            else -> {
-                throw IllegalStateException("Unknown object definition: $objectDef")
+                else -> {
+                    throw IllegalStateException("Unknown object definition: $objectDef")
+                }
+            }
+        } finally {
+            if (previous == null) {
+                WRITTEN_DEFINITION.remove()
+            } else {
+                WRITTEN_DEFINITION.set(previous)
             }
         }
     }
@@ -182,7 +195,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         interfaceBuilder.addModifiers(asKModifiers(stripStatic(interfaceDef.modifiers)))
         interfaceDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, interfaceDef) }
             .forEach { typeVariable: TypeVariableName -> interfaceBuilder.addTypeVariable(typeVariable) }
-        interfaceDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, interfaceDef) }
+        interfaceDef.superinterfaces.stream().map { typeDef: TypeDef -> asSupertype(typeDef, interfaceDef) }
             .forEach { it: TypeName ->
                 interfaceBuilder.addSuperinterface(
                     it
@@ -194,29 +207,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
         var companionBuilder: TypeSpec.Builder? = null
         for (property in interfaceDef.properties) {
-            val propertySpec = if (property.type.isNullable) {
-                buildProperty(
-                    property.name,
-                    property.type.makeNullable(),
-                    property.modifiers,
-                    property.annotations,
-                    property.javadoc,
-                    null,
-                    interfaceDef
-                )
-            } else {
-                buildConstructorProperty(
-                    property.name,
-                    property.type,
-                    property.modifiers,
-                    property.annotations,
-                    property.javadoc,
-                    interfaceDef
-                )
-            }
-            interfaceBuilder.addProperty(
-                propertySpec
-            )
+            // A property of an interface has no initializer: it is abstract, and the implementing type holds the value
+            interfaceBuilder.addProperty(buildAbstractProperty(property, interfaceDef))
         }
         for (method in interfaceDef.methods) {
             var modifiers = method.modifiers
@@ -253,9 +245,14 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     private fun getClassBuilder(classDef: ClassDef): TypeSpec.Builder {
         val classBuilder = TypeSpec.classBuilder(classDef.simpleName)
         classBuilder.addModifiers(asKModifiers(stripStatic(classDef.modifiers)))
+        // A class of the bytecode writer can be extended unless the model says final; a Kotlin class is final unless
+        // it says open - an abstract or a sealed class already is
+        if (isOpen(classDef) && classDef.modifiers.none { it == Modifier.ABSTRACT || it == Modifier.SEALED }) {
+            classBuilder.addModifiers(KModifier.OPEN)
+        }
         classDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, classDef) }
             .forEach { typeVariable: TypeVariableName -> classBuilder.addTypeVariable(typeVariable) }
-        classDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(withNullableArguments(typeDef, classDef), classDef) }
+        classDef.superinterfaces.stream().map { typeDef: TypeDef -> asSupertype(withNullableArguments(typeDef, classDef), classDef) }
             .forEach { it: TypeName ->
                 classBuilder.addSuperinterface(
                     it
@@ -263,7 +260,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
         classDef.javadoc.forEach(Consumer { format: String -> classBuilder.addKdoc(format) })
         if (classDef.superclass != null) {
-            classBuilder.superclass(asType(withNullableArguments(classDef.superclass!!, classDef), classDef))
+            classBuilder.superclass(asSupertype(withNullableArguments(classDef.superclass!!, classDef), classDef))
         }
         classDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
             .forEach { annotationSpec: AnnotationSpec -> classBuilder.addAnnotation(annotationSpec) }
@@ -301,6 +298,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     .getter(FunSpec.getterBuilder().addCode(function.body).build())
                     .build())
             } else if (method.isConstructor) {
+                // The constructor of a sealed class is protected or private: a public one is written protected
+                if (classDef.modifiers.contains(Modifier.SEALED) && modifiers.contains(Modifier.PUBLIC)) {
+                    modifiers = HashSet(modifiers - Modifier.PUBLIC + Modifier.PROTECTED)
+                }
                 val superCallStatement = method.statements.firstOrNull {
                     it is InvokeInstanceMethod && it.instance is VariableDef.Super && it.method.isConstructor
                 } as? InvokeInstanceMethod
@@ -323,7 +324,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
             } else {
                 classBuilder.addFunction(
-                    buildFunction(classDef, method, modifiers)
+                    buildFunction(classDef, method, modifiers, isOpenMember(classDef, method))
                 )
             }
         }
@@ -385,7 +386,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         classBuilder.addModifiers(asKModifiers(stripStatic(recordDef.modifiers)))
         recordDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, recordDef) }
             .forEach { typeVariable: TypeVariableName -> classBuilder.addTypeVariable(typeVariable) }
-        recordDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(withNullableArguments(typeDef, recordDef), recordDef) }
+        recordDef.superinterfaces.stream().map { typeDef: TypeDef -> asSupertype(withNullableArguments(typeDef, recordDef), recordDef) }
             .forEach { it: TypeName ->
                 classBuilder.addSuperinterface(
                     it,
@@ -459,7 +460,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     private fun getEnumBuilder(enumDef: EnumDef): TypeSpec.Builder {
         val enumBuilder = TypeSpec.enumBuilder(enumDef.simpleName)
         enumBuilder.addModifiers(asKModifiers(stripStatic(enumDef.modifiers)))
-        enumDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(withNullableArguments(typeDef, enumDef), enumDef) }
+        enumDef.superinterfaces.stream().map { typeDef: TypeDef -> asSupertype(withNullableArguments(typeDef, enumDef), enumDef) }
             .forEach { it: TypeName -> enumBuilder.addSuperinterface(it) }
         enumDef.javadoc.forEach(Consumer { format: String -> enumBuilder.addKdoc(format) })
         enumDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
@@ -574,8 +575,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             )
         }
         if (notNullProperties.isNotEmpty()) {
+            // The constructor of a sealed class is protected or private
+            val visibility = if (objectDef.modifiers.contains(Modifier.SEALED)) KModifier.PROTECTED else KModifier.PUBLIC
             builder.primaryConstructor(
-                FunSpec.constructorBuilder().addModifiers(KModifier.PUBLIC).addParameters(
+                FunSpec.constructorBuilder().addModifiers(visibility).addParameters(
                     notNullProperties.stream()
                         .map { prop: PropertyDef ->
                             ParameterSpec.builder(
@@ -654,8 +657,29 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             propertyBuilder.initializer(
                 renderExpressionCode(objectDef, init, RenderScope.root(init), initializer, typeDef)
             )
-        } else if ((typeDef.isNullable || nullified) && nullInitializer) {
+        } else if ((typeDef.isNullable || nullified || isKotlinPrimitive(typeDef)) && nullInitializer) {
+            // A blank reference field holds `null`, including one of a boxed type, which Kotlin holds in `Int?`
             propertyBuilder.initializer("null")
+        }
+        return propertyBuilder.build()
+    }
+
+    /**
+     * A property of an interface, which has no initializer: it is abstract, and implemented by the type that
+     * implements the interface.
+     */
+    private fun buildAbstractProperty(property: PropertyDef, objectDef: ObjectDef): PropertySpec {
+        val propertyBuilder = PropertySpec.builder(
+            property.name,
+            asType(property.type, objectDef),
+            asKModifiers(property.modifiers)
+        )
+        property.javadoc.forEach(Consumer { format: String -> propertyBuilder.addKdoc(format) })
+        if (!property.modifiers.contains(Modifier.FINAL)) {
+            propertyBuilder.mutable(true)
+        }
+        for (annotation in property.annotations) {
+            propertyBuilder.addAnnotation(asAnnotationSpec(annotation))
         }
         return propertyBuilder.build()
     }
@@ -695,18 +719,14 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     ): PropertySpec {
         val static = field.modifiers.contains(Modifier.STATIC)
         val byConstructors = !static && isAssignedByEveryConstructor(objectDef, field)
-        // A field read as `null` before it is assigned - the lazily initialized one, `if (cache == null) cache = ..` -
-        // and one of a variable, which cannot be lateinit, are nullable properties holding `null`, read with `!!`
-        val nullified = field.initializer.isEmpty && !field.type.isNullable && !byConstructors
-            && field.type !is TypeDef.Primitive && !isKotlinPrimitive(field.type)
-            && (field.type is TypeDef.TypeVariable || isNullChecked(objectDef, field))
+        val nullified = isNullified(objectDef, field)
         if (nullified && objectDef != null) {
             NULLIFIED.get().add(objectDef.asTypeDef().name + "#" + field.name)
         }
         // A Kotlin property must be initialized where it is declared; a field the model assigns
         // later, possibly more than once as in a try and its catch, is a lateinit var. A final instance field is
-        // assigned by every constructor, which a val allows. A primitive cannot be lateinit - including a boxed
-        // type, which Kotlin maps to its primitive - so it takes a default instead
+        // assigned by every constructor, which a val allows. A primitive cannot be lateinit, so it takes a default
+        // instead; a boxed type is held in a nullable property, which holds the `null` of the blank field
         val lateInit = !nullified && field.initializer.isEmpty && !field.type.isNullable
             && (static || !byConstructors || assignments(objectDef, field) > constructorsOf(objectDef))
             && field.type !is TypeDef.Primitive && field.type !is TypeDef.TypeVariable
@@ -758,32 +778,18 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         else -> 0
     }
 
-    private fun isNullChecked(objectDef: ObjectDef?, field: FieldDef): Boolean {
-        if (objectDef == null) {
-            return false
-        }
-        fun names(expression: ExpressionDef): Boolean {
-            val operand = unwrapCasts(expression)
-            return operand is VariableDef.Field && operand.name == field.name
-                || operand is VariableDef.StaticField && operand.name == field.name
-        }
-        fun checks(expression: ExpressionDef): Boolean =
-            expression is IsNull && names(expression.expression) || expression is IsNotNull && names(expression.expression)
-                || expression.nestedExpressionsStream().anyMatch { checks(it) }
-        val bodies = objectDef.methods.flatMap { it.statements } + listOfNotNull((objectDef as? ClassDef)?.staticInitializer)
-        return bodies.any { body -> body.nestedExpressionsStream().anyMatch { checks(it) } }
-    }
-
-    private fun buildFunction(objectDef: ObjectDef?, declaredMethod: MethodDef, modifiers: Set<Modifier>): FunSpec {
+    private fun buildFunction(objectDef: ObjectDef?, declaredMethod: MethodDef, modifiers: Set<Modifier>, open: Boolean = false): FunSpec {
         // A model written for the bytecode writer overrides a generic method with its erased signature, which the
         // verifier accepts; Kotlin only overrides with the exact signature with the type arguments of the supertype.
         // The body is rendered against the resolved signature, so a returned value is cast to its type
         val method = (OverrideResolver.resolve(objectDef, declaredMethod, VISITOR_CONTEXT.get(), true)
             ?.apply(declaredMethod) ?: declaredMethod).let { keepingNullability(it, declaredMethod, nullableArguments(objectDef)) }
+            .let { withInferredNullability(objectDef, it, declaredMethod) }
         var funBuilder = if (method.isConstructor) {
             FunSpec.constructorBuilder()
         } else {
-            FunSpec.builder(method.name).returns(asType(method.returnType, objectDef, method).let { type ->
+            // Kotlin renames some methods of the Java types it maps: `charAt` of a `CharSequence` is `get`
+            FunSpec.builder(overriddenFunction(objectDef, method) ?: method.name).returns(asType(method.returnType, objectDef, method).let { type ->
                 // The iterator of a Java `Iterable` is the mutable one, which the read-only type does not override
                 val raw = ((method.returnType as? ClassTypeDef.Parameterized)?.rawType ?: method.returnType as? ClassTypeDef)?.name
                 if (method.isOverride && (raw == "java.util.Iterator" || raw == "java.util.ListIterator")) {
@@ -819,6 +825,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         if (method.isOverride) {
             funBuilder.modifiers += KModifier.OVERRIDE
         }
+        if (open) {
+            // A method of the bytecode writer can be overridden unless the model says final; a Kotlin function is
+            // final unless it says open - an override or an abstract function already is
+            funBuilder.addModifiers(KModifier.OPEN)
+        }
         for (annotation in method.annotations) {
             funBuilder.addAnnotation(
                 asAnnotationSpec(annotation)
@@ -853,6 +864,28 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         return TypeHierarchy.superTypesOf(objectDef).firstNotNullOfOrNull { mappedProperty(loadedClass(it), method) }
     }
 
+    /** The name Kotlin gives an overridden method of a mapped Java type - `get` for `charAt` - or `null`. */
+    private fun overriddenFunction(objectDef: ObjectDef?, method: MethodDef): String? {
+        if (objectDef == null || !method.isOverride) {
+            return null
+        }
+        return TypeHierarchy.superTypesOf(objectDef).firstNotNullOfOrNull { mappedFunction(loadedClass(it), method) }
+    }
+
+    /**
+     * Whether a class of the model can be extended: the bytecode writer's classes are, unless the model says final.
+     */
+    private fun isOpen(classDef: ClassDef): Boolean = !classDef.modifiers.contains(Modifier.FINAL)
+
+    /**
+     * Whether a method of the model can be overridden, so that it is written open: one of an open class that is
+     * not private, static, abstract or final - an override is open unless it is final.
+     */
+    private fun isOpenMember(classDef: ClassDef, method: MethodDef): Boolean =
+        isOpen(classDef) && !method.isOverride && !method.isConstructor && method.modifiers.none {
+            it == Modifier.PRIVATE || it == Modifier.STATIC || it == Modifier.ABSTRACT || it == Modifier.FINAL
+        }
+
     /** Whether the method overrides one that takes varargs, which an array parameter does not override in Kotlin. */
     private fun overridesVarargs(objectDef: ObjectDef?, method: MethodDef): Boolean {
         if (objectDef == null || !method.isOverride || method.parameters.lastOrNull()?.type !is TypeDef.Array) {
@@ -880,7 +913,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         for (declared in objectDef.methods) {
             val resolved = OverrideResolver.resolve(objectDef, declared, VISITOR_CONTEXT.get(), true) ?: continue
             if (!resolved.returnType().isPrimitive && resolved.returnType() != TypeDef.VOID && (declared.returnType.isNullable
-                    || resolved.returnType() != declared.returnType && returnsPlatformValue(declared))) {
+                    || resolved.returnType() != declared.returnType && returnsNullable(objectDef, declared))) {
                 result.add(resolved.returnType().makeNullable())
             }
             declared.parameters.forEachIndexed { index, parameter ->
@@ -906,15 +939,38 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             return method
         }
         // A type argument that is nullable is so wherever the supertype names its variable
-        val nullableResult = nullable.contains(method.returnType.makeNullable())
-        val nullableParameters = method.parameters.map { nullable.contains(it.type.makeNullable()) }
+        return withNullability(method, nullable.contains(method.returnType.makeNullable()),
+            method.parameters.map { nullable.contains(it.type.makeNullable()) })
+    }
+
+    /**
+     * The method with the nullability Kotlin needs where the model has none: a result the body can return `null`
+     * for, and a parameter the body null-checks or a call passes `null` to. The JVM signature is the same, and the
+     * bytecode returns and takes `null` there. An override keeps the signature of what it overrides.
+     */
+    private fun withInferredNullability(objectDef: ObjectDef?, method: MethodDef, declared: MethodDef): MethodDef {
+        if (declared.isOverride || declared.modifiers.contains(Modifier.ABSTRACT)) {
+            return method
+        }
+        val nullableResult = !method.isConstructor && !method.returnType.isNullable && !method.returnType.isPrimitive
+            && method.returnType != TypeDef.VOID && returnsNullable(objectDef, declared)
+        val nullableParameters = declared.parameters.mapIndexed { index, parameter ->
+            !parameter.type.isNullable && !parameter.type.isPrimitive && isNullableParameter(objectDef, declared, index)
+        }
+        return withNullability(method, nullableResult, nullableParameters)
+    }
+
+    private fun withNullability(method: MethodDef, nullableResult: Boolean, nullableParameters: List<Boolean>): MethodDef {
         if (!nullableResult && nullableParameters.none { it }) {
             return method
         }
         val builder = MethodDef.builder(method.name).addModifiers(method.modifiers).addAnnotations(method.annotations)
             .addJavadoc(method.javadoc).synthetic(method.isSynthetic).addThrows(method.throwTypes)
             .returns(if (nullableResult) method.returnType.makeNullable() else method.returnType)
-            .addStatements(method.statements).overrides()
+            .addStatements(method.statements)
+        if (method.isOverride) {
+            builder.overrides()
+        }
         method.typeVariables.forEach { builder.addTypeVariable(it) }
         method.parameters.forEachIndexed { index, parameter ->
             builder.addParameter(ParameterDef.builder(parameter.name,
@@ -924,61 +980,37 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         return builder.build()
     }
 
-    /** Whether a method returns a value Kotlin cannot tell is not `null`: the result of a call, a field, an element. */
-    private fun returnsPlatformValue(method: MethodDef): Boolean {
-        fun platform(expression: ExpressionDef?): Boolean = when (val value = expression?.let { unwrapCasts(it) }) {
-            null -> false
-            is Constant -> value.value == null
-            // The erased result of a compiled Java method, which the narrowed return casts
-            is InvokeInstanceMethod -> !value.method.isConstructor && value.type() == TypeDef.OBJECT
-                && value.instance !is VariableDef.This && value.instance !is VariableDef.Super
-                && loadedClass(value.instance.type())?.let { !it.isAnnotationPresent(Metadata::class.java) } == true
-            is IfElse -> platform(value.ifExpression) || platform(value.elseExpression)
-            else -> false
-        }
-        fun returns(statement: StatementDef?): Boolean = when (statement) {
-            null -> false
-            is Return -> platform(statement.expression)
-            is StatementDef.Multi -> statement.statements.any { returns(it) }
-            is StatementDef.If -> returns(statement.statement)
-            is StatementDef.IfElse -> returns(statement.statement) || returns(statement.elseStatement)
-            is StatementDef.While -> returns(statement.statement)
-            is StatementDef.Synchronized -> returns(statement.statement)
-            is StatementDef.Switch -> statement.cases.values.any { returns(it) } || returns(statement.defaultCase)
-            is StatementDef.Try -> returns(statement.statement) || returns(statement.finallyStatement)
-                || statement.catches.any { returns(it.statement) }
-            else -> false
-        }
-        return method.statements.any { returns(it) }
-    }
-
     private fun renderBody(funBuilder: FunSpec.Builder, objectDef: ObjectDef?, renderingObjectDef: ObjectDef?, method: MethodDef, scope: RenderScope) {
-        // A constructor delegates in its header, `constructor() : this("d")`, not by a statement of its body
-        val delegation = if (method.isConstructor) method.statements.firstOrNull() else null
-        var delegated = false
+        // A constructor delegates in its header, `constructor() : this("d")`, not by a statement of its body. The
+        // verifier lets a field of the class be assigned before the call: the delegation is written first anyway,
+        // and the assignment runs after the super constructor
+        val statements = method.statements.flatMap { (it as? Multi)?.flatten() ?: listOf(it) }
+        val delegation = if (method.isConstructor) statements.firstOrNull { isDelegation(it) } else null
         if (delegation is InvokeSuperConstructor) {
             funBuilder.callSuperConstructor(renderArguments(objectDef, method, scope, (objectDef as? ClassDef)?.superclass,
                 MethodDef.CONSTRUCTOR, delegation.method, delegation.method.parameters.map { it.type }, delegation.values))
-            delegated = true
-        } else if (delegation is InvokeInstanceMethod && delegation.method.isConstructor
-            && (delegation.instance is VariableDef.Super || delegation.instance is VariableDef.This)) {
+        } else if (delegation is InvokeInstanceMethod) {
             val arguments = renderArguments(objectDef, method, scope,
                 if (delegation.instance is VariableDef.Super) (objectDef as? ClassDef)?.superclass else objectDef?.asTypeDef(),
                 MethodDef.CONSTRUCTOR, delegation.method, delegation.method.parameters.map { it.type }, delegation.values)
             if (delegation.instance is VariableDef.Super) funBuilder.callSuperConstructor(arguments) else funBuilder.callThisConstructor(arguments)
-            delegated = true
         }
-        for ((index, statement) in method.statements.withIndex()) {
-            if (delegated && index == 0) {
+        for ((index, statement) in statements.withIndex()) {
+            if (statement === delegation) {
                 continue
             }
             funBuilder.addCode(renderStatementCodeBlock(renderingObjectDef, method, scope, statement,
-                index == method.statements.size - 1))
+                index == statements.size - 1))
             if (cannotCompleteNormally(statement)) {
                 break
             }
         }
     }
+
+    /** Whether a statement of a constructor calls the constructor of the superclass, or another of this class. */
+    private fun isDelegation(statement: StatementDef): Boolean = statement is InvokeSuperConstructor
+        || statement is InvokeInstanceMethod && statement.method.isConstructor
+        && (statement.instance is VariableDef.Super || statement.instance is VariableDef.This)
 
     companion object {
         private const val EXCEPTION_NAME = "e"
@@ -1006,8 +1038,19 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             java.util.Collection::class.java to mapOf("size" to "size"),
             java.util.Map::class.java to mapOf("size" to "size", "keySet" to "keys", "values" to "values", "entrySet" to "entries"),
             java.util.Map.Entry::class.java to mapOf("getKey" to "key", "getValue" to "value"),
-            java.lang.Enum::class.java to mapOf("name" to "name", "ordinal" to "ordinal"),
-            java.lang.Throwable::class.java to mapOf("getMessage" to "message", "getCause" to "cause")
+            java.lang.Enum::class.java to mapOf("name" to "name", "ordinal" to "ordinal", "getDeclaringClass" to "declaringClass"),
+            java.lang.Throwable::class.java to mapOf("getMessage" to "message", "getCause" to "cause",
+                "getLocalizedMessage" to "localizedMessage", "getStackTrace" to "stackTrace", "getSuppressed" to "suppressed")
+        )
+
+        // The mapped properties Kotlin declares nullable, where the model's method returns a value
+        private val NULLABLE_MAPPED_PROPERTIES = setOf("message", "cause", "localizedMessage")
+
+        // The Java methods Kotlin renames on its mapped types, by the type that declares them
+        private val MAPPED_FUNCTIONS: Map<Class<*>, Map<String, String>> = linkedMapOf(
+            CharSequence::class.java to mapOf("charAt" to "get"),
+            java.lang.Number::class.java to mapOf("byteValue" to "toByte", "shortValue" to "toShort", "intValue" to "toInt",
+                "longValue" to "toLong", "floatValue" to "toFloat", "doubleValue" to "toDouble")
         )
 
         private fun loadedClass(type: TypeDef?): Class<*>? {
@@ -1030,11 +1073,290 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 ?.value?.get(method.name)
         }
 
+        /** The name Kotlin gives a Java method of a mapped type - `get` for `charAt` - or `null`. */
+        private fun mappedFunction(owner: Class<*>?, method: MethodDef): String? {
+            if (owner == null) {
+                return null
+            }
+            return MAPPED_FUNCTIONS.entries.firstOrNull { (type, names) ->
+                type.isAssignableFrom(owner) && names.containsKey(method.name)
+                    && type.methods.any { it.name == method.name && it.parameterCount == method.parameters.size }
+            }?.value?.get(method.name)
+        }
+
+        /**
+         * The property or the function Kotlin names an invoked method of `this` by, where the definition overrides it
+         * from a mapped Java type: `length` and `get` of a generated `CharSequence`.
+         */
+        private fun mappedMemberOfThis(objectDef: ObjectDef?, method: MethodDef, property: Boolean): String? {
+            if (objectDef == null) {
+                return null
+            }
+            val declared = objectDef.methods.firstOrNull {
+                it.isOverride && it.name == method.name && it.parameters.size == method.parameters.size
+            } ?: return null
+            return TypeHierarchy.superTypesOf(objectDef).firstNotNullOfOrNull {
+                if (property) mappedProperty(loadedClass(it), declared) else mappedFunction(loadedClass(it), declared)
+            }
+        }
+
         // The fields written as nullable properties that the model types as not null, by owner and name
         private val NULLIFIED: ThreadLocal<MutableSet<String>> = ThreadLocal.withInitial { HashSet() }
 
         // The context of the file being written, used to look up the supertypes of an override only known by name
         private val VISITOR_CONTEXT = ThreadLocal<VisitorContext>()
+
+        // The definition being written, with the inner types that call each other
+        private val WRITTEN_DEFINITION = ThreadLocal<ObjectDef>()
+
+        // Whether a generated method returns a value that can be `null`, by owner and signature; `null` while it is
+        // being decided, which a recursive call reads as not
+        private val NULLABLE_RESULTS: ThreadLocal<MutableMap<String, Boolean?>> = ThreadLocal.withInitial { HashMap() }
+
+        /** The bodies of the definition: its methods and its static initializer. */
+        private fun bodiesOf(objectDef: ObjectDef): List<StatementDef> =
+            objectDef.methods.flatMap { it.statements } + listOfNotNull((objectDef as? ClassDef)?.staticInitializer)
+
+        /**
+         * Whether a field the model types as not null is a nullable property holding `null`, read with `!!`: a blank
+         * field of a variable, which cannot be lateinit, or one that a method reads while no constructor definitely
+         * assigns it - as `null`, in the lazily initialized `if (cache == null) cache = ..`, or before anything
+         * assigns it, where the bytecode reads `null` and a lateinit property throws.
+         */
+        private fun isNullified(objectDef: ObjectDef?, field: FieldDef): Boolean {
+            val static = field.modifiers.contains(Modifier.STATIC)
+            val byConstructors = !static && isAssignedByEveryConstructor(objectDef, field)
+            return field.initializer.isEmpty && !field.type.isNullable && !byConstructors
+                && field.type !is TypeDef.Primitive && !isKotlinPrimitive(field.type)
+                && (field.type is TypeDef.TypeVariable || isNullChecked(objectDef, field) || isRead(objectDef, field))
+        }
+
+        private fun isNullChecked(objectDef: ObjectDef?, field: FieldDef): Boolean {
+            if (objectDef == null) {
+                return false
+            }
+            fun names(expression: ExpressionDef): Boolean {
+                val operand = unwrapCasts(expression)
+                return operand is VariableDef.Field && operand.name == field.name
+                    || operand is VariableDef.StaticField && operand.name == field.name
+            }
+            return bodiesOf(objectDef).any { body ->
+                expressionsOf(body).any { it is IsNull && names(it.expression) || it is IsNotNull && names(it.expression) }
+            }
+        }
+
+        /** Whether a method of the definition reads the field - other than to assign it. */
+        private fun isRead(objectDef: ObjectDef?, field: FieldDef): Boolean {
+            if (objectDef == null) {
+                return false
+            }
+            return bodiesOf(objectDef).any { body ->
+                expressionsOf(body, false).any {
+                    it is VariableDef.Field && it.name == field.name || it is VariableDef.StaticField && it.name == field.name
+                }
+            }
+        }
+
+        /**
+         * Every expression of a statement, the enclosing ones first, into the bodies of the lambdas.
+         *
+         * @param targets Whether the field a statement assigns is included
+         */
+        private fun expressionsOf(statement: StatementDef?, targets: Boolean = true): Sequence<ExpressionDef> = when (statement) {
+            null -> emptySequence()
+            is Multi -> statement.statements.asSequence().flatMap { expressionsOf(it, targets) }
+            is StatementDef.If -> expressionsOf(statement.condition) + expressionsOf(statement.statement, targets)
+            is StatementDef.IfElse -> expressionsOf(statement.condition) + expressionsOf(statement.statement, targets) +
+                expressionsOf(statement.elseStatement, targets)
+            is While -> expressionsOf(statement.expression) + expressionsOf(statement.statement, targets)
+            is StatementDef.Synchronized -> expressionsOf(statement.monitor) + expressionsOf(statement.statement, targets)
+            is StatementDef.Switch -> expressionsOf(statement.expression) +
+                statement.cases.values.asSequence().flatMap { expressionsOf(it, targets) } + expressionsOf(statement.defaultCase, targets)
+            is StatementDef.Try -> expressionsOf(statement.statement, targets) +
+                statement.catches.asSequence().flatMap { expressionsOf(it.statement, targets) } + expressionsOf(statement.finallyStatement, targets)
+            is PutField -> (if (targets) expressionsOf(statement.field) else expressionsOf(statement.field.instance)) + expressionsOf(statement.expression)
+            is PutStaticField -> (if (targets) expressionsOf(statement.field) else emptySequence()) + expressionsOf(statement.expression)
+            else -> statement.nestedExpressionsStream().asSequence().flatMap { expressionsOf(it) }
+        }
+
+        private fun expressionsOf(expression: ExpressionDef): Sequence<ExpressionDef> {
+            val nested = expression.nestedExpressionsStream().asSequence().flatMap { expressionsOf(it) }
+            val body = if (expression is Lambda) expression.implementation.statements.asSequence().flatMap { expressionsOf(it) } else emptySequence()
+            return sequenceOf(expression) + nested + body
+        }
+
+        /** The values a body returns - not the ones its lambdas return. */
+        private fun returnedValues(statement: StatementDef?): Sequence<ExpressionDef> = when (statement) {
+            null -> emptySequence()
+            is Return -> statement.expression?.let { sequenceOf(it) } ?: emptySequence()
+            is Multi -> statement.statements.asSequence().flatMap { returnedValues(it) }
+            is StatementDef.If -> returnedValues(statement.statement)
+            is StatementDef.IfElse -> returnedValues(statement.statement) + returnedValues(statement.elseStatement)
+            is While -> returnedValues(statement.statement)
+            is StatementDef.Synchronized -> returnedValues(statement.statement)
+            is StatementDef.Switch -> statement.cases.values.asSequence().flatMap { returnedValues(it) } + returnedValues(statement.defaultCase)
+            is StatementDef.Try -> returnedValues(statement.statement) + returnedValues(statement.finallyStatement) +
+                statement.catches.asSequence().flatMap { returnedValues(it.statement) }
+            else -> emptySequence()
+        }
+
+        /**
+         * Whether a method returns a value that can be `null`, which a Kotlin result of the model's type cannot hold:
+         * the bytecode returns it, the source needs a nullable result.
+         */
+        private fun returnsNullable(objectDef: ObjectDef?, method: MethodDef): Boolean {
+            val key = (objectDef?.asTypeDef()?.name ?: "") + "#" + method.name + method.parameters.map { it.type }
+            val results = NULLABLE_RESULTS.get()
+            if (results.containsKey(key)) {
+                return results[key] == true
+            }
+            results[key] = null
+            val nullable = method.statements.asSequence().flatMap { returnedValues(it) }.any { mayBeNull(objectDef, it) }
+            results[key] = nullable
+            return nullable
+        }
+
+        /**
+         * Whether a value of the model can be `null` where Kotlin's type of it says not: a `null`, a field that holds
+         * one, a mapped property Kotlin declares nullable, the erased result of a compiled Java method that the
+         * narrowed return casts, a generated method that returns one, or a conditional of these.
+         */
+        private fun mayBeNull(objectDef: ObjectDef?, expression: ExpressionDef): Boolean =
+            when (val value = unwrapCasts(expression)) {
+                is Constant -> value.value == null
+                is VariableDef.Field -> value.type.isNullable || isKotlinPrimitive(value.type) || isNullifiedField(objectDef, value)
+                is VariableDef.StaticField -> value.type.isNullable || isKotlinPrimitive(value.type) || isNullifiedField(objectDef, value)
+                is InvokeInstanceMethod -> !value.method.isConstructor && (isErasedPlatformCall(value)
+                    || isNullableMappedProperty(value)
+                    || value.instance !is VariableDef.Super && returnsNullable(ownerOf(objectDef, value.instance.type()), objectDef, value.method))
+                is InvokeStaticMethod -> returnsNullable(value.classDef, objectDef, value.method)
+                is IfElse -> mayBeNull(objectDef, value.ifExpression) || mayBeNull(objectDef, value.elseExpression)
+                is Switch -> (value.cases.values + listOfNotNull(value.defaultCase)).any { mayBeNull(objectDef, it) }
+                else -> false
+            }
+
+        /** The erased result of a compiled Java method, which the narrowed return casts: `get` of a `Map`. */
+        private fun isErasedPlatformCall(value: InvokeInstanceMethod): Boolean = value.type() == TypeDef.OBJECT
+            && value.instance !is VariableDef.This && value.instance !is VariableDef.Super
+            && loadedClass(value.instance.type())?.let { !it.isAnnotationPresent(Metadata::class.java) } == true
+
+        /** Whether a generated method - of the definition the owner names - is written with a nullable result. */
+        private fun returnsNullable(owner: ClassTypeDef?, objectDef: ObjectDef?, callMethod: MethodDef): Boolean {
+            val definition = OverrideResolver.definitionOf(owner, objectDef) ?: return false
+            val declared = declaredMethod(definition, callMethod) ?: return false
+            return !declared.isOverride && !declared.returnType.isPrimitive && declared.returnType != TypeDef.VOID
+                && !declared.returnType.isNullable && returnsNullable(definition, declared)
+        }
+
+        /** The method of a generated definition an invocation names, or `null`. */
+        private fun declaredMethod(definition: ObjectDef, callMethod: MethodDef): MethodDef? =
+            definition.methods.firstOrNull { it === callMethod }
+                ?: definition.methods.firstOrNull {
+                    it.name == callMethod.name && it.parameters.map { p -> p.type } == callMethod.parameters.map { p -> p.type }
+                }
+
+        /**
+         * Whether a parameter of a generated method is written nullable: its body null-checks it, or a call of the
+         * definition being written passes `null` to it - which the bytecode does, and a non-null parameter refuses.
+         */
+        private fun isNullableParameter(objectDef: ObjectDef?, method: MethodDef, index: Int): Boolean {
+            val parameter = method.parameters[index]
+            fun names(expression: ExpressionDef): Boolean {
+                val operand = unwrapCasts(expression)
+                return operand is VariableDef.MethodParameter && operand.name == parameter.name
+            }
+            if (method.statements.asSequence().flatMap { expressionsOf(it) }
+                    .any { it is IsNull && names(it.expression) || it is IsNotNull && names(it.expression) }) {
+                return true
+            }
+            val root = WRITTEN_DEFINITION.get() ?: objectDef ?: return false
+            return definitionsOf(root).any { caller -> passesNull(caller, objectDef, method, index) }
+        }
+
+        /** A definition and its inner types, at every depth. */
+        private fun definitionsOf(definition: ObjectDef): List<ObjectDef> =
+            listOf(definition) + definition.innerTypes.flatMap { definitionsOf(it) }
+
+        /** Whether a body of the caller passes `null` to the parameter of the method of the definition. */
+        private fun passesNull(caller: ObjectDef, objectDef: ObjectDef?, method: MethodDef, index: Int): Boolean {
+            val name = objectDef?.asTypeDef()?.name ?: return false
+            fun sameMethod(owner: ClassTypeDef?, callMethod: MethodDef): Boolean =
+                OverrideResolver.definitionOf(owner, caller)?.asTypeDef()?.name == name
+                    && callMethod.name == method.name
+                    && callMethod.parameters.map { it.type } == method.parameters.map { it.type }
+            fun sameConstructor(owner: ClassTypeDef?, parameterTypes: List<TypeDef>): Boolean =
+                method.isConstructor && OverrideResolver.definitionOf(owner, caller)?.asTypeDef()?.name == name
+                    && parameterTypes == method.parameters.map { it.type }
+            return bodiesOf(caller).asSequence().flatMap { expressionsOf(it) }.any { call ->
+                val values = when (call) {
+                    is InvokeInstanceMethod -> if (sameMethod(ownerOf(caller, call.instance.type()), call.method)) call.values else null
+                    is InvokeStaticMethod -> if (sameMethod(call.classDef, call.method)) call.values else null
+                    is NewInstance -> if (sameConstructor(call.type, call.parameterTypes)) call.values else null
+                    is InvokeSuperConstructor -> if (sameConstructor((caller as? ClassDef)?.superclass, call.method.parameters.map { it.type })) call.values else null
+                    else -> null
+                }
+                values != null && index < values.size && isNullLiteral(values[index])
+            }
+        }
+
+        /** Whether a field of the definition is a nullable property the model types as not null. */
+        private fun isNullifiedField(objectDef: ObjectDef?, variable: VariableDef): Boolean {
+            val (owner, name) = when (variable) {
+                is VariableDef.Field -> (if (variable.declaringType == TypeDef.THIS) objectDef?.asTypeDef()
+                    else variable.declaringType as? ClassTypeDef)?.name to variable.name
+                is VariableDef.StaticField -> variable.ownerType.name to variable.name
+                else -> return false
+            }
+            if (owner == null) {
+                return false
+            }
+            if (NULLIFIED.get().contains("$owner#$name")) {
+                return true
+            }
+            // A field of a type of the file that is not written yet
+            val definition = if (objectDef?.asTypeDef()?.name == owner) objectDef
+                else WRITTEN_DEFINITION.get()?.let { root -> definitionsOf(root).firstOrNull { it.asTypeDef().name == owner } }
+            val field = when (definition) {
+                is ClassDef -> definition.fields.firstOrNull { it.name == name }
+                is EnumDef -> definition.fields.firstOrNull { it.name == name }
+                else -> null
+            } ?: return false
+            return isNullified(definition, field)
+        }
+
+        /** Whether a target of a value takes `null`: a nullable type, or a boxed one Kotlin holds in `Int?`. */
+        private fun acceptsNull(type: TypeDef): Boolean = type.isNullable || isKotlinPrimitive(type)
+
+        /**
+         * Whether Kotlin types a value of the model as nullable where the model does not: a nullable or boxed type
+         * - of the parameter it names, as the function is written - a mapped property Kotlin declares nullable, or the
+         * result of a generated method written with a nullable result.
+         */
+        private fun emittedNullable(objectDef: ObjectDef?, methodDef: MethodDef, expression: ExpressionDef): Boolean {
+            // What Kotlin types by its own operators and literals is never nullable
+            if (expression is Constant || expression is ConditionExpressionDef || expression is ComparisonOperation
+                || expression is MathBinaryOperation || expression is MathUnaryOperation || expression is StringConcatenation
+                || expression is NewInstance || expression is NewArrayOfSize || expression is NewArrayInitialized
+                || expression is Lambda || expression is MethodReferenceExpression
+                || expression is InvokeGetClassMethod || expression is InvokeHashCodeMethod) {
+                return false
+            }
+            val type = sourceTypeOf(expression, methodDef, objectDef)
+            if (acceptsNull(type) || expression.type().isNullable) {
+                return true
+            }
+            return when (expression) {
+                is InvokeInstanceMethod -> !expression.method.isConstructor
+                    && (isNullableMappedProperty(expression)
+                    || expression.instance !is VariableDef.Super && returnsNullable(ownerOf(objectDef, expression.instance.type()), objectDef, expression.method))
+                is InvokeStaticMethod -> returnsNullable(expression.classDef, objectDef, expression.method)
+                else -> false
+            }
+        }
+
+        /** Whether a call is written as a mapped property Kotlin declares nullable: the `message` of a throwable. */
+        private fun isNullableMappedProperty(call: InvokeInstanceMethod): Boolean =
+            mappedProperty(loadedClass(call.instance.type()), call.method)?.let { it in NULLABLE_MAPPED_PROPERTIES } == true
 
         private val FLOAT = ClassName("kotlin", "Float")
 
@@ -1052,10 +1374,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         )
 
         /**
-         * Whether the type is one Kotlin maps to a primitive, which cannot be a lateinit property.
+         * Whether the type is a boxed primitive, which Kotlin maps to its own: written as the nullable `Int?`, whose
+         * JVM signature is the `Integer` of the model, which takes `null` and is compared by reference.
          */
         private fun isKotlinPrimitive(typeDef: TypeDef): Boolean {
-            return typeDef is ClassTypeDef && BOXED_PRIMITIVES.containsKey(typeDef.name)
+            return typeDef is ClassTypeDef && typeDef !is ClassTypeDef.Parameterized && BOXED_PRIMITIVES.containsKey(typeDef.name)
         }
 
         /**
@@ -1067,9 +1390,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 || !field.modifiers.contains(Modifier.STATIC) && isAssignedByEveryConstructor(objectDef, field)) {
                 return null
             }
-            val primitive = (field.type as? ClassTypeDef)?.let { BOXED_PRIMITIVES[it.name] }
-                ?: field.type as? TypeDef.Primitive
-                ?: return null
+            // A boxed type is held in a nullable property, which holds the `null` of the blank field
+            val primitive = field.type as? TypeDef.Primitive ?: return null
             return TypeDef.Primitive.defaultValue(primitive.name())
         }
 
@@ -1217,7 +1539,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     typeDef.typeArguments.map { v: TypeDef -> this.asType(v, objectDef, methodDef, staticContext) }
                 )
                 typeDef is TypeDef.Primitive -> asPrimitive(typeDef)
-                typeDef is ClassTypeDef -> asClassName(typeDef)
+                // A boxed type is the nullable Kotlin one: the JVM signature is the `Integer` of the model
+                typeDef != null && isKotlinPrimitive(typeDef) -> asNullable(asClassName(typeDef as ClassTypeDef))
+                typeDef is ClassTypeDef -> asRawType(typeDef, objectDef, staticContext)
                 typeDef is ClassTypeDef.AnnotatedClassTypeDef -> asAnnotated(
                     typeDef.typeDef, typeDef.annotations, objectDef, methodDef, staticContext
                 )
@@ -1233,6 +1557,53 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return asNullable(result)
             }
             return result
+        }
+
+        /**
+         * A class type named without type arguments. Kotlin names every type argument: a raw generic type - a Java
+         * one, or a generated one named without its arguments - is star projected, and the definition being written
+         * names its own variables.
+         */
+        private fun asRawType(typeDef: ClassTypeDef, objectDef: ObjectDef?, staticContext: Boolean): TypeName {
+            val className = asClassName(typeDef)
+            val arity = typeArity(typeDef, objectDef)
+            if (arity == 0) {
+                return className
+            }
+            if (!staticContext && objectDef != null && objectDef.asTypeDef().name == typeDef.name) {
+                val variables = typeVariablesOf(objectDef)
+                if (variables.size == arity) {
+                    return className.parameterizedBy(variables.map { TypeVariableName(it.name) })
+                }
+            }
+            return className.parameterizedBy(List(arity) { STAR })
+        }
+
+        /** How many type parameters a class declares, where that is known. */
+        private fun typeArity(typeDef: ClassTypeDef, objectDef: ObjectDef?): Int {
+            OverrideResolver.definitionOf(typeDef, objectDef)?.let { return typeVariablesOf(it).size }
+            return (typeDef as? ClassTypeDef.JavaClass)?.type?.typeParameters?.size
+                ?: loadedClass(typeDef)?.typeParameters?.size ?: 0
+        }
+
+        private fun typeVariablesOf(objectDef: ObjectDef): List<TypeDef.TypeVariable> = when (objectDef) {
+            is ClassDef -> objectDef.typeVariables
+            is InterfaceDef -> objectDef.typeVariables
+            is RecordDef -> objectDef.typeVariables
+            else -> emptyList()
+        }
+
+        /** A supertype, which is never projected: a raw one is written as it is named. */
+        private fun asSupertype(typeDef: TypeDef, objectDef: ObjectDef?): TypeName =
+            if (typeDef is ClassTypeDef && typeDef !is ClassTypeDef.Parameterized && !isKotlinPrimitive(typeDef)) asClassName(typeDef)
+            else asType(typeDef, objectDef)
+
+        /** The type of a class literal, which takes no type arguments: `Integer::class.java` for the boxed type. */
+        private fun asClassLiteral(typeDef: TypeDef): TypeName = when {
+            isKotlinPrimitive(typeDef) -> asStaticOwnerName(typeDef as ClassTypeDef)
+            typeDef is ClassTypeDef && typeDef !is ClassTypeDef.Parameterized
+                && typeDef != TypeDef.THIS && typeDef != TypeDef.SUPER -> asClassName(typeDef)
+            else -> asType(typeDef, null)
         }
 
         /**
@@ -1467,7 +1838,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 val builder: CodeBlock.Builder =
                     CodeBlock.builder()
                 builder.add("if (")
-                builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.condition))
+                builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.condition, TypeDef.Primitive.BOOLEAN))
                 builder.add(") {\n")
                 builder.indent()
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement, tailPosition))
@@ -1478,7 +1849,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (statementDef is StatementDef.IfElse) {
                 val builder: CodeBlock.Builder = CodeBlock.builder()
                 builder.add("if (")
-                builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.condition))
+                builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.condition, TypeDef.Primitive.BOOLEAN))
                 builder.add(") {\n")
                 builder.indent()
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement, tailPosition))
@@ -1497,7 +1868,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 val builder: CodeBlock.Builder =
                     CodeBlock.builder()
                 builder.add("while (")
-                builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.expression))
+                builder.add(renderExpressionCode(objectDef, methodDef, scope, statementDef.expression, TypeDef.Primitive.BOOLEAN))
                 builder.add(") {\n")
                 builder.indent()
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statementDef.statement))
@@ -1632,8 +2003,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 if (returned != null && methodDef.returnType != TypeDef.VOID
                     && requiresImplicitReturnCast(methodDef.returnType, returned.type())) {
                     returned = returned.cast(methodDef.returnType)
+                } else if (returned is Cast && acceptsNull(methodDef.returnType) && !returned.type.isNullable
+                    && !returned.type.isPrimitive && mayBeNull(objectDef, returned.expressionDef)) {
+                    // A value that can be `null`, cast and returned where the result is nullable: the bytecode's
+                    // checkcast lets `null` through, `as String` throws
+                    returned = returned.expressionDef.cast(returned.type.makeNullable())
                 }
-                val codeBlock = renderExpressionWithNotNullAssertion(
+                val codeBlock = renderExpressionCode(
                     objectDef,
                     methodDef,
                     scope,
@@ -1735,6 +2111,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
         }
 
+        /**
+         * A value where a type is expected: a value Kotlin types nullable is asserted where the type is not, as the
+         * bytecode's use of `null` there throws, and a property holding `null` is read as it is where the type takes it.
+         */
         private fun renderExpressionCode(
             objectDef: ObjectDef?,
             methodDef: MethodDef,
@@ -1742,13 +2122,62 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             expressionDef: ExpressionDef?,
             expectedType: TypeDef
         ): CodeBlock {
+            val takesNull = acceptsNull(expectedType)
+            if (takesNull && (expressionDef is VariableDef.Field || expressionDef is VariableDef.StaticField)
+                && isNullifiedField(objectDef, expressionDef as VariableDef)) {
+                return renderVariable(objectDef, methodDef, scope, expressionDef, true)
+            }
+            if (expressionDef is IfElse) {
+                // The results are what the conditional is: nullable where its target takes `null`
+                val type = expressionDef.type()
+                return renderIfElse(objectDef, methodDef, scope, expressionDef,
+                    if (takesNull && !type.isPrimitive) type.makeNullable() else type)
+            }
+            if (expressionDef is NewInstance && expressionDef.type !is ClassTypeDef.Parameterized
+                && expectedType !is ClassTypeDef.Parameterized && typeArity(expressionDef.type, objectDef) > 0) {
+                // A raw generic type instantiated where nothing says its arguments: they are `Any?`, as erased
+                val arguments = List(typeArity(expressionDef.type, objectDef)) { ANY.copy(nullable = true) }
+                return renderNewInstance(objectDef, methodDef, scope, expressionDef, asClassName(expressionDef.type).parameterizedBy(arguments))
+            }
             val codeBlock = renderExpressionCode(objectDef, methodDef, scope, expressionDef)
             val builder = codeBlock.toBuilder()
-            if (!expectedType.isNullable && expressionDef?.type()?.isNullable == true) {
+            if (!takesNull && expressionDef != null && emittedNullable(objectDef, methodDef, expressionDef)) {
                 builder.add("!!")
             }
             return builder.build()
         }
+
+        private fun renderNewInstance(
+            objectDef: ObjectDef?,
+            methodDef: MethodDef,
+            scope: RenderScope,
+            expressionDef: NewInstance,
+            type: TypeName
+        ): CodeBlock {
+            val codeBuilder = CodeBlock.builder()
+            codeBuilder.add("%T(", type)
+            codeBuilder.add(renderArguments(
+                objectDef, methodDef, scope, expressionDef.type, "<init>", null,
+                expressionDef.parameterTypes, expressionDef.values
+            ))
+            codeBuilder.add(")")
+            return codeBuilder.build()
+        }
+
+        private fun renderIfElse(
+            objectDef: ObjectDef?,
+            methodDef: MethodDef,
+            scope: RenderScope,
+            expressionDef: IfElse,
+            resultType: TypeDef
+        ): CodeBlock = CodeBlock.builder()
+            .add("if (")
+            .add(renderExpressionCode(objectDef, methodDef, scope, expressionDef.condition, TypeDef.Primitive.BOOLEAN))
+            .add(") ")
+            .add(renderExpressionCode(objectDef, methodDef, scope, expressionDef.ifExpression, resultType))
+            .add(" else ")
+            .add(renderExpressionCode(objectDef, methodDef, scope, expressionDef.elseExpression, resultType))
+            .build()
 
         // A single dispatch over every expression type; splitting it is a separate refactoring
         private fun renderExpressionCode( // NOSONAR kotlin:S3776
@@ -1759,14 +2188,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             isRef: Boolean = false
         ): CodeBlock {
             if (expressionDef is NewInstance) {
-                val codeBuilder = CodeBlock.builder()
-                codeBuilder.add("%T(", asClassName(expressionDef.type))
-                codeBuilder.add(renderArguments(
-                    objectDef, methodDef, scope, expressionDef.type, "<init>", null,
-                    expressionDef.parameterTypes, expressionDef.values
-                ))
-                codeBuilder.add(")")
-                return codeBuilder.build()
+                return renderNewInstance(objectDef, methodDef, scope, expressionDef, asClassName(expressionDef.type))
             }
             if (expressionDef is InvokeInstanceMethod) {
                 var instanceExp = renderExpressionCode(objectDef, methodDef, scope, expressionDef.instance)
@@ -1775,13 +2197,12 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     codeBuilder.add(instanceExp)
                     codeBuilder.add("(")
                 } else {
-                    if (requiresMethodCallTargetParentheses(expressionDef.instance)) {
-                        instanceExp = addParentheses(instanceExp)
-                    }
+                    instanceExp = renderReceiver(objectDef, methodDef, expressionDef.instance, instanceExp)
                     val receiverType = sourceTypeOf(expressionDef.instance, methodDef, objectDef)
-                    val receiverClass = if (expressionDef.instance is VariableDef.This || expressionDef.instance is VariableDef.Super) null
-                        else loadedClass(receiverType)
-                    val property = mappedProperty(receiverClass, expressionDef.method)
+                    val ofThis = expressionDef.instance is VariableDef.This || expressionDef.instance is VariableDef.Super
+                    val receiverClass = if (ofThis) null else loadedClass(receiverType)
+                    val property = if (ofThis) mappedMemberOfThis(objectDef, expressionDef.method, true)
+                        else mappedProperty(receiverClass, expressionDef.method)
                     if (property != null) {
                         // Kotlin sees the method as a property of the type it maps the Java one to: `text.length`
                         return CodeBlock.of("%L.%N", instanceExp, property)
@@ -1789,18 +2210,35 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     val mutable = ((receiverType as? ClassTypeDef.Parameterized)?.rawType ?: receiverType as? ClassTypeDef)
                         ?.let { MUTABLE_COLLECTIONS[it.name] }
                     if (mutable != null && expressionDef.method.name !in READ_ONLY_MEMBERS) {
-                        // The read-only type Kotlin maps the Java one to does not declare its mutators
+                        // The read-only type Kotlin maps the Java one to does not declare its mutators; a raw one
+                        // takes what its erased elements are
                         val arguments = (receiverType as? ClassTypeDef.Parameterized)?.typeArguments.orEmpty()
                         val mutableType = ClassName("kotlin.collections", mutable).let { raw ->
-                            if (arguments.isEmpty()) raw else raw.parameterizedBy(arguments.map { asType(it, objectDef, methodDef) })
+                            if (arguments.isEmpty()) {
+                                raw.parameterizedBy(List(typeArity(receiverType as ClassTypeDef, objectDef)) { ANY.copy(nullable = true) })
+                            } else {
+                                raw.parameterizedBy(arguments.map { asType(it, objectDef, methodDef) })
+                            }
                         }
                         instanceExp = CodeBlock.of("(%L as %T)", instanceExp, mutableType)
                     }
                     codeBuilder.add(instanceExp)
+                    val arguments = renderArguments(
+                        objectDef, methodDef, scope, ownerOf(objectDef, expressionDef.instance.type()),
+                        expressionDef.method.name, expressionDef.method,
+                        expressionDef.method.parameters.map { it.type }, expressionDef.values
+                    )
+                    // Kotlin renames some methods of the Java types it maps: `charAt` is the indexing `get`
+                    val function = if (ofThis) mappedMemberOfThis(objectDef, expressionDef.method, false)
+                        else mappedFunction(receiverClass, expressionDef.method)
+                    if (function == "get" && expressionDef.values.size == 1) {
+                        return codeBuilder.add("[").add(arguments).add("]").build()
+                    }
                     if (expressionDef.instance is InvokeInstanceMethod) {
                         codeBuilder.add("\n")
                     }
-                    codeBuilder.add(".%N(", expressionDef.method.name)
+                    codeBuilder.add(".%N(", function ?: expressionDef.method.name)
+                    return codeBuilder.add(arguments).add(")").build()
                 }
                 codeBuilder.add(renderArguments(
                     objectDef, methodDef, scope, ownerOf(objectDef, expressionDef.instance.type()),
@@ -1811,10 +2249,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return codeBuilder.build()
             }
             if (expressionDef is GetPropertyValue) {
-                var instanceExp = renderExpressionCode(objectDef, methodDef, scope, expressionDef.instance)
-                if (requiresMethodCallTargetParentheses(expressionDef.instance)) {
-                    instanceExp = addParentheses(instanceExp)
-                }
+                val instanceExp = renderReceiver(objectDef, methodDef, expressionDef.instance,
+                    renderExpressionCode(objectDef, methodDef, scope, expressionDef.instance))
                 val codeBuilder = instanceExp.toBuilder()
                 codeBuilder.add(".%L", expressionDef.propertyElement.name)
                 return codeBuilder.build()
@@ -1830,13 +2266,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return codeBuilder.build()
             }
             if (expressionDef is ArrayElement) {
-                var array = renderExpressionCode(objectDef, methodDef, scope, expressionDef.expression)
-                if (requiresMethodCallTargetParentheses(expressionDef.expression)) {
-                    array = addParentheses(array)
-                }
+                val array = renderReceiver(objectDef, methodDef, expressionDef.expression,
+                    renderExpressionCode(objectDef, methodDef, scope, expressionDef.expression))
                 return array.toBuilder()
                     .add("[")
-                    .add(renderExpressionCode(objectDef, methodDef, scope, expressionDef.indexExpression))
+                    .add(renderExpressionCode(objectDef, methodDef, scope, expressionDef.indexExpression, TypeDef.Primitive.INT))
                     .add("]")
                     .build()
             }
@@ -1888,38 +2322,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     .build()
             }
             if (expressionDef is IfElse) {
-                return CodeBlock.builder()
-                    .add("if (")
-                    .add(
-                        renderExpressionCode(
-                            objectDef,
-                            methodDef,
-                            scope,
-                            expressionDef.condition,
-                            TypeDef.Primitive.BOOLEAN
-                        )
-                    )
-                    .add(") ")
-                    .add(
-                        renderExpressionCode(
-                            objectDef,
-                            methodDef,
-                            scope,
-                            expressionDef.ifExpression,
-                            expressionDef.type()
-                        )
-                    )
-                    .add(" else ")
-                    .add(
-                        renderExpressionCode(
-                            objectDef,
-                            methodDef,
-                            scope,
-                            expressionDef.elseExpression,
-                            expressionDef.type()
-                        )
-                    )
-                    .build()
+                return renderIfElse(objectDef, methodDef, scope, expressionDef, expressionDef.type())
             }
             if (expressionDef is Switch) {
                 val builder: CodeBlock.Builder = CodeBlock.builder()
@@ -1990,7 +2393,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 if (expression is ConditionExpressionDef) {
                     return renderExpressionCode(objectDef, methodDef, scope, expression)
                 }
-                val rendered = renderExpressionCode(objectDef, methodDef, scope, expressionDef.expression)
+                // A boxed value is asserted, as the bytecode's unboxing throws for `null`
+                val rendered = renderExpressionCode(objectDef, methodDef, scope, expressionDef.expression, TypeDef.Primitive.BOOLEAN)
                 // `if (a) b else c || d` reads `if (a) b else (c || d)`: an `if` or a `when` takes all that follows it
                 return if (expression is IfElse || expression is Switch) addParentheses(rendered) else rendered
             }
@@ -2005,6 +2409,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return CodeBlock.builder()
                     .add("!")
                     .add(renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.expression))
+                    .add(if (emittedNullable(objectDef, methodDef, expressionDef.expression)) "!!" else "")
                     .build()
             }
             if (expressionDef is InstanceOf) {
@@ -2024,14 +2429,14 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is MathUnaryOperation) {
                 return CodeBlock.builder()
                     .add("%L", getMathOp(expressionDef.opType))
-                    .add(renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.expression))
+                    .add(renderOperand(objectDef, methodDef, scope, expressionDef.expression))
                     .build()
             }
             if (expressionDef is ComparisonOperation) {
                 return CodeBlock.builder()
-                    .add(renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.left))
+                    .add(renderOperand(objectDef, methodDef, scope, expressionDef.left))
                     .add("%L", getOpType(expressionDef.opType))
-                    .add(renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.right))
+                    .add(renderOperand(objectDef, methodDef, scope, expressionDef.right))
                     .build()
             }
             if (expressionDef is NewArrayOfSize) {
@@ -2053,11 +2458,17 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 val componentType = arrayElementType(expressionDef.type)
                 val builder: CodeBlock.Builder = CodeBlock.builder()
                 val ofVariable = TypeHierarchy.unwrap(componentType) is TypeDef.TypeVariable
+                // An element that is `null`, which an array of the model's component does not hold: the array is
+                // created with a nullable component and cast to the model's type, as the bytecode's holds `null`
+                val holdsNull = componentType !is TypeDef.Primitive && !ofVariable && !acceptsNull(componentType)
+                    && expressionDef.expressions.any { isNullLiteral(it) || emittedNullable(objectDef, methodDef, it) }
                 if (componentType is TypeDef.Primitive) {
                     builder.add("%L(", arrayOfFunction(componentType))
                 } else if (ofVariable) {
                     // A variable is not reified: the array is created of `Any` and cast, as the bytecode's is erased
                     builder.add("(arrayOf<%T>(", ANY.copy(nullable = true))
+                } else if (holdsNull) {
+                    builder.add("(arrayOf<%T>(", asType(componentType, objectDef, methodDef).copy(nullable = true))
                 } else {
                     // In scope of the method: the component can be a variable of it
                     builder.add("arrayOf<%T>(", asType(componentType, objectDef, methodDef))
@@ -2071,23 +2482,19 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     }
                 }
                 builder.add(")")
-                if (ofVariable) {
+                if (ofVariable || holdsNull) {
                     builder.add(" as %T)", asType(expressionDef.type, objectDef, methodDef))
                 }
                 return builder.build()
             }
             if (expressionDef is InvokeGetClassMethod) {
-                var instanceExp = renderExpressionCode(objectDef, methodDef, scope, expressionDef.instance)
-                if (requiresMethodCallTargetParentheses(expressionDef.instance)) {
-                    instanceExp = addParentheses(instanceExp)
-                }
+                val instanceExp = renderReceiver(objectDef, methodDef, expressionDef.instance,
+                    renderExpressionCode(objectDef, methodDef, scope, expressionDef.instance))
                 return instanceExp.toBuilder().add(".javaClass").build()
             }
             if (expressionDef is InvokeHashCodeMethod) {
-                var instanceExp = renderExpressionCode(objectDef, methodDef, scope, expressionDef.instance)
-                if (requiresMethodCallTargetParentheses(expressionDef.instance)) {
-                    instanceExp = addParentheses(instanceExp)
-                }
+                val instanceExp = renderReceiver(objectDef, methodDef, expressionDef.instance,
+                    renderExpressionCode(objectDef, methodDef, scope, expressionDef.instance))
                 val type = expressionDef.instance.type()
                 if (type.isArray) {
                     if (type is TypeDef.Array && type.dimensions > 1) {
@@ -2310,7 +2717,41 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 return rendered
             }
-            return renderExpressionWithParentheses(objectDef, methodDef, scope, operand)
+            return renderOperand(objectDef, methodDef, scope, operand)
+        }
+
+        /**
+         * An operand of an arithmetic or a comparison operator, which a boxed value is unboxed for: a value Kotlin
+         * types nullable is asserted, as the unboxing throws for `null`.
+         */
+        private fun renderOperand(
+            objectDef: ObjectDef?,
+            methodDef: MethodDef,
+            scope: RenderScope,
+            operand: ExpressionDef
+        ): CodeBlock {
+            val rendered = renderExpressionWithParentheses(objectDef, methodDef, scope, operand)
+            return if (emittedNullable(objectDef, methodDef, operand)) rendered.toBuilder().add("!!").build() else rendered
+        }
+
+        /**
+         * The receiver of a call, a property or an element read, parenthesized where the call binds tighter, and
+         * asserted where Kotlin types it nullable: the bytecode's call throws for `null`.
+         */
+        private fun renderReceiver(
+            objectDef: ObjectDef?,
+            methodDef: MethodDef,
+            instance: ExpressionDef,
+            rendered: CodeBlock
+        ): CodeBlock {
+            var receiver = rendered
+            if (requiresMethodCallTargetParentheses(instance)) {
+                receiver = addParentheses(receiver)
+            }
+            if (instance !is VariableDef.This && instance !is VariableDef.Super && emittedNullable(objectDef, methodDef, instance)) {
+                receiver = receiver.toBuilder().add("!!").build()
+            }
+            return receiver
         }
 
         private fun requiresMathParentheses(
@@ -2562,7 +3003,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
             } else if (type is ClassTypeDef) {
                 if (value is TypeDef) {
-                    return CodeBlock.of("%T::class.java", asType(value, null))
+                    return CodeBlock.of("%T::class.java", asClassLiteral(value))
                 }
                 val name = type.name
                 return if (ClassUtils.isJavaLangType(name)) {
@@ -2744,7 +3185,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     codeBlock = addParentheses(codeBlock)
                 }
                 val builder = codeBlock.toBuilder()
-                if (variableDef.instance.type().isNullable) {
+                if (variableDef.instance !is VariableDef.This && variableDef.instance !is VariableDef.Super
+                    && emittedNullable(objectDef, methodDef, variableDef.instance)) {
                     builder.add("!!")
                 }
                 builder.add(". %N", variableDef.name)
@@ -2815,7 +3257,6 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }.orEmpty(),
                 false
             )
-            val generated = OverrideResolver.definitionOf(owner, objectDef) != null
             val receiverArguments = callMethod?.let { method ->
                 OverrideResolver.receiverArguments(owner, objectDef, method) - method.typeVariables.map { it.name }.toSet()
             }.orEmpty()
@@ -2929,8 +3370,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         // `null` needs no cast, and one to a type that is not nullable throws
                         value
                     } else {
-                        value.cast(if (generated || parameterType.isPrimitive
-                            || isKotlinClass(owner) && !takesNull(owner, methodName, values.size, index)) parameterType
+                        value.cast(if (refusesNull(owner, objectDef, callMethod, methodName, values.size, index, parameterType)) parameterType
                             else parameterType.makeNullable())
                     }
                 } else if (parameterType is ClassTypeDef.Parameterized && valueType is ClassTypeDef.Parameterized
@@ -2954,14 +3394,66 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     && OverloadRules.pinsOverload(parameterType, if (isNullLiteral(value)
                         || stableName(value)?.let { scope.isSmartCast(it) } == true) null else sourceType,
                         callMethod?.typeVariables.orEmpty())) {
-                    // The cast names the overload of the model where another would take the value
+                    // The cast names the overload of the model where another would take the value - as nullable where
+                    // the parameter takes `null`, which a compiled Java one does
+                    val takesNull = isNullLiteral(value) || !refusesNull(owner, objectDef, callMethod, methodName, values.size, index, parameterType)
                     builder.add("(%L as %T)", if (isNullLiteral(value)) CodeBlock.of("null") else renderExpressionCode(objectDef, methodDef, scope, value),
-                        asType(if (isNullLiteral(value)) parameterType.makeNullable() else parameterType, objectDef))
+                        asType(if (takesNull) parameterType.makeNullable() else parameterType, objectDef))
                     continue
                 }
                 builder.add(renderExpressionCode(objectDef, methodDef, scope, argument))
+                if (argument === value && parameterType != null && !vararg
+                    && refusesNull(owner, objectDef, callMethod, methodName, values.size, index, parameterType)
+                    && emittedNullable(objectDef, methodDef, value)) {
+                    // A value Kotlin types nullable, passed to a parameter that is not: the bytecode passes it on
+                    // to a parameter check that throws for `null`
+                    builder.add("!!")
+                }
             }
             return builder.build()
+        }
+
+        /**
+         * Whether a parameter of the invoked method refuses `null` where the bytecode passes it on: one of a
+         * generated method that is not written nullable, or one of a compiled Kotlin function that is not declared
+         * so. A method of a class only known by name, which neither loads nor the context knows, is most likely
+         * generated in the same round: a Kotlin one. A compiled Java method takes `null` as a platform value.
+         */
+        private fun refusesNull(
+            owner: ClassTypeDef?,
+            objectDef: ObjectDef?,
+            callMethod: MethodDef?,
+            methodName: String?,
+            arity: Int,
+            index: Int,
+            parameterType: TypeDef
+        ): Boolean {
+            if (acceptsNull(parameterType)) {
+                return false
+            }
+            if (parameterType.isPrimitive) {
+                return true
+            }
+            val definition = OverrideResolver.definitionOf(owner, objectDef)
+            if (definition != null) {
+                val declared = callMethod?.let { declaredMethod(definition, it) } ?: return true
+                return declared.isOverride || !isNullableParameter(definition, declared, index)
+            }
+            return isKotlinClass(owner) && !takesNull(owner, methodName, arity, index) || isUnknownType(owner)
+        }
+
+        /** Whether a type is known by name only: it neither loads nor is known to the context of the compilation. */
+        private fun isUnknownType(owner: ClassTypeDef?): Boolean {
+            if (owner == null || loadedClass(owner) != null) {
+                return false
+            }
+            val context = VISITOR_CONTEXT.get() ?: return true
+            val name = ((owner as? ClassTypeDef.Parameterized)?.rawType ?: owner).name
+            return try {
+                context.getClassElement(name).isEmpty
+            } catch (e: RuntimeException) {
+                true
+            }
         }
 
         private fun asStarProjected(type: TypeDef, objectDef: ObjectDef?): TypeName =
@@ -3124,8 +3616,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
          * infers the variable from: a subclass, the parameterization of a class, or a value of a variable of the caller.
          */
         private fun satisfiesBound(bound: TypeDef, value: TypeDef, objectDef: ObjectDef?, methodDef: MethodDef?): Boolean {
-            if (value.isNullable && !bound.isNullable) {
-                // A nullable value does not satisfy a bound that is not
+            if (acceptsNull(value) && !bound.isNullable) {
+                // A nullable value - a boxed one is written as such - does not satisfy a bound that is not
                 return false
             }
             val boxed = if (value is TypeDef.Primitive) value.wrapperType() else value
@@ -3203,7 +3695,13 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 reference.method().name,
                 arguments.joinToCode(", ")
             )
-            adaptation.resultType()?.let { call = CodeBlock.of("(%L as %T)", call, asType(it, objectDef, methodDef)) }
+            adaptation.resultType()?.let { result ->
+                // A boxed result the functional interface returns as a primitive is unboxed, which throws for `null`
+                // as the bytecode does
+                val returned = runCatching { reference.type().getLambda().method.returnType }.getOrNull()
+                val type = asType(result, objectDef, methodDef).let { if (returned is TypeDef.Primitive) it.copy(nullable = false) else it }
+                call = CodeBlock.of("(%L as %T)", call, type)
+            }
             val lambda = CodeBlock.of(
                 "%T { %L -> %L }", asType(reference.type(), objectDef), names.joinToString(", "), call
             )
@@ -3428,15 +3926,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         }
 
         /**
-         * The type of an `is` check: Kotlin names every type argument, so a raw generic type is
-         * checked with star projections.
+         * The type of an `is` check: Kotlin names every type argument, so a raw generic type is checked with star
+         * projections, and `null` is no instance of anything - not of the nullable type a boxed one is written as.
          */
-        private fun asTypeCheckType(typeDef: TypeDef, objectDef: ObjectDef?): TypeName {
-            if (typeDef is ClassTypeDef.JavaClass && typeDef.type.typeParameters.isNotEmpty()) {
-                return asClassName(typeDef).parameterizedBy(typeDef.type.typeParameters.map { STAR })
-            }
-            return asType(typeDef, objectDef)
-        }
+        private fun asTypeCheckType(typeDef: TypeDef, objectDef: ObjectDef?): TypeName =
+            asType(typeDef, objectDef).copy(nullable = false)
 
         private fun cannotCompleteNormally(statementDef: StatementDef): Boolean = when (statementDef) {
             is Return, is Throw -> true
@@ -3449,21 +3943,6 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 && cannotCompleteNormally(statementDef.statement())
                 && statementDef.catches().all { cannotCompleteNormally(it.statement()) }
             else -> false
-        }
-
-        private fun renderExpressionWithNotNullAssertion(
-            objectDef: ObjectDef?,
-            methodDef: MethodDef,
-            scope: RenderScope,
-            expressionDef: ExpressionDef?,
-            result: TypeDef
-        ): CodeBlock {
-            val codeBlock = renderExpressionCode(objectDef, methodDef, scope, expressionDef)
-            val builder = codeBlock.toBuilder()
-            if (!result.isNullable && expressionDef?.type()?.isNullable == true) {
-                builder.add("!!")
-            }
-            return builder.build()
         }
 
         private fun asAnnotationSpec(annotationDef: AnnotationDef): AnnotationSpec {

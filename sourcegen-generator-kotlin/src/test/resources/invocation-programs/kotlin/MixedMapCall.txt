@@ -6,8 +6,8 @@ import kotlin.CharSequence
 import kotlin.String
 import kotlin.collections.Map
 
-public class MixedMapCall {
-  public fun call(target: InvocationProgramRegressionTest.MapTarget<String>, `value`: Any): Any {
+public open class MixedMapCall {
+  public open fun call(target: InvocationProgramRegressionTest.MapTarget<String>, `value`: Any): Any {
     return target.map(`value` as Map<String, CharSequence>)
   }
 }

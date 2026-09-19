@@ -3,8 +3,8 @@ package test
 import kotlin.Int
 import kotlin.IntArray
 
-public class MathGrouping {
-  public fun call(
+public open class MathGrouping {
+  public open fun call(
     a: Int,
     b: Int,
     c: Int,

@@ -6,8 +6,8 @@ import kotlin.Any
 import kotlin.Array
 import kotlin.collections.List
 
-public class ArrayScopeR<R> {
-  public fun call(target: ConversionProgramRegressionTest.IntersectionTarget<R>, `value`: Any): Any {
+public open class ArrayScopeR<R> {
+  public open fun call(target: ConversionProgramRegressionTest.IntersectionTarget<R>, `value`: Any): Any {
     return target.arrays(object { @Suppress("UNCHECKED_CAST") fun <T> cast(value: Any?): Array<T> where T : List<R>, T : Serializable = value as Array<T> }.cast(`value`))
   }
 }

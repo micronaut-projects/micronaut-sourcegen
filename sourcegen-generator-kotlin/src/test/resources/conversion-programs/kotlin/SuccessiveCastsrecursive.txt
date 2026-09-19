@@ -5,8 +5,8 @@ import java.io.Serializable
 import kotlin.Any
 import kotlin.Comparable
 
-public class SuccessiveCastsrecursive {
-  public fun call(`value`: Any): Any {
+public open class SuccessiveCastsrecursive {
+  public open fun call(`value`: Any): Any {
     ConversionProgramRegressionTest.Calls.serializable(`value` as Serializable)
     return ConversionProgramRegressionTest.Calls.comparable(`value` as Comparable<Any>)
   }

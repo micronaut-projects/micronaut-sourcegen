@@ -57,7 +57,7 @@ class GenericBoundConversionRegressionTest {
                 |
                 |import java.util.function.Supplier
                 |
-                |public class ChainedTarget<A, B : A, C : B> : Supplier<C> {
+                |public open class ChainedTarget<A, B : A, C : B> : Supplier<C> {
                 |  public override fun `get`(): C {
                 |    return "text" as C
                 |  }
@@ -71,8 +71,8 @@ class GenericBoundConversionRegressionTest {
                 |import kotlin.Int
                 |import kotlin.String
                 |
-                |public class ChainedCaller {
-                |  public fun call(target: ChainedTarget<CharSequence, in String, in String>): String {
+                |public open class ChainedCaller {
+                |  public open fun call(target: ChainedTarget<CharSequence, in String, in String>): String {
                 |    return ChainedCaller.choose((target.`get`() as Any))
                 |  }
                 |

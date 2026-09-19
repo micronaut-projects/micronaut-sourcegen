@@ -3,9 +3,9 @@ package test
 import java.io.IOException
 import kotlin.jvm.Throws
 
-public class CheckedThrower {
+public open class CheckedThrower {
   @Throws(IOException::class)
-  public fun call() {
+  public open fun call() {
     throw IOException("checked")
   }
 }

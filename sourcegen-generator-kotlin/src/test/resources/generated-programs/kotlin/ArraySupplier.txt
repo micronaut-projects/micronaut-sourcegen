@@ -6,7 +6,7 @@ import kotlin.Array
 import kotlin.String
 import kotlin.collections.List
 
-public class ArraySupplier : Supplier<Array<List<String>>> {
+public open class ArraySupplier : Supplier<Array<List<String>>> {
   private var values: Any
 
   public constructor(values: Any) {

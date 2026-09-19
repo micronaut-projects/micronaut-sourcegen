@@ -6,8 +6,8 @@ import kotlin.BooleanArray
 import kotlin.Int
 import kotlin.String
 
-public class ConditionGrouping {
-  public fun call(
+public open class ConditionGrouping {
+  public open fun call(
     a: Boolean,
     b: Boolean,
     c: Boolean,

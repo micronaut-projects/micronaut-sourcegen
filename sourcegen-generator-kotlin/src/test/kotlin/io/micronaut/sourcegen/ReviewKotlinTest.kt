@@ -34,7 +34,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.io.StringWriter
 import java.lang.reflect.InvocationTargetException
@@ -79,7 +78,6 @@ class ReviewKotlinTest {
     // ---- nullability ----
 
     // `String call() { return null; }`: bytecode returns null, the source is `return null as String`, which throws.
-    @Disabled("A null returned from a method the model types non-null is cast to the type, which throws; Kotlin has no non-null type that holds null")
     @Test
     fun nullReturnedFromANonNullMethod() {
         val def = ClassDef.builder("test.R01")
@@ -92,7 +90,6 @@ class ReviewKotlinTest {
     }
 
     // `null` passed to a generated `describe(String)` whose body null-checks its parameter: bytecode prints "null"; Kotlin's non-null parameter throws.
-    @Disabled("A generated parameter is non-null even where its body null-checks it, so null cannot be passed")
     @Test
     fun nullPassedToANullCheckedParameterOfAGeneratedMethod() {
         val describe = MethodDef.builder("describe").addModifiers(Modifier.PUBLIC).addParameter("value", TypeDef.STRING).returns(TypeDef.STRING)
@@ -128,7 +125,6 @@ class ReviewKotlinTest {
     }
 
     // `String call(Map m) { return m.get("missing"); }`: the checkcast of the bytecode lets null through, `as String` throws.
-    @Disabled("A platform value that is null returned from a method the model types non-null is cast to the type, which throws")
     @Test
     fun platformNullReturnedFromANonNullMethod() {
         val get = java.util.Map::class.java.getMethod("get", Any::class.java)
@@ -330,7 +326,6 @@ class ReviewKotlinTest {
     // ---- overrides ----
 
     // An implementation of CharSequence: Kotlin maps `charAt` to `get` and `length()` to a property.
-    @Disabled("The Java methods Kotlin renames on its mapped types (CharSequence.charAt is get) are not mapped, only the properties")
     @Test
     fun charSequenceOverride() {
         val text = FieldDef.builder("text", TypeDef.STRING).addModifiers(Modifier.PRIVATE, Modifier.FINAL).initializer(ExpressionDef.constant("abc")).build()
@@ -387,7 +382,6 @@ class ReviewKotlinTest {
     }
 
     // A generated class extended by another generated class must be open, and the overridden method too.
-    @Disabled("A generated class and its methods are final in Kotlin: another generated class cannot extend it")
     @Test
     fun generatedSuperclassIsOpen() {
         val greet = MethodDef.builder("greet").addModifiers(Modifier.PUBLIC).returns(TypeDef.STRING).build { _, _ -> ExpressionDef.constant("a").returning() }
@@ -626,7 +620,6 @@ class ReviewKotlinTest {
     }
 
     // `new String[] {"a", null}` and `new Integer[] {1, null}`: an object array holds null in bytecode; `arrayOf<String>("a", null)` does not compile.
-    @Disabled("An array initializer with a null element is written with a non-null component")
     @Test
     fun objectArrayWithANullElement() {
         val integer = TypeDef.of(Integer::class.java)
@@ -873,7 +866,6 @@ class ReviewKotlinTest {
     // ---- types ----
 
     // A method parameter and return of `java.lang.Integer` keep the boxed JVM signature the bytecode has.
-    @Disabled("Kotlin maps java.lang.Integer to a non-null Int: the JVM signature takes a primitive and null cannot be passed")
     @Test
     fun boxedParameterKeepsItsJvmSignature() {
         val integer = TypeDef.of(Integer::class.java)
@@ -889,7 +881,6 @@ class ReviewKotlinTest {
     }
 
     // A raw `java.util.List` parameter and a raw `Map` return.
-    @Disabled("A raw Java type is written without type arguments, which Kotlin rejects")
     @Test
     fun rawJavaTypes() {
         val list = ClassTypeDef.of(java.util.List::class.java)
@@ -906,7 +897,6 @@ class ReviewKotlinTest {
     }
 
     // `Throwable.getMessage()` is mapped to the property `message`, which is `String?`; the model's call returns a `String` it can return.
-    @Disabled("Throwable.getMessage is mapped to the nullable property message, which a non-null return type cannot hold")
     @Test
     fun throwableMessageReturnedAsAString() {
         val def = ClassDef.builder("test.R43")
@@ -961,7 +951,6 @@ class ReviewKotlinTest {
     }
 
     // A Java method overloaded on `int`, `Integer` and `Object`: the model's overload is the one called.
-    @Disabled("An overload taking a boxed Integer is selected as the Int one: the cast pinning it is written as Int")
     @Test
     fun javaMethodOverloadedOnPrimitiveBoxedAndObject() {
         val integer = TypeDef.of(Integer::class.java)
@@ -1001,7 +990,6 @@ class ReviewKotlinTest {
     }
 
     // An `Integer.valueOf` result compared referentially with another: two boxes of 1000 are not the same object.
-    @Disabled("Locals of a boxed type are typed Int, so === compares values rather than references")
     @Test
     fun referentialEqualityOfBoxedValues() {
         val valueOf = Integer::class.java.getMethod("valueOf", INT)
@@ -1053,7 +1041,6 @@ class ReviewKotlinTest {
     }
 
     // A blank String field returned before anything assigns it, by a method that may return null: the bytecode reads null.
-    @Disabled("A blank field read before it is assigned is lateinit, which throws where the bytecode reads null")
     @Test
     fun unassignedFieldReadBeforeAssignment() {
         val field = FieldDef.builder("text", TypeDef.STRING).addModifiers(Modifier.PRIVATE).build()

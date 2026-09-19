@@ -5,8 +5,8 @@ import kotlin.Any
 import kotlin.String
 import kotlin.collections.List
 
-public class Compatiblelist {
-  public fun call(`value`: List<String>): Any {
+public open class Compatiblelist {
+  public open fun call(`value`: List<String>): Any {
     return GeneratedProgramTest.Calls.list(`value`)
   }
 }

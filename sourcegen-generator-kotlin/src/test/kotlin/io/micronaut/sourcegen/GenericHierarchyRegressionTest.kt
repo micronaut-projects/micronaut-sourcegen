@@ -58,12 +58,12 @@ class GenericHierarchyRegressionTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class NarrowedLibraryCall<T : Number> : Supplier<String> {
+            |public open class NarrowedLibraryCall<T : Number> : Supplier<String> {
             |  public override fun `get`(): String {
             |    return "text"
             |  }
             |
-            |  public fun call(): List<Any> {
+            |  public open fun call(): List<Any> {
             |    return Collections.singletonList((this.`get`() as Any))
             |  }
             |}
@@ -87,8 +87,8 @@ class GenericHierarchyRegressionTest {
             |import java.util.concurrent.ForkJoinTask
             |import kotlin.Any
             |
-            |public class BoundedLibraryCall {
-            |  public fun call(pool: ForkJoinPool, `value`: Any): Any {
+            |public open class BoundedLibraryCall {
+            |  public open fun call(pool: ForkJoinPool, `value`: Any): Any {
             |    return pool.submit(`value` as ForkJoinTask<*>)
             |  }
             |}
@@ -113,8 +113,8 @@ class GenericHierarchyRegressionTest {
             |import kotlin.Int
             |import kotlin.Number
             |
-            |public class InferredArrayCall<T : Number> {
-            |  public fun call(`value`: Any, length: Int): Array<Any> {
+            |public open class InferredArrayCall<T : Number> {
+            |  public open fun call(`value`: Any, length: Int): Array<Any> {
             |    return Arrays.copyOf(`value` as Array<Any>, length) as Array<Any>
             |  }
             |}

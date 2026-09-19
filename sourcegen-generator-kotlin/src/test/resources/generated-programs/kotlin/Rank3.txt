@@ -5,8 +5,8 @@ import kotlin.Any
 import kotlin.Array
 import kotlin.CharSequence
 
-public class Rank3 {
-  public fun call(`value`: Array<Array<Array<Any>>>): Any {
+public open class Rank3 {
+  public open fun call(`value`: Array<Array<Array<Any>>>): Any {
     return GeneratedProgramTest.Calls.array3(`value` as Array<Array<Array<CharSequence>>>)
   }
 }

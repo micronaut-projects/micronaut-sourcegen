@@ -6,16 +6,16 @@ import kotlin.Any
 import kotlin.Boolean
 import kotlin.String
 
-public class ComposedSmartCastconditional {
-  public fun choose(`value`: Any): String {
+public open class ComposedSmartCastconditional {
+  public open fun choose(`value`: Any): String {
     return "object"
   }
 
-  public fun choose(`value`: Serializable): String {
+  public open fun choose(`value`: Serializable): String {
     return "serializable"
   }
 
-  public fun call(flag: Boolean, `value`: Any): String {
+  public open fun call(flag: Boolean, `value`: Any): String {
     ConversionProgramRegressionTest.Calls.serializable(`value` as Serializable)
     return this.choose((if (flag) `value` else `value` as Any))
   }

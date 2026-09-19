@@ -73,7 +73,7 @@ class GenericOverrideRegressionTest {
                 |import java.util.function.Supplier
                 |import kotlin.CharSequence
                 |
-                |public class DependentTarget<A : CharSequence, T : A> : Supplier<T> {
+                |public open class DependentTarget<A : CharSequence, T : A> : Supplier<T> {
                 |  public override fun `get`(): T {
                 |    return "text" as T
                 |  }
@@ -87,8 +87,8 @@ class GenericOverrideRegressionTest {
                 |import kotlin.Int
                 |import kotlin.String
                 |
-                |public class DependentCaller {
-                |  public fun call(target: DependentTarget<in String, in String>): String {
+                |public open class DependentCaller {
+                |  public open fun call(target: DependentTarget<in String, in String>): String {
                 |    return DependentCaller.choose((target.`get`() as Any))
                 |  }
                 |
@@ -122,7 +122,7 @@ class GenericOverrideRegressionTest {
             |
             |import java.util.function.Function
             |
-            |public class VariableValue<T, V> : Function<V, T> {
+            |public open class VariableValue<T, V> : Function<V, T> {
             |  public override fun apply(`value`: V): T {
             |    return `value` as T
             |  }
@@ -158,7 +158,7 @@ class GenericOverrideRegressionTest {
                 |
                 |import kotlin.collections.List
                 |
-                |public class GenericChild<T> : GenericParent<List<T>?>() {
+                |public open class GenericChild<T> : GenericParent<List<T>?>() {
                 |  public override fun `get`(): List<T>? {
                 |    return null as List<T>?
                 |  }

@@ -4,8 +4,8 @@ import java.lang.StringBuilder
 import kotlin.Any
 import kotlin.CharSequence
 
-public class TypedConstructor {
-  public fun create(`value`: Any): StringBuilder {
+public open class TypedConstructor {
+  public open fun create(`value`: Any): StringBuilder {
     return StringBuilder(`value` as CharSequence?)
   }
 }

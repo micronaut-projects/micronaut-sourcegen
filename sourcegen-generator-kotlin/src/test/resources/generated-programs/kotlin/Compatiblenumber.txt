@@ -4,8 +4,8 @@ import io.micronaut.sourcegen.GeneratedProgramTest
 import kotlin.Any
 import kotlin.Int
 
-public class Compatiblenumber {
-  public fun call(`value`: Int): Any {
+public open class Compatiblenumber {
+  public open fun call(`value`: Int): Any {
     return GeneratedProgramTest.Calls.number(`value`)
   }
 }

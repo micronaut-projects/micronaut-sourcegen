@@ -53,11 +53,11 @@ class GenericConversionScopeRegressionTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class VariableArgument<T : List<Any>, V : List<String>> : Consumer<T> {
+            |public open class VariableArgument<T : List<Any>, V : List<String>> : Consumer<T> {
             |  public override fun accept(`value`: T) {
             |  }
             |
-            |  public fun call(`value`: V) {
+            |  public open fun call(`value`: V) {
             |    this.accept(`value` as T)
             |  }
             |}
@@ -80,7 +80,7 @@ class GenericConversionScopeRegressionTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class VariableReturn<T : List<Any>, V : List<String>> : Function<V, T> {
+            |public open class VariableReturn<T : List<Any>, V : List<String>> : Function<V, T> {
             |  public override fun apply(`value`: V): T {
             |    return `value` as T
             |  }
@@ -107,11 +107,11 @@ class GenericConversionScopeRegressionTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class VariableReferenceArgument<T : List<Any>, V : List<String>> : Consumer<T> {
+            |public open class VariableReferenceArgument<T : List<Any>, V : List<String>> : Consumer<T> {
             |  public override fun accept(`value`: T) {
             |  }
             |
-            |  public fun `delegate`(): Consumer<V> {
+            |  public open fun `delegate`(): Consumer<V> {
             |    return Consumer<V> { arg0 -> this.accept(arg0 as T) }
             |  }
             |}
@@ -142,7 +142,7 @@ class GenericConversionScopeRegressionTest {
             |import kotlin.String
             |import kotlin.collections.List
             |
-            |public class NarrowedArgument<T : List<Any>> : Supplier<List<String>>, Consumer<T> {
+            |public open class NarrowedArgument<T : List<Any>> : Supplier<List<String>>, Consumer<T> {
             |  public override fun `get`(): List<String> {
             |    return ArrayList()
             |  }
@@ -150,7 +150,7 @@ class GenericConversionScopeRegressionTest {
             |  public override fun accept(`value`: T) {
             |  }
             |
-            |  public fun call() {
+            |  public open fun call() {
             |    this.accept((this.`get`() as T))
             |  }
             |}

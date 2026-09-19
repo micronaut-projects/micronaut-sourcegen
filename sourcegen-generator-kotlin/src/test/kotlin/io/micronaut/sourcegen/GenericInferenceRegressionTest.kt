@@ -49,8 +49,8 @@ class GenericInferenceRegressionTest {
             |import kotlin.Any
             |import kotlin.CharSequence
             |
-            |public class ChainedCall {
-            |  public fun call(`value`: Any): Any {
+            |public open class ChainedCall {
+            |  public open fun call(`value`: Any): Any {
             |    return GenericInferenceRegressionTest.Calls.chained(`value` as CharSequence)
             |  }
             |}
@@ -72,8 +72,8 @@ class GenericInferenceRegressionTest {
             |import kotlin.Any
             |import kotlin.Comparable
             |
-            |public class RecursiveCall {
-            |  public fun call(`value`: Any): Any {
+            |public open class RecursiveCall {
+            |  public open fun call(`value`: Any): Any {
             |    return GenericInferenceRegressionTest.Calls.recursive(`value` as Comparable<Any>)
             |  }
             |}
@@ -96,8 +96,8 @@ class GenericInferenceRegressionTest {
             |import kotlin.Any
             |import kotlin.CharSequence
             |
-            |public class IntersectionCall {
-            |  public fun call(`value`: Any): Any {
+            |public open class IntersectionCall {
+            |  public open fun call(`value`: Any): Any {
             |    return GenericInferenceRegressionTest.Calls.intersection(run {
             |      `value` as CharSequence
             |      `value` as Runnable
@@ -127,8 +127,8 @@ class GenericInferenceRegressionTest {
             |import kotlin.Any
             |import kotlin.Boolean
             |
-            |public class ConditionalBoundCall {
-            |  public fun call(
+            |public open class ConditionalBoundCall {
+            |  public open fun call(
             |    pool: ForkJoinPool,
             |    flag: Boolean,
             |    left: Any,
@@ -158,8 +158,8 @@ class GenericInferenceRegressionTest {
             |import kotlin.Any
             |import kotlin.String
             |
-            |public class ReceiverBoundCall {
-            |  public fun call(target: GenericInferenceRegressionTest.Receiver<String>, `value`: Any): Any {
+            |public open class ReceiverBoundCall {
+            |  public open fun call(target: GenericInferenceRegressionTest.Receiver<String>, `value`: Any): Any {
             |    return target.identity(`value` as String)
             |  }
             |}
@@ -182,8 +182,8 @@ class GenericInferenceRegressionTest {
             |import kotlin.Comparable
             |import kotlin.collections.List
             |
-            |public class RecursiveCollectionCall {
-            |  public fun call(`value`: Any): Any {
+            |public open class RecursiveCollectionCall {
+            |  public open fun call(`value`: Any): Any {
             |    return GenericInferenceRegressionTest.Calls.recursiveList(`value` as List<Comparable<Any>>)
             |  }
             |}
