@@ -703,7 +703,7 @@ final class JdkMethodWriter {
         List<VariableDef> captured = captureVariables(lambda.implementation());
         List<ParameterDef> parameters = new ArrayList<>();
         for (VariableDef variable : captured) {
-            parameters.add(ParameterDef.builder(captureName(variable), variable.type()).build());
+            parameters.add(ParameterDef.builder(captureName(variable), capturedType(variable)).build());
         }
         parameters.addAll(lambda.implementation().getParameters());
         MethodDef implementation = MethodDef.builder("lambda$" + lambdaOwnerName(methodDef) + "$" + lambdaMethods.size())
@@ -725,7 +725,7 @@ final class JdkMethodWriter {
         MethodHandleDesc implementationHandle = MethodHandleDesc.ofMethod(DirectMethodHandleDesc.Kind.STATIC,
             owner, implementation.getName(), methodType(implementation));
         DynamicCallSiteDesc callSite = DynamicCallSiteDesc.of(bootstrap, lambda.target().getName(),
-            methodType(captured.stream().map(VariableDef::type).toList(), lambda.type()),
+            methodType(captured.stream().map(this::capturedType).toList(), lambda.type()),
             methodType(lambda.target()), implementationHandle, methodType(lambda.implementation()));
         code.invokedynamic(callSite);
     }
@@ -735,6 +735,14 @@ final class JdkMethodWriter {
      * initializers are named {@code <init>} and {@code <clinit>}, which are not valid in a member
      * name, so use the same {@code new} and {@code static} placeholders that javac does.
      */
+    /**
+     * The type a lambda captures a variable as. `super` is the receiver: the special call the body makes on it is only
+     * verified for a value of the class that makes it, not of its superclass.
+     */
+    private TypeDef capturedType(VariableDef variable) {
+        return variable instanceof VariableDef.Super ? objectDef.asTypeDef() : variable.type();
+    }
+
     private static String lambdaOwnerName(MethodDef methodDef) {
         return switch (methodDef.getName()) {
             case MethodDef.CONSTRUCTOR -> "new";
@@ -745,8 +753,22 @@ final class JdkMethodWriter {
 
     private void writeMethodReference(MethodReferenceExpression methodReference) {
         ExpressionDef instance = methodReference.instance();
+        if (instance instanceof VariableDef.Super superInstance) {
+            // `super::name` is the method of the superclass, which a handle on it would dispatch past: javac writes a
+            // lambda that makes the special call, and so does this
+            writeLambda(methodReference.type().getLambda().implement((aThis, parameters) -> {
+                ExpressionDef.InvokeInstanceMethod call = superInstance.invoke(methodReference.method(), parameters);
+                return TypeDef.VOID.equals(methodReference.method().getReturnType()) ? call : call.returning();
+            }));
+            return;
+        }
         if (instance != null) {
             writeExpression(instance);
+            if (!(instance instanceof VariableDef.This)) {
+                // A bound reference checks its receiver where it is created, as `target::apply` does in source
+                code.dup().invokestatic(ClassDesc.of("java.util.Objects"), "requireNonNull",
+                    MethodTypeDesc.of(ConstantDescs.CD_Object, ConstantDescs.CD_Object)).pop();
+            }
         }
         ClassDesc referencedOwner = classDesc(ObjectDef.getContextualType(objectDef, methodReference.owner()));
         DirectMethodHandleDesc.Kind handleKind;

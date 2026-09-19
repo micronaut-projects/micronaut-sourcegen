@@ -24,6 +24,7 @@ import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
@@ -51,8 +52,21 @@ final class MethodReferenceExpressionWriter extends AbstractStatementAwareExpres
         ObjectDef objectDef = context.objectDef();
         // A bound reference captures its receiver, which is the sole argument of the call site
         ExpressionDef instance = methodReference.instance();
+        if (instance instanceof VariableDef.Super superInstance) {
+            // `super::name` is the method of the superclass, which a handle on it would dispatch past: javac writes a
+            // lambda that makes the special call, and so does this
+            ExpressionWriter.writeExpression(generatorAdapter, context, asSuperCall(methodReference, superInstance));
+            return;
+        }
         if (instance != null) {
             ExpressionWriter.writeExpression(generatorAdapter, context, instance);
+            if (!(instance instanceof VariableDef.This)) {
+                // A bound reference checks its receiver where it is created, as `target::apply` does in source
+                generatorAdapter.dup();
+                generatorAdapter.invokeStatic(Type.getType(java.util.Objects.class),
+                    new org.objectweb.asm.commons.Method("requireNonNull", "(Ljava/lang/Object;)Ljava/lang/Object;"));
+                generatorAdapter.pop();
+            }
         }
 
         MethodDef referenced = methodReference.method();
@@ -77,6 +91,18 @@ final class MethodReferenceExpressionWriter extends AbstractStatementAwareExpres
             Type.getType(TypeUtils.getMethodDescriptor(objectDef, methodReference.instantiated()))
         );
         popValueIfNeeded(generatorAdapter, methodReference.type());
+    }
+
+    /**
+     * @param reference     A reference through `super`
+     * @param superInstance Its receiver
+     * @return The lambda that calls the method on `super`
+     */
+    static ExpressionDef asSuperCall(MethodReferenceExpression reference, VariableDef.Super superInstance) {
+        return reference.type().getLambda().implement((aThis, parameters) -> {
+            ExpressionDef.InvokeInstanceMethod call = superInstance.invoke(reference.method(), parameters);
+            return TypeDef.VOID.equals(reference.method().getReturnType()) ? call : call.returning();
+        });
     }
 
     private int handleTag(boolean ownerIsInterface) {

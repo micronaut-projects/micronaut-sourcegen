@@ -88,7 +88,8 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
         var objectDef = Objects.requireNonNull(context.objectDef(), "Object definition is required for lambda generation");
         StringBuilder dynamicDescriptor = new StringBuilder("(");
         for (VariableDef variable : capturedVariables) {
-            dynamicDescriptor.append(TypeUtils.getType(variable.type(), objectDef));
+            // `super` is the receiver: the special call made on it is only verified for a value of the class making it
+            dynamicDescriptor.append(TypeUtils.getType(variable instanceof VariableDef.Super ? objectDef.asTypeDef() : variable.type(), objectDef));
         }
         dynamicDescriptor.append(")");
         dynamicDescriptor.append(TypeUtils.getType(lambda.type(), objectDef).getDescriptor());
@@ -109,8 +110,8 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
                 parameters.add(ParameterDef.builder(field.name(), field.type()).build());
             } else if (variable instanceof VariableDef.This thisVar) {
                 parameters.add(ParameterDef.builder(THIS_VAR_NAME, thisVar.type()).build());
-            } else if (variable instanceof VariableDef.Super superVar) {
-                parameters.add(ParameterDef.builder(SUPER_VAR_NAME, superVar.type()).build());
+            } else if (variable instanceof VariableDef.Super) {
+                parameters.add(ParameterDef.builder(SUPER_VAR_NAME, Objects.requireNonNull(context.objectDef()).asTypeDef()).build());
             } else if (variable instanceof VariableDef.ExceptionVar exception) {
                 parameters.add(ParameterDef.builder(EXCEPTION_VAR_NAME, exception.type()).build());
             }

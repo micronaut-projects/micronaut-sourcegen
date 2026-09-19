@@ -1434,6 +1434,46 @@ public abstract class ByteCodeWriterTck {
         assertNull(cls.getMethod("call").invoke(cls.getConstructor().newInstance()));
     }
 
+    /**
+     * A bound reference checks its receiver where it is created, as `target::apply` does in source, not where the
+     * reference is invoked.
+     *
+     * @throws Exception If the generated class cannot be used
+     * @since 2.2.2
+     */
+    @Test
+    public void boundReferenceRejectsANullReceiverWhereItIsCreated() throws Exception {
+        var function = TypeDef.parameterized(Function.class, Object.class, Object.class);
+        var apply = Function.class.getMethod("apply", Object.class);
+        var def = ClassDef.builder("test.NullReceiverReference").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("reference").addModifiers(Modifier.PUBLIC).addParameter("target", function).returns(function)
+                .build((self, p) -> function.methodReference(p.getFirst(), MethodDef.of(apply)).returning())).build();
+        var cls = loadPrograms(def).loadClass(def.getName());
+        var error = assertThrows(java.lang.reflect.InvocationTargetException.class,
+            () -> cls.getMethod("reference", Function.class).invoke(cls.getConstructor().newInstance(), new Object[]{null}));
+        assertInstanceOf(NullPointerException.class, error.getCause());
+    }
+
+    /**
+     * A reference through `super` calls the method of the superclass, not the override of the class that creates it.
+     *
+     * @throws Exception If the generated class cannot be used
+     * @since 2.2.2
+     */
+    @Test
+    public void superReferenceCallsTheMethodOfTheSuperclass() throws Exception {
+        var supplier = TypeDef.parameterized(java.util.function.Supplier.class, String.class);
+        var name = NamedParent.class.getMethod("name");
+        var def = ClassDef.builder("test.SuperReference").addModifiers(Modifier.PUBLIC).superclass(ClassTypeDef.of(NamedParent.class))
+            .addMethod(MethodDef.builder("name").addModifiers(Modifier.PUBLIC).overrides().returns(String.class)
+                .build((self, p) -> ExpressionDef.constant("child").returning()))
+            .addMethod(MethodDef.builder("reference").addModifiers(Modifier.PUBLIC).returns(supplier)
+                .build((self, p) -> supplier.methodReference(self.superRef(ClassTypeDef.of(NamedParent.class)), MethodDef.of(name)).returning())).build();
+        var cls = loadPrograms(def).loadClass(def.getName());
+        var reference = (java.util.function.Supplier<?>) cls.getMethod("reference").invoke(cls.getConstructor().newInstance());
+        assertEquals("parent", reference.get());
+    }
+
     private MapClassLoader loadPrograms(ObjectDef... definitions) {
         var classes = new LinkedHashMap<String, byte[]>();
         for (var definition : definitions) {
@@ -1473,6 +1513,20 @@ public abstract class ByteCodeWriterTck {
             .addParameter("right", type)
             .returns(TypeDef.Primitive.BOOLEAN)
             .build((ignored, parameters) -> parameters.get(0).compare(operation, parameters.get(1)).returning());
+    }
+
+    /**
+     * A superclass with a method to refer to through `super`.
+     *
+     * @since 2.2.2
+     */
+    public static class NamedParent {
+        /**
+         * @return The name
+         */
+        public String name() {
+            return "parent";
+        }
     }
 
     private static final class MapClassLoader extends ClassLoader {
