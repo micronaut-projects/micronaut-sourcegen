@@ -94,14 +94,20 @@ final class MethodReferenceExpressionWriter extends AbstractStatementAwareExpres
     }
 
     /**
+     * A reference through `super` as the lambda that makes the special call.
+     *
      * @param reference     A reference through `super`
      * @param superInstance Its receiver
      * @return The lambda that calls the method on `super`
      */
     static ExpressionDef asSuperCall(MethodReferenceExpression reference, VariableDef.Super superInstance) {
+        // The functional method decides whether the result is returned: `Runnable r = super::name` discards it
+        boolean returns = !TypeDef.VOID.equals(reference.type().getLambda().getImplementation().getReturnType());
+        // `Iface.super::m` calls the default method of an interface, which is linked as an interface method
+        boolean onInterface = superInstance.type() instanceof ClassTypeDef superType && superType.isInterface();
         return reference.type().getLambda().implement((aThis, parameters) -> {
-            ExpressionDef.InvokeInstanceMethod call = superInstance.invoke(reference.method(), parameters);
-            return TypeDef.VOID.equals(reference.method().getReturnType()) ? call : call.returning();
+            ExpressionDef.InvokeInstanceMethod call = new ExpressionDef.InvokeInstanceMethod(superInstance, reference.method(), onInterface, parameters);
+            return returns ? call.returning() : call;
         });
     }
 

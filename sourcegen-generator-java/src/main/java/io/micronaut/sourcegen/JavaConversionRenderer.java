@@ -81,7 +81,9 @@ final class JavaConversionRenderer {
                                              MethodReferenceExpression reference,
                                              ExpressionDef instance) {
         OverrideResolver.ReferenceAdaptation adaptation = OverrideResolver.adaptReference(
-            ownerOf(objectDef, instance.type()), objectDef, methodDef, reference, JavaPoetNames.context(), false);
+            ownerOf(objectDef, methodDef, instance.type(), reference.method().getName(),
+                reference.method().getParameters().stream().map(ParameterDef::getType).toList()),
+            objectDef, methodDef, reference, JavaPoetNames.context(), false);
         if (adaptation == null) {
             adaptation = boundReference(objectDef, reference, instance);
         }
@@ -115,7 +117,12 @@ final class JavaConversionRenderer {
             call = CodeBlock.of("($T) $L", generator.asType(adaptation.resultBound(), objectDef, methodDef), call);
         }
         if (adaptation.resultType() != null) {
-            call = CodeBlock.of("($T) $L", generator.asType(adaptation.resultType(), objectDef, methodDef), call);
+            TypeDef.Primitive unboxed = unboxedResult(reference, adaptation.resultType());
+            // A numeric result is unboxed through `Number`, as the call site of the reference unboxes it: a cast to the
+            // wrapper of the primitive would reject a `Long` returned for an `int`
+            call = unboxed != null
+                ? CodeBlock.of("(($T) $L).$LValue()", Number.class, call, unboxed.name())
+                : CodeBlock.of("($T) $L", generator.asType(adaptation.resultType(), objectDef, methodDef), call);
         }
         CodeBlock lambda = CodeBlock.of("($L) -> $L", CodeBlock.join(parameters, ", "), call);
         if (!captured) {
@@ -126,8 +133,71 @@ final class JavaConversionRenderer {
             isNullLiteral(instance) ? CodeBlock.of("($T) null", generator.asType(instance.type(), objectDef, methodDef))
                 : generator.renderExpression(objectDef, methodDef, scope, instance), functional, receiver, lambda);
         // A lambda returning a raw type makes `map` an unchecked invocation, whose result is erased
-        return adaptation.resultType() != null && JavaPoetSourceGenerator.isRawGeneric(adaptation.resultType())
+        return adaptation.resultType() != null && JavaExpressionRules.isRawGeneric(adaptation.resultType())
             ? CodeBlock.of("($T) $L", functional, read) : read;
+    }
+
+    /**
+     * The numeric primitive the functional interface of a reference returns, where the adapted result is its wrapper.
+     */
+    private static TypeDef.@Nullable Primitive unboxedResult(MethodReferenceExpression reference, TypeDef resultType) {
+        TypeDef functionalReturn;
+        try {
+            functionalReturn = TypeHierarchy.unwrap(reference.type().getLambda().getImplementation().getReturnType());
+        } catch (RuntimeException e) {
+            return null;
+        }
+        return functionalReturn instanceof TypeDef.Primitive primitive && primitive.isNumber()
+            && primitive.wrapperType().equals(TypeHierarchy.unwrap(resultType)) ? primitive : null;
+    }
+
+    /**
+     * A static or constructor reference to an overloaded method, as a lambda casting the values the functional
+     * interface passes to the parameters of the model: `String::valueOf` names the overload javac finds most
+     * specific for the interface, where the model names another.
+     */
+    @Nullable
+    CodeBlock renderPinnedReference(@Nullable ObjectDef objectDef,
+                                    @Nullable MethodDef methodDef,
+                                    RenderScope scope,
+                                    MethodReferenceExpression reference) {
+        MethodDef method = reference.method();
+        ClassTypeDef owner = reference.owner();
+        List<TypeDef> parameterTypes = method.getParameters().stream().map(ParameterDef::getType).toList();
+        List<TypeDef> passed;
+        try {
+            MethodDef functional = reference.type().getLambda().getImplementation();
+            if (!functional.getTypeVariables().isEmpty()) {
+                // A generic functional method has no lambda
+                return null;
+            }
+            passed = functional.getParameters().stream().map(ParameterDef::getType).toList();
+        } catch (RuntimeException e) {
+            // A functional interface known only by name has no members to read
+            return null;
+        }
+        String name = reference.isConstructor() ? MethodDef.CONSTRUCTOR : method.getName();
+        if (passed.size() != parameterTypes.size()
+            || !hasApplicableOverload(owner, OverrideResolver.definitionOf(owner, objectDef), name, parameterTypes, new ArrayList<>(passed))) {
+            return null;
+        }
+        RenderScope lambdaScope = scope.nested(null);
+        List<CodeBlock> parameters = new ArrayList<>();
+        List<CodeBlock> arguments = new ArrayList<>();
+        for (int i = 0; i < parameterTypes.size(); i++) {
+            String argument = lambdaScope.allocate("arg");
+            lambdaScope.declare(argument);
+            parameters.add(CodeBlock.of("$L", argument));
+            TypeDef parameterType = parameterTypes.get(i);
+            arguments.add(pinsOverload(parameterType, passed.get(i), method.getTypeVariables())
+                ? CodeBlock.of("($T) $L", generator.asType(parameterType instanceof ClassTypeDef.Parameterized parameterized
+                    ? parameterized.rawType() : parameterType, objectDef, methodDef), argument)
+                : CodeBlock.of("$L", argument));
+        }
+        CodeBlock call = reference.isConstructor()
+            ? CodeBlock.of("new $T($L)", generator.asType(owner, objectDef, methodDef), CodeBlock.join(arguments, ", "))
+            : CodeBlock.of("$T.$L($L)", generator.asType(owner, objectDef, methodDef), method.getName(), CodeBlock.join(arguments, ", "));
+        return CodeBlock.of("($L) -> $L", CodeBlock.join(parameters, ", "), call);
     }
 
     /**
@@ -139,8 +209,8 @@ final class JavaConversionRenderer {
                                                                           MethodReferenceExpression reference,
                                                                           ExpressionDef instance) {
         MethodDef method = reference.method();
-        ClassTypeDef owner = ownerOf(objectDef, instance.type());
         List<TypeDef> parameterTypes = method.getParameters().stream().map(ParameterDef::getType).toList();
+        ClassTypeDef owner = ownerOf(objectDef, null, instance.type(), method.getName(), parameterTypes);
         List<TypeDef> passed;
         try {
             passed = reference.type().getLambda().getImplementation().getParameters().stream().map(ParameterDef::getType).toList();

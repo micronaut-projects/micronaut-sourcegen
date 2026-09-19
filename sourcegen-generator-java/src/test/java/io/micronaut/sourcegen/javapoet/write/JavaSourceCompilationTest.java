@@ -3108,7 +3108,6 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
             """
             package test;
 
-            import java.lang.Integer;
             import java.lang.Number;
             import java.lang.Object;
             import java.util.function.Function;
@@ -3124,7 +3123,7 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
               }
 
               public ToIntFunction<Object> asIntFunction() {
-                return (arg) -> (Integer) this.apply((Number) arg);
+                return (arg) -> ((Number) this.apply((Number) arg)).intValue();
               }
             }
             """, source);

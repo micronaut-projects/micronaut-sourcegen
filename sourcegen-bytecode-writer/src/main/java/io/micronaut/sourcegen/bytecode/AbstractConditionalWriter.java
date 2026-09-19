@@ -125,7 +125,6 @@ public abstract class AbstractConditionalWriter {
         };
     }
 
-
     private static void pushElseCondition(GeneratorAdapter generatorAdapter,
                                           MethodContext context,
                                           ExpressionDef.ConditionExpressionDef conditionExpressionDef,

@@ -21,6 +21,7 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.javapoet.ClassName;
 import io.micronaut.sourcegen.javapoet.TypeName;
 import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
@@ -210,5 +211,45 @@ final class JavaPoetNames {
             .filter(variable -> implementation.getTypeVariables().stream().noneMatch(own -> own.name().equals(variable.name())))
             .forEach(builder::addTypeVariable);
         return builder.build();
+    }
+
+    /**
+     * Converts a {@link ClassTypeDef} into a JavaPoet {@link ClassName}.
+     *
+     * <p>For an inner type the split is taken from the binary name ({@link ClassTypeDef#getName()}),
+     * which is unambiguous; {@link ClassTypeDef#getCanonicalName()} cannot be used because it
+     * rewrites {@code $} to {@code .}.
+     *
+     * @param classTypeDef The class type definition
+     * @return The class name
+     */
+    static ClassName asClassType(ClassTypeDef classTypeDef) {
+        if (classTypeDef.isInner()) {
+            String binaryName = classTypeDef.getName();
+            // The separator is the first '$' of the simple name that is not its first character, so that
+            // an enclosing type following the generated `$Foo` convention is not split in the middle
+            int simpleNameStart = binaryName.lastIndexOf('.') + 1;
+            int i = binaryName.indexOf('$', simpleNameStart + 1);
+            if (i != -1) {
+                String enclosing = binaryName.substring(0, i);
+                String[] nested = binaryName.substring(i + 1).split("\\$", -1);
+                return ClassName.get(packageNameOf(enclosing), simpleNameOf(enclosing), nested);
+            }
+        }
+        ClassName nested = resolveNestedClassName(classTypeDef.getName());
+        if (nested != null) {
+            return nested;
+        }
+        return asClassName(classTypeDef.getCanonicalName());
+    }
+
+    static String getClassName(TypeDef typeDef) {
+        return switch (typeDef) {
+            case ClassTypeDef classType -> asClassType(classType).canonicalName();
+            case TypeDef.Primitive primitive -> primitive.name();
+            case TypeDef.Array array -> getClassName(array.componentType()) + "[]".repeat(array.dimensions());
+            case null, default ->
+                throw new IllegalStateException("Unrecognized type def: " + typeDef);
+        };
     }
 }

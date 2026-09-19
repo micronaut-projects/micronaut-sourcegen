@@ -2,6 +2,7 @@ package test;
 
 import io.micronaut.sourcegen.javapoet.write.UncoveredShapeProgramTest;
 import java.lang.String;
+import java.lang.StringBuilder;
 import java.lang.annotation.RetentionPolicy;
 
 @UncoveredShapeProgramTest.Members(

@@ -485,6 +485,22 @@ public final class TypeHierarchy {
         return bound;
     }
 
+    /**
+     * The bounds of a variable a compiled or compiling method declares, as its erasure sees them: javac erases a
+     * variable to its leftmost bound, so one declared as {@code Collections.max} declares its own - bounded by
+     * {@code Object} and then {@code Comparable} - erases to {@code Object}, and keeps only that bound here. A variable of the model
+     * lists {@code Object} ahead of the bound it erases to, which {@link #erasureBound(List)} skips.
+     *
+     * @param bounds The declared bounds
+     * @return The bounds the erasure sees
+     */
+    private static List<TypeDef> declaredBounds(List<TypeDef> bounds) {
+        if (!bounds.isEmpty() && unwrap(bounds.get(0)) instanceof ClassTypeDef first && first.getName().equals(TypeDef.OBJECT.getName())) {
+            return List.of(bounds.get(0));
+        }
+        return bounds;
+    }
+
     private static TypeDef erase(TypeDef type, @Nullable TypeInfo boundOwner, TypeInfo owner) {
         TypeDef unwrapped = unwrap(type);
         if (TypeDef.THIS.equals(unwrapped)) {
@@ -780,7 +796,7 @@ public final class TypeHierarchy {
                         !java.lang.reflect.Modifier.isPublic(modifiers)
                             && !java.lang.reflect.Modifier.isProtected(modifiers),
                         Arrays.stream(method.getTypeParameters()).map(variable -> TypeDef.variable(variable.getName(),
-                            Arrays.stream(variable.getBounds()).map(ReflectionInfo::convert).toList())).toList());
+                            declaredBounds(Arrays.stream(variable.getBounds()).map(ReflectionInfo::convert).toList()))).toList());
                 }).toList();
         }
 
@@ -890,7 +906,7 @@ public final class TypeHierarchy {
                 TypeDef.erasure(method.getReturnType()), TypeDef.of(method.getGenericReturnType(), ignore -> null, false),
                 method.isFinal(), !method.isPublic() && !method.isProtected(),
                 method.getDeclaredTypeVariables().stream().map(variable -> TypeDef.variable(variable.getVariableName(),
-                    variable.getBounds().stream().map(bound -> TypeDef.of(bound, ignore -> null, false)).toList())).toList());
+                    declaredBounds(variable.getBounds().stream().map(bound -> TypeDef.of(bound, ignore -> null, false)).toList()))).toList());
         }
     }
 }

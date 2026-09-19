@@ -203,6 +203,7 @@ public class RecordWriteTest {
         package test;
 
         import jackson.annotation.JsonSubTypes;
+        import java.lang.String;
 
         @JsonSubTypes.Type(
             value = String.class,

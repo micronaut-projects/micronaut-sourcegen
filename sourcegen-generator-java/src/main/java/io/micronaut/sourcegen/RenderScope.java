@@ -18,6 +18,7 @@ package io.micronaut.sourcegen;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ParameterDef;
+import io.micronaut.sourcegen.model.TypeDef;
 import org.jspecify.annotations.Nullable;
 
 import java.util.LinkedHashMap;
@@ -43,15 +44,42 @@ final class RenderScope {
     private final MethodDef owner;
     private final Map<String, String> renames = new LinkedHashMap<>();
     private final Set<String> taken = new LinkedHashSet<>();
+    /**
+     * The type a `return` of the model yields, inside the block of a switch expression case, or {@code null}.
+     */
+    @Nullable
+    private final TypeDef yieldType;
 
     private RenderScope(@Nullable RenderScope parent, @Nullable MethodDef owner) {
+        // A block of the same method yields as the enclosing one; a lambda body returns of its own
+        this(parent, owner, parent != null && owner == null ? parent.yieldType : null);
+    }
+
+    private RenderScope(@Nullable RenderScope parent, @Nullable MethodDef owner, @Nullable TypeDef yieldType) {
         this.parent = parent;
         this.owner = owner;
+        this.yieldType = yieldType;
         if (owner != null) {
             for (ParameterDef parameter : owner.getParameters()) {
                 taken.add(parameter.getName());
             }
         }
+    }
+
+    /**
+     * @param type The type the block of a switch expression case yields
+     * @return A scope nested in this one, in which a `return` of the model yields the value
+     */
+    RenderScope yielding(TypeDef type) {
+        return new RenderScope(this, null, type);
+    }
+
+    /**
+     * @return The type a `return` yields in this scope, or {@code null} outside the block of a switch expression case
+     */
+    @Nullable
+    TypeDef yieldType() {
+        return yieldType;
     }
 
     /**

@@ -17,17 +17,21 @@ package io.micronaut.sourcegen;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.sourcegen.model.ClassDef;
+import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.FieldDef;
+import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * What Java makes of a statement: whether it can complete normally, whether it has to be written as a statement of
@@ -114,6 +118,47 @@ final class JavaSourceRules {
         return assignment.definite() && !assignment.repeatable();
     }
 
+    /**
+     * Whether a final instance field of the definition is assigned as Java requires of one: by its initializer and no
+     * constructor, or, blank, exactly once by every constructor that does not delegate to another - which is what lets
+     * the field keep its {@code final} modifier. A model written for bytecode can assign it in one constructor of
+     * several, or conditionally, which the verifier accepts.
+     *
+     * @param objectDef The definition
+     * @param field     The field
+     * @return true if the field keeps its {@code final} modifier
+     */
+    static boolean keepsFinal(ObjectDef objectDef, FieldDef field) {
+        List<MethodDef> constructors = objectDef.getMethods().stream().filter(MethodDef::isConstructor).toList();
+        Predicate<StatementDef> assigns = statement -> statement instanceof StatementDef.PutField put
+            && put.field().name().equals(field.getName()) && put.field().instance() instanceof VariableDef.This;
+        if (field.getInitializer().isPresent()) {
+            return constructors.stream().noneMatch(constructor -> assignmentOf(bodyOf(constructor), assigns).possible());
+        }
+        if (constructors.isEmpty()) {
+            return false;
+        }
+        for (MethodDef constructor : constructors) {
+            Assignment assignment = assignmentOf(bodyOf(constructor), assigns);
+            if (delegates(constructor) ? assignment.possible() : !assignment.definite() || assignment.repeatable()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static StatementDef bodyOf(MethodDef method) {
+        return StatementDef.multi(method.getStatements());
+    }
+
+    /**
+     * Whether a constructor delegates to another of the class, which assigns the final fields for it.
+     */
+    private static boolean delegates(MethodDef constructor) {
+        return constructor.getStatements().stream().anyMatch(statement -> statement instanceof ExpressionDef.InvokeInstanceMethod invocation
+            && invocation.method().isConstructor() && invocation.instance() instanceof VariableDef.This);
+    }
+
     static boolean declaresLocal(@Nullable StatementDef statement, String name) {
         return switch (statement) {
             case null -> false;
@@ -134,20 +179,24 @@ final class JavaSourceRules {
     }
 
     private static Assignment assignmentOf(@Nullable StatementDef statement, String ownerName, String fieldName) {
+        // A field of another type shares nothing with this one but its name
+        return assignmentOf(statement, child -> child instanceof StatementDef.PutStaticField put
+            && put.field().name().equals(fieldName) && put.field().ownerType().getName().equals(ownerName));
+    }
+
+    private static Assignment assignmentOf(@Nullable StatementDef statement, Predicate<StatementDef> assigns) {
         return switch (statement) {
             case null -> Assignment.NONE;
             // No path completes normally past it, so the field is as assigned as it needs to be there
             case StatementDef.Throw aThrow -> Assignment.VACUOUS;
-            case StatementDef.PutStaticField put ->
-                // A field of another type shares nothing with this one but its name
-                put.field().name().equals(fieldName) && put.field().ownerType().getName().equals(ownerName)
-                    ? Assignment.ONCE : Assignment.NONE;
+            case StatementDef.PutStaticField put -> assigns.test(put) ? Assignment.ONCE : Assignment.NONE;
+            case StatementDef.PutField put -> assigns.test(put) ? Assignment.ONCE : Assignment.NONE;
             case StatementDef.Multi multi -> {
                 boolean definite = false;
                 boolean possible = false;
                 boolean repeatable = false;
                 for (StatementDef child : multi.statements()) {
-                    Assignment assignment = assignmentOf(child, ownerName, fieldName);
+                    Assignment assignment = assignmentOf(child, assigns);
                     repeatable |= assignment.repeatable() || (possible && assignment.possible());
                     definite |= assignment.definite();
                     possible |= assignment.possible();
@@ -155,23 +204,23 @@ final class JavaSourceRules {
                 yield new Assignment(definite, possible, repeatable);
             }
             case StatementDef.If anIf -> {
-                Assignment assignment = assignmentOf(anIf.statement(), ownerName, fieldName);
+                Assignment assignment = assignmentOf(anIf.statement(), assigns);
                 yield new Assignment(false, assignment.possible(), assignment.repeatable());
             }
             case StatementDef.IfElse ifElse -> {
                 // The branches are mutually exclusive: assigning in each of them assigns the field exactly once
-                Assignment then = assignmentOf(ifElse.statement(), ownerName, fieldName);
-                Assignment otherwise = assignmentOf(ifElse.elseStatement(), ownerName, fieldName);
+                Assignment then = assignmentOf(ifElse.statement(), assigns);
+                Assignment otherwise = assignmentOf(ifElse.elseStatement(), assigns);
                 yield new Assignment(then.definite() && otherwise.definite(), then.possible() || otherwise.possible(),
                     then.repeatable() || otherwise.repeatable());
             }
             case StatementDef.Switch aSwitch -> {
                 boolean definite = aSwitch.defaultCase() != null
-                    && assignmentOf(aSwitch.defaultCase(), ownerName, fieldName).definite();
-                boolean possible = assignmentOf(aSwitch.defaultCase(), ownerName, fieldName).possible();
-                boolean repeatable = assignmentOf(aSwitch.defaultCase(), ownerName, fieldName).repeatable();
+                    && assignmentOf(aSwitch.defaultCase(), assigns).definite();
+                boolean possible = assignmentOf(aSwitch.defaultCase(), assigns).possible();
+                boolean repeatable = assignmentOf(aSwitch.defaultCase(), assigns).repeatable();
                 for (StatementDef aCase : aSwitch.cases().values()) {
-                    Assignment assignment = assignmentOf(aCase, ownerName, fieldName);
+                    Assignment assignment = assignmentOf(aCase, assigns);
                     definite &= assignment.definite();
                     possible |= assignment.possible();
                     repeatable |= assignment.repeatable();
@@ -180,18 +229,18 @@ final class JavaSourceRules {
             }
             case StatementDef.While aWhile -> {
                 // An iteration could assign what the one before it did
-                Assignment assignment = assignmentOf(aWhile.statement(), ownerName, fieldName);
+                Assignment assignment = assignmentOf(aWhile.statement(), assigns);
                 yield new Assignment(false, assignment.possible(), assignment.possible() || assignment.repeatable());
             }
-            case StatementDef.Synchronized aSynchronized -> assignmentOf(aSynchronized.statement(), ownerName, fieldName);
+            case StatementDef.Synchronized aSynchronized -> assignmentOf(aSynchronized.statement(), assigns);
             case StatementDef.Try aTry -> {
-                Assignment body = assignmentOf(aTry.statement(), ownerName, fieldName);
-                Assignment aFinally = assignmentOf(aTry.finallyStatement(), ownerName, fieldName);
+                Assignment body = assignmentOf(aTry.statement(), assigns);
+                Assignment aFinally = assignmentOf(aTry.finallyStatement(), assigns);
                 boolean catchesPossible = false;
                 boolean catchesDefinite = true;
                 boolean repeatable = body.repeatable() || aFinally.repeatable();
                 for (StatementDef.Try.Catch aCatch : aTry.catches()) {
-                    Assignment assignment = assignmentOf(aCatch.statement(), ownerName, fieldName);
+                    Assignment assignment = assignmentOf(aCatch.statement(), assigns);
                     catchesPossible |= assignment.possible();
                     catchesDefinite &= assignment.definite();
                     repeatable |= assignment.repeatable();
@@ -231,6 +280,10 @@ final class JavaSourceRules {
 
     private static boolean isConstantTrue(ExpressionDef expression) {
         return Boolean.TRUE.equals(constantValue(expression));
+    }
+
+    static boolean isConstantFalse(ExpressionDef expression) {
+        return Boolean.FALSE.equals(constantValue(expression));
     }
 
     /**
@@ -284,18 +337,31 @@ final class JavaSourceRules {
         };
     }
 
-    static boolean hasSwitchYieldReturn(StatementDef statementDef) {
-        List<StatementDef> statements = statementDef.flatten();
-        if (statements.isEmpty()) {
-            return false;
+    static void validateFieldAccess(@Nullable ObjectDef objectDef, VariableDef.Field field) {
+        if (objectDef == null) {
+            throw new IllegalStateException("Accessing 'this' is not available");
         }
-        StatementDef last = statements.getLast();
-        return switch (last) {
-            case StatementDef.Return(_) -> true;
-            case StatementDef.IfElse(_, StatementDef statement, StatementDef elseStatement) ->
-                hasSwitchYieldReturn(statement) && hasSwitchYieldReturn(elseStatement);
-            default -> false;
-        };
+        if (!(field.declaringType() instanceof ClassTypeDef declaringType)
+            || !declaringType.getName().equals(objectDef.asTypeDef().getName())) {
+            // The field is declared by a different type than the one currently being rendered - e.g. a
+            // property accessed on an instance of some other (possibly external, already-compiled) type
+            // - so there is nothing in `objectDef` to validate the access against.
+            return;
+        }
+        switch (objectDef) {
+            case ClassDef classDef when classDef.hasField(field.name()) -> {
+                return;
+            }
+            case ClassDef classDef ->
+                throw new IllegalStateException("Field '" + field.name() + "' is not available in [" + classDef + "]:" + classDef.getFields());
+            case EnumDef enumDef when enumDef.hasField(field.name()) -> {
+                return;
+            }
+            case EnumDef enumDef ->
+                throw new IllegalStateException("Field '" + field.name() + "' is not available in [" + enumDef.getName() + "]:" + enumDef.getProperties());
+            default ->
+                throw new IllegalStateException("Field access not supported on the object definition: " + objectDef);
+        }
     }
 
     /**

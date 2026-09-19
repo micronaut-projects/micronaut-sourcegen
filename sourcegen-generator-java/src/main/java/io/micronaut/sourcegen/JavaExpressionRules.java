@@ -22,7 +22,11 @@ import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.CalleeBounds;
 import io.micronaut.sourcegen.generator.InvokedSignature;
 import io.micronaut.sourcegen.generator.OverrideResolver;
+import io.micronaut.sourcegen.javapoet.CodeBlock;
+import io.micronaut.sourcegen.javapoet.Util;
+import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
+import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -38,6 +42,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -93,13 +98,83 @@ final class JavaExpressionRules {
      */
     @Nullable
     static ClassTypeDef ownerOf(@Nullable ObjectDef objectDef, TypeDef type) {
+        return ownerOf(objectDef, null, type, null, List.of());
+    }
+
+    /**
+     * The type declaring the method invoked on a receiver: the receiver's class, or, for a receiver of a type
+     * variable, the bound declaring the method - the members of a variable are those of its bounds, which bind the
+     * type arguments the parameters are converted to.
+     *
+     * @param objectDef      The definition being written, or {@code null}
+     * @param methodDef      The method being written, or {@code null}
+     * @param type           The type of the receiver
+     * @param methodName     The invoked method, or {@code null}
+     * @param parameterTypes Its parameter types in the model
+     * @return The owner, or {@code null} where the receiver has no class
+     */
+    @Nullable
+    static ClassTypeDef ownerOf(@Nullable ObjectDef objectDef,
+                                @Nullable MethodDef methodDef,
+                                TypeDef type,
+                                @Nullable String methodName,
+                                List<TypeDef> parameterTypes) {
         TypeDef resolved = type;
         if (objectDef != null && (TypeDef.THIS.equals(type)
             || TypeDef.SUPER.equals(type) && !(objectDef instanceof InterfaceDef))) {
             resolved = objectDef.getContextualType(type);
         }
+        if (TypeHierarchy.unwrap(resolved) instanceof TypeDef.TypeVariable) {
+            ClassTypeDef first = null;
+            for (TypeDef bound : OverrideResolver.upperBounds(resolved, objectDef, methodDef)) {
+                if (bound instanceof ClassTypeDef classBound) {
+                    if (methodName != null && declaredSignature(classBound, methodName, parameterTypes) != null) {
+                        return classBound;
+                    }
+                    first = first == null ? classBound : first;
+                }
+            }
+            return first;
+        }
         return resolved instanceof ClassTypeDef classTypeDef && !TypeDef.SUPER.equals(classTypeDef)
             && !TypeDef.THIS.equals(classTypeDef) ? classTypeDef : null;
+    }
+
+    /**
+     * The signature a generated definition inherits from a compiled supertype, where it declares no method of the
+     * name itself: the type arguments the definition extends the supertype with bind its parameters.
+     *
+     * @param definition     The generated definition
+     * @param methodName     The method name
+     * @param parameterTypes The parameter types of the method in the model
+     * @return The signature, or {@code null} where no compiled supertype declares the method
+     */
+    @Nullable
+    static InvokedSignature inheritedSignature(ObjectDef definition, String methodName, List<TypeDef> parameterTypes) {
+        return inheritedSignature(definition, methodName, parameterTypes, new HashSet<>());
+    }
+
+    @Nullable
+    private static InvokedSignature inheritedSignature(ObjectDef definition,
+                                                       String methodName,
+                                                       List<TypeDef> parameterTypes,
+                                                       Set<String> visited) {
+        if (!visited.add(definition.getName())) {
+            return null;
+        }
+        for (TypeDef supertype : TypeHierarchy.superTypesOf(definition)) {
+            if (!(TypeHierarchy.unwrap(supertype) instanceof ClassTypeDef classType)) {
+                continue;
+            }
+            ObjectDef generated = OverrideResolver.definitionOf(classType, null);
+            InvokedSignature signature = generated != null
+                ? inheritedSignature(generated, methodName, parameterTypes, visited)
+                : declaredSignature(classType, methodName, parameterTypes);
+            if (signature != null) {
+                return signature;
+            }
+        }
+        return null;
     }
 
     /**
@@ -178,7 +253,51 @@ final class JavaExpressionRules {
         if (types.size() == 1) {
             return types.get(0);
         }
+        if (castsNumericBranches(results, modelType)) {
+            // Each result is cast to the type of the model, which the expression then has
+            return modelType;
+        }
         return types.stream().filter(type -> !type.equals(modelType)).findFirst().orElse(modelType);
+    }
+
+    /**
+     * Whether the results of a conditional or a switch expression of a reference type are numeric to Java, which
+     * would type the expression numerically - an `int` and an `Integer` unbox, an `Integer` and a `Long` widen to a
+     * `long` - where the bytecode boxes a primitive and keeps each result as it is: each of them is cast to the type
+     * of the model.
+     *
+     * @param results   The results
+     * @param modelType The type of the model
+     * @return true if the results are cast
+     */
+    /**
+     * @param conditional A conditional or a switch expression
+     * @return Its results: the branches, or the cases and the default
+     */
+    static List<ExpressionDef> resultsOf(ExpressionDef conditional) {
+        if (conditional instanceof ExpressionDef.IfElse ifElse) {
+            return List.of(ifElse.ifExpression(), ifElse.elseExpression());
+        }
+        if (conditional instanceof ExpressionDef.Switch switchExpression) {
+            List<ExpressionDef> results = new ArrayList<>(switchExpression.cases().values());
+            if (switchExpression.defaultCase() != null) {
+                results.add(switchExpression.defaultCase());
+            }
+            return results;
+        }
+        return List.of();
+    }
+
+    static boolean castsNumericBranches(List<? extends ExpressionDef> results, TypeDef modelType) {
+        if (!(TypeHierarchy.unwrap(modelType) instanceof ClassTypeDef)) {
+            return false;
+        }
+        List<TypeDef> types = results.stream()
+            .filter(result -> !isNullLiteral(result) && !(result instanceof ExpressionDef.SwitchYieldCase))
+            .map(result -> TypeHierarchy.unwrap(result.type()))
+            .distinct()
+            .toList();
+        return types.size() > 1 && types.stream().allMatch(type -> type.isPrimitive() || unboxedOf(type) != null);
     }
 
     static boolean isNullLiteral(ExpressionDef expressionDef) {
@@ -255,13 +374,24 @@ final class JavaExpressionRules {
         return expressionDef;
     }
 
-    static ExpressionDef collapseNestedCasts(ExpressionDef expressionDef) {
+    /**
+     * The operand of a cast without the casts it collapses: only the last of a chain is kept, except for a cast to a
+     * primitive of a value that is no `Object`, and for one boxing a primitive under a cast to a reference -
+     * `(String) (Object) 1` casts the box, `(boolean) (Boolean) true` is a constant.
+     *
+     * @param expressionDef The operand
+     * @param castType      The type of the cast
+     * @return The operand to cast
+     */
+    static ExpressionDef collapseNestedCasts(ExpressionDef expressionDef, TypeDef castType) {
         while (expressionDef instanceof ExpressionDef.Cast cast) {
             if (cast.type().isPrimitive()) {
                 TypeDef previousCastType = cast.expressionDef().type();
                 if (!previousCastType.equals(TypeDef.OBJECT)) {
                     break;
                 }
+            } else if (cast.expressionDef().type().isPrimitive() && !castType.isPrimitive()) {
+                break;
             }
             // Only keep the last cast
             expressionDef = cast.expressionDef();
@@ -932,7 +1062,7 @@ final class JavaExpressionRules {
 
     static TypeDef objectCastOperandType(ExpressionDef expressionDef) {
         if (expressionDef instanceof ExpressionDef.Cast cast && cast.type().equals(TypeDef.OBJECT)) {
-            return collapseNestedCasts(cast.expressionDef()).type();
+            return collapseNestedCasts(cast.expressionDef(), cast.type()).type();
         }
         return expressionDef.type();
     }
@@ -972,5 +1102,72 @@ final class JavaExpressionRules {
 
     static boolean sameErasure(TypeDef type, TypeDef other) {
         return TypeHierarchy.erasedName(type).equals(TypeHierarchy.erasedName(other));
+    }
+
+    /**
+     * The literal of a primitive value: a character with its escapes, the constants of the values no literal
+     * writes - `NaN` and the infinities - and a `byte` or `short` cast, which Java only narrows a literal to where it
+     * is assigned, not where it is passed.
+     */
+    static CodeBlock renderPrimitiveConstant(String primitiveName, Object value) {
+        return switch (primitiveName) {
+            case "long" -> CodeBlock.of(value + "l");
+            case "float" -> renderFloatingPointConstant(Float.class, ((Number) value).doubleValue(), value + "f");
+            case "double" -> renderFloatingPointConstant(Double.class, ((Number) value).doubleValue(), value + "d");
+            case "char" -> CodeBlock.of("'$L'", Util.characterLiteralWithoutSingleQuotes(
+                value instanceof Character c ? c : (char) ((Number) value).intValue()));
+            case "byte", "short" -> CodeBlock.of("($L) $L", primitiveName, value);
+            default -> CodeBlock.of("$L", value);
+        };
+    }
+
+    static CodeBlock renderFloatingPointConstant(Class<?> wrapper, double value, String literal) {
+        if (Double.isNaN(value)) {
+            return CodeBlock.of("$T.NaN", wrapper);
+        }
+        if (Double.isInfinite(value)) {
+            return CodeBlock.of("$T.$L", wrapper, value > 0 ? "POSITIVE_INFINITY" : "NEGATIVE_INFINITY");
+        }
+        return CodeBlock.of(literal);
+    }
+
+    static boolean isRawGeneric(TypeDef type) {
+        TypeDef unwrapped = TypeHierarchy.unwrap(type);
+        if (unwrapped instanceof TypeDef.Array array) {
+            return isRawGeneric(array.componentType());
+        }
+        if (unwrapped instanceof ClassTypeDef classType && !(unwrapped instanceof ClassTypeDef.Parameterized)
+            && OverrideResolver.definitionOf(classType, null) instanceof ObjectDef definition) {
+            // A generated generic class named without its type arguments
+            return definition instanceof ClassDef classDef && !classDef.getTypeVariables().isEmpty()
+                || definition instanceof InterfaceDef interfaceDef && !interfaceDef.getTypeVariables().isEmpty()
+                || definition instanceof RecordDef recordDef && !recordDef.getTypeVariables().isEmpty();
+        }
+        return unwrapped instanceof ClassTypeDef.JavaClass javaClass && javaClass.type().getTypeParameters().length > 0;
+    }
+
+    /**
+     * The component an array is created with: Java creates no array of a parameterized type, `new List<String>[2]`.
+     */
+    static TypeDef creationComponent(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, TypeDef.Array array) {
+        TypeDef component = TypeHierarchy.unwrap(array.componentType());
+        if (component instanceof ClassTypeDef.Parameterized parameterized) {
+            return parameterized.rawType();
+        }
+        if (component instanceof TypeDef.TypeVariable) {
+            // Nor of a type variable: the array is created of the erasure of the variable and cast
+            List<TypeDef> bounds = OverrideResolver.upperBounds(component, objectDef, methodDef);
+            return bounds.isEmpty() ? TypeDef.OBJECT : creationComponent(objectDef, methodDef, TypeDef.array(bounds.get(0), 1));
+        }
+        return array.componentType();
+    }
+
+    /**
+     * A reference operand of a structural comparison with a primitive, converted to the primitive as the bytecode
+     * converts it: unboxed through {@link Number} where it is no wrapper.
+     */
+    static ExpressionDef asPrimitiveOperand(ExpressionDef operand, TypeDef otherType) {
+        return !operand.type().isPrimitive() && otherType instanceof TypeDef.Primitive primitive && !isNullLiteral(operand)
+            ? operand.cast(primitive) : operand;
     }
 }

@@ -731,17 +731,18 @@ final class JdkMethodWriter {
     }
 
     /**
-     * The enclosing method segment of a lambda implementation name. Constructors and static
-     * initializers are named {@code <init>} and {@code <clinit>}, which are not valid in a member
-     * name, so use the same {@code new} and {@code static} placeholders that javac does.
-     */
-    /**
      * The type a lambda captures a variable as. `super` is the receiver: the special call the body makes on it is only
      * verified for a value of the class that makes it, not of its superclass.
      */
     private TypeDef capturedType(VariableDef variable) {
         return variable instanceof VariableDef.Super ? objectDef.asTypeDef() : variable.type();
     }
+
+    /**
+     * The enclosing method segment of a lambda implementation name. Constructors and static
+     * initializers are named {@code <init>} and {@code <clinit>}, which are not valid in a member
+     * name, so use the same {@code new} and {@code static} placeholders that javac does.
+     */
 
     private static String lambdaOwnerName(MethodDef methodDef) {
         return switch (methodDef.getName()) {
@@ -756,9 +757,13 @@ final class JdkMethodWriter {
         if (instance instanceof VariableDef.Super superInstance) {
             // `super::name` is the method of the superclass, which a handle on it would dispatch past: javac writes a
             // lambda that makes the special call, and so does this
+            // The functional method decides whether the result is returned, and a default method of an interface is
+            // linked as an interface method
+            boolean returns = !TypeDef.VOID.equals(methodReference.type().getLambda().getImplementation().getReturnType());
+            boolean onInterface = superInstance.type() instanceof ClassTypeDef superType && superType.isInterface();
             writeLambda(methodReference.type().getLambda().implement((aThis, parameters) -> {
-                ExpressionDef.InvokeInstanceMethod call = superInstance.invoke(methodReference.method(), parameters);
-                return TypeDef.VOID.equals(methodReference.method().getReturnType()) ? call : call.returning();
+                ExpressionDef.InvokeInstanceMethod call = new ExpressionDef.InvokeInstanceMethod(superInstance, methodReference.method(), onInterface, parameters);
+                return returns ? call.returning() : call;
             }));
             return;
         }

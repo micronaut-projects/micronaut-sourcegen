@@ -1617,6 +1617,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return CodeBlock.builder()
                     .add("throw ")
                     .add(renderExpressionCode(objectDef, methodDef, scope, statementDef.expression))
+                    // A nullable value is thrown as it is, which throws a NullPointerException for `null` as the bytecode does
+                    .add(if (statementDef.expression.type().isNullable) "!!" else "")
                     .build()
             }
             if (statementDef is Return) {
@@ -2048,10 +2050,15 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is NewArrayInitialized) {
                 val componentType = arrayElementType(expressionDef.type)
                 val builder: CodeBlock.Builder = CodeBlock.builder()
+                val ofVariable = TypeHierarchy.unwrap(componentType) is TypeDef.TypeVariable
                 if (componentType is TypeDef.Primitive) {
                     builder.add("%L(", arrayOfFunction(componentType))
+                } else if (ofVariable) {
+                    // A variable is not reified: the array is created of `Any` and cast, as the bytecode's is erased
+                    builder.add("(arrayOf<%T>(", ANY.copy(nullable = true))
                 } else {
-                    builder.add("arrayOf<%T>(", asType(componentType, objectDef))
+                    // In scope of the method: the component can be a variable of it
+                    builder.add("arrayOf<%T>(", asType(componentType, objectDef, methodDef))
                 }
                 val iterator: Iterator<ExpressionDef> = expressionDef.expressions.iterator()
                 while (iterator.hasNext()) {
@@ -2062,6 +2069,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     }
                 }
                 builder.add(")")
+                if (ofVariable) {
+                    builder.add(" as %T)", asType(expressionDef.type, objectDef, methodDef))
+                }
                 return builder.build()
             }
             if (expressionDef is InvokeGetClassMethod) {
@@ -2200,6 +2210,22 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     // Kotlin spells a constructor reference ::ClassName
                     expressionDef.isConstructor ->
                         builder.add("::%T", asType(expressionDef.owner(), objectDef))
+
+                    instance is VariableDef.Super -> {
+                        // Kotlin has no reference through `super`: a lambda makes the call, as the bytecode does
+                        val parameters = expressionDef.method().parameters.indices.map { "arg$it" }
+                        builder.add("{ ")
+                        if (parameters.isNotEmpty()) {
+                            builder.add("%L -> ", parameters.joinToString(", "))
+                        }
+                        val superType = instance.type()
+                        if (superType is ClassTypeDef && superType != TypeDef.SUPER && superType.isInterface) {
+                            builder.add("super<%T>.%N(", asType(superType, objectDef), expressionDef.method().name)
+                        } else {
+                            builder.add("super.%N(", expressionDef.method().name)
+                        }
+                        builder.add("%L) }", parameters.joinToString(", "))
+                    }
 
                     instance != null -> builder
                         .add(renderExpressionWithParentheses(objectDef, methodDef, scope, instance, true))
@@ -2545,7 +2571,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         "java.lang.Long" -> renderPrimitiveConstant("long", value)
                         "java.lang.Float" -> renderPrimitiveConstant("float", value)
                         "java.lang.Double" -> renderPrimitiveConstant("double", value)
-                        "java.lang.String" -> CodeBlock.of("%S", value)
+                        "java.lang.String" -> renderStringConstant(value.toString())
                         else -> CodeBlock.of("%L", value)
                     }
                 } else {
@@ -2553,6 +2579,32 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
             }
             throw IllegalStateException("Unrecognized expression: $constant")
+        }
+
+        /**
+         * A string constant: the raw string KotlinPoet writes one with line breaks as loses a carriage return, which
+         * is written with every character escaped instead.
+         */
+        private fun renderStringConstant(value: String): CodeBlock {
+            if (!value.contains('\r')) {
+                return CodeBlock.of("%S", value)
+            }
+            val literal = StringBuilder("\"")
+            for (c in value) {
+                literal.append(
+                    when (c) {
+                        '\\' -> "\\\\"
+                        '"' -> "\\\""
+                        '$' -> "\\$"
+                        '\n' -> "\\n"
+                        '\r' -> "\\r"
+                        '\t' -> "\\t"
+                        '\b' -> "\\b"
+                        else -> if (c < ' ') String.format("\\u%04x", c.code) else c.toString()
+                    }
+                )
+            }
+            return CodeBlock.of("%L", literal.append('"').toString())
         }
 
         private fun renderArrayConstant(
@@ -2589,7 +2641,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             return when (name) {
                 // Kotlin only accepts an upper case long suffix, and a byte or a short is written as
                 // an integer literal - the expected type converts it
-                "long" -> CodeBlock.of("%LL", value)
+                // The smallest long has no literal: its negation is out of range
+                "long" -> if (value is Number && value.toLong() == Long.MIN_VALUE) CodeBlock.of("%T.MIN_VALUE", Long::class) else CodeBlock.of("%LL", value)
                 "float" -> asFloatingPointLiteral(value, FLOAT)
                 "double" -> asFloatingPointLiteral(value, DOUBLE)
                 "char" -> CodeBlock.of("'%L'", characterLiteralWithoutSingleQuotes(asChar(value)))

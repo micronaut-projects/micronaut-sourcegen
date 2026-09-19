@@ -118,8 +118,13 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
         }
 
         parameters.addAll(original.getParameters());
-        return MethodDef.builder("lambda$" + context.methodDef().getName() + "$" +
-                context.lambdaMethods().size())
+        // `<init>` and `<clinit>` are no valid member names: the placeholders javac uses stand in for them
+        String owner = switch (context.methodDef().getName()) {
+            case MethodDef.CONSTRUCTOR -> "new";
+            case "<clinit>" -> "static";
+            default -> context.methodDef().getName();
+        };
+        return MethodDef.builder("lambda$" + owner + "$" + context.lambdaMethods().size())
             .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
             .addParameters(parameters)
             .returns(original.getReturnType())
