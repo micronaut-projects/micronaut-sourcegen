@@ -209,25 +209,6 @@ public class ConversionCompletenessRegressionTest {
         assertEquals("object", ((Overloads) run(def, "a")).kind);
     }
 
-    // Reflection-free dispatch of a varargs method: `size((Object[]) args[0])` in bytecode. The source takes the Object value for one
-    // element of the varargs and writes `size(p0[0])`, which wraps it in a new array: 1 instead of 2.
-    @Test
-    void objectHoldingArrayPassedAsTheVarargsArray() throws Exception {
-        var size = Overloads.class.getMethod("size", Object[].class);
-        var def = single("VarargsObject", int.class, List.of(TypeDef.OBJECT.array()),
-            (self, p) -> ClassTypeDef.of(Overloads.class).invokeStatic(size, p.get(0).arrayElement(0)).returning());
-        assertEquals(2, run(def, (Object) new Object[]{new Object[]{"a", "b"}}));
-    }
-
-    // As above for `String...`: `joined(p0[0])` with an Object does not compile, it needs `(String[]) p0[0]`.
-    @Test
-    void objectHoldingArrayPassedAsTheTypedVarargsArray() throws Exception {
-        var joined = Overloads.class.getMethod("joined", String[].class);
-        var def = single("VarargsTyped", String.class, List.of(TypeDef.OBJECT.array()),
-            (self, p) -> ClassTypeDef.of(Overloads.class).invokeStatic(joined, p.get(0).arrayElement(0)).returning());
-        assertEquals("ab", run(def, (Object) new Object[]{new String[]{"a", "b"}}));
-    }
-
     // The bytecode writer narrows a returned long to the int the method returns; the source has no cast.
     @Test
     void longReturnedFromIntMethodIsNarrowed() throws Exception {

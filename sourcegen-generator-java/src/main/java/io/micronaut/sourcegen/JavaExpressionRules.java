@@ -276,11 +276,31 @@ final class JavaExpressionRules {
         if (valueType.equals(TypeDef.OBJECT)) {
             return !paramType.equals(TypeDef.OBJECT);
         }
+        if (TypeHierarchy.unwrap(paramType) instanceof TypeDef.Primitive primitive) {
+            // The bytecode narrows a primitive and unboxes a reference; Java only widens, and unboxes the wrapper
+            TypeDef value = TypeHierarchy.unwrap(valueType);
+            TypeDef unboxed = value instanceof TypeDef.Primitive ? value : unboxedOf(value);
+            return unboxed == null || !widens((TypeDef.Primitive) unboxed, primitive);
+        }
         // A value of a supertype of the declared one, as the erasure of a bounded type variable is - `Number` for
         // `N extends Number`: the verifier accepts it, source needs the cast
         if (paramType instanceof ClassTypeDef.JavaClass paramClass
             && valueType instanceof ClassTypeDef.JavaClass valueClass) {
             return !paramClass.type().isAssignableFrom(valueClass.type());
+        }
+        if (TypeHierarchy.unwrap(paramType) instanceof ClassTypeDef param && TypeHierarchy.unwrap(valueType) instanceof ClassTypeDef value
+            && !TypeDef.OBJECT.equals(param) && !TypeDef.THIS.equals(value) && !TypeDef.SUPER.equals(value)
+            && !TypeDef.THIS.equals(param) && !TypeDef.SUPER.equals(param)) {
+            // Types that are not both loaded: a generated class, or one known by name or to the compiler
+            if (param.getName().equals(value.getName())) {
+                return false;
+            }
+            Class<?> loadedParam = loaded(param);
+            Class<?> loadedValue = loaded(value);
+            if (loadedParam != null && loadedValue != null) {
+                return !loadedParam.isAssignableFrom(loadedValue);
+            }
+            return !TypeHierarchy.inherits(value, param.getName(), elementLookup());
         }
         // A value of a variable, or an array of another component, where an override narrowed the parameter
         if (valueType instanceof TypeDef.TypeVariable) {
@@ -290,6 +310,35 @@ final class JavaExpressionRules {
             && paramArray.dimensions() == valueArray.dimensions()
             && !paramArray.componentType().equals(valueArray.componentType())
             && requiresImplicitInvocationCast(paramArray.componentType(), valueArray.componentType());
+    }
+
+    static TypeDef.@Nullable Primitive unboxedOf(TypeDef type) {
+        if (!(type instanceof ClassTypeDef classType)) {
+            return null;
+        }
+        return switch (classType.getName()) {
+            case "java.lang.Boolean" -> TypeDef.Primitive.BOOLEAN;
+            case "java.lang.Byte" -> TypeDef.Primitive.BYTE;
+            case "java.lang.Short" -> TypeDef.Primitive.SHORT;
+            case "java.lang.Character" -> TypeDef.Primitive.CHAR;
+            case "java.lang.Integer" -> TypeDef.Primitive.INT;
+            case "java.lang.Long" -> TypeDef.Primitive.LONG;
+            case "java.lang.Float" -> TypeDef.Primitive.FLOAT;
+            case "java.lang.Double" -> TypeDef.Primitive.DOUBLE;
+            default -> null;
+        };
+    }
+
+    private static boolean widens(TypeDef.Primitive from, TypeDef.Primitive to) {
+        List<String> order = List.of("byte", "short", "int", "long", "float", "double");
+        if (from.equals(to)) {
+            return true;
+        }
+        int target = order.indexOf(to.name());
+        if (target == -1) {
+            return false;
+        }
+        return "char".equals(from.name()) ? target >= 2 : order.indexOf(from.name()) != -1 && order.indexOf(from.name()) < target;
     }
 
     /**

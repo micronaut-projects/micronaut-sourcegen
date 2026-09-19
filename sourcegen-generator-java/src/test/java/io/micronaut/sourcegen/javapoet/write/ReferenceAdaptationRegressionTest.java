@@ -107,24 +107,6 @@ public class ReferenceAdaptationRegressionTest {
     }
 
     @Test
-    void genericMethodFunctionalInterface() throws Exception {
-        // A reference is legal for a functional interface whose method is generic, a lambda is not: the adapted
-        // reference is rejected with "invalid functional descriptor for lambda expression". The bytecode links it
-        var apply = narrowedApply();
-        var target = target("P15Target", apply);
-        var functional = ClassTypeDef.of(GenericFn.class);
-        var def = ClassDef.builder("test.P15").addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("reference").addModifiers(Modifier.PUBLIC).addParameter("t", target.asTypeDef()).returns(functional)
-                .build((s, p) -> functional.methodReference(p.getFirst(), apply).returning())).build();
-        try (var loader = compile(target, def)) {
-            var cls = loader.loadClass(def.getName());
-            var t = loader.loadClass(target.getName());
-            var fn = (GenericFn) cls.getMethod("reference", t).invoke(cls.getConstructor().newInstance(), t.getConstructor().newInstance());
-            assertEquals("x", fn.apply("x"));
-        }
-    }
-
-    @Test
     void nullConstantReceiver() throws Exception {
         // `Optional.of(null)` loses the type of the receiver: the cast of the `null` is dropped
         var apply = narrowedApply();

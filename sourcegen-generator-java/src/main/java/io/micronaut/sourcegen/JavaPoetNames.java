@@ -28,6 +28,7 @@ import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.jspecify.annotations.Nullable;
 
+import javax.lang.model.element.Modifier;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
@@ -191,10 +192,14 @@ final class JavaPoetNames {
      * written in: its body reads them, and their bounds convert the values it returns.
      */
     static MethodDef withTypeVariables(MethodDef implementation, @Nullable MethodDef enclosing) {
-        if (enclosing == null || enclosing.getTypeVariables().isEmpty()) {
+        // The body of a lambda written in a static method is in a static context, where no class variable is in scope
+        boolean inStaticContext = enclosing != null && enclosing.getModifiers().contains(Modifier.STATIC)
+            && !implementation.getModifiers().contains(Modifier.STATIC);
+        if (enclosing == null || enclosing.getTypeVariables().isEmpty() && !inStaticContext) {
             return implementation;
         }
         MethodDef.MethodDefBuilder builder = MethodDef.builder(implementation.getName())
+            .addModifiers(inStaticContext ? new Modifier[]{Modifier.STATIC} : new Modifier[0])
             .addModifiers(implementation.getModifiers())
             .returns(implementation.getReturnType())
             .addStatements(implementation.getStatements())

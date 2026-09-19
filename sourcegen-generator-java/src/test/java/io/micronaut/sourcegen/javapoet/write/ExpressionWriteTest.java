@@ -122,6 +122,7 @@ class MyList extends AbstractList<String> {
         assertEquals("""
 package test;
 
+import java.lang.Number;
 import java.lang.Object;
 import java.util.function.Predicate;
 
@@ -130,7 +131,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() == null) {
       return 0;
     }
-    return (int) this.getIntegerValue();
+    return ((Number) this.getIntegerValue()).intValue();
   }
 }
             """, data);
@@ -163,6 +164,7 @@ class MyClass implements Predicate {
         assertEquals("""
 package test;
 
+import java.lang.Number;
 import java.lang.Object;
 import java.util.function.Predicate;
 
@@ -171,7 +173,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() == null) {
       return 0;
     }
-    return (int) this.getIntegerValue();
+    return ((Number) this.getIntegerValue()).intValue();
   }
 }
             """, data);
@@ -204,6 +206,7 @@ class MyClass implements Predicate {
         assertEquals("""
 package test;
 
+import java.lang.Number;
 import java.lang.Object;
 import java.util.function.Predicate;
 
@@ -212,7 +215,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() != null) {
       return 0;
     }
-    return (int) this.getIntegerValue();
+    return ((Number) this.getIntegerValue()).intValue();
   }
 }
             """, data);
@@ -245,6 +248,7 @@ class MyClass implements Predicate {
         assertEquals("""
 package test;
 
+import java.lang.Number;
 import java.lang.Object;
 import java.util.function.Predicate;
 
@@ -253,7 +257,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() instanceof java.lang.String) {
       return 0;
     }
-    return (int) this.getIntegerValue();
+    return ((Number) this.getIntegerValue()).intValue();
   }
 }
             """, data);
@@ -287,6 +291,7 @@ class MyClass implements Predicate {
         Assertions.assertEquals("""
 package test;
 
+import java.lang.Number;
 import java.lang.Object;
 import java.util.function.Predicate;
 
@@ -295,7 +300,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() == "Hello") {
       return 0;
     }
-    return (int) this.getIntegerValue();
+    return ((Number) this.getIntegerValue()).intValue();
   }
 }
             """, data);

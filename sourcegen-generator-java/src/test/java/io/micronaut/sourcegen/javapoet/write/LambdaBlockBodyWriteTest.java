@@ -297,7 +297,7 @@ public class MyClass {
   public List<String> copy(List<String> items) {
     List<String> sink = new java.util.ArrayList();
     items.forEach((t) -> {
-      sink.add(t);
+      sink.add((String) t);
     });
     return sink;
   }

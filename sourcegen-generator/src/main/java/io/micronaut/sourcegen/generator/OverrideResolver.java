@@ -57,6 +57,8 @@ import java.util.function.Function;
 @Internal
 public final class OverrideResolver {
 
+    private static final ThreadLocal<ObjectDef> WRITTEN = new ThreadLocal<>();
+
     private static final int MAX_DEPTH = 8;
     private static final Set<String> ARRAY_SUPERTYPES = Set.of(Cloneable.class.getName(), java.io.Serializable.class.getName());
 
@@ -554,9 +556,30 @@ public final class OverrideResolver {
             || method.getTypeParameters().length != callMethod.getTypeVariables().size()) {
             return false;
         }
+        for (int i = 0; i < method.getTypeParameters().length; i++) {
+            // The variables are bounded alike: `<U extends Number>` is another method than `<U extends X>`
+            TypeDef.TypeVariable invoked = callMethod.getTypeVariables().get(i);
+            Type[] bounds = method.getTypeParameters()[i].getBounds();
+            String declared = bounds.length == 0 ? Object.class.getName() : erasure(bounds[0]).getName();
+            TypeDef bound = invoked;
+            while (TypeHierarchy.unwrap(bound) instanceof TypeDef.TypeVariable variable) {
+                bound = variable.bounds().isEmpty() ? TypeDef.OBJECT : variable.bounds().get(0);
+            }
+            Class<?> invokedBound = ClassUtils.forName(TypeHierarchy.erasedName(bound), OverrideResolver.class.getClassLoader()).orElse(null);
+            if (invokedBound != null && !invokedBound.getName().equals(declared)) {
+                return false;
+            }
+        }
         for (int i = 0; i < method.getParameterCount(); i++) {
             TypeDef invoked = TypeHierarchy.unwrap(callMethod.getParameters().get(i).getType());
             Type declared = method.getGenericParameterTypes()[i];
+            if (invoked instanceof TypeDef.Array array && TypeHierarchy.unwrap(array.componentType()) instanceof TypeDef.TypeVariable) {
+                // An array of a variable, whatever the variable erases to
+                if (!(declared instanceof java.lang.reflect.GenericArrayType)) {
+                    return false;
+                }
+                continue;
+            }
             boolean matches = invoked instanceof TypeDef.TypeVariable
                 ? declared instanceof java.lang.reflect.TypeVariable<?>
                 : TypeHierarchy.erasedName(invoked instanceof ClassTypeDef.Parameterized parameterized
@@ -566,6 +589,19 @@ public final class OverrideResolver {
             }
         }
         return true;
+    }
+
+    private static Class<?> erasure(Type type) {
+        if (type instanceof Class<?> aClass) {
+            return aClass;
+        }
+        if (type instanceof java.lang.reflect.ParameterizedType parameterized) {
+            return erasure(parameterized.getRawType());
+        }
+        if (type instanceof java.lang.reflect.TypeVariable<?> variable) {
+            return variable.getBounds().length == 0 ? Object.class : erasure(variable.getBounds()[0]);
+        }
+        return Object.class;
     }
 
     /**
@@ -747,7 +783,40 @@ public final class OverrideResolver {
         if (raw != null && current != null && raw.getName().equals(current.asTypeDef().getName())) {
             return current;
         }
+        // A type of the file being written, named from another of them: an inner type and the types enclosing it
+        ObjectDef outermost = WRITTEN.get();
+        return raw == null || outermost == null ? null : named(outermost, raw.getName());
+    }
+
+    @Nullable
+    private static ObjectDef named(ObjectDef definition, String name) {
+        if (definition.asTypeDef().getName().equals(name)) {
+            return definition;
+        }
+        for (ObjectDef inner : definition.getInnerTypes()) {
+            ObjectDef found = named(inner, name);
+            if (found != null) {
+                return found;
+            }
+        }
         return null;
+    }
+
+    /**
+     * Records the top level definition being written, whose inner types name it and each other.
+     *
+     * @param definition The definition, or {@code null} once it is written
+     * @return The definition recorded before, to restore
+     */
+    @Nullable
+    public static ObjectDef writing(@Nullable ObjectDef definition) {
+        ObjectDef previous = WRITTEN.get();
+        if (definition == null) {
+            WRITTEN.remove();
+        } else {
+            WRITTEN.set(definition);
+        }
+        return previous;
     }
 
     private static boolean isNarrower(TypeDef narrowerType,

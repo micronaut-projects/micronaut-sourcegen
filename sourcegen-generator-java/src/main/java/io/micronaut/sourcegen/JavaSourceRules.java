@@ -114,7 +114,7 @@ final class JavaSourceRules {
         return assignment.definite() && !assignment.repeatable();
     }
 
-    private static boolean declaresLocal(@Nullable StatementDef statement, String name) {
+    static boolean declaresLocal(@Nullable StatementDef statement, String name) {
         return switch (statement) {
             case null -> false;
             case StatementDef.DefineAndAssign define -> define.variable().name().equals(name);
@@ -230,12 +230,58 @@ final class JavaSourceRules {
     }
 
     private static boolean isConstantTrue(ExpressionDef expression) {
-        ExpressionDef unwrapped = expression;
-        while (unwrapped instanceof ExpressionDef.IsTrue isTrue || unwrapped instanceof ExpressionDef.Cast) {
-            unwrapped = unwrapped instanceof ExpressionDef.IsTrue isTrue ? isTrue.expression()
-                : ((ExpressionDef.Cast) unwrapped).expressionDef();
+        return Boolean.TRUE.equals(constantValue(expression));
+    }
+
+    /**
+     * The value of a constant expression as Java evaluates one, which is what decides whether a loop over it can
+     * complete: a literal, and the negations, conjunctions and comparisons of constant expressions.
+     */
+    @Nullable
+    private static Object constantValue(ExpressionDef expression) {
+        return switch (expression) {
+            case ExpressionDef.Constant constant -> constant.value() instanceof Boolean || constant.value() instanceof Number
+                || constant.value() instanceof Character ? constant.value() : null;
+            // A cast to a primitive, or one that is not written, keeps a constant expression one
+            case ExpressionDef.Cast cast -> constantValue(cast.expressionDef());
+            case ExpressionDef.IsTrue isTrue -> constantValue(isTrue.expression());
+            case ExpressionDef.IsFalse isFalse -> constantValue(isFalse.expression()) instanceof Boolean value ? !value : null;
+            case ExpressionDef.And and -> constantValue(and.left()) instanceof Boolean left
+                && constantValue(and.right()) instanceof Boolean right ? left && right : null;
+            case ExpressionDef.Or or -> constantValue(or.left()) instanceof Boolean left
+                && constantValue(or.right()) instanceof Boolean right ? left || right : null;
+            case ExpressionDef.ComparisonOperation comparison -> compared(comparison.opType(),
+                constantValue(comparison.left()), constantValue(comparison.right()));
+            case ExpressionDef.EqualsReferentially equals -> compared(ExpressionDef.ComparisonOperation.OpType.EQUAL_TO,
+                constantValue(equals.instance()), constantValue(equals.other()));
+            case ExpressionDef.NotEqualsReferentially notEquals -> compared(ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO,
+                constantValue(notEquals.instance()), constantValue(notEquals.other()));
+            default -> null;
+        };
+    }
+
+    @Nullable
+    private static Boolean compared(ExpressionDef.ComparisonOperation.OpType op, @Nullable Object left, @Nullable Object right) {
+        if (left instanceof Boolean && right instanceof Boolean) {
+            return switch (op) {
+                case EQUAL_TO -> left.equals(right);
+                case NOT_EQUAL_TO -> !left.equals(right);
+                default -> null;
+            };
         }
-        return unwrapped instanceof ExpressionDef.Constant constant && Boolean.TRUE.equals(constant.value());
+        if (!(left instanceof Number || left instanceof Character) || !(right instanceof Number || right instanceof Character)) {
+            return null;
+        }
+        int order = Double.compare(left instanceof Character c ? c : ((Number) left).doubleValue(),
+            right instanceof Character c ? c : ((Number) right).doubleValue());
+        return switch (op) {
+            case EQUAL_TO -> order == 0;
+            case NOT_EQUAL_TO -> order != 0;
+            case GREATER_THAN -> order > 0;
+            case LESS_THAN -> order < 0;
+            case GREATER_THAN_OR_EQUAL -> order >= 0;
+            case LESS_THAN_OR_EQUAL -> order <= 0;
+        };
     }
 
     static boolean hasSwitchYieldReturn(StatementDef statementDef) {
