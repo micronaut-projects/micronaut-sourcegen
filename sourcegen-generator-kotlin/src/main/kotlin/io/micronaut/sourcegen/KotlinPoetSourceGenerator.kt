@@ -1123,6 +1123,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 when (it.canonicalName) {
                     "java.lang.Throwable" -> ClassName("kotlin", "Throwable")
                     "java.lang.Number" -> ClassName("kotlin", "Number")
+                    // The bound of a generated method and the cast to it have to name the same type
+                    "java.lang.Comparable" -> ClassName("kotlin", "Comparable")
                     else -> it
                 }
             }

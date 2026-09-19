@@ -1652,6 +1652,14 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     }
                     // A `null` is cast where another overload would take it: a cast of `null` in the model is not
                     // written, so it is written here
+                    TypeDef pinning = casts.isEmpty() && overloaded && !isNullLiteral(value)
+                        ? JavaExpressionRules.erasedPinningType(paramType, inferred, objectDef, enclosingMethod) : null;
+                    if (pinning != null) {
+                        // A more specific overload would take the value as it is: the cast to the erasure of the
+                        // variable keeps the generic one of the model
+                        return CodeBlock.concat(CodeBlock.of("($T) ", asType(pinning, objectDef, enclosingMethod)),
+                            renderCastOperand(objectDef, enclosingMethod, scope, value));
+                    }
                     if ((casts.isEmpty() || isNullLiteral(value)) && overloaded && pinsOverload(paramType, isNullLiteral(value) ? null : sourceType, inferred)) {
                         // Another overload takes the values as the source types them: the cast names the one of the model
                         return CodeBlock.concat(CodeBlock.of("($T) ", asType(paramType instanceof ClassTypeDef.Parameterized

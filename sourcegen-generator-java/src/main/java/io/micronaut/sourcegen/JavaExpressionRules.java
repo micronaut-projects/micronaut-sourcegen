@@ -288,6 +288,35 @@ final class JavaExpressionRules {
         return List.of();
     }
 
+    /**
+     * The type a value is cast to so that it selects a generic overload of the model over a more specific one -
+     * `Stream.of((Object) values)` for `of(T)`, which `of(T...)` would take an array for: the erasure of the
+     * variable's bounds, or an array of it.
+     *
+     * @param paramType The parameter type, a variable of the invoked method or an array of one
+     * @param inferred  The variables the invoked method declares
+     * @param objectDef The definition being written
+     * @param methodDef The method being written
+     * @return The erased type, or {@code null} where the parameter is no variable
+     */
+    @Nullable
+    static TypeDef erasedPinningType(TypeDef paramType,
+                                     List<TypeDef.TypeVariable> inferred,
+                                     @Nullable ObjectDef objectDef,
+                                     @Nullable MethodDef methodDef) {
+        TypeDef param = TypeHierarchy.unwrap(paramType);
+        if (param instanceof TypeDef.Array array && TypeHierarchy.unwrap(array.componentType()) instanceof TypeDef.TypeVariable) {
+            TypeDef component = erasedPinningType(array.componentType(), inferred, objectDef, methodDef);
+            return component == null ? null : TypeDef.array(component, array.dimensions());
+        }
+        if (!(param instanceof TypeDef.TypeVariable variable)) {
+            return null;
+        }
+        TypeDef.TypeVariable declared = inferred.stream().filter(own -> own.name().equals(variable.name())).findFirst().orElse(variable);
+        List<TypeDef> bounds = OverrideResolver.upperBounds(declared, objectDef, methodDef);
+        return bounds.isEmpty() ? TypeDef.OBJECT : asRaw(bounds.get(0));
+    }
+
     static boolean castsNumericBranches(List<? extends ExpressionDef> results, TypeDef modelType) {
         if (!(TypeHierarchy.unwrap(modelType) instanceof ClassTypeDef)) {
             return false;
@@ -880,10 +909,21 @@ final class JavaExpressionRules {
      * `List<Number>` - unless the declared one is a wildcard, whose bounds are compared with their own arguments.
      */
     private static boolean acceptsArgument(TypeDef declaredArgument, TypeDef valueArgument) {
+        return acceptsArgument(declaredArgument, valueArgument, false);
+    }
+
+    /**
+     * @param nested Whether the argument is one of a type argument, which is invariant: a wildcard within it has to
+     *               be the same wildcard - `List<? extends CharSequence>` as an argument takes no `List<String>`
+     */
+    private static boolean acceptsArgument(TypeDef declaredArgument, TypeDef valueArgument, boolean nested) {
         if (declaredArgument.equals(valueArgument) || declaredArgument instanceof TypeDef.TypeVariable) {
             return true;
         }
         if (declaredArgument instanceof TypeDef.Wildcard wildcard) {
+            if (nested) {
+                return false;
+            }
             if (valueArgument instanceof TypeDef.Wildcard value) {
                 return containsWildcard(wildcard, value);
             }
@@ -897,7 +937,7 @@ final class JavaExpressionRules {
                 return false;
             }
             for (int i = 0; i < declared.typeArguments().size(); i++) {
-                if (!acceptsArgument(declared.typeArguments().get(i), value.typeArguments().get(i))) {
+                if (!acceptsArgument(declared.typeArguments().get(i), value.typeArguments().get(i), true)) {
                     return false;
                 }
             }

@@ -459,8 +459,8 @@ class KotlinSourceCompilationTest {
             """
             |package test
             |
-            |import java.lang.Comparable
             |import java.util.function.Supplier
+            |import kotlin.Comparable
             |import kotlin.Int
             |import kotlin.String
             |
