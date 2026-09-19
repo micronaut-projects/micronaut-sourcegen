@@ -1,0 +1,12 @@
+package test
+
+import io.micronaut.sourcegen.ConversionProgramRegressionTest
+import kotlin.Any
+import kotlin.Array
+import kotlin.String
+
+public class GenericSignaturearray {
+  public fun call(target: ConversionProgramRegressionTest.ArrayChild, `value`: Any): Any {
+    return target.arrays(`value` as Array<String>)
+  }
+}

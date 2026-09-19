@@ -1389,6 +1389,51 @@ public abstract class ByteCodeWriterTck {
         assertSame(value, cls.getMethod("call", Object.class).invoke(cls.getConstructor().newInstance(), (Object) value));
     }
 
+    /**
+     * Verifies array invocation preserves the caller's generic arguments across scopes.
+     *
+     * @throws Exception If the generated program cannot be loaded or invoked
+     * @since 2.2.2
+     */
+    @Test
+    public void intersectionArraysPreserveCallerTypeArguments() throws Exception {
+        var x = TypeDef.variable("X");
+        var u = TypeDef.variable("U", TypeDef.parameterized(ClassTypeDef.of(List.class), x), TypeDef.of(Serializable.class));
+        var arrays = MethodDef.builder("arrays").addModifiers(Modifier.PUBLIC).addTypeVariable(u)
+            .addParameter("value", u.array()).returns(Object.class).build((self, p) -> p.getFirst().returning());
+        var target = ClassDef.builder("test.IntersectionTarget").addModifiers(Modifier.PUBLIC).addTypeVariable(x).addMethod(arrays).build();
+        var t = TypeDef.variable("T");
+        var caller = ClassDef.builder("test.ArrayScopeT").addModifiers(Modifier.PUBLIC).addTypeVariable(t)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
+                .addParameter("target", TypeDef.parameterized(ClassTypeDef.of(target), t)).addParameter("value", Object.class).returns(Object.class)
+                .build((self, p) -> p.getFirst().invoke(arrays, p.get(1)).returning())).build();
+        var loader = loadPrograms(target, caller);
+        var targetClass = loader.loadClass(target.getName());
+        var callerClass = loader.loadClass(caller.getName());
+        var value = new ArrayList<?>[]{new ArrayList<>(List.of("text"))};
+        assertSame(value, callerClass.getMethod("call", targetClass, Object.class)
+            .invoke(callerClass.getConstructor().newInstance(), targetClass.getConstructor().newInstance(), value));
+    }
+
+    /**
+     * Verifies null remains a valid value for a nullable array with intersection-bounded elements.
+     *
+     * @throws Exception If the generated program cannot be loaded or invoked
+     * @since 2.2.2
+     */
+    @Test
+    public void nullableIntersectionArraysPreserveNull() throws Exception {
+        var u = TypeDef.variable("U", TypeDef.of(CharSequence.class), TypeDef.of(Serializable.class));
+        var identity = MethodDef.builder("identity").addModifiers(Modifier.PUBLIC).addTypeVariable(u)
+            .addParameter("value", u.array().makeNullable()).returns(TypeDef.OBJECT.makeNullable())
+            .build((self, p) -> p.getFirst().returning());
+        var def = ClassDef.builder("test.NullableIntersectionArray").addModifiers(Modifier.PUBLIC).addMethod(identity)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).returns(TypeDef.OBJECT.makeNullable())
+                .build((self, p) -> self.invoke(identity, ExpressionDef.nullValue()).returning())).build();
+        var cls = loadPrograms(def).loadClass(def.getName());
+        assertNull(cls.getMethod("call").invoke(cls.getConstructor().newInstance()));
+    }
+
     private MapClassLoader loadPrograms(ObjectDef... definitions) {
         var classes = new LinkedHashMap<String, byte[]>();
         for (var definition : definitions) {
