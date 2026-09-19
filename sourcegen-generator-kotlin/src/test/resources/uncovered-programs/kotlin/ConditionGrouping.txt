@@ -1,0 +1,19 @@
+package test
+
+import kotlin.Any
+import kotlin.Boolean
+import kotlin.BooleanArray
+import kotlin.Int
+import kotlin.String
+
+public class ConditionGrouping {
+  public fun call(
+    a: Boolean,
+    b: Boolean,
+    c: Boolean,
+    x: Int,
+    text: Any?,
+  ): BooleanArray {
+    return booleanArrayOf((a || b) && c, a && (b || c), a || (b && c), !(a || b), !(a && b) || c, !(x === 1), x != 1, text != "text", !(text == null) && text is String)
+  }
+}

@@ -1,0 +1,14 @@
+package test
+
+import kotlin.Int
+import kotlin.IntArray
+
+public class MathGrouping {
+  public fun call(
+    a: Int,
+    b: Int,
+    c: Int,
+  ): IntArray {
+    return intArrayOf((a + b) * c, a - (b - c), a - b - c, a / (b * c), a or b and c, a shl (b + c), a xor (b or c), -(a + b), a % (b % c))
+  }
+}

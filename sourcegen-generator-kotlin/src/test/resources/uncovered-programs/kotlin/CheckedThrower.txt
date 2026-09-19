@@ -1,0 +1,11 @@
+package test
+
+import java.io.IOException
+import kotlin.jvm.Throws
+
+public class CheckedThrower {
+  @Throws(IOException::class)
+  public fun call() {
+    throw IOException("checked")
+  }
+}

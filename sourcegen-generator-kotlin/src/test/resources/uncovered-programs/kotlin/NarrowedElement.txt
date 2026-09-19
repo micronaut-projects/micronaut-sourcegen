@@ -1,0 +1,11 @@
+package test
+
+import io.micronaut.sourcegen.UncoveredShapeProgramTest
+import kotlin.Array
+import kotlin.String
+
+public class NarrowedElement : UncoveredShapeProgramTest.First<String> {
+  public override fun first(values: Array<String>): String {
+    return values[0] as String
+  }
+}

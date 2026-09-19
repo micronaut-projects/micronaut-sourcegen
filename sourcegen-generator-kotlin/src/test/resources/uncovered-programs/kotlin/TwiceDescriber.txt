@@ -1,0 +1,10 @@
+package test
+
+import kotlin.Int
+import kotlin.String
+
+public class TwiceDescriber : Describer {
+  public override fun describe(`value`: Int): String {
+    return "twice " + Describer.twice(`value`)
+  }
+}
