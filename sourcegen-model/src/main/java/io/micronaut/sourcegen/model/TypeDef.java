@@ -140,18 +140,11 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
         if (dimension > 0) {
             return new TypeDef.Array(of(name), dimension, false);
         }
-        return switch (name) {
-            case "void", "V" -> TypeDef.VOID;
-            case "byte", "B" -> Primitive.BYTE;
-            case "int", "I" -> Primitive.INT;
-            case "boolean", "Z" -> Primitive.BOOLEAN;
-            case "long", "J" -> Primitive.LONG;
-            case "char", "C" -> Primitive.CHAR;
-            case "short", "S" -> Primitive.SHORT;
-            case "double", "D" -> Primitive.DOUBLE;
-            case "float", "F" -> Primitive.FLOAT;
-            default -> ClassTypeDef.of(name);
-        };
+        Primitive primitive = findPrimitive(name);
+        if (primitive != null) {
+            return primitive;
+        }
+        return ClassTypeDef.of(name);
     }
 
     /**
@@ -161,8 +154,16 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * @return a new type definition
      */
     static Primitive primitive(String type) {
-        return switch (type) {
-            case "void", "V" -> Primitive.VOID;
+        Primitive primitive = findPrimitive(type);
+        if (primitive == null) {
+            throw new IllegalStateException("Expected a primitive type got: " + type);
+        }
+        return primitive;
+    }
+
+    private static @Nullable Primitive findPrimitive(String name) {
+        return switch (name) {
+            case "void", "V" -> VOID;
             case "byte", "B" -> Primitive.BYTE;
             case "int", "I" -> Primitive.INT;
             case "boolean", "Z" -> Primitive.BOOLEAN;
@@ -171,7 +172,7 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
             case "short", "S" -> Primitive.SHORT;
             case "double", "D" -> Primitive.DOUBLE;
             case "float", "F" -> Primitive.FLOAT;
-            default -> throw new IllegalStateException("Expected a primitive type got: " + type);
+            default -> null;
         };
     }
 

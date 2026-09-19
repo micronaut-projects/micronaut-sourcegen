@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.generator.visitors;
 
 import io.micronaut.core.annotation.Internal;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.inject.processing.ProcessingException;
@@ -60,6 +61,7 @@ import static io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpT
 @Internal
 public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object, Object> {
 
+    private static final String INSTANCE_PARAMETER = "instance";
     private static final ExpressionDef HASH_MULTIPLIER = ExpressionDef.primitiveConstant(31);
 
     private final Set<String> processed = new HashSet<>();
@@ -98,7 +100,6 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
 
             // create the utils functions if they are annotated
             if (element.hasStereotype(ToString.class)) {
-                context.warn("@ToString annotation will only print out bean properties.", element);
                 List<PropertyElement> filteredProperties = element.getBeanProperties().stream()
                     .filter(property -> !property.hasAnnotation(ToString.Exclude.class)).toList();
                 createToStringMethod(objectBuilder, ClassTypeDef.of(element), filteredProperties);
@@ -140,7 +141,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
         MethodDef method = MethodDef.builder("toString")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(TypeDef.STRING)
-            .addParameter("instance", selfType)
+            .addParameter(INSTANCE_PARAMETER, selfType)
             .build((self, parameterDef) -> {
                     List<ExpressionDef> expressions = new ArrayList<>();
                     expressions.add(ExpressionDef.constant(selfType.getSimpleName() + "["));
@@ -168,7 +169,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
         MethodDef method = MethodDef.builder("equals")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(TypeDef.Primitive.BOOLEAN)
-            .addParameter("instance", selfType)
+            .addParameter(INSTANCE_PARAMETER, selfType)
             .addParameter("o", TypeDef.OBJECT.makeNullable())
             .build((self, parameterDef) -> {
                 VariableDef instance = parameterDef.get(0);
@@ -178,42 +179,38 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
                     instance.equalsReferentially(o).ifTrue(ExpressionDef.trueValue().returning()),
                     o.isNull().or(instance.invokeGetClass().notEqualsReferentially(o.invokeGetClass()))
                         .doIf(ExpressionDef.falseValue().returning()),
-                    o.cast(selfType).newLocal("other", variableDef -> {
-                        ExpressionDef.ConditionExpressionDef exp = null;
-                        for (PropertyElement beanProperty : properties) {
-                            if (beanProperty.hasAnnotation(EqualsAndHashCode.Exclude.class)) {
-                                continue;
-                            }
-                            if (beanProperty.isWriteOnly()) {
-                                continue;
-                            }
-                            var firstProperty = instance.getPropertyValue(beanProperty);
-                            var secondProperty = variableDef.getPropertyValue(beanProperty);
-
-                            ExpressionDef.ConditionExpressionDef newEqualsExpression = firstProperty.equalsReferentially(secondProperty);
-                            if (!beanProperty.isPrimitive() || beanProperty.isArray()) {
-                                // Object.equals for objects
-//                                if (beanProperty.isArray()) {
-//                                    // Arrays.equals or Arrays.deepEquals for Array
-//                                    String methodName = beanProperty.getArrayDimensions() > 1 ?  "deepEquals" : "equals";
-//                                    equalsMethod = ClassTypeDef.of(Arrays.class).invokeStatic(methodName, TypeDef.Primitive.BOOLEAN, firstProperty, secondProperty);
-//                                }
-                                ExpressionDef.ConditionExpressionDef equalsMethod = firstProperty.equalsStructurally(secondProperty);
-                                newEqualsExpression = newEqualsExpression
-                                    .or(firstProperty.isNonNull().and(equalsMethod));
-                            }
-
-                            if (exp == null) {
-                                exp = newEqualsExpression;
-                            } else {
-                                exp = exp.and(newEqualsExpression);
-                            }
-                        }
-                        return Objects.requireNonNullElseGet(exp, ExpressionDef::trueValue).returning();
-                    })
+                    o.cast(selfType).newLocal("other", variableDef ->
+                        Objects.requireNonNullElseGet(propertiesEqual(instance, variableDef, properties), ExpressionDef::trueValue).returning()
+                    )
                 );
             });
         classDefBuilder.addMethod(method);
+    }
+
+    private static ExpressionDef.@Nullable ConditionExpressionDef propertiesEqual(VariableDef instance, VariableDef other, List<PropertyElement> properties) {
+        ExpressionDef.ConditionExpressionDef exp = null;
+        for (PropertyElement beanProperty : properties) {
+            if (beanProperty.hasAnnotation(EqualsAndHashCode.Exclude.class) || beanProperty.isWriteOnly()) {
+                continue;
+            }
+            var firstProperty = instance.getPropertyValue(beanProperty);
+            var secondProperty = other.getPropertyValue(beanProperty);
+
+            ExpressionDef.ConditionExpressionDef newEqualsExpression = firstProperty.equalsReferentially(secondProperty);
+            if (!beanProperty.isPrimitive() || beanProperty.isArray()) {
+                // Object.equals for objects
+                ExpressionDef.ConditionExpressionDef equalsMethod = firstProperty.equalsStructurally(secondProperty);
+                newEqualsExpression = newEqualsExpression
+                    .or(firstProperty.isNonNull().and(equalsMethod));
+            }
+
+            if (exp == null) {
+                exp = newEqualsExpression;
+            } else {
+                exp = exp.and(newEqualsExpression);
+            }
+        }
+        return exp;
     }
 
     /*
@@ -225,7 +222,7 @@ public final class ObjectAnnotationVisitor implements TypeElementVisitor<Object,
         Iterator<PropertyElement> iterator = props.iterator();
         MethodDef method = MethodDef.builder("hashCode")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter("instance", selfType.makeNullable())
+            .addParameter(INSTANCE_PARAMETER, selfType.makeNullable())
             .returns(TypeDef.Primitive.INT)
             .build((self, parameterDef) -> {
                     if (!iterator.hasNext()) {

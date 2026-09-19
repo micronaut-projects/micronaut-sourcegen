@@ -62,6 +62,7 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
      * @return all the expressions
      * @since 1.7
      */
+    @SuppressWarnings("java:S1452") // public API, implementations return streams of specific expression types
     Stream<? extends ExpressionDef> nestedExpressionsStream();
 
     /**

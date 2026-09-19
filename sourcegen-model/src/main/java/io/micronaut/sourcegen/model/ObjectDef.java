@@ -126,10 +126,11 @@ public abstract sealed class ObjectDef extends AbstractElement permits ClassDef,
             return asTypeDef();
         } else if (typeDef == TypeDef.SUPER) {
             if (this instanceof ClassDef classDef) {
-                if (classDef.getSuperclass() == null) {
+                ClassTypeDef superclass = classDef.getSuperclass();
+                if (superclass == null) {
                     return TypeDef.of(Object.class);
                 }
-                return classDef.getSuperclass();
+                return superclass;
             } else if (this instanceof EnumDef) {
                 return ClassTypeDef.of(Enum.class);
             } else if (this instanceof InterfaceDef interfaceDef) {

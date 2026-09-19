@@ -1050,16 +1050,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 );
             }
             case ExpressionDef.ArrayElement arrayElement -> {
-                CodeBlock array = renderExpression(objectDef, methodDef, scope, arrayElement.expression());
-                if (requiresMethodCallTargetParentheses(arrayElement.expression())) {
-                    array = addParentheses(array);
-                }
-                return CodeBlock.concat(
-                    array,
-                    CodeBlock.of("["),
-                    renderExpression(objectDef, methodDef, scope, arrayElement.indexExpression()),
-                    CodeBlock.of("]")
-                );
+                return renderArrayElement(objectDef, methodDef, scope, arrayElement);
             }
             case ExpressionDef.NewArrayOfSize newArray -> {
                 // The size belongs to the first dimension: `new T[size][]`
@@ -1067,19 +1058,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                     "[]".repeat(newArray.type().dimensions() - 1));
             }
             case ExpressionDef.NewArrayInitialized newArray -> {
-                CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("new $T{", asType(TypeDef.array(rawComponent(newArray.type()), newArray.type().dimensions()), objectDef));
-                for (Iterator<? extends ExpressionDef> iterator = newArray.nestedExpressionsStream().iterator(); iterator.hasNext(); ) {
-                    ExpressionDef expression = iterator.next();
-                    builder.add(renderStored(objectDef, methodDef, scope, newArray.type().dimensions() == 1
-                        ? newArray.type().componentType()
-                        : TypeDef.array(newArray.type().componentType(), newArray.type().dimensions() - 1), expression));
-                    if (iterator.hasNext()) {
-                        builder.add(",");
-                    }
-                }
-                builder.add("}");
-                return builder.build();
+                return renderNewArrayInitialized(objectDef, methodDef, scope, newArray);
             }
             case ExpressionDef.Cast castExpressionDef -> {
                 ExpressionDef exp = collapseNestedCasts(castExpressionDef.expressionDef());
@@ -1123,34 +1102,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return renderConstantExpression(scope, constant);
             }
             case ExpressionDef.InvokeInstanceMethod invokeInstanceMethod -> {
-                MethodDef callMethod = invokeInstanceMethod.method();
-                CodeBlock instance;
-                if (callMethod.isConstructor() && invokeInstanceMethod.instance() instanceof VariableDef.Super) {
-                    // A super constructor call is always the unqualified `super(...)`, even when the
-                    // `VariableDef.Super` carries an explicit type used only to resolve the constructor
-                    // overload for bytecode generation; `Type.super(...)` is not valid Java syntax here.
-                    instance = CodeBlock.of("super");
-                } else {
-                    instance = renderExpression(objectDef, methodDef, scope, invokeInstanceMethod.instance());
-                    if (isFunctional(invokeInstanceMethod.instance())) {
-                        // A lambda has no type of its own to call a method of
-                        instance = addParentheses(withTargetType(objectDef, methodDef, invokeInstanceMethod.instance(), instance));
-                    } else if (!callMethod.isConstructor() && requiresMethodCallTargetParentheses(invokeInstanceMethod.instance())) {
-                        instance = addParentheses(instance);
-                    }
-                }
-                // The name is a `$L` argument: a generated method name can contain a `$`, read as a placeholder
-                CodeBlock methodNameAndOpenParen = callMethod.isConstructor()
-                    ? CodeBlock.of("(")
-                    : CodeBlock.of(".$L(", callMethod.getName());
-                return CodeBlock.concat(
-                    instance,
-                    methodNameAndOpenParen,
-                    renderInvocationArguments(objectDef, methodDef, scope,
-                        ownerOf(objectDef, invokeInstanceMethod.instance().type()),
-                        callMethod, invokeInstanceMethod.values()),
-                    CodeBlock.of(")")
-                );
+                return renderInvokeInstanceMethod(objectDef, methodDef, scope, invokeInstanceMethod);
             }
             case ExpressionDef.InvokeStaticMethod staticMethod -> {
                 return CodeBlock.concat(
@@ -1177,70 +1129,13 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 );
             }
             case ExpressionDef.IfElse condition -> {
-                CodeBlock conditionBlock = renderExpression(objectDef, methodDef, scope, condition.condition());
-                if (unwrapCasts(condition.condition()) instanceof ExpressionDef.IfElse) {
-                    // `?:` is right-associative, a conditional used as a condition needs parentheses
-                    conditionBlock = addParentheses(conditionBlock);
-                }
-                return CodeBlock.concat(
-                    conditionBlock,
-                    CodeBlock.of(" ? "),
-                    renderBranch(objectDef, methodDef, scope, condition.type(), condition.ifExpression()),
-                    CodeBlock.of(" : "),
-                    renderBranch(objectDef, methodDef, scope, condition.type(), condition.elseExpression())
-                );
+                return renderIfElse(objectDef, methodDef, scope, condition);
             }
             case ExpressionDef.Switch aSwitch -> {
-                CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("switch (");
-                builder.add(renderExpression(objectDef, methodDef, scope, aSwitch.expression()));
-                builder.add(") {\n");
-                builder.indent();
-                for (Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef> e : aSwitch.cases().entrySet()) {
-                    builder.add("case ");
-                    builder.add(renderConstantExpression(scope, e.getKey()));
-                    builder.add(" -> ");
-                    ExpressionDef value = e.getValue();
-                    builder.add(renderBranch(objectDef, methodDef, scope, aSwitch.type(), value));
-                    if (value instanceof ExpressionDef.SwitchYieldCase) {
-                        builder.add("\n");
-                    } else {
-                        builder.add(";\n");
-                    }
-                }
-                if (aSwitch.defaultCase() != null) {
-                    builder.add("default");
-                    builder.add(" -> ");
-                    builder.add(renderBranch(objectDef, methodDef, scope, aSwitch.type(), aSwitch.defaultCase()));
-                    if (aSwitch.defaultCase() instanceof ExpressionDef.SwitchYieldCase) {
-                        builder.add("\n");
-                    } else {
-                        builder.add(";\n");
-                    }
-                }
-                builder.unindent();
-                builder.add("}");
-                return builder.build();
+                return renderSwitch(objectDef, methodDef, scope, aSwitch);
             }
             case ExpressionDef.SwitchYieldCase switchYieldCase -> {
-                CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("{\n");
-                builder.indent();
-                StatementDef statement = switchYieldCase.statement();
-                List<StatementDef> flatten = statement.flatten();
-                if (flatten.isEmpty()) {
-                    throw new IllegalStateException("SwitchYieldCase did not return any statements");
-                }
-                StatementDef last = flatten.getLast();
-                if (!hasSwitchYieldReturn(statement)) {
-                    throw new IllegalStateException("The last statement of SwitchYieldCase should be a return. Found: " + last);
-                }
-                builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, scope, statement, switchYieldCase.type()));
-                builder.unindent();
-                builder.add("}");
-                String str = builder.build().toString();
-                // Render the body to prevent nested statements
-                return CodeBlock.ofWithoutFormat(str);
+                return renderSwitchYieldCase(objectDef, methodDef, scope, switchYieldCase);
             }
             case VariableDef variableDef -> {
                 return renderVariable(objectDef, methodDef, scope, variableDef);
@@ -1252,75 +1147,216 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return renderExpression(objectDef, methodDef, scope, JavaIdioms.hashCode(invokeHashCodeMethod));
             }
             case Lambda lambda -> {
-                // The variables the enclosing method declares are in scope of the body
-                MethodDef implementation = withTypeVariables(lambda.implementation(), methodDef);
-                // Java forbids a lambda parameter from shadowing a name that is already in scope, so a
-                // colliding parameter is emitted under an allocated name and its references remapped
-                RenderScope lambdaScope = scope.nested(implementation);
-                CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("(");
-                Iterator<ParameterDef> parameter = implementation.getParameters().iterator();
-                while (parameter.hasNext()) {
-                    String name = parameter.next().getName();
-                    String emittedName = scope.isTaken(name) ? lambdaScope.allocate(name) : name;
-                    lambdaScope.rename(name, emittedName);
-                    builder.add(emittedName);
-                    if (parameter.hasNext()) {
-                        builder.add(", ");
-                    }
-                }
-                builder.add(") -> ");
-                List<StatementDef> statements = implementation.getStatements();
-                ExpressionDef body = singleExpressionBody(lambda);
-                if (body != null) {
-                    builder.add(renderConverted(objectDef, implementation, lambdaScope, body,
-                        returnCasts(implementation.getReturnType(), body.type(),
-                            sourceTypeOf(body, implementation, objectDef), objectDef, implementation)));
-                } else {
-                    builder.add("{\n").indent();
-                    for (int i = 0; i < statements.size(); i++) {
-                        builder.add(renderStatementCodeBlock(objectDef, implementation, lambdaScope, statements.get(i),
-                            i == statements.size() - 1));
-                        if (cannotCompleteNormally(statements.get(i))) {
-                            break;
-                        }
-                    }
-                    builder.unindent().add("}");
-                }
-                return builder.build();
+                return renderLambda(objectDef, methodDef, scope, lambda);
             }
             case MethodReferenceExpression methodReference -> {
-                // The name is a `$L` argument: a generated method name can contain a `$`, read as a placeholder
-                String name = methodReference.isConstructor() ? "new" : methodReference.method().getName();
-                ExpressionDef instance = methodReference.instance();
-                if (instance == null) {
-                    return CodeBlock.of("$T::$L", asType(methodReference.owner(), objectDef), name);
-                }
-                CodeBlock adapted = methodReference.isConstructor() ? null
-                    : conversions.renderAdaptedReference(objectDef, methodDef, scope, methodReference, instance);
-                if (adapted != null) {
-                    return adapted;
-                }
-                CodeBlock receiver = renderExpression(objectDef, methodDef, scope, instance);
-                if (requiresMethodCallTargetParentheses(instance)) {
-                    receiver = addParentheses(receiver);
-                }
-                return CodeBlock.concat(receiver, CodeBlock.of("::$L", name));
+                return renderMethodReference(objectDef, methodDef, scope, methodReference);
             }
             case ExpressionDef.StringConcatenation concat -> {
-                ExpressionDef left = concat.left();
-                CodeBlock leftBlock = conversions.renderConcatOperand(objectDef, methodDef, scope, left, false);
-                if (!left.type().equals(TypeDef.STRING) && !concat.right().type().equals(TypeDef.STRING)) {
-                    // `valueOf(Object)`, which writes what the concatenation does - `valueOf(char[])` writes the contents
-                    leftBlock = left.type().isPrimitive()
-                        ? CodeBlock.of("$T.valueOf($L)", String.class, renderExpression(objectDef, methodDef, scope, left))
-                        : CodeBlock.of("$T.valueOf(($T) $L)", String.class, Object.class, renderCastOperand(objectDef, methodDef, scope, left));
-                }
-                return CodeBlock.concat(leftBlock, CodeBlock.of(" + "),
-                    conversions.renderConcatOperand(objectDef, methodDef, scope, concat.right(), true));
+                return renderStringConcatenation(objectDef, methodDef, scope, concat);
             }
             case null, default -> throw new IllegalStateException("Unrecognized expression: " + expressionDef);
         }
+    }
+
+    private CodeBlock renderArrayElement(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.ArrayElement arrayElement) {
+        CodeBlock array = renderExpression(objectDef, methodDef, scope, arrayElement.expression());
+        if (requiresMethodCallTargetParentheses(arrayElement.expression())) {
+            array = addParentheses(array);
+        }
+        return CodeBlock.concat(
+            array,
+            CodeBlock.of("["),
+            renderExpression(objectDef, methodDef, scope, arrayElement.indexExpression()),
+            CodeBlock.of("]")
+        );
+    }
+
+    private CodeBlock renderNewArrayInitialized(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.NewArrayInitialized newArray) {
+        CodeBlock.Builder builder = CodeBlock.builder();
+        builder.add("new $T{", asType(TypeDef.array(rawComponent(newArray.type()), newArray.type().dimensions()), objectDef));
+        for (Iterator<? extends ExpressionDef> iterator = newArray.nestedExpressionsStream().iterator(); iterator.hasNext(); ) {
+            ExpressionDef expression = iterator.next();
+            builder.add(renderStored(objectDef, methodDef, scope, newArray.type().dimensions() == 1
+                ? newArray.type().componentType()
+                : TypeDef.array(newArray.type().componentType(), newArray.type().dimensions() - 1), expression));
+            if (iterator.hasNext()) {
+                builder.add(",");
+            }
+        }
+        builder.add("}");
+        return builder.build();
+    }
+
+    private CodeBlock renderInvokeInstanceMethod(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.InvokeInstanceMethod invokeInstanceMethod) {
+        MethodDef callMethod = invokeInstanceMethod.method();
+        CodeBlock instance;
+        if (callMethod.isConstructor() && invokeInstanceMethod.instance() instanceof VariableDef.Super) {
+            // A super constructor call is always the unqualified `super(...)`, even when the
+            // `VariableDef.Super` carries an explicit type used only to resolve the constructor
+            // overload for bytecode generation; `Type.super(...)` is not valid Java syntax here.
+            instance = CodeBlock.of("super");
+        } else {
+            instance = renderExpression(objectDef, methodDef, scope, invokeInstanceMethod.instance());
+            if (isFunctional(invokeInstanceMethod.instance())) {
+                // A lambda has no type of its own to call a method of
+                instance = addParentheses(withTargetType(objectDef, methodDef, invokeInstanceMethod.instance(), instance));
+            } else if (!callMethod.isConstructor() && requiresMethodCallTargetParentheses(invokeInstanceMethod.instance())) {
+                instance = addParentheses(instance);
+            }
+        }
+        // The name is a `$L` argument: a generated method name can contain a `$`, read as a placeholder
+        CodeBlock methodNameAndOpenParen = callMethod.isConstructor()
+            ? CodeBlock.of("(")
+            : CodeBlock.of(".$L(", callMethod.getName());
+        return CodeBlock.concat(
+            instance,
+            methodNameAndOpenParen,
+            renderInvocationArguments(objectDef, methodDef, scope,
+                ownerOf(objectDef, invokeInstanceMethod.instance().type()),
+                callMethod, invokeInstanceMethod.values()),
+            CodeBlock.of(")")
+        );
+    }
+
+    private CodeBlock renderIfElse(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.IfElse condition) {
+        CodeBlock conditionBlock = renderExpression(objectDef, methodDef, scope, condition.condition());
+        if (unwrapCasts(condition.condition()) instanceof ExpressionDef.IfElse) {
+            // `?:` is right-associative, a conditional used as a condition needs parentheses
+            conditionBlock = addParentheses(conditionBlock);
+        }
+        return CodeBlock.concat(
+            conditionBlock,
+            CodeBlock.of(" ? "),
+            renderBranch(objectDef, methodDef, scope, condition.type(), condition.ifExpression()),
+            CodeBlock.of(" : "),
+            renderBranch(objectDef, methodDef, scope, condition.type(), condition.elseExpression())
+        );
+    }
+
+    private CodeBlock renderSwitch(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.Switch aSwitch) {
+        CodeBlock.Builder builder = CodeBlock.builder();
+        builder.add("switch (");
+        builder.add(renderExpression(objectDef, methodDef, scope, aSwitch.expression()));
+        builder.add(") {\n");
+        builder.indent();
+        for (Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef> e : aSwitch.cases().entrySet()) {
+            builder.add("case ");
+            builder.add(renderConstantExpression(scope, e.getKey()));
+            builder.add(" -> ");
+            ExpressionDef value = e.getValue();
+            builder.add(renderBranch(objectDef, methodDef, scope, aSwitch.type(), value));
+            if (value instanceof ExpressionDef.SwitchYieldCase) {
+                builder.add("\n");
+            } else {
+                builder.add(";\n");
+            }
+        }
+        if (aSwitch.defaultCase() != null) {
+            builder.add("default");
+            builder.add(" -> ");
+            builder.add(renderBranch(objectDef, methodDef, scope, aSwitch.type(), aSwitch.defaultCase()));
+            if (aSwitch.defaultCase() instanceof ExpressionDef.SwitchYieldCase) {
+                builder.add("\n");
+            } else {
+                builder.add(";\n");
+            }
+        }
+        builder.unindent();
+        builder.add("}");
+        return builder.build();
+    }
+
+    private CodeBlock renderSwitchYieldCase(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.SwitchYieldCase switchYieldCase) {
+        CodeBlock.Builder builder = CodeBlock.builder();
+        builder.add("{\n");
+        builder.indent();
+        StatementDef statement = switchYieldCase.statement();
+        List<StatementDef> flatten = statement.flatten();
+        if (flatten.isEmpty()) {
+            throw new IllegalStateException("SwitchYieldCase did not return any statements");
+        }
+        StatementDef last = flatten.getLast();
+        if (!hasSwitchYieldReturn(statement)) {
+            throw new IllegalStateException("The last statement of SwitchYieldCase should be a return. Found: " + last);
+        }
+        builder.add(renderSwitchYieldStatementCodeBlock(objectDef, methodDef, scope, statement, switchYieldCase.type()));
+        builder.unindent();
+        builder.add("}");
+        String str = builder.build().toString();
+        // Render the body to prevent nested statements
+        return CodeBlock.ofWithoutFormat(str);
+    }
+
+    private CodeBlock renderLambda(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, Lambda lambda) {
+        // The variables the enclosing method declares are in scope of the body
+        MethodDef implementation = withTypeVariables(lambda.implementation(), methodDef);
+        // Java forbids a lambda parameter from shadowing a name that is already in scope, so a
+        // colliding parameter is emitted under an allocated name and its references remapped
+        RenderScope lambdaScope = scope.nested(implementation);
+        CodeBlock.Builder builder = CodeBlock.builder();
+        builder.add("(");
+        Iterator<ParameterDef> parameter = implementation.getParameters().iterator();
+        while (parameter.hasNext()) {
+            String name = parameter.next().getName();
+            String emittedName = scope.isTaken(name) ? lambdaScope.allocate(name) : name;
+            lambdaScope.rename(name, emittedName);
+            builder.add(emittedName);
+            if (parameter.hasNext()) {
+                builder.add(", ");
+            }
+        }
+        builder.add(") -> ");
+        List<StatementDef> statements = implementation.getStatements();
+        ExpressionDef body = singleExpressionBody(lambda);
+        if (body != null) {
+            builder.add(renderConverted(objectDef, implementation, lambdaScope, body,
+                returnCasts(implementation.getReturnType(), body.type(),
+                    sourceTypeOf(body, implementation, objectDef), objectDef, implementation)));
+        } else {
+            builder.add("{\n").indent();
+            for (int i = 0; i < statements.size(); i++) {
+                builder.add(renderStatementCodeBlock(objectDef, implementation, lambdaScope, statements.get(i),
+                    i == statements.size() - 1));
+                if (cannotCompleteNormally(statements.get(i))) {
+                    break;
+                }
+            }
+            builder.unindent().add("}");
+        }
+        return builder.build();
+    }
+
+    private CodeBlock renderMethodReference(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, MethodReferenceExpression methodReference) {
+        // The name is a `$L` argument: a generated method name can contain a `$`, read as a placeholder
+        String name = methodReference.isConstructor() ? "new" : methodReference.method().getName();
+        ExpressionDef instance = methodReference.instance();
+        if (instance == null) {
+            return CodeBlock.of("$T::$L", asType(methodReference.owner(), objectDef), name);
+        }
+        CodeBlock adapted = methodReference.isConstructor() ? null
+            : conversions.renderAdaptedReference(objectDef, methodDef, scope, methodReference, instance);
+        if (adapted != null) {
+            return adapted;
+        }
+        CodeBlock receiver = renderExpression(objectDef, methodDef, scope, instance);
+        if (requiresMethodCallTargetParentheses(instance)) {
+            receiver = addParentheses(receiver);
+        }
+        return CodeBlock.concat(receiver, CodeBlock.of("::$L", name));
+    }
+
+    private CodeBlock renderStringConcatenation(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.StringConcatenation concat) {
+        ExpressionDef left = concat.left();
+        CodeBlock leftBlock = conversions.renderConcatOperand(objectDef, methodDef, scope, left, false);
+        if (!left.type().equals(TypeDef.STRING) && !concat.right().type().equals(TypeDef.STRING)) {
+            // `valueOf(Object)`, which writes what the concatenation does - `valueOf(char[])` writes the contents
+            leftBlock = left.type().isPrimitive()
+                ? CodeBlock.of("$T.valueOf($L)", String.class, renderExpression(objectDef, methodDef, scope, left))
+                : CodeBlock.of("$T.valueOf(($T) $L)", String.class, Object.class, renderCastOperand(objectDef, methodDef, scope, left));
+        }
+        return CodeBlock.concat(leftBlock, CodeBlock.of(" + "),
+            conversions.renderConcatOperand(objectDef, methodDef, scope, concat.right(), true));
     }
 
     private CodeBlock renderMathOperand(@Nullable ObjectDef objectDef,

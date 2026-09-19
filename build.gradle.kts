@@ -33,6 +33,13 @@ plugins.withId("org.sonarqube") {
     extensions.findByName("sonar")?.withGroovyBuilder {
         "properties" {
             "property"("sonar.exclusions", "**/io/micronaut/sourcegen/bytecode/tck/**")
+            // Micronaut builds pin dependency versions through the version catalog and do not
+            // publish Gradle lock files or dependency verification metadata
+            "property"("sonar.issue.ignore.multicriteria", "lockfile,verification")
+            "property"("sonar.issue.ignore.multicriteria.lockfile.ruleKey", "text:S8569")
+            "property"("sonar.issue.ignore.multicriteria.lockfile.resourceKey", "**/*")
+            "property"("sonar.issue.ignore.multicriteria.verification.ruleKey", "kotlin:S6474")
+            "property"("sonar.issue.ignore.multicriteria.verification.resourceKey", "**/*")
         }
     }
 }

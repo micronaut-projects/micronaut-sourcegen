@@ -146,36 +146,27 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
     private void captureVariables(ExpressionDef expression, Set<String> variables, List<VariableDef> capturedVariables) {
         if (expression instanceof VariableDef variable) {
             if (variable instanceof VariableDef.Local local) {
-                if (!variables.contains(local.name())) {
-                    capturedVariables.add(local);
-                    variables.add(local.name());
-                }
+                captureVariable(local, local.name(), variables, capturedVariables);
             } else if (variable instanceof VariableDef.MethodParameter parameter) {
-                if (!variables.contains(parameter.name())) {
-                    capturedVariables.add(parameter);
-                    variables.add(parameter.name());
-                }
+                captureVariable(parameter, parameter.name(), variables, capturedVariables);
             } else if (variable instanceof VariableDef.Field field) {
                 captureVariables(field.instance(), variables, capturedVariables);
             } else if (variable instanceof VariableDef.This) {
-                if (!variables.contains(THIS_VAR_NAME)) {
-                    capturedVariables.add(variable);
-                    variables.add(THIS_VAR_NAME);
-                }
+                captureVariable(variable, THIS_VAR_NAME, variables, capturedVariables);
             } else if (variable instanceof VariableDef.Super) {
-                if (!variables.contains(SUPER_VAR_NAME)) {
-                    capturedVariables.add(variable);
-                    variables.add(SUPER_VAR_NAME);
-                }
+                captureVariable(variable, SUPER_VAR_NAME, variables, capturedVariables);
             } else if (variable instanceof VariableDef.ExceptionVar) {
-                if (!variables.contains(EXCEPTION_VAR_NAME)) {
-                    capturedVariables.add(variable);
-                    variables.add(EXCEPTION_VAR_NAME);
-                }
+                captureVariable(variable, EXCEPTION_VAR_NAME, variables, capturedVariables);
             }
         } else {
             expression.nestedExpressionsStream()
                 .forEach(expressionDef -> captureVariables(expressionDef, variables, capturedVariables));
+        }
+    }
+
+    private static void captureVariable(VariableDef variable, String name, Set<String> variables, List<VariableDef> capturedVariables) {
+        if (variables.add(name)) {
+            capturedVariables.add(variable);
         }
     }
 

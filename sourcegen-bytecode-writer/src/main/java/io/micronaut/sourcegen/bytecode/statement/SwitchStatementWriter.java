@@ -149,53 +149,18 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
                 Arrays.fill(labels, defaultLabel);
                 List<Map.Entry<Label, StatementDef>> result = new ArrayList<>();
                 for (int key : keys) {
-                    int i = key - min;
-                    StatementDef statementDef = Objects.requireNonNull(
-                        cases.get(key),
-                        () -> "Switch case statement missing for key: " + key
-                    );
-                    Label existingLabel = findIndex(result, statementDef);
-                    if (existingLabel == null) {
-                        Label newLabel = generatorAdapter.newLabel();
-                        labels[i] = newLabel;
-                        result.add(Map.entry(newLabel, statementDef));
-                    } else {
-                        // Reuse the label
-                        labels[i] = existingLabel;
-                    }
+                    labels[key - min] = caseLabel(generatorAdapter, cases, key, result);
                 }
                 generatorAdapter.visitTableSwitchInsn(min, max, defaultLabel, labels);
-                for (Map.Entry<Label, StatementDef> e : result) {
-                    generatorAdapter.mark(e.getKey());
-                    StatementWriter.of(Objects.requireNonNull(e.getValue(), "Switch case statement cannot be null"))
-                        .writeScoped(generatorAdapter, context, finallyBlock);
-                    generatorAdapter.goTo(endLabel);
-                }
+                writeCases(generatorAdapter, context, result, finallyBlock, endLabel);
             } else {
                 Label[] labels = new Label[keys.length];
                 List<Map.Entry<Label, StatementDef>> result = new ArrayList<>();
                 for (int i = 0; i < numKeys; ++i) {
-                    int key = keys[i];
-                    StatementDef statementDef = Objects.requireNonNull(
-                        cases.get(key),
-                        () -> "Switch case statement missing for key: " + key
-                    );
-                    Label existingLabel = findIndex(result, statementDef);
-                    if (existingLabel == null) {
-                        Label newLabel = generatorAdapter.newLabel();
-                        labels[i] = newLabel;
-                        result.add(Map.entry(newLabel, statementDef));
-                    } else {
-                        // Reuse the label
-                        labels[i] = existingLabel;
-                    }
+                    labels[i] = caseLabel(generatorAdapter, cases, keys[i], result);
                 }
                 generatorAdapter.visitLookupSwitchInsn(defaultLabel, keys, labels);
-                for (Map.Entry<Label, StatementDef> e : result) {
-                    generatorAdapter.mark(e.getKey());
-                    StatementWriter.of(e.getValue()).writeScoped(generatorAdapter, context, finallyBlock);
-                    generatorAdapter.goTo(endLabel);
-                }
+                writeCases(generatorAdapter, context, result, finallyBlock, endLabel);
             }
         }
         generatorAdapter.mark(defaultLabel);
@@ -203,6 +168,36 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
             StatementWriter.of(defaultCase).writeScoped(generatorAdapter, context, finallyBlock);
         }
         generatorAdapter.mark(endLabel);
+    }
+
+    private static Label caseLabel(GeneratorAdapter generatorAdapter,
+                                   Map<Integer, StatementDef> cases,
+                                   int key,
+                                   List<Map.Entry<Label, StatementDef>> result) {
+        StatementDef statementDef = Objects.requireNonNull(
+            cases.get(key),
+            () -> "Switch case statement missing for key: " + key
+        );
+        Label existingLabel = findIndex(result, statementDef);
+        if (existingLabel != null) {
+            // Reuse the label
+            return existingLabel;
+        }
+        Label newLabel = generatorAdapter.newLabel();
+        result.add(Map.entry(newLabel, statementDef));
+        return newLabel;
+    }
+
+    private static void writeCases(GeneratorAdapter generatorAdapter,
+                                   MethodContext context,
+                                   List<Map.Entry<Label, StatementDef>> result,
+                                   @Nullable Runnable finallyBlock,
+                                   Label endLabel) {
+        for (Map.Entry<Label, StatementDef> e : result) {
+            generatorAdapter.mark(e.getKey());
+            StatementWriter.of(e.getValue()).writeScoped(generatorAdapter, context, finallyBlock);
+            generatorAdapter.goTo(endLabel);
+        }
     }
 
     private static @Nullable Label findIndex(List<Map.Entry<Label, StatementDef>> result, StatementDef statement) {

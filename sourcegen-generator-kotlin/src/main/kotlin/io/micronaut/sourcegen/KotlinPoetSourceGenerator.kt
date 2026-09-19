@@ -300,9 +300,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     .addModifiers(function.modifiers)
                     .getter(FunSpec.getterBuilder().addCode(function.body).build())
                     .build())
-            } else if (method.name == "<init>") {
+            } else if (method.isConstructor) {
                 val superCallStatement = method.statements.firstOrNull {
-                    it is InvokeInstanceMethod && it.instance is VariableDef.Super && it.method.name == "<init>"
+                    it is InvokeInstanceMethod && it.instance is VariableDef.Super && it.method.isConstructor
                 } as? InvokeInstanceMethod
                 val superCallStatement2 = method.statements.firstOrNull {
                     it is InvokeSuperConstructor
@@ -313,41 +313,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 if (!primary) {
                     classBuilder.addFunction(buildFunction(classDef, method, modifiers))
                 } else if (superCallStatement2 != null) {
-                    val superArgsCodeBlock = CodeBlock.builder()
-                    superArgsCodeBlock.add(renderArguments(classDef, method, RenderScope.root(method), classDef.superclass,
-                        MethodDef.CONSTRUCTOR, superCallStatement2.method,
-                        superCallStatement2.method.parameters.map { it.type }, superCallStatement2.values))
-                    val constructorFunSpecBuilder = FunSpec.constructorBuilder()
-                        .addModifiers(asKModifiers(method, modifiers))
-                        .addParameters(
-                            method.parameters.stream()
-                                .map { param: ParameterDef ->
-                                    ParameterSpec.builder(
-                                        param.name,
-                                        asType(param.type, classDef)
-                                    ).build()
-                                }.toList()
-                        )
-                    classBuilder.superclassConstructorParameters.add(superArgsCodeBlock.build())
-                    classBuilder.primaryConstructor(constructorFunSpecBuilder.build())
+                    addPrimaryConstructor(classBuilder, classDef, method, modifiers, superCallStatement2.method, superCallStatement2.values)
                 } else if (superCallStatement != null) {
-                    val superArgsCodeBlock = CodeBlock.builder()
-                    superArgsCodeBlock.add(renderArguments(classDef, method, RenderScope.root(method), classDef.superclass,
-                        MethodDef.CONSTRUCTOR, superCallStatement.method,
-                        superCallStatement.method.parameters.map { it.type }, superCallStatement.values))
-                    val constructorFunSpecBuilder = FunSpec.constructorBuilder()
-                        .addModifiers(asKModifiers(method, modifiers))
-                        .addParameters(
-                            method.parameters.stream()
-                                .map { param: ParameterDef ->
-                                    ParameterSpec.builder(
-                                        param.name,
-                                        asType(param.type, classDef)
-                                    ).build()
-                                }.toList()
-                        )
-                    classBuilder.superclassConstructorParameters.add(superArgsCodeBlock.build())
-                    classBuilder.primaryConstructor(constructorFunSpecBuilder.build())
+                    addPrimaryConstructor(classBuilder, classDef, method, modifiers, superCallStatement.method, superCallStatement.values)
                 } else {
                     classBuilder.addFunction(
                         buildFunction(classDef, method, modifiers)
@@ -364,6 +332,42 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         }
         addInnerTypes(classDef.innerTypes, classBuilder)
         return classBuilder
+    }
+
+    private fun addPrimaryConstructor(
+        classBuilder: TypeSpec.Builder,
+        classDef: ClassDef,
+        method: MethodDef,
+        modifiers: Set<Modifier>,
+        superMethod: MethodDef,
+        superValues: List<ExpressionDef>
+    ) {
+        val constructorFunSpecBuilder = FunSpec.constructorBuilder()
+            .addModifiers(asKModifiers(method, modifiers))
+            .addParameters(
+                method.parameters.stream()
+                    .map { param: ParameterDef ->
+                        ParameterSpec.builder(
+                            param.name,
+                            asType(param.type, classDef)
+                        ).build()
+                    }.toList()
+            )
+        // The arguments are converted to the parameters of the super constructor, as any invocation's are
+        classBuilder.superclassConstructorParameters.add(renderArguments(classDef, method, RenderScope.root(method), classDef.superclass,
+            MethodDef.CONSTRUCTOR, superMethod, superMethod.parameters.map { it.type }, superValues))
+        classBuilder.primaryConstructor(constructorFunSpecBuilder.build())
+    }
+
+    private fun renderArguments(objectDef: ObjectDef?, method: MethodDef, arguments: List<ExpressionDef>): CodeBlock {
+        val builder = CodeBlock.builder()
+        for ((index, arg) in arguments.withIndex()) {
+            builder.add(renderExpressionCode(objectDef, method, RenderScope.root(method), arg))
+            if (index < arguments.size - 1) {
+                builder.add(", ")
+            }
+        }
+        return builder.build()
     }
 
     @Throws(IOException::class)
@@ -463,26 +467,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
         enumDef.enumConstants.forEach { enumConstant: EnumConstantDef ->
             if (enumConstant.constructorArgs != null && enumConstant.constructorArgs.isNotEmpty()) {
-                val exps = enumConstant.constructorArgs
-                val expBuilder: CodeBlock.Builder = CodeBlock.builder()
                 val constantInit = MethodDef.builder("").returns(TypeDef.VOID).build()
-                for (i in exps.indices) {
-                    expBuilder.add(
-                        renderExpressionCode(
-                            null,
-                            constantInit,
-                            RenderScope.root(constantInit),
-                            exps[i]
-                        )
-                    )
-                    if (i < exps.size - 1) {
-                        expBuilder.add(", ")
-                    }
-                }
                 enumBuilder.addEnumConstant(
                     enumConstant.name,
                     TypeSpec.companionObjectBuilder()
-                        .addSuperclassConstructorParameter(expBuilder.build())
+                        .addSuperclassConstructorParameter(renderArguments(null, constantInit, enumConstant.constructorArgs))
                         .build()
                 )
             } else {
@@ -622,15 +611,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     buildProperty(field, stripStatic(modifiers), field.javadoc, objectDef)
                 )
             } else {
-                if (field.type.isNullable) {
-                    builder.addProperty(
-                        buildProperty(field, modifiers, field.javadoc, objectDef)
-                    )
-                } else {
-                    builder.addProperty(
-                        buildProperty(field, modifiers, field.javadoc, objectDef)
-                    )
-                }
+                builder.addProperty(
+                    buildProperty(field, modifiers, field.javadoc, objectDef)
+                )
             }
         }
         return companionBuilderTmp
@@ -797,7 +780,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         // The body is rendered against the resolved signature, so a returned value is cast to its type
         val method = (OverrideResolver.resolve(objectDef, declaredMethod, VISITOR_CONTEXT.get(), true)
             ?.apply(declaredMethod) ?: declaredMethod).let { keepingNullability(it, declaredMethod, nullableArguments(objectDef)) }
-        var funBuilder = if (method.name == "<init>") {
+        var funBuilder = if (method.isConstructor) {
             FunSpec.constructorBuilder()
         } else {
             FunSpec.builder(method.name).returns(asType(method.returnType, objectDef, method).let { type ->
@@ -1763,7 +1746,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             return builder.build()
         }
 
-        private fun renderExpressionCode(
+        // A single dispatch over every expression type; splitting it is a separate refactoring
+        private fun renderExpressionCode( // NOSONAR kotlin:S3776
             objectDef: ObjectDef?,
             methodDef: MethodDef,
             scope: RenderScope,
@@ -1783,7 +1767,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             if (expressionDef is InvokeInstanceMethod) {
                 var instanceExp = renderExpressionCode(objectDef, methodDef, scope, expressionDef.instance)
                 val codeBuilder = CodeBlock.builder()
-                if (expressionDef.method.name == "<init>") {
+                if (expressionDef.method.isConstructor) {
                     codeBuilder.add(instanceExp)
                     codeBuilder.add("(")
                 } else {
@@ -2546,28 +2530,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return renderPrimitiveConstant(type.name(), value)
             } else if (type is TypeDef.Array) {
                 if (value.javaClass.isArray) {
-                    val builder = CodeBlock.builder()
-                    val length = Array.getLength(value)
-                    val componentType = type.componentType
-                    for (i in 0 until length) {
-                        builder.add(
-                            renderConstantExpression(
-                                Constant(componentType, Array.get(value, i)),
-                                methodDef,
-                                scope
-                            )
-                        )
-                        if (i + 1 != length) {
-                            builder.add(", ")
-                        }
-                    }
-                    val result = CodeBlock.builder()
-                    if (componentType is TypeDef.Primitive) {
-                        result.add("%L(", arrayOfFunction(componentType))
-                    } else {
-                        result.add("arrayOf<%T>(", asType(componentType, null))
-                    }
-                    return result.add(builder.build()).add(")").build()
+                    return renderArrayConstant(type, value, methodDef, scope)
                 }
             } else if (type is ClassTypeDef) {
                 if (value is TypeDef) {
@@ -2590,6 +2553,36 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
             }
             throw IllegalStateException("Unrecognized expression: $constant")
+        }
+
+        private fun renderArrayConstant(
+            type: TypeDef.Array,
+            value: Any,
+            methodDef: MethodDef,
+            scope: RenderScope
+        ): CodeBlock {
+            val builder = CodeBlock.builder()
+            val length = Array.getLength(value)
+            val componentType = type.componentType
+            for (i in 0 until length) {
+                builder.add(
+                    renderConstantExpression(
+                        Constant(componentType, Array.get(value, i)),
+                        methodDef,
+                        scope
+                    )
+                )
+                if (i + 1 != length) {
+                    builder.add(", ")
+                }
+            }
+            val result = CodeBlock.builder()
+            if (componentType is TypeDef.Primitive) {
+                result.add("%L(", arrayOfFunction(componentType))
+            } else {
+                result.add("arrayOf<%T>(", asType(componentType, null))
+            }
+            return result.add(builder.build()).add(")").build()
         }
 
         private fun renderPrimitiveConstant(name: String, value: Any): CodeBlock {

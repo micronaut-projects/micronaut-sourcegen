@@ -37,6 +37,8 @@ import java.util.Optional;
 @Internal
 public final class JavaIdioms {
 
+    private static final String HASH_CODE = "hashCode";
+
     private static final MethodDef ARRAYS_DEEP_EQUALS = MethodDef.builder("deepEquals")
         .returns(boolean.class)
         .addParameters(TypeDef.OBJECT.array(), TypeDef.OBJECT.array())
@@ -52,7 +54,7 @@ public final class JavaIdioms {
         .addParameters(Object.class, Object.class)
         .build();
 
-    private static final MethodDef OBJECT_HASHCODE = MethodDef.builder("hashCode")
+    private static final MethodDef OBJECT_HASHCODE = MethodDef.builder(HASH_CODE)
         .returns(int.class)
         .build();
 
@@ -177,12 +179,11 @@ public final class JavaIdioms {
             if (array.dimensions() > 1) {
                 return ARRAYS_TYPE.invokeStatic(ARRAYS_DEEP_HASHCODE, instance);
             }
-            return ARRAYS_TYPE.invokeStatic("hashCode", primitiveIntType, instance
-            );
+            return ARRAYS_TYPE.invokeStatic(HASH_CODE, primitiveIntType, instance);
         }
         if (type instanceof TypeDef.Primitive primitive) {
             return primitive.wrapperType()
-                .invokeStatic("hashCode", primitiveIntType, instance);
+                .invokeStatic(HASH_CODE, primitiveIntType, instance);
         }
         return instance.ifNull(
             primitiveIntType.constant(0),

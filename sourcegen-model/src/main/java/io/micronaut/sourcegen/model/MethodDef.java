@@ -77,6 +77,7 @@ public final class MethodDef extends AbstractElement {
     /**
      * @return Starts a constructor.
      */
+    @SuppressWarnings("java:S1845") // public API, the CONSTRUCTOR constant is the method name used for constructors
     public static MethodDefBuilder constructor() {
         return MethodDef.builder(CONSTRUCTOR);
     }
@@ -88,6 +89,7 @@ public final class MethodDef extends AbstractElement {
      * @param modifiers     The constructor modifiers
      * @return A new constructor with a body.
      */
+    @SuppressWarnings("java:S1845") // public API, the CONSTRUCTOR constant is the method name used for constructors
     public static MethodDef constructor(Collection<ParameterDef> parameterDefs, Modifier... modifiers) {
         MethodDefBuilder builder = MethodDef.builder(CONSTRUCTOR);
         int paramIndex = 0;

@@ -36,6 +36,7 @@ public class StaticInitializationBlockTest {
 
     private static class Context {
         public Context() {
+            // empty fixture constructor
         }
     }
 }

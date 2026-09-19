@@ -265,30 +265,30 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Object,
         }
 
         if (hasBuilder) {
-            String fullName = recordType.getName();
-            String pkg = fullName.contains(".") ? fullName.substring(0, fullName.lastIndexOf('.')) : "";
-            String localBinaryName2 = fullName.startsWith(pkg + ".")
-                ? fullName.substring(pkg.isEmpty() ? 0 : pkg.length() + 1)
-                : fullName;
-            String baseName2 = recordType.isInner() ? localBinaryName2.replace("$", "") : recordType.getSimpleName();
-            String builderSimpleName = baseName2 + "Builder";
-            String builderClassName = pkg.isEmpty() ? builderSimpleName : pkg + "." + builderSimpleName;
-            ClassTypeDef builderType;
-
-            if (recordType instanceof ClassTypeDef.Parameterized parameterized) {
-                builderType = TypeDef.parameterized(
-                    ClassTypeDef.of(builderClassName),
-                    parameterized.typeArguments()
-                );
-            } else {
-                builderType = ClassTypeDef.of(builderClassName);
-            }
-
+            ClassTypeDef builderType = builderType(recordType);
             MethodDef withMethod = createWithMethod(wither, parameters, builderType, propertyAccessMethods);
             wither.addMethod(withMethod);
             MethodDef withConsumer = createWithConsumerMethod(wither, recordType, builderType, withMethod);
             wither.addMethod(withConsumer);
         }
+    }
+
+    private static ClassTypeDef builderType(ClassTypeDef recordType) {
+        String fullName = recordType.getName();
+        String pkg = fullName.contains(".") ? fullName.substring(0, fullName.lastIndexOf('.')) : "";
+        String localBinaryName2 = fullName.startsWith(pkg + ".")
+            ? fullName.substring(pkg.isEmpty() ? 0 : pkg.length() + 1)
+            : fullName;
+        String baseName2 = recordType.isInner() ? localBinaryName2.replace("$", "") : recordType.getSimpleName();
+        String builderSimpleName = baseName2 + "Builder";
+        String builderClassName = pkg.isEmpty() ? builderSimpleName : pkg + "." + builderSimpleName;
+        if (recordType instanceof ClassTypeDef.Parameterized parameterized) {
+            return TypeDef.parameterized(
+                ClassTypeDef.of(builderClassName),
+                parameterized.typeArguments()
+            );
+        }
+        return ClassTypeDef.of(builderClassName);
     }
 
     private static MethodDef createWithConsumerMethod(ObjectDefBuilder<?> wither, ClassTypeDef recordType, ClassTypeDef builderType, MethodDef withMethod) {
