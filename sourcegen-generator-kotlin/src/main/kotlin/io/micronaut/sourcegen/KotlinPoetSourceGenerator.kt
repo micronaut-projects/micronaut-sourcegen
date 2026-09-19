@@ -300,12 +300,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 } as? InvokeSuperConstructor
                 if (superCallStatement2 != null) {
                     val superArgsCodeBlock = CodeBlock.builder()
-                    for ((index, arg) in superCallStatement2.values.withIndex()) {
-                        superArgsCodeBlock.add(renderExpressionCode(classDef, method, RenderScope.root(method), arg))
-                        if (index < superCallStatement2.values.size - 1) {
-                            superArgsCodeBlock.add(", ")
-                        }
-                    }
+                    superArgsCodeBlock.add(renderArguments(classDef, method, RenderScope.root(method), classDef.superclass,
+                        MethodDef.CONSTRUCTOR, superCallStatement2.method,
+                        superCallStatement2.method.parameters.map { it.type }, superCallStatement2.values))
                     val constructorFunSpecBuilder = FunSpec.constructorBuilder()
                         .addModifiers(asKModifiers(method, modifiers))
                         .addParameters(
@@ -321,12 +318,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     classBuilder.primaryConstructor(constructorFunSpecBuilder.build())
                 } else if (superCallStatement != null) {
                     val superArgsCodeBlock = CodeBlock.builder()
-                    for ((index, arg) in superCallStatement.values.withIndex()) {
-                        superArgsCodeBlock.add(renderExpressionCode(classDef, method, RenderScope.root(method), arg))
-                        if (index < superCallStatement.values.size - 1) {
-                            superArgsCodeBlock.add(", ")
-                        }
-                    }
+                    superArgsCodeBlock.add(renderArguments(classDef, method, RenderScope.root(method), classDef.superclass,
+                        MethodDef.CONSTRUCTOR, superCallStatement.method,
+                        superCallStatement.method.parameters.map { it.type }, superCallStatement.values))
                     val constructorFunSpecBuilder = FunSpec.constructorBuilder()
                         .addModifiers(asKModifiers(method, modifiers))
                         .addParameters(
@@ -706,7 +700,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             modifiers,
             field.annotations,
             docs,
-            field.initializer.orElse(defaultOf(field)),
+            field.initializer.orElse(defaultOf(field, objectDef)),
             objectDef,
             field.modifiers.contains(Modifier.STATIC),
             // A Kotlin property must be initialized where it is declared; a field the model assigns
@@ -732,14 +726,18 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         } else {
             FunSpec.builder(method.name).returns(asType(method.returnType, objectDef, method))
         }
+        // `equals` of `Any` takes a nullable value, which the erased `Object` of the model does not say
+        val overridesEquals = method.name == "equals" && method.isOverride && method.parameters.size == 1
+            && method.parameters[0].type == TypeDef.OBJECT
         funBuilder = funBuilder
             .addModifiers(asKModifiers(method, modifiers))
+            .addTypeVariables(method.typeVariables.map { asTypeVariable(it, objectDef, method) })
             .addParameters(
                 method.parameters.stream()
                     .map { param: ParameterDef ->
                         ParameterSpec.builder(
                             param.name,
-                            asType(param.type, objectDef, method)
+                            asType(if (overridesEquals) param.type.makeNullable() else param.type, objectDef, method)
                         ).build()
                     }
                     .toList()
@@ -806,10 +804,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         /**
          * The value a property of a primitive type is declared with, where the model assigns the field later.
          */
-        private fun defaultOf(field: FieldDef): ExpressionDef? {
+        private fun defaultOf(field: FieldDef, objectDef: ObjectDef? = null): ExpressionDef? {
             // An instance property is assigned by the constructor the model writes; a static one has none
             if (!field.initializer.isEmpty || field.type.isNullable
-                || !field.modifiers.contains(Modifier.STATIC)) {
+                || !field.modifiers.contains(Modifier.STATIC) && isAssignedByEveryConstructor(objectDef, field)) {
                 return null
             }
             val primitive = (field.type as? ClassTypeDef)?.let { BOXED_PRIMITIVES[it.name] }
@@ -912,9 +910,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     Modifier.ABSTRACT -> KModifier.ABSTRACT
                     Modifier.SEALED -> KModifier.SEALED
                     Modifier.FINAL -> KModifier.FINAL
+                    // A method of an interface with a body is a default one
+                    Modifier.DEFAULT -> null
                     else -> throw IllegalStateException("Not supported modifier: $m")
                 }
-            }.toList()
+            }.toList().filterNotNull()
         }
 
         @OptIn(KotlinPoetJavaPoetPreview::class)
@@ -946,6 +946,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         ): TypeName {
             val result: TypeName = when {
                 typeDef == TypeDef.THIS -> asSelfType(objectDef, methodDef, staticContext)
+                typeDef == TypeDef.SUPER -> asType(
+                    (objectDef as? ClassDef)?.superclass ?: if (objectDef is EnumDef) ClassTypeDef.of(Enum::class.java) else TypeDef.OBJECT,
+                    objectDef, methodDef, staticContext)
                 typeDef is TypeDef.Array -> asArray(typeDef, objectDef, methodDef, staticContext)
                 typeDef is ClassTypeDef.Parameterized -> asClassName(typeDef.rawType).parameterizedBy(
                     typeDef.typeArguments.map { v: TypeDef -> this.asType(v, objectDef, methodDef, staticContext) }
@@ -1067,10 +1070,10 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             return false
         }
 
-        private fun asTypeVariable(tv: TypeDef.TypeVariable, objectDef: ObjectDef?): TypeVariableName {
+        private fun asTypeVariable(tv: TypeDef.TypeVariable, objectDef: ObjectDef?, methodDef: MethodDef? = null): TypeVariableName {
             return TypeVariableName(
                 tv.name,
-                tv.bounds.stream().map { v: TypeDef -> asType(v, objectDef) }.toList()
+                tv.bounds.stream().map { v: TypeDef -> asType(v, objectDef, methodDef) }.toList()
             )
         }
 
@@ -1176,7 +1179,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 val builder = CodeBlock.builder()
                     .addStatement("%L", renderExpressionCode(objectDef, methodDef, scope, returnedVoid))
                 if (!tailPosition) {
-                    builder.addStatement("return")
+                    builder.addStatement(if (scope.returnLabel == null) "return" else "return@${scope.returnLabel}")
                 }
                 return builder.build()
             }
@@ -1236,9 +1239,27 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 builder.add("}\n")
                 return builder.build()
             }
+            if (statementDef != null && containsBlockBodyLambda(statementDef)) {
+                return CodeBlock.builder().add(renderStatement(objectDef, methodDef, scope, statementDef)).add("\n").build()
+            }
             return CodeBlock.builder()
                 .addStatement("%L", renderStatement(objectDef, methodDef, scope, statementDef))
                 .build()
+        }
+
+        private fun isBlockBody(lambda: Lambda): Boolean =
+            !(lambda.implementation.statements.size == 1 && lambda.implementation.statements[0] is Return
+                && (lambda.implementation.statements[0] as Return).expression != null)
+
+        private fun containsBlockBodyLambda(statementDef: StatementDef): Boolean =
+            statementDef.nestedExpressionsStream().anyMatch { containsBlockBodyLambda(it) }
+
+        private fun containsBlockBodyLambda(expressionDef: ExpressionDef): Boolean {
+            if (expressionDef is Lambda) {
+                return isBlockBody(expressionDef)
+                    || expressionDef.implementation.statements.any { containsBlockBodyLambda(it) }
+            }
+            return expressionDef.nestedExpressionsStream().anyMatch { containsBlockBodyLambda(it) }
         }
 
         private fun renderTry(
@@ -1352,7 +1373,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     methodDef.returnType
                 )
                 return CodeBlock.builder()
-                    .add("return ")
+                    .add(if (scope.returnLabel == null) "return " else "return@${scope.returnLabel} ")
                     .add(codeBlock)
                     .build()
             }
@@ -1681,7 +1702,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 if (expression is ConditionExpressionDef) {
                     return renderExpressionCode(objectDef, methodDef, scope, expression)
                 }
-                return renderExpressionCode(objectDef, methodDef, scope, expressionDef.expression)
+                val rendered = renderExpressionCode(objectDef, methodDef, scope, expressionDef.expression)
+                // `if (a) b else c || d` reads `if (a) b else (c || d)`: an `if` or a `when` takes all that follows it
+                return if (expression is IfElse || expression is Switch) addParentheses(rendered) else rendered
             }
             if (expressionDef is IsFalse) {
                 val expression = unwrapCasts(expressionDef.expression)
@@ -1839,21 +1862,20 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     .add("%T ", asType(expressionDef.type, objectDef))
                     .add("{")
                 val parameter: Iterator<ParameterDef> = implementation.parameters.iterator()
-                if (!parameter.hasNext()) {
-                    builder.add("()")
-                }
+                val parameterless = !parameter.hasNext()
                 while (parameter.hasNext()) {
                     val param = parameter.next()
                     val emittedName = if (scope.isTaken(param.name)) lambdaScope.allocate(param.name) else param.name
                     lambdaScope.rename(param.name, emittedName)
-                    builder.add("%L: %T", emittedName, asType(param.type, objectDef))
+                    builder.add("%N: %T", emittedName, asType(param.type, objectDef))
                     if (parameter.hasNext()) {
                         builder.add(", ")
                     }
                 }
-                builder.add(" -> ")
+                // A lambda without parameters has no arrow: `{ () -> value }` is not Kotlin
+                builder.add(if (parameterless) " " else " -> ")
                 val statements: List<StatementDef> = implementation.statements
-                if (statements.size == 1 && statements[0] is Return) {
+                if (!isBlockBody(expressionDef)) {
                     val returnStatement = statements[0] as Return
                     builder.add(
                         renderExpressionCode(
@@ -1864,9 +1886,16 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         )
                     )
                 } else {
-                    builder.add("{")
-                    for (statement in statements) {
-                        builder.add(renderStatementCodeBlock(objectDef, implementation, lambdaScope, statement))
+                    // The statements of the body, whose returns are those of the lambda
+                    lambdaScope.returnLabel = ((expressionDef.type as? ClassTypeDef.Parameterized)?.rawType
+                        ?: expressionDef.type).simpleName.substringAfterLast('$')
+                    builder.add("\n").indent()
+                    for ((index, statement) in statements.withIndex()) {
+                        builder.add(renderStatementCodeBlock(objectDef, implementation, lambdaScope, statement,
+                            index == statements.size - 1))
+                        if (cannotCompleteNormally(statement)) {
+                            break
+                        }
                     }
                     builder.unindent()
                 }
@@ -1887,10 +1916,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
                     instance != null -> builder
                         .add(renderExpressionWithParentheses(objectDef, methodDef, scope, instance, true))
-                        .add("::%L", expressionDef.method().name)
+                        .add("::%N", expressionDef.method().name)
 
                     else ->
-                        builder.add("%T::%L", asType(expressionDef.owner(), objectDef), expressionDef.method().name)
+                        // A static method is one of the Java class, which a mapped Kotlin type does not have
+                        builder.add("%T::%N", asStaticOwnerName(expressionDef.owner()), expressionDef.method().name)
                 }
                 return builder.add(")").build()
             }
@@ -1900,7 +1930,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     left = TypeDef.STRING.invokeStatic("valueOf", TypeDef.STRING, left)
                 }
                 return CodeBlock.builder()
-                    .add(renderExpressionCode(objectDef, methodDef, scope, left))
+                    .add(renderConcatenationOperand(objectDef, methodDef, scope, left, false))
                     .add(" + ")
                     .add(renderConcatenationOperand(objectDef, methodDef, scope, expressionDef.right()))
                     .build()
@@ -1912,10 +1942,14 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             objectDef: ObjectDef?,
             methodDef: MethodDef,
             scope: RenderScope,
-            operand: ExpressionDef
+            operand: ExpressionDef,
+            rightOperand: Boolean = true
         ): CodeBlock {
             val rendered = renderExpressionCode(objectDef, methodDef, scope, operand)
-            if (unwrapCasts(operand) is StringConcatenation) {
+            val unwrapped = unwrapCasts(operand)
+            if (operand !is Cast && (unwrapped is IfElse || unwrapped is Switch || unwrapped is ConditionExpressionDef
+                    || unwrapped is MathBinaryOperation || rightOperand && unwrapped is StringConcatenation)
+                || operand is Cast && rightOperand && unwrapped is StringConcatenation) {
                 return addParentheses(rendered)
             }
             return rendered
@@ -2319,9 +2353,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return CodeBlock.of("%N", name)
             }
             if (variableDef is VariableDef.Field) {
-                checkNotNull(objectDef) { "Field 'this' is not available" }
-                // Only a field declared by the type being written can be checked against its definition
-                if ((variableDef.declaringType as? ClassTypeDef)?.name == objectDef.asTypeDef().name) {
+                // Only a field declared by the type being written can be checked against its definition - which a
+                // static method is rendered without
+                if (objectDef != null && (variableDef.declaringType as? ClassTypeDef)?.name == objectDef.asTypeDef().name) {
                     if (objectDef is ClassDef) {
                         objectDef.getField(variableDef.name) // Check if exists
                     } else if (objectDef is EnumDef) {
@@ -2331,8 +2365,16 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     }
                 }
                 checkNotNull(methodDef) { "Accessing field is not available" }
-                var codeBlock = renderExpressionCode(objectDef, methodDef, scope, variableDef.instance)
-                if (requiresMethodCallTargetParentheses(variableDef.instance)) {
+                val declaring = variableDef.declaringType
+                val instance = if (variableDef.instance.type() != declaring && variableDef.instance !is VariableDef.This
+                    && variableDef.instance !is VariableDef.Super && declaring is ClassTypeDef
+                    && declaring != TypeDef.THIS && declaring != TypeDef.SUPER) {
+                    variableDef.instance.cast(declaring)
+                } else {
+                    variableDef.instance
+                }
+                var codeBlock = renderExpressionCode(objectDef, methodDef, scope, instance)
+                if (requiresMethodCallTargetParentheses(instance)) {
                     codeBlock = addParentheses(codeBlock)
                 }
                 val builder = codeBlock.toBuilder()
@@ -2344,7 +2386,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             }
             if (variableDef is VariableDef.StaticField) {
                 return CodeBlock.of(
-                    "%T.%L",
+                    "%T.%N",
                     asType(variableDef.ownerType, objectDef),
                     variableDef.name
                 )
@@ -3070,6 +3112,9 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         private val renames = LinkedHashMap<String, String>()
         private val taken = LinkedHashSet<String>()
         private val smartCasts = LinkedHashSet<String>()
+
+        /** The label a `return` in a lambda body is written with: a bare one returns from the enclosing function. */
+        var returnLabel: String? = null
 
         /**
          * Records that a statement of the scope cast a parameter or a local, which Kotlin smart casts after it.
