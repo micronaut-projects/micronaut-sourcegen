@@ -47,8 +47,6 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
                            Map<String, TypeDef> receiverArguments,
                            boolean raw) {
 
-    private static final int MAX_DEPTH = 8;
-
     /**
      * Whether a type names a variable of the invoked method.
      *
@@ -85,11 +83,12 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
         TypeDef.TypeVariable declared = unwrapped instanceof TypeDef.TypeVariable variable ? variable(variable.name()) : null;
         if (declared != null) {
             List<TypeDef> bounds = new ArrayList<>();
-            collect(declared, bounds, new HashSet<>(), 0);
+            collect(declared, bounds, new HashSet<>());
             return bounds.isEmpty() ? List.of(TypeDef.OBJECT) : bounds;
         }
         if (unwrapped instanceof TypeDef.Array array && names(array.componentType())) {
-            return List.of(TypeDef.array(of(array.componentType()).get(0), array.dimensions()));
+            TypeDef.Array bound = TypeDef.array(of(array.componentType()).get(0), array.dimensions());
+            return List.of(array.isNullable() ? bound.makeNullable() : bound);
         }
         if (unwrapped instanceof ClassTypeDef.Parameterized parameterized && names(parameterized)) {
             if (raw) {
@@ -102,8 +101,9 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
         return List.of(type);
     }
 
-    private void collect(TypeDef.TypeVariable variable, List<TypeDef> bounds, Set<String> visited, int depth) {
-        if (!visited.add(variable.name()) || depth > MAX_DEPTH) {
+    private void collect(TypeDef.TypeVariable variable, List<TypeDef> bounds, Set<String> visited) {
+        // A chain of any length is followed: the visited variables end a cycle
+        if (!visited.add(variable.name())) {
             return;
         }
         for (TypeDef bound : variable.bounds()) {
@@ -111,10 +111,11 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
             TypeDef.TypeVariable declared = unwrapped instanceof TypeDef.TypeVariable named ? variable(named.name()) : null;
             if (declared != null) {
                 // A bound that is another variable of the method is that variable's bounds
-                collect(declared, bounds, visited, depth + 1);
+                collect(declared, bounds, visited);
             } else if (names(unwrapped)) {
-                // `Comparable<T>` names a variable of the method, out of scope where it is called
-                bounds.add(withoutOwnVariables(unwrapped));
+                // `Comparable<T>` names a variable of the method, out of scope where it is called - and can name one
+                // of the class too, which the receiver binds
+                bounds.add(withoutOwnVariables(TypeHierarchy.unwrap(TypeHierarchy.substituted(unwrapped, receiverArguments))));
             } else if (!TypeDef.OBJECT.equals(unwrapped)) {
                 // A variable of the class is the type argument the receiver binds it to
                 bounds.add(TypeHierarchy.containsVariableOtherThan(bound, Set.of())

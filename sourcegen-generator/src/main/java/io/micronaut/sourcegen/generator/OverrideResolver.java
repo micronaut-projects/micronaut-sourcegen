@@ -458,7 +458,7 @@ public final class OverrideResolver {
                                                          MethodDef callMethod) {
         ObjectDef target = definitionOf(owner, current);
         if (target == null) {
-            return loadedArguments(owner);
+            return loadedArguments(owner, callMethod);
         }
         Map<String, TypeDef> arguments = bind(target, owner, Map.of());
         Map<String, TypeDef> declaring = declaringArguments(target, arguments, callMethod, 0);
@@ -468,19 +468,67 @@ public final class OverrideResolver {
     /**
      * The type arguments a parameterized receiver of a compiled class binds its variables with.
      */
-    private static Map<String, TypeDef> loadedArguments(@Nullable ClassTypeDef owner) {
-        if (!(owner instanceof ClassTypeDef.Parameterized parameterized)) {
+    private static Map<String, TypeDef> loadedArguments(@Nullable ClassTypeDef owner, MethodDef callMethod) {
+        if (owner == null) {
             return Map.of();
         }
-        Class<?> type = loaded(parameterized);
-        if (type == null || type.getTypeParameters().length != parameterized.typeArguments().size()) {
+        Class<?> type = loaded(owner);
+        if (type == null) {
             return Map.of();
         }
         Map<String, TypeDef> arguments = new HashMap<>();
-        for (int i = 0; i < type.getTypeParameters().length; i++) {
-            arguments.put(type.getTypeParameters()[i].getName(), parameterized.typeArguments().get(i));
+        if (owner instanceof ClassTypeDef.Parameterized parameterized
+            && type.getTypeParameters().length == parameterized.typeArguments().size()) {
+            for (int i = 0; i < type.getTypeParameters().length; i++) {
+                arguments.put(type.getTypeParameters()[i].getName(), parameterized.typeArguments().get(i));
+            }
         }
-        return arguments;
+        Map<String, TypeDef> declaring = loadedDeclaringArguments(type, arguments, callMethod, 0);
+        return declaring == null ? arguments : declaring;
+    }
+
+    /**
+     * The type arguments of the compiled class declaring the method, carried through the supertypes of the receiver's
+     * class - `Child extends Parent<String>` binds the `X` of `Parent`.
+     */
+    @Nullable
+    private static Map<String, TypeDef> loadedDeclaringArguments(Class<?> type,
+                                                                 Map<String, TypeDef> arguments,
+                                                                 MethodDef callMethod,
+                                                                 int depth) {
+        boolean declares = Arrays.stream(type.getDeclaredMethods()).anyMatch(method ->
+            method.getName().equals(callMethod.getName()) && method.getParameterCount() == callMethod.getParameters().size());
+        if (declares) {
+            return arguments;
+        }
+        if (depth > MAX_DEPTH) {
+            return null;
+        }
+        List<Type> supertypes = new ArrayList<>();
+        if (type.getGenericSuperclass() != null) {
+            supertypes.add(type.getGenericSuperclass());
+        }
+        supertypes.addAll(Arrays.asList(type.getGenericInterfaces()));
+        for (Type supertype : supertypes) {
+            TypeDef converted = TypeHierarchy.typeDefOf(supertype);
+            Class<?> superclass = loaded(converted);
+            if (superclass == null) {
+                continue;
+            }
+            Map<String, TypeDef> superArguments = new HashMap<>();
+            if (converted instanceof ClassTypeDef.Parameterized parameterized
+                && superclass.getTypeParameters().length == parameterized.typeArguments().size()) {
+                for (int i = 0; i < superclass.getTypeParameters().length; i++) {
+                    superArguments.put(superclass.getTypeParameters()[i].getName(),
+                        TypeHierarchy.substituted(parameterized.typeArguments().get(i), arguments));
+                }
+            }
+            Map<String, TypeDef> found = loadedDeclaringArguments(superclass, superArguments, callMethod, depth + 1);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 
     /**

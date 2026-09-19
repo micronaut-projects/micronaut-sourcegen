@@ -2415,6 +2415,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 // A variable the invoked method declares names the one of the caller: its bounds are cast to
                 val castTypes = parameterType?.let { if (callee.names(it)) callee.of(it) else listOf(it) }
                 val castType = castTypes?.first()
+                // What the parameter is, beneath the annotations of its type
+                val parameterKind = parameterType?.let { TypeHierarchy.unwrap(it) }
                 val sourceType = sourceTypeOf(value, methodDef, objectDef)
                 val vararg = varargs && index == values.size - 1 && parameterType is TypeDef.Array
                 if (parameterType != null && !vararg
@@ -2428,12 +2430,19 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                     continue
                 }
                 val valueType = value.type()
+                val smartCast = stableName(value)?.takeIf { scope.isSmartCast(it) }
+                if (parameterType != null && !vararg && smartCast != null && !callee.names(parameterType)) {
+                    // A value an earlier bound cast smart cast is passed as the type the model gives it, which keeps
+                    // the overload the model calls
+                    builder.add("%L as %T", renderExpressionCode(objectDef, methodDef, scope, value), asType(parameterType, objectDef))
+                    continue
+                }
                 // A variable the invoked method declares is inferred from the value; one of the class is fixed
-                val fixedVariable = parameterType is TypeDef.TypeVariable
-                    && callMethod?.typeVariables?.none { it.name == parameterType.name } != false
-                if (castTypes != null && !vararg && parameterType is TypeDef.TypeVariable && !fixedVariable) {
+                val fixedVariable = parameterKind is TypeDef.TypeVariable
+                    && callMethod?.typeVariables?.none { it.name == parameterKind.name } != false
+                if (castTypes != null && !vararg && parameterKind is TypeDef.TypeVariable && !fixedVariable) {
                     // A value inferred as a variable of the invoked method has to satisfy every bound
-                    if (castTypes.any { it != TypeDef.OBJECT && !satisfiesBound(it, valueType) }) {
+                    if (castTypes.any { it != TypeDef.OBJECT && !satisfiesBound(it, valueType, objectDef, methodDef) }) {
                         builder.add(renderCalleeCast(objectDef, methodDef, scope, value, castTypes))
                     } else {
                         builder.add(renderExpressionCode(objectDef, methodDef, scope, value))
@@ -2442,7 +2451,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 val argument = if (parameterType != null && (requiresImplicitCast(parameterType, valueType)
                         || !vararg && valueType == TypeDef.OBJECT
-                        && (parameterType is TypeDef.Array || fixedVariable)
+                        && (parameterKind is TypeDef.Array || fixedVariable)
                         // A value of a variable, or an array of another component, where an override narrowed the
                         // parameter
                         || !vararg && valueType is TypeDef.TypeVariable
@@ -2511,12 +2520,29 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         ): CodeBlock {
             var operand = renderExpressionCode(objectDef, methodDef, scope, value)
             val bounds = castTypes.filter { it != TypeDef.OBJECT }.ifEmpty { castTypes }
-            if (bounds.size > 1 && (value is VariableDef.MethodParameter || value is VariableDef.Local)) {
+            val stable = stableName(value)
+            if (bounds.size > 1) {
                 // Written within a statement, whose continuation lines are indented twice: the body is indented
-                // once from the statement, and the closing brace aligned with it
-                val block = CodeBlock.builder().add("run {\n").unindent()
-                bounds.forEach { block.add("%L as %T\n", operand, asStarProjected(it, objectDef)) }
-                return block.add("%L\n", operand).unindent().add("}").indent().indent().build()
+                // once from the statement, and the closing brace aligned with it. A parameter or a local is smart
+                // cast to each bound; another value is read once, into the argument of `let`
+                val block = CodeBlock.builder()
+                val name = if (stable != null) {
+                    block.add("run {\n")
+                    operand
+                } else {
+                    if (requiresMethodCallTargetParentheses(value)) {
+                        operand = addParentheses(operand)
+                    }
+                    block.add("%L.let { arg ->\n", operand)
+                    CodeBlock.of("arg")
+                }
+                block.unindent()
+                bounds.forEach { block.add("%L as %T\n", name, asStarProjected(it, objectDef)) }
+                return block.add("%L\n", name).unindent().add("}").indent().indent().build()
+            }
+            if (stable != null) {
+                // The cast smart casts the value for the statements after it
+                scope.markSmartCast(stable)
             }
             if (requiresCastOperandParentheses(unwrapCasts(value))) {
                 operand = addParentheses(operand)
@@ -2525,16 +2551,34 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         }
 
         /**
+         * The name of a parameter or a local, which Kotlin smart casts, or `null` for another value.
+         */
+        private fun stableName(value: ExpressionDef): String? = when (value) {
+            is VariableDef.MethodParameter -> value.name
+            is VariableDef.Local -> value.name
+            else -> null
+        }
+
+        /**
          * Whether a value is known to satisfy a bound of a variable the invoked method declares, which Kotlin then
          * infers the variable from: a subclass, the parameterization of a class, or a value of a variable of the caller.
          */
-        private fun satisfiesBound(bound: TypeDef, value: TypeDef): Boolean {
+        private fun satisfiesBound(bound: TypeDef, value: TypeDef, objectDef: ObjectDef?, methodDef: MethodDef?): Boolean {
+            if (value.isNullable && !bound.isNullable) {
+                // A nullable value does not satisfy a bound that is not
+                return false
+            }
             val boxed = if (value is TypeDef.Primitive) value.wrapperType() else value
             if (bound == TypeDef.OBJECT || bound == boxed) {
                 return true
             }
             if (bound is TypeDef.TypeVariable || boxed == TypeDef.OBJECT) {
                 return false
+            }
+            if (boxed is TypeDef.TypeVariable) {
+                // A value of a variable of the caller satisfies what one of its own bounds does
+                return OverrideResolver.upperBounds(boxed, objectDef, methodDef)
+                    .any { satisfiesBound(bound, it, objectDef, methodDef) }
             }
             val lookup = VISITOR_CONTEXT.get()?.let { context ->
                 java.util.function.Function<String, ClassElement?> { name -> context.getClassElement(name).orElse(null) }
@@ -2987,6 +3031,31 @@ class KotlinPoetSourceGenerator : SourceGenerator {
     ) {
         private val renames = LinkedHashMap<String, String>()
         private val taken = LinkedHashSet<String>()
+        private val smartCasts = LinkedHashSet<String>()
+
+        /**
+         * Records that a statement of the scope cast a parameter or a local, which Kotlin smart casts after it.
+         *
+         * @param name The name
+         */
+        fun markSmartCast(name: String) {
+            smartCasts.add(name)
+        }
+
+        /**
+         * @param name The name of a parameter or a local
+         * @return True if a statement of this scope or an enclosing one cast it
+         */
+        fun isSmartCast(name: String): Boolean {
+            var scope: RenderScope? = this
+            while (scope != null) {
+                if (scope.smartCasts.contains(name)) {
+                    return true
+                }
+                scope = scope.parent
+            }
+            return false
+        }
 
         init {
             owner?.parameters?.forEach { taken.add(it.name) }
