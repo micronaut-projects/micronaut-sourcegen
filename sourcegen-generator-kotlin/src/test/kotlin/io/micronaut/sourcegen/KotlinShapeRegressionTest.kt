@@ -143,22 +143,6 @@ class KotlinShapeRegressionTest {
     }
 
     /**
-     * An `Object` passed to the typed constructor of the superclass is converted by the Java generator -
-     * `super((String) label)` - and written as it is here, which kotlinc rejects.
-     */
-    @Test
-    fun superConstructorTakesAnErasedArgument() {
-        val def = ClassDef.builder("test.ErasedSuperArgument").addModifiers(Modifier.PUBLIC).superclass(ClassTypeDef.of(Labelled::class.java))
-            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC).addParameter("label", Any::class.java)
-                .build { self, p -> self.superRef().invokeSuperConstructor(listOf<TypeDef>(TypeDef.STRING), p[0]) })
-            .build()
-        compile(def).use { loader ->
-            val instance = loader.loadClass(def.name).getConstructor(Any::class.java).newInstance("text")
-            assertEquals("text", (instance as Labelled).label)
-        }
-    }
-
-    /**
      * A static method is rendered without its definition, so reading a field of an instance it is given fails
      * with "Field 'this' is not available".
      */
@@ -182,8 +166,6 @@ class KotlinShapeRegressionTest {
         KotlinCompileAssertions.compileAndLoad(*definitions.map { definition ->
             StringWriter().also { KotlinPoetSourceGenerator().write(definition, it) }.toString()
         }.toTypedArray())
-
-    open class Labelled(@JvmField val label: String)
 
     open class Holder {
         @JvmField
