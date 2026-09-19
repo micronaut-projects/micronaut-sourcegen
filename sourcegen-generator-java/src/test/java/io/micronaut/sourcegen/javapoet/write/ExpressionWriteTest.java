@@ -947,10 +947,10 @@ class MyClass {
 
         String data = writeClass(classDef);
 
+        // The catch of `IOException`, which the body cannot throw, is a dead handler javac rejects: it is dropped
         assertEquals("""
 package test;
 
-import java.io.IOException;
 import java.lang.RuntimeException;
 
 class MyClass {
@@ -960,8 +960,6 @@ class MyClass {
       result = 1;
     } catch (RuntimeException e0) {
       result = 2;
-    } catch (IOException e1) {
-      result = 3;
     } finally {
       result = 4;
     }
@@ -991,10 +989,10 @@ class MyClass {
 
         String data = writeClass(classDef);
 
+        // The catch of `IOException`, which the body cannot throw, is a dead handler javac rejects: it is dropped
         assertEquals("""
 package test;
 
-import java.io.IOException;
 import java.lang.RuntimeException;
 
 class MyClass {
@@ -1003,8 +1001,6 @@ class MyClass {
       return 1;
     } catch (RuntimeException e0) {
       return 2;
-    } catch (IOException e1) {
-      return 3;
     } finally {
       return 4;
     }

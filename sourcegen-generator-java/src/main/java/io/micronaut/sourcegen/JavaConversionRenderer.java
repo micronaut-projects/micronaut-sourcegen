@@ -16,8 +16,11 @@
 package io.micronaut.sourcegen;
 
 import io.micronaut.core.annotation.Internal;
+import io.micronaut.core.reflect.ClassUtils;
 import static io.micronaut.sourcegen.JavaExpressionRules.declaredSignature;
+import static io.micronaut.sourcegen.JavaExpressionRules.isFunctional;
 import static io.micronaut.sourcegen.JavaExpressionRules.ownerOf;
+import static io.micronaut.sourcegen.JavaExpressionRules.renderPrimitiveConstant;
 import static io.micronaut.sourcegen.JavaExpressionRules.sourceTypeOf;
 import static io.micronaut.sourcegen.JavaExpressionRules.isNullLiteral;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresMethodCallTargetParentheses;
@@ -25,6 +28,7 @@ import static io.micronaut.sourcegen.JavaExpressionRules.unwrapCasts;
 import static io.micronaut.sourcegen.generator.OverloadRules.hasApplicableOverload;
 import static io.micronaut.sourcegen.generator.OverloadRules.pinsOverload;
 import static io.micronaut.sourcegen.generator.OverloadRules.receiverBound;
+import static io.micronaut.sourcegen.JavaPoetNames.getClassName;
 import static io.micronaut.sourcegen.JavaPoetNames.isVariablePartOfTheDefinition;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.sourcegen.generator.InvokedSignature;
@@ -43,15 +47,19 @@ import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
+import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeHierarchy;
 import io.micronaut.sourcegen.model.VariableDef;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 /**
  * The conversions of the Java source generator that are written as more than a cast: a method reference as a lambda
@@ -245,19 +253,32 @@ final class JavaConversionRenderer {
     /**
      * A value converted to an array of a variable of several bounds, by a generic helper of an anonymous class, whose
      * variable the invocation infers as the intersection no array type expresses.
+     *
+     * <p>A bound naming the callee's variable itself - `Comparable<N>` of an `N extends Number & Comparable<N>` -
+     * javac infers no helper variable against: the whole invocation is written in a helper declaring the variable,
+     * which the value is cast to an array of. Where the method being written is that helper, the cast is written;
+     * otherwise the invocation is escaped from with a {@link SelfBoundedArgument}.
+     *
+     * @param calleeVariable The name of the callee's variable the bounds are of
      */
     CodeBlock renderIntersectionArray(@Nullable ObjectDef objectDef,
                                               @Nullable MethodDef methodDef,
                                               RenderScope scope,
                                               ExpressionDef value,
                                               List<TypeDef> bounds,
-                                              int dimensions) {
-        // Bounds can name a variable of the class or of the method, which the helper's own must not shadow
-        TypeName[] boundNames = bounds.stream().map(bound -> generator.asType(bound, objectDef, methodDef)).toArray(TypeName[]::new);
-        String name = "T";
-        for (int i = 1; isVariablePartOfTheDefinition(name, objectDef, methodDef, false); i++) {
-            name = "T" + i;
+                                              int dimensions,
+                                              String calleeVariable) {
+        TypeDef.TypeVariable declared = declaredIntersection(methodDef, bounds, calleeVariable);
+        if (declared != null) {
+            return CodeBlock.of("($T) $L", generator.asType(TypeDef.array(TypeDef.variable(declared.name()), dimensions), objectDef, methodDef),
+                generator.renderCastOperand(objectDef, methodDef, scope, value));
         }
+        if (bounds.stream().anyMatch(bound -> names(bound, calleeVariable))) {
+            throw new SelfBoundedArgument(bounds, calleeVariable);
+        }
+        // Bounds can name a variable of the class or of the method, which the helper's own must not shadow
+        String name = helperVariableName(objectDef, methodDef);
+        TypeName[] boundNames = bounds.stream().map(bound -> generator.asType(bound, objectDef, methodDef)).toArray(TypeName[]::new);
         TypeVariableName variable = TypeVariableName.get(name, boundNames);
         TypeName array = variable;
         for (int i = 0; i < dimensions; i++) {
@@ -273,6 +294,250 @@ final class JavaConversionRenderer {
                 .build())
             .build();
         return CodeBlock.of("$L.cast($L)", helper, generator.renderExpression(objectDef, methodDef, scope, value));
+    }
+
+    /**
+     * An invocation with an argument converted to an array of a variable bounded by itself, written in a generic
+     * helper method of an anonymous class that declares the variable: `first((T[]) values)` infers the callee's
+     * `N extends Number & Comparable<N>` as a declared `T extends Number & Comparable<T>`, where no inferred
+     * variable satisfies the bound. The receiver and the values are passed to the helper, in their order.
+     *
+     * @param invocation The invocation: a static or instance method call, or an instantiation
+     * @param argument   The argument that escaped the invocation
+     * @return The invocation through the helper, or {@code null} where it cannot be written in one
+     */
+    @Nullable
+    CodeBlock renderSelfBoundedInvocation(@Nullable ObjectDef objectDef,
+                                          @Nullable MethodDef methodDef,
+                                          RenderScope scope,
+                                          ExpressionDef invocation,
+                                          SelfBoundedArgument argument) {
+        if (declaredIntersection(methodDef, argument.bounds, argument.calleeVariable) != null) {
+            // The helper itself: its variable was not found where the argument is written
+            return null;
+        }
+        ExpressionDef receiver = invocation instanceof ExpressionDef.InvokeInstanceMethod instanceMethod ? instanceMethod.instance() : null;
+        List<? extends ExpressionDef> values = switch (invocation) {
+            case ExpressionDef.InvokeStaticMethod staticMethod -> staticMethod.values();
+            case ExpressionDef.InvokeInstanceMethod instanceMethod when !instanceMethod.method().isConstructor()
+                && !(instanceMethod.instance() instanceof VariableDef.Super) && !isFunctional(instanceMethod.instance()) -> instanceMethod.values();
+            case ExpressionDef.NewInstance newInstance -> newInstance.values();
+            default -> null;
+        };
+        if (values == null) {
+            return null;
+        }
+        String name = helperVariableName(objectDef, methodDef);
+        TypeDef.TypeVariable own = TypeDef.variable(name);
+        Map<String, TypeDef> asOwn = Map.of(argument.calleeVariable, own);
+        TypeDef.TypeVariable declared = TypeDef.variable(name,
+            argument.bounds.stream().map(bound -> TypeHierarchy.substituted(bound, asOwn)).toList());
+        MethodDef helperMethod = JavaPoetNames.withTypeVariables(MethodDef.builder("invoke").addTypeVariable(declared).build(), methodDef);
+        RenderScope helperScope = scope.nested(null);
+        MethodSpec.Builder helper = MethodSpec.methodBuilder("invoke")
+            .addAnnotation(AnnotationSpec.builder(SuppressWarnings.class).addMember("value", "$S", "unchecked").build())
+            .addTypeVariable(TypeVariableName.get(name, declared.bounds().stream()
+                .map(bound -> generator.asType(bound, objectDef, helperMethod)).toArray(TypeName[]::new)))
+            .returns(generator.asType(invocation.type(), objectDef, helperMethod));
+        List<CodeBlock> passed = new ArrayList<>();
+        VariableDef.Local target = null;
+        if (receiver != null) {
+            target = new VariableDef.Local(helperScope.allocate("target"), receiver.type());
+            helperScope.declare(target.name());
+            helper.addParameter(generator.asType(receiver.type(), objectDef, methodDef), target.name());
+            passed.add(generator.renderExpression(objectDef, methodDef, scope, receiver));
+        }
+        List<VariableDef.Local> locals = new ArrayList<>();
+        for (ExpressionDef value : values) {
+            VariableDef.Local local = new VariableDef.Local(helperScope.allocate("arg"), value.type());
+            helperScope.declare(local.name());
+            locals.add(local);
+            helper.addParameter(generator.asType(value.type(), objectDef, methodDef), local.name());
+            passed.add(generator.renderExpression(objectDef, methodDef, scope, value));
+        }
+        ExpressionDef inner = switch (invocation) {
+            case ExpressionDef.InvokeStaticMethod staticMethod -> new ExpressionDef.InvokeStaticMethod(staticMethod.classDef(), staticMethod.method(), locals);
+            case ExpressionDef.InvokeInstanceMethod instanceMethod ->
+                new ExpressionDef.InvokeInstanceMethod(Objects.requireNonNull(target), instanceMethod.method(), instanceMethod.isDefault(), locals);
+            case ExpressionDef.NewInstance newInstance -> new ExpressionDef.NewInstance(newInstance.type(), newInstance.parameterTypes(), locals);
+            default -> throw new IllegalStateException("Unexpected invocation: " + invocation);
+        };
+        CodeBlock call = generator.renderExpression(objectDef, helperMethod, helperScope, inner);
+        helper.addStatement(TypeDef.VOID.equals(invocation.type()) ? CodeBlock.of("$L", call) : CodeBlock.of("return $L", call));
+        return CodeBlock.of("$L.invoke($L)", TypeSpec.anonymousClassBuilder("").addMethod(helper.build()).build(),
+            CodeBlock.join(passed, ", "));
+    }
+
+    /**
+     * The name of the variable a helper declares, which must not shadow one of the class or of the method.
+     */
+    private static String helperVariableName(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef) {
+        String name = "T";
+        for (int i = 1; isVariablePartOfTheDefinition(name, objectDef, methodDef, false); i++) {
+            name = "T" + i;
+        }
+        return name;
+    }
+
+    /**
+     * The variable the method being written declares with the bounds of the callee's variable, where it is the helper
+     * of a self-bounded invocation, or {@code null}.
+     */
+    private static TypeDef.@Nullable TypeVariable declaredIntersection(@Nullable MethodDef methodDef,
+                                                                     List<TypeDef> bounds,
+                                                                     String calleeVariable) {
+        if (methodDef == null) {
+            return null;
+        }
+        for (TypeDef.TypeVariable variable : methodDef.getTypeVariables()) {
+            Map<String, TypeDef> asOwn = Map.of(calleeVariable, TypeDef.variable(variable.name()));
+            if (variable.bounds().equals(bounds.stream().map(bound -> TypeHierarchy.substituted(bound, asOwn)).toList())) {
+                return variable;
+            }
+        }
+        return null;
+    }
+
+    private static boolean names(TypeDef type, String variable) {
+        return !TypeHierarchy.substituted(type, Map.of(variable, TypeDef.OBJECT)).equals(type);
+    }
+
+    /**
+     * A value that is not an array, passed for a varargs parameter: one element, or - an `Object`, or a value of
+     * no element type - the array itself, cast to as the bytecode casts it.
+     */
+    CodeBlock renderVarargsValue(@Nullable ObjectDef objectDef,
+                                 @Nullable MethodDef enclosingMethod,
+                                 RenderScope scope,
+                                 TypeDef paramType,
+                                 List<TypeDef.TypeVariable> inferred,
+                                 ExpressionDef value) {
+        TypeDef.Array varargsType = (TypeDef.Array) TypeHierarchy.unwrap(paramType);
+        TypeDef elementType = varargsType.dimensions() == 1 ? varargsType.componentType()
+            : TypeDef.array(varargsType.componentType(), varargsType.dimensions() - 1);
+        TypeDef sourceType = sourceTypeOf(value, enclosingMethod, objectDef);
+        if (TypeHierarchy.unwrap(sourceType) instanceof TypeDef.Array) {
+            // A value that is not an array is one element of the varargs. Where an override narrowed it to an
+            // array, it is cast to the element type, which keeps it one
+            return CodeBlock.concat(CodeBlock.of("($T) ", generator.asType(elementType, objectDef, enclosingMethod)),
+                generator.renderCastOperand(objectDef, enclosingMethod, scope, value));
+        }
+        if (JavaExpressionRules.isVarargsArray(elementType, sourceType)) {
+            // The bytecode casts the value to the array type, which the source does too - of the erasure of a
+            // variable of the method
+            TypeDef arrayType = Objects.requireNonNullElse(
+                JavaExpressionRules.erasedPinningType(paramType, inferred, objectDef, enclosingMethod), paramType);
+            return CodeBlock.concat(CodeBlock.of("($T) ", generator.asType(arrayType, objectDef, enclosingMethod)),
+                generator.renderCastOperand(objectDef, enclosingMethod, scope, value));
+        }
+        return generator.renderExpression(objectDef, enclosingMethod, scope, value);
+    }
+
+    /**
+     * The final copies of the locals the lambdas of a statement capture where the enclosing body assigns them
+     * after declaring them, written before the statement: the bytecode captures the value the local has where the
+     * lambda is created, and Java captures only an effectively final local. The lambdas read the copies.
+     */
+    CodeBlock renderCapturedCopies(@Nullable ObjectDef objectDef,
+                                   @Nullable MethodDef methodDef,
+                                   RenderScope scope,
+                                   StatementDef statementDef) {
+        return renderCapturedCopies(objectDef, methodDef, scope,
+            JavaSourceRules.capturedReassignedLocals(statementDef, scope::isReassigned));
+    }
+
+    /**
+     * The final copies of the locals the lambdas of the header expression of a compound statement capture - the
+     * condition of an `if`, say - written before the statement.
+     */
+    CodeBlock renderCapturedCopies(@Nullable ObjectDef objectDef,
+                                   @Nullable MethodDef methodDef,
+                                   RenderScope scope,
+                                   ExpressionDef header) {
+        return renderCapturedCopies(objectDef, methodDef, scope,
+            JavaSourceRules.capturedReassignedLocals(header, scope::isReassigned));
+    }
+
+    private CodeBlock renderCapturedCopies(@Nullable ObjectDef objectDef,
+                                           @Nullable MethodDef methodDef,
+                                           RenderScope scope,
+                                           Map<String, TypeDef> captured) {
+        if (captured.isEmpty()) {
+            return CodeBlock.of("");
+        }
+        CodeBlock.Builder builder = CodeBlock.builder();
+        captured.forEach((name, type) -> {
+            String emittedName = Objects.requireNonNullElse(scope.resolveRename(name), name);
+            String copyName = scope.allocate(emittedName);
+            scope.copy(name, copyName);
+            builder.addStatement("final $T $L = $L", generator.asType(type, objectDef, methodDef), copyName, emittedName);
+        });
+        return builder.build();
+    }
+
+    /**
+     * A constant: a literal, an enum constant, a class literal or an array of constants.
+     */
+    CodeBlock renderConstant(RenderScope scope, ExpressionDef.Constant constant) {
+        TypeDef type = constant.type();
+        Object value = constant.value();
+        if (value == null) {
+            return CodeBlock.of("null");
+        }
+        return switch (type) {
+            case ClassTypeDef classTypeDef when classTypeDef.isEnum() -> generator.renderExpression(
+                null,
+                null,
+                scope,
+                classTypeDef.getStaticField(value instanceof Enum<?> anEnum ? anEnum.name() : value.toString(), type)
+            );
+            case TypeDef.Primitive primitive -> renderPrimitiveConstant(primitive.name(), value);
+            case TypeDef.Array arrayDef -> {
+                if (value.getClass().isArray()) {
+                    final var array = value;
+                    final var values = IntStream.range(0, Array.getLength(array))
+                        .mapToObj(i -> renderConstant(scope, new ExpressionDef.Constant(arrayDef.componentType(), Array.get(array, i))))
+                        .collect(CodeBlock.joining(", "));
+                    final String typeName;
+                    if (arrayDef.componentType() instanceof ClassTypeDef arrayClassTypeDef) {
+                        typeName = arrayClassTypeDef.getSimpleName();
+                    } else if (arrayDef.componentType() instanceof TypeDef.Primitive arrayPrimitive) {
+                        typeName = arrayPrimitive.name();
+                    } else {
+                        throw new IllegalStateException("Unrecognized expression: " + constant);
+                    }
+                    yield CodeBlock.concat(
+                        CodeBlock.of("new $N[] {", typeName),
+                        values,
+                        CodeBlock.of("}"));
+                }
+                throw new IllegalStateException("Expected an array; got: " + value.getClass());
+            }
+            case ClassTypeDef classTypeDef -> {
+                String name = classTypeDef.getName();
+                if (ClassUtils.isJavaLangType(name)) {
+                    yield switch (name) {
+                        case "java.lang.String" -> CodeBlock.of("$S", value);
+                        // A boxed value is written as the literal of its primitive, which boxes to the same type
+                        case "java.lang.Long" -> renderPrimitiveConstant("long", value);
+                        case "java.lang.Float" -> renderPrimitiveConstant("float", value);
+                        case "java.lang.Double" -> renderPrimitiveConstant("double", value);
+                        case "java.lang.Character" -> renderPrimitiveConstant("char", value);
+                        case "java.lang.Byte" -> renderPrimitiveConstant("byte", value);
+                        case "java.lang.Short" -> renderPrimitiveConstant("short", value);
+                        default -> CodeBlock.of("$L", value);
+                    };
+                }
+                if (value instanceof TypeDef typeDef) {
+                    yield CodeBlock.of("$L.class", getClassName(typeDef));
+                }
+                if (value instanceof Class<?> aClass) {
+                    yield CodeBlock.of("$T.class", aClass);
+                }
+                yield CodeBlock.of("$L", value);
+            }
+            default -> throw new IllegalStateException("Unrecognized expression: " + constant);
+        };
     }
 
     /**
@@ -347,5 +612,21 @@ final class JavaConversionRenderer {
             || unwrapped instanceof ExpressionDef.MathBinaryOperation
             || rightOperand && unwrapped instanceof ExpressionDef.StringConcatenation);
         return grouped ? generator.addParentheses(rendered) : rendered;
+    }
+
+    /**
+     * Escapes an invocation whose argument converts to an array of a variable of the invoked method bounded by
+     * itself, which is written through a helper declaring the variable.
+     */
+    static final class SelfBoundedArgument extends IllegalStateException {
+
+        private final transient List<TypeDef> bounds;
+        private final String calleeVariable;
+
+        SelfBoundedArgument(List<TypeDef> bounds, String calleeVariable) {
+            super("An array of the variable " + calleeVariable + " bounded by " + bounds + " cannot be written outside of a helper");
+            this.bounds = bounds;
+            this.calleeVariable = calleeVariable;
+        }
     }
 }

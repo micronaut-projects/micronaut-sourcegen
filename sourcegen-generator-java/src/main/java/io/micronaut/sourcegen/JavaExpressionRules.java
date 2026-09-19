@@ -668,7 +668,7 @@ final class JavaExpressionRules {
     }
 
     @Nullable
-    private static Function<String, @Nullable ClassElement> elementLookup() {
+    static Function<String, @Nullable ClassElement> elementLookup() {
         VisitorContext context = JavaPoetNames.context();
         return context == null ? null : name -> context.getClassElement(name).orElse(null);
     }
@@ -821,7 +821,114 @@ final class JavaExpressionRules {
             && bounds.stream().allMatch(bound -> satisfies(bound, sourceComponent, objectDef, methodDef))) {
             return null;
         }
-        return bounds;
+        // The helper declares a variable of its own, which a bound naming the variable itself - `Comparable<N>` of an
+        // `N extends Number & Comparable<N>` - is written with, where the raw bound infers no `N`
+        return calleeBounds.ofNamingItself(component);
+    }
+
+    /**
+     * Whether a value that is not an array, passed for a varargs parameter, is the array itself rather than one
+     * element of it: the bytecode casts the value to the array type, which takes an {@code Object} - and any other
+     * value that is not of the element type, a {@code Cloneable} say. A value of the element type, or converting to
+     * it, is one element, as javac takes it.
+     *
+     * @param elementType The element type of the varargs parameter
+     * @param sourceType  The type of the value in the source
+     * @return true if the value is cast to the array type
+     */
+    static boolean isVarargsArray(TypeDef elementType, TypeDef sourceType) {
+        TypeDef value = TypeHierarchy.unwrap(sourceType);
+        if (value instanceof TypeDef.Primitive) {
+            return false;
+        }
+        return TypeDef.OBJECT.equals(value) || requiresImplicitInvocationCast(elementType, sourceType);
+    }
+
+    /**
+     * The lower bound a parameter of a variable takes, where the receiver binds the variable with a
+     * {@code ? super X} wildcard: the {@code add} of a {@code List<? super Integer>} takes an {@code Integer}, which
+     * the value is cast to. A parameter of any other binding is what
+     * {@link io.micronaut.sourcegen.generator.OverloadRules#receiverBound} makes it.
+     *
+     * @param paramType         The parameter type as the receiver sees it
+     * @param declaredType      The type the invoked method declares, or {@code null} where it is not known
+     * @param inferred          The variables the invoked method declares
+     * @param receiverArguments The type arguments the receiver binds the variables of its class with
+     * @return The lower bound, or the parameter type
+     */
+    static TypeDef receiverLowerBound(TypeDef paramType,
+                                      @Nullable TypeDef declaredType,
+                                      List<TypeDef.TypeVariable> inferred,
+                                      Map<String, TypeDef> receiverArguments) {
+        TypeDef named = TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable ? paramType : declaredType;
+        if (named == null || !(TypeHierarchy.unwrap(named) instanceof TypeDef.TypeVariable variable)
+            || inferred.stream().anyMatch(own -> own.name().equals(variable.name()))) {
+            return paramType;
+        }
+        TypeDef bound = receiverArguments.get(variable.name());
+        return bound != null && TypeHierarchy.unwrap(bound) instanceof TypeDef.Wildcard wildcard
+            && !wildcard.lowerBounds().isEmpty() ? wildcard.lowerBounds().get(0) : paramType;
+    }
+
+    /**
+     * The cast a value stored or returned where a parameterized type is declared is written with, where the value
+     * is the result of a generic method the model erases: javac infers the method's variable from the arguments
+     * and the target type at once, which an {@code Object} argument fails - {@code Optional.ofNullable(p0)} returned
+     * as an {@code Optional<String>}. The result is cast through the raw type, an unchecked conversion, as the
+     * bytecode returns it.
+     *
+     * @param targetType The declared type
+     * @param value      The value
+     * @param objectDef  The definition being written
+     * @param methodDef  The method being written
+     * @return The cast, or none
+     */
+    static List<List<TypeDef>> inferredResultCasts(TypeDef targetType,
+                                                  ExpressionDef value,
+                                                  @Nullable ObjectDef objectDef,
+                                                  @Nullable MethodDef methodDef) {
+        if (!(TypeHierarchy.unwrap(targetType) instanceof ClassTypeDef.Parameterized parameterized)) {
+            return List.of();
+        }
+        ClassTypeDef owner;
+        MethodDef method;
+        List<? extends ExpressionDef> values;
+        switch (value) {
+            case ExpressionDef.InvokeStaticMethod invocation -> {
+                owner = invocation.classDef();
+                method = invocation.method();
+                values = invocation.values();
+            }
+            case ExpressionDef.InvokeInstanceMethod invocation when !invocation.method().isConstructor() -> {
+                method = invocation.method();
+                values = invocation.values();
+                owner = ownerOf(objectDef, methodDef, invocation.instance().type(), method.getName(),
+                    method.getParameters().stream().map(ParameterDef::getType).toList());
+            }
+            default -> {
+                return List.of();
+            }
+        }
+        TypeDef resultType = TypeHierarchy.unwrap(value.type());
+        if (resultType instanceof ClassTypeDef.Parameterized || !(resultType instanceof ClassTypeDef result)
+            || !result.getName().equals(parameterized.rawType().getName())) {
+            return List.of();
+        }
+        List<TypeDef> parameterTypes = method.getParameters().stream().map(ParameterDef::getType).toList();
+        Set<String> resultVariables = InvokedSignature.inferredResultVariables(owner, method.getName(), parameterTypes, JavaPoetNames.context());
+        InvokedSignature signature = resultVariables.isEmpty() ? null : declaredSignature(owner, method.getName(), parameterTypes);
+        if (signature == null || signature.parameterTypes().size() != values.size()) {
+            return List.of();
+        }
+        for (int i = 0; i < values.size(); i++) {
+            Map<String, TypeDef.TypeVariable> named = new HashMap<>();
+            collectVariables(signature.parameterTypes().get(i), named);
+            if (named.keySet().stream().anyMatch(resultVariables::contains)
+                && TypeDef.OBJECT.equals(sourceTypeOf(values.get(i), methodDef, objectDef))) {
+                return List.of(List.of(parameterized.rawType()));
+            }
+        }
+        return List.of();
     }
 
     private static TypeDef asRaw(TypeDef type) {

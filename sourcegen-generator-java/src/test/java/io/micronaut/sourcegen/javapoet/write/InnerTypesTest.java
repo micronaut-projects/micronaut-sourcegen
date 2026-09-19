@@ -79,7 +79,7 @@ public class InnerTypesTest extends AbstractWriteTest {
               HI,
               HELLO;
 
-              class Inner {
+              static class Inner {
               }
             }""";
         ClassDef.ClassDefBuilder innerClassBuilder = ClassDef.builder("Inner");
@@ -160,7 +160,7 @@ public class InnerTypesTest extends AbstractWriteTest {
             package test;
 
             public class InnerClass {
-              class Inner {
+              static class Inner {
               }
             }""";
         ClassDef.ClassDefBuilder innerClassBuilder = ClassDef.builder("Inner");
@@ -178,7 +178,7 @@ public class InnerTypesTest extends AbstractWriteTest {
             import java.lang.String;
 
             public class InnerClass {
-              private class Inner {
+              private static class Inner {
                 String name;
 
                 Inner(String name) {
@@ -267,7 +267,7 @@ public class InnerTypesTest extends AbstractWriteTest {
             package test;
 
             public record InnerRecord() {
-              class Inner {
+              static class Inner {
               }
             }""";
         ClassDef.ClassDefBuilder innerClassBuilder = ClassDef.builder("Inner");

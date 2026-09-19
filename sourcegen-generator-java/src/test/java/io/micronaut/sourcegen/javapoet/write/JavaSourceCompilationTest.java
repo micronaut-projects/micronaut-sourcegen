@@ -1267,9 +1267,9 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
     }
 
     @Test
-    void singleValueOfVarargsStaysAnElement() throws Exception {
+    void objectPassedForVarargsIsTheArray() throws Exception {
         var format = String.class.getMethod("format", String.class, Object[].class);
-        // A cast to Object[] would fail at runtime for any value that is not an array
+        // The bytecode casts the `Object` to `Object[]`, the array of the varargs: so does the source
         ClassDef classDef = ClassDef.builder("test.Formatted")
             .addMethod(MethodDef.builder("describe").addModifiers(Modifier.PUBLIC)
                 .addParameter("value", Object.class)
@@ -1290,7 +1290,7 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
             class Formatted {
               public String describe(Object value) {
-                return String.format("%s", value);
+                return String.format("%s", (Object[]) value);
               }
             }
             """, source);
@@ -1723,7 +1723,8 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
     @Test
     void superConstructorVarargsResolvedThroughTheSuperclass() throws Exception {
         ClassTypeDef parent = ClassTypeDef.of(CompilationSignatures.VarargsParent.class);
-        // `superRef()` names the superclass by a placeholder, which is resolved to find the varargs constructor
+        // `superRef()` names the superclass by a placeholder, which is resolved to find the varargs constructor; the
+        // `Object` passed for the varargs is the array, as the bytecode's checkcast makes it
         ClassDef classDef = ClassDef.builder("test.VarargsChild")
             .superclass(parent)
             .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
@@ -1743,7 +1744,7 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
             class VarargsChild extends CompilationSignatures.VarargsParent {
               public VarargsChild(Object value) {
-                super(value);
+                super((Object[]) value);
               }
             }
             """, source);

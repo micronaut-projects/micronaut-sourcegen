@@ -786,12 +786,11 @@ public class ReviewOverridesTest {
     }
 
     /**
-     * A non-static inner class implementing `Supplier<T>` with the type variable of its outer class, overriding
-     * `Object get()`: `T` is in scope of the inner class, but the resolver only knows the inner definition's own
-     * variables, erases `T` to Object and keeps `Object get()`, which does not implement `T get()`. Expected:
-     * `public T get()`.
+     * A member class implementing `Supplier<T>` with the type variable of its outer class, overriding `Object get()`.
+     * The bytecode writer gives a member class no outer instance, so the model's inner class is a static nested class
+     * of the source, where `T` of the outer class is not in scope: the variable is erased to its bound, and
+     * `Object get()` implements `Supplier<Object>`, as the bytecode does.
      */
-    @Disabled("Cosmetic: the override of an inner class is written with the outer class's variable erased to its bound (JavaPoetNames.isVariablePartOfTheDefinition knows the definition's own variables only)")
     @Test
     void innerClassOverridingWithTheOuterClassVariable() throws Exception {
         var t = TypeDef.variable("T");
@@ -801,9 +800,9 @@ public class ReviewOverridesTest {
             .build();
         var outer = ClassDef.builder("test.Holder").addModifiers(Modifier.PUBLIC).addTypeVariable(t).addInnerType(inner).build();
         try (var compiled = compile(outer)) {
-            assertTrue(compiled.source(0).contains("public T get()"), compiled.source(0));
-            Object holder = compiled.newInstance(outer.getName());
-            Object instance = compiled.load("test.Holder$Inner").getDeclaredConstructor(holder.getClass()).newInstance(holder);
+            assertTrue(compiled.source(0).contains("public static class Inner implements Supplier<Object>"), compiled.source(0));
+            assertTrue(compiled.source(0).contains("public Object get()"), compiled.source(0));
+            Object instance = compiled.newInstance("test.Holder$Inner");
             assertNull(((Supplier<?>) instance).get());
         }
     }

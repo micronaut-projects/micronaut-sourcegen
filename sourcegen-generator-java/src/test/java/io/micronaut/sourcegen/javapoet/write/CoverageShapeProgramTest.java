@@ -130,7 +130,6 @@ public class CoverageShapeProgramTest {
 
     // JavaPoetSourceGenerator 180-207: a property of an interface is written as its accessors; the backing field the
     // generator writes next to them is private, which an interface cannot declare
-    @Disabled("Pre-existing: a property of an interface is written as a private field, which JavaPoet rejects in an interface")
     @Test
     void interfacePropertyIsWrittenAsAccessors() throws Exception {
         var property = PropertyDef.builder("label").ofType(String.class).addJavadoc("The label.")
@@ -675,7 +674,6 @@ public class CoverageShapeProgramTest {
     // JavaExpressionRules 665; JavaConversionRenderer 179-206: an array converted to an array of a variable bounded
     // by itself - `N extends Number & Comparable<N>` - is passed through the intersection helper, whose raw
     // `Comparable` bound javac cannot infer against the self-referential one
-    @Disabled("An array converted to an intersection whose bound names the variable itself (N extends Number & Comparable<N>) is cast through a helper whose raw bound javac cannot infer")
     @Test
     void intersectionArrayOfASelfReferentialBoundIsConverted() throws Exception {
         var n = TypeDef.variable("N", TypeDef.of(Number.class), TypeDef.parameterized(Comparable.class, TypeDef.variable("N")));

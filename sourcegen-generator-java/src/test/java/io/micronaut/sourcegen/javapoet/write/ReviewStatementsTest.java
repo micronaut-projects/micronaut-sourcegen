@@ -404,7 +404,6 @@ public class ReviewStatementsTest {
      * Confirmed defect (pre-existing, contrived): a {@code return} in a static initializer returns from
      * {@code <clinit>} in bytecode; in source it is a return outside a method.
      */
-    @Disabled("A return in a static initializer, which Java has no statement for")
     @Test
     void returnInAStaticInitializer() throws Throwable {
         var owner = ClassTypeDef.of("test.EarlyExit");
@@ -566,7 +565,6 @@ public class ReviewStatementsTest {
      * Confirmed defect (pre-existing): catching a supertype before its subtype is a valid exception table whose
      * second handler is dead; javac reports the subtype as already caught.
      */
-    @Disabled("javac rejects a catch of a subtype after its supertype, which the verifier accepts as a dead handler")
     @Test
     void catchOfASupertypeBeforeItsSubtype() throws Throwable {
         var def = program("test.CatchOrder", MethodDef.builder("call").addModifiers(Modifier.PUBLIC).returns(String.class)
@@ -580,7 +578,6 @@ public class ReviewStatementsTest {
      * Confirmed defect (pre-existing): a catch of a checked exception the try body cannot throw is a dead handler in
      * bytecode; javac reports that the exception is never thrown in the body of the try.
      */
-    @Disabled("javac rejects a catch of a checked exception the body cannot throw, which the verifier accepts as a dead handler")
     @Test
     void catchOfACheckedExceptionTheBodyCannotThrow() throws Throwable {
         var def = program("test.DeadCatch", MethodDef.builder("call").addModifiers(Modifier.PUBLIC)
@@ -1021,7 +1018,6 @@ public class ReviewStatementsTest {
      * inner class, which needs an outer instance; the bytecode writer gives it none, so the model instantiates it
      * from a static method.
      */
-    @Disabled("A model treats an inner class as a nested one - the bytecode writer emits no outer instance - which Java cannot instantiate from a static context")
     @Test
     void innerClassInstantiatedFromAStaticMethodOfTheOuter() throws Throwable {
         var inner = ClassDef.builder("Inner").addModifiers(Modifier.PUBLIC)

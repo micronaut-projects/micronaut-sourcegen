@@ -21,6 +21,7 @@ import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -49,16 +50,35 @@ final class RenderScope {
      */
     @Nullable
     private final TypeDef yieldType;
+    /**
+     * The label of the block a `return` of the model breaks out of, in an initializer, or {@code null}.
+     */
+    @Nullable
+    private final String breakLabel;
+    /**
+     * The locals the body of this scope assigns after declaring them, which a lambda cannot capture.
+     */
+    private final Set<String> reassigned = new LinkedHashSet<>();
+    /**
+     * The final copies of reassigned locals made for the lambdas of the statement being rendered, by the name of
+     * the local in the model.
+     */
+    private final Map<String, String> copies = new LinkedHashMap<>();
 
     private RenderScope(@Nullable RenderScope parent, @Nullable MethodDef owner) {
-        // A block of the same method yields as the enclosing one; a lambda body returns of its own
-        this(parent, owner, parent != null && owner == null ? parent.yieldType : null);
+        // A block of the same method yields and breaks as the enclosing one; a lambda body returns of its own
+        this(parent, owner, parent != null && owner == null ? parent.yieldType : null,
+            parent != null && owner == null ? parent.breakLabel : null);
     }
 
-    private RenderScope(@Nullable RenderScope parent, @Nullable MethodDef owner, @Nullable TypeDef yieldType) {
+    private RenderScope(@Nullable RenderScope parent,
+                        @Nullable MethodDef owner,
+                        @Nullable TypeDef yieldType,
+                        @Nullable String breakLabel) {
         this.parent = parent;
         this.owner = owner;
         this.yieldType = yieldType;
+        this.breakLabel = breakLabel;
         if (owner != null) {
             for (ParameterDef parameter : owner.getParameters()) {
                 taken.add(parameter.getName());
@@ -71,7 +91,7 @@ final class RenderScope {
      * @return A scope nested in this one, in which a `return` of the model yields the value
      */
     RenderScope yielding(TypeDef type) {
-        return new RenderScope(this, null, type);
+        return new RenderScope(this, null, type, breakLabel);
     }
 
     /**
@@ -80,6 +100,78 @@ final class RenderScope {
     @Nullable
     TypeDef yieldType() {
         return yieldType;
+    }
+
+    /**
+     * @param label The label of the block an initializer is written in
+     * @return A scope nested in this one, in which a `return` of the model breaks out of the labelled block
+     */
+    RenderScope breakingTo(String label) {
+        return new RenderScope(this, null, yieldType, label);
+    }
+
+    /**
+     * @return The label a `return` breaks to in this scope, or {@code null} outside the block of an initializer
+     */
+    @Nullable
+    String breakLabel() {
+        return breakLabel;
+    }
+
+    /**
+     * Records the locals the body of this scope assigns after declaring them.
+     *
+     * @param names The names of the locals
+     */
+    void reassigns(Collection<String> names) {
+        reassigned.addAll(names);
+    }
+
+    /**
+     * @param name The name of a local
+     * @return Whether the body being rendered - the method, or the lambda body - assigns the local after declaring
+     * it, so that a lambda cannot capture it
+     */
+    boolean isReassigned(String name) {
+        for (RenderScope s = this; s != null; s = s.parent) {
+            if (s.reassigned.contains(name)) {
+                return true;
+            }
+            if (s.owner != null) {
+                // The body of a lambda assigns no local of the method it is written in
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Records the final copy of a local made for the lambdas of the statement being rendered.
+     *
+     * @param name     The name of the local in the model
+     * @param copyName The name of the copy
+     */
+    void copy(String name, String copyName) {
+        copies.put(name, copyName);
+        taken.add(copyName);
+    }
+
+    /**
+     * @param name The name of a local in the model
+     * @return The name of the final copy a lambda reads the local by, or {@code null} where there is none
+     */
+    @Nullable
+    String resolveCopy(String name) {
+        for (RenderScope s = this; s != null; s = s.parent) {
+            String copyName = s.copies.get(name);
+            if (copyName != null) {
+                return copyName;
+            }
+            if (s.owner != null) {
+                return null;
+            }
+        }
+        return null;
     }
 
     /**

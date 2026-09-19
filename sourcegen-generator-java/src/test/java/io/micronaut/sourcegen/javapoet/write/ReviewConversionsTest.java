@@ -344,7 +344,6 @@ public class ReviewConversionsTest {
     // Known limit ("a value that is not an array passed for varargs stays one element"): `Objects.hash(Object...)` with an
     // `Object` that is an `Object[]` at runtime. The bytecode passes it as the array (checkcast Object[]), the source as
     // one element - silently another hash.
-    @Disabled("Limit of the PR: a value that is not an array passed for varargs stays one element - Objects.hash(Object) hashes the array itself, silently")
     @Test
     void objectPassedToObjectsHashVarargsIsTheArray() throws Exception {
         var hash = Objects.class.getMethod("hash", Object[].class);
@@ -373,7 +372,6 @@ public class ReviewConversionsTest {
 
     // Known limit (as above, for `String...`): the bytecode casts the `Object` to `String[]`; the source passes an `Object`
     // where a `String` element is expected, which does not compile.
-    @Disabled("Limit of the PR: a value that is not an array passed for varargs stays one element")
     @Test
     void objectPassedToStringVarargsIsTheArray() throws Exception {
         var joined = Fixtures.class.getMethod("joined", String[].class);
@@ -429,7 +427,6 @@ public class ReviewConversionsTest {
 
     // `Optional.ofNullable(T)` with an `Object`, returned from a method returning `Optional<String>`: the bytecode returns
     // the raw `Optional`; javac infers `T` from the return type and rejects the `Object` argument.
-    @Disabled("The result of a generic method returned as a parameterized type: the model erases the return type, javac infers the variable from the argument and the target at once")
     @Test
     void objectPassedToOptionalOfNullableReturnedParameterized() throws Exception {
         var ofNullable = Optional.class.getMethod("ofNullable", Object.class);
@@ -447,11 +444,22 @@ public class ReviewConversionsTest {
         assertEquals(List.of("a"), run(def, "a"));
     }
 
-    // `String.format(String, Object...)` with one `Object` element.
+    // `String.format(String, Object...)` with an `Object`: the array, as the bytecode's checkcast to `Object[]` makes it
+    // - a value that is not an array fails the cast, as it does in bytecode.
     @Test
     void objectPassedToStringFormat() throws Exception {
         var format = String.class.getMethod("format", String.class, Object[].class);
         var def = single("Format", TypeDef.STRING, List.of(TypeDef.OBJECT),
+            (self, p) -> ClassTypeDef.of(String.class).invokeStatic(format, ExpressionDef.constant("<%s>"), p.get(0)).returning());
+        assertEquals("<5>", run(def, (Object) new Object[]{5}));
+        assertThrows(ClassCastException.class, () -> run(def, 5));
+    }
+
+    // `String.format(String, Object...)` with an `Integer`: one element, which the bytecode wraps as an `Object[]` of one.
+    @Test
+    void integerPassedToStringFormat() throws Exception {
+        var format = String.class.getMethod("format", String.class, Object[].class);
+        var def = single("FormatInteger", TypeDef.STRING, List.of(TypeDef.of(Integer.class)),
             (self, p) -> ClassTypeDef.of(String.class).invokeStatic(format, ExpressionDef.constant("<%s>"), p.get(0)).returning());
         assertEquals("<5>", run(def, 5));
     }
@@ -470,7 +478,6 @@ public class ReviewConversionsTest {
 
     // Known limit (a wildcard type argument is not converted to): `List<? super Integer>.add(Object)`; the source `p0.add(p1)`
     // does not compile, where `p0.add((Integer) p1)` would.
-    @Disabled("Limit of the PR: a call through a receiver whose type argument is a wildcard is not converted")
     @Test
     void wildcardSuperReceiverAddOfObject() throws Exception {
         var add = List.class.getMethod("add", Object.class);

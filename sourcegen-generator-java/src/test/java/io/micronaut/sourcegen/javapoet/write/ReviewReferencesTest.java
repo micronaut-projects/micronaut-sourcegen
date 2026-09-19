@@ -592,7 +592,6 @@ public class ReviewReferencesTest {
         }
     }
 
-    @Disabled("A reference returned where the return type is a type variable bounded by its functional interface needs an unchecked cast to the variable")
     @Test
     void referenceReturnedAsATypeVariableBoundedByItsInterface() throws Exception {
         // `<F extends Function<Object, Object>> F make()` returning `this::apply`: the verifier sees a Function
@@ -623,7 +622,6 @@ public class ReviewReferencesTest {
 
     // ------------------------------------------------------------------------ lambdas and scope
 
-    @Disabled("A lambda capturing a local that is not effectively final: the bytecode captures the value where the lambda is created, Java needs a copy into a final local")
     @Test
     void lambdaCapturingALocalAssignedTwice() throws Exception {
         // `String x = "a"; x = "b"; Supplier<String> s = () -> x;` - the bytecode captures the value the local has
@@ -644,7 +642,6 @@ public class ReviewReferencesTest {
         }
     }
 
-    @Disabled("A lambda capturing a local that is not effectively final: the bytecode captures the value where the lambda is created, Java needs a copy into a final local")
     @Test
     void lambdaCapturingALocalAssignedAfterTheLambdaIsCreated() throws Exception {
         // `String x = "a"; Supplier<String> s = () -> x; x = "b"; return s.get();` - the bytecode captured "a"

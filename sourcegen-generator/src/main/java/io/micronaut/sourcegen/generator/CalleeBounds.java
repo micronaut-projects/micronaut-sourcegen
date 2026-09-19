@@ -79,11 +79,29 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
      * @return The types the type is, more than one for a variable of several bounds
      */
     public List<TypeDef> of(TypeDef type) {
+        return of(type, null);
+    }
+
+    /**
+     * The bounds of a variable of the invoked method, as {@link #of(TypeDef)} gives them, except that a bound naming
+     * the variable itself keeps it: {@code Comparable<T>} for a {@code T extends Comparable<T>}, which a generic
+     * helper declaring a variable of its own can substitute its variable in. A bound naming another variable of
+     * the method is stripped as before.
+     *
+     * @param variable The variable of the invoked method
+     * @return The bounds, {@code Object} alone where it declares none
+     * @since 2.2.2
+     */
+    public List<TypeDef> ofNamingItself(TypeDef.TypeVariable variable) {
+        return of(variable, variable.name());
+    }
+
+    private List<TypeDef> of(TypeDef type, @Nullable String kept) {
         TypeDef unwrapped = TypeHierarchy.unwrap(type);
         TypeDef.TypeVariable declared = unwrapped instanceof TypeDef.TypeVariable variable ? variable(variable.name()) : null;
         if (declared != null) {
             List<TypeDef> bounds = new ArrayList<>();
-            collect(declared, bounds, new HashSet<>());
+            collect(declared, bounds, new HashSet<>(), kept);
             if (bounds.isEmpty()) {
                 bounds.add(TypeDef.OBJECT);
             }
@@ -106,7 +124,7 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
         return List.of(type);
     }
 
-    private void collect(TypeDef.TypeVariable variable, List<TypeDef> bounds, Set<String> visited) {
+    private void collect(TypeDef.TypeVariable variable, List<TypeDef> bounds, Set<String> visited, @Nullable String kept) {
         // A chain of any length is followed: the visited variables end a cycle
         if (!visited.add(variable.name())) {
             return;
@@ -116,11 +134,12 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
             TypeDef.TypeVariable declared = unwrapped instanceof TypeDef.TypeVariable named ? variable(named.name()) : null;
             if (declared != null) {
                 // A bound that is another variable of the method is that variable's bounds
-                collect(declared, bounds, visited);
+                collect(declared, bounds, visited, kept);
             } else if (names(unwrapped)) {
                 // `Comparable<T>` names a variable of the method, out of scope where it is called - and can name one
                 // of the class too, which the receiver binds
-                bounds.add(withoutOwnVariables(TypeHierarchy.unwrap(TypeHierarchy.substituted(unwrapped, receiverArguments))));
+                TypeDef named = TypeHierarchy.unwrap(TypeHierarchy.substituted(unwrapped, receiverArguments));
+                bounds.add(kept != null && !namesOwnOtherThan(named, kept) ? named : withoutOwnVariables(named));
             } else if (!TypeDef.OBJECT.equals(unwrapped)) {
                 // A variable of the class is the type argument the receiver binds it to
                 bounds.add(TypeHierarchy.containsVariableOtherThan(bound, Set.of())
@@ -136,6 +155,27 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
         Map<String, TypeDef> asObject = new HashMap<>();
         variables.forEach(declared -> asObject.put(declared.name(), TypeDef.OBJECT));
         return TypeHierarchy.substituted(bound, asObject);
+    }
+
+    /**
+     * Whether a type names a variable of the invoked method other than the given one.
+     */
+    private boolean namesOwnOtherThan(TypeDef type, String kept) {
+        TypeDef unwrapped = TypeHierarchy.unwrap(type);
+        if (unwrapped instanceof TypeDef.TypeVariable variable) {
+            return !variable.name().equals(kept) && variable(variable.name()) != null;
+        }
+        if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
+            return parameterized.typeArguments().stream().anyMatch(argument -> namesOwnOtherThan(argument, kept));
+        }
+        if (unwrapped instanceof TypeDef.Array array) {
+            return namesOwnOtherThan(array.componentType(), kept);
+        }
+        if (unwrapped instanceof TypeDef.Wildcard wildcard) {
+            return wildcard.upperBounds().stream().anyMatch(bound -> namesOwnOtherThan(bound, kept))
+                || wildcard.lowerBounds().stream().anyMatch(bound -> namesOwnOtherThan(bound, kept));
+        }
+        return false;
     }
 
     private TypeDef.@Nullable TypeVariable variable(String name) {
