@@ -19,6 +19,7 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.generator.CalleeBounds;
 import io.micronaut.sourcegen.generator.InvokedSignature;
 import io.micronaut.sourcegen.generator.OverrideResolver;
 import io.micronaut.sourcegen.model.ClassTypeDef;
@@ -426,62 +427,16 @@ final class JavaExpressionRules {
     }
 
     /**
-     * The bounds of a variable the invoked method declares, in its own scope: its bounds name its variables.
-     */
-    private static List<TypeDef> calleeBounds(TypeDef.TypeVariable variable,
-                                              List<TypeDef.TypeVariable> inferred,
-                                              Map<String, TypeDef> receiverArguments) {
-        List<TypeDef> result = new ArrayList<>();
-        for (TypeDef bound : variable.bounds()) {
-            TypeDef unwrapped = TypeHierarchy.unwrap(bound);
-            TypeDef.TypeVariable declared = unwrapped instanceof TypeDef.TypeVariable named
-                ? inferred.stream().filter(v -> v.name().equals(named.name())).findFirst().orElse(null) : null;
-            if (declared == null) {
-                // A variable of the class is the type argument the receiver binds it to, in the caller's scope
-                unwrapped = TypeHierarchy.unwrap(TypeHierarchy.substituted(unwrapped, receiverArguments));
-            }
-            if (declared != null) {
-                result.addAll(calleeBounds(declared, inferred.stream().filter(v -> v != declared).toList(),
-                    receiverArguments));
-            } else if (unwrapped instanceof ClassTypeDef.Parameterized parameterized
-                && namesCalleeVariable(parameterized, inferred)) {
-                // `Comparable<T>` names the variable itself, which is out of scope where it is called
-                result.add(parameterized.rawType());
-            } else if (!TypeDef.OBJECT.equals(unwrapped)) {
-                result.add(unwrapped);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * A parameter type without the variables the invoked method declares, which name the variables of the class
-     * where it is called: a variable is its bounds, an array one of their arrays, and a parameterization raw.
-     */
-    private static List<TypeDef> withoutCalleeVariables(TypeDef paramType,
-                                                        List<TypeDef.TypeVariable> inferred,
-                                                        Map<String, TypeDef> receiverArguments) {
-        TypeDef unwrapped = TypeHierarchy.unwrap(paramType);
-        if (unwrapped instanceof TypeDef.TypeVariable variable) {
-            List<TypeDef> bounds = inferred.stream().filter(v -> v.name().equals(variable.name())).findFirst()
-                .map(declared -> calleeBounds(declared, inferred, receiverArguments)).orElse(List.of());
-            return bounds.isEmpty() ? List.of(TypeDef.OBJECT) : bounds;
-        }
-        if (unwrapped instanceof TypeDef.Array array) {
-            List<TypeDef> components = withoutCalleeVariables(array.componentType(), inferred, receiverArguments);
-            return List.of(TypeDef.array(components.get(0), array.dimensions()));
-        }
-        if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
-            return List.of(parameterized.rawType());
-        }
-        return List.of(unwrapped);
-    }
-
-    /**
      * Whether a value satisfies a bound: a class it is assignable to, and a parameterization it converts to - a value
      * of a variable through one of its own bounds.
      */
     private static boolean satisfies(TypeDef bound, TypeDef valueType, @Nullable ObjectDef objectDef, @Nullable MethodDef methodDef) {
+        if (bound instanceof TypeDef.TypeVariable variable) {
+            // A variable the receiver fixes is satisfied by a value of it, or of a variable bounded by it
+            return variable.equals(TypeHierarchy.unwrap(valueType))
+                || TypeHierarchy.unwrap(valueType) instanceof TypeDef.TypeVariable value
+                && value.bounds().stream().anyMatch(own -> own.equals(variable));
+        }
         List<TypeDef> values = TypeHierarchy.unwrap(valueType) instanceof TypeDef.TypeVariable
             ? OverrideResolver.upperBounds(valueType, objectDef, methodDef) : List.of(TypeHierarchy.unwrap(valueType));
         if (values.isEmpty()) {
@@ -498,12 +453,6 @@ final class JavaExpressionRules {
             }
             return isAssignable(bound, value);
         });
-    }
-
-    private static boolean namesCalleeVariable(TypeDef type, List<TypeDef.TypeVariable> inferred) {
-        Map<String, TypeDef.TypeVariable> variables = new HashMap<>();
-        collectVariables(type, variables);
-        return inferred.stream().anyMatch(variable -> variables.containsKey(variable.name()));
     }
 
     /**
@@ -528,7 +477,8 @@ final class JavaExpressionRules {
                                              Map<String, TypeDef> receiverArguments,
                                              @Nullable ObjectDef objectDef,
                                              @Nullable MethodDef methodDef) {
-        boolean callee = namesCalleeVariable(paramType, inferred);
+        CalleeBounds calleeBounds = new CalleeBounds(inferred, receiverArguments, true);
+        boolean callee = calleeBounds.names(paramType);
         if (generated && !callee && TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable) {
             if (valueType instanceof TypeDef.Primitive primitive) {
                 // A primitive is boxed before it is cast to a variable, through a bound the box does not convert to
@@ -541,30 +491,40 @@ final class JavaExpressionRules {
                 return List.of(List.of(paramType), List.of(bound));
             }
         }
+        if (callee && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array paramArray
+            && TypeHierarchy.unwrap(paramArray.componentType()) instanceof TypeDef.TypeVariable component
+            && TypeHierarchy.unwrap(sourceType) instanceof TypeDef.Array sourceArray
+            && sourceArray.dimensions() == paramArray.dimensions()) {
+            // An array of a variable of the invoked method: its component has to satisfy the variable's bounds
+            List<TypeDef> bounds = calleeBounds.of(component);
+            if (bounds.stream().anyMatch(bound -> !satisfies(bound, sourceArray.componentType(), objectDef, methodDef))) {
+                return List.of(List.of(TypeDef.array(asRaw(bounds.get(0)), paramArray.dimensions())));
+            }
+            return List.of();
+        }
         if (callee && TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable && !TypeDef.OBJECT.equals(sourceType)) {
             // A value inferred as a variable of the invoked method has to satisfy every bound, as the source types it
             // - a primitive boxed
             TypeDef boxed = sourceType instanceof TypeDef.Primitive primitive ? primitive.wrapperType() : sourceType;
-            List<TypeDef> bounds = withoutCalleeVariables(paramType, inferred, receiverArguments);
+            List<TypeDef> bounds = calleeBounds.of(paramType);
             if (bounds.stream().anyMatch(bound -> !satisfies(bound, boxed, objectDef, methodDef))) {
-                List<TypeDef> raw = bounds.stream().map(bound -> bound instanceof ClassTypeDef.Parameterized parameterized
-                    ? (TypeDef) parameterized.rawType() : bound).toList();
+                List<TypeDef> raw = bounds.stream().map(JavaExpressionRules::asRaw).toList();
                 return boxed == sourceType ? List.of(raw) : List.of(raw, List.of(boxed));
             }
             // A value an override narrowed keeps the type the model infers the variable from
             return sourceType.equals(valueType) ? List.of() : List.of(bounds);
         }
         if (requiresImplicitInvocationCast(paramType, valueType)) {
-            TypeDef inherited = paramType instanceof ClassTypeDef.Parameterized parameterized
+            TypeDef inherited = TypeHierarchy.unwrap(paramType) instanceof ClassTypeDef.Parameterized parameterized
                 ? OverrideResolver.inheritedAs(sourceType, parameterized, elementLookup()) : null;
-            if (paramType instanceof ClassTypeDef.Parameterized parameterized && inherited != null
+            if (TypeHierarchy.unwrap(paramType) instanceof ClassTypeDef.Parameterized parameterized && inherited != null
                 && requiresRawConversion(parameterized, inherited, Set.of())) {
                 // A value an override narrowed to another parameterization is cast raw
                 return List.of(List.of(parameterized.rawType()));
             }
             // A variable the invoked method declares names the one of the class where it is called: its bounds,
             // which the value has to satisfy together, are cast to
-            return List.of(callee ? withoutCalleeVariables(paramType, inferred, receiverArguments) : List.of(paramType));
+            return List.of(callee ? calleeBounds.of(paramType) : List.of(paramType));
         }
         if (generated && !callee && requiresVariableCast(paramType, valueType)) {
             return List.of(List.of(paramType));
@@ -572,11 +532,15 @@ final class JavaExpressionRules {
         Set<String> inferredNames = inferred.stream().map(TypeDef.TypeVariable::name).collect(Collectors.toSet());
         if (declaredType != null && (generated ? requiresRawConversion(declaredType, valueType, inferredNames)
             : requiresRawCast(declaredType, valueType))) {
-            // Only an unchecked conversion accepts the value, which a cast to the declared raw type is
-            return List.of(List.of(paramType instanceof ClassTypeDef.Parameterized parameterized
-                ? parameterized.rawType() : paramType));
+            // Only an unchecked conversion accepts the value, which a cast to the declared raw type is - also where
+            // the parameter type is annotated
+            return List.of(List.of(asRaw(paramType)));
         }
         return List.of();
+    }
+
+    private static TypeDef asRaw(TypeDef type) {
+        return TypeHierarchy.unwrap(type) instanceof ClassTypeDef.Parameterized parameterized ? parameterized.rawType() : type;
     }
 
     /**

@@ -1306,10 +1306,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             lambdaScope.declare(name);
             parameters.add(CodeBlock.of("$L", name));
             TypeDef type = adaptation.argumentTypes().get(i);
-            TypeDef bound = adaptation.argumentBounds().get(i);
-            arguments.add(type == null ? CodeBlock.of("$L", name) : bound == null
-                ? CodeBlock.of("($T) $L", asType(type, objectDef, methodDef), name)
-                : CodeBlock.of("($T) ($T) $L", asType(type, objectDef, methodDef), asType(bound, objectDef), name));
+            CodeBlock.Builder argument = CodeBlock.builder();
+            if (type != null) {
+                argument.add("($T) ", asType(type, objectDef, methodDef));
+                adaptation.argumentConversions().get(i).forEach(conversion -> argument.add("($T) ", asType(conversion, objectDef)));
+            }
+            arguments.add(argument.add("$L", name).build());
         }
         CodeBlock call = CodeBlock.of("$L.$L($L)", captured ? receiver
             : renderExpression(objectDef, methodDef, scope, instance), reference.method().getName(),

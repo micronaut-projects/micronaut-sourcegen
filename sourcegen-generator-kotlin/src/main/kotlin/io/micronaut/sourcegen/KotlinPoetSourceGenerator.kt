@@ -24,8 +24,10 @@ import com.squareup.kotlinpoet.javapoet.toKClassName
 import com.squareup.kotlinpoet.javapoet.toKTypeName
 import io.micronaut.core.annotation.Internal
 import io.micronaut.core.reflect.ClassUtils
+import io.micronaut.inject.ast.ClassElement
 import io.micronaut.inject.ast.Element
 import io.micronaut.inject.visitor.VisitorContext
+import io.micronaut.sourcegen.generator.CalleeBounds
 import io.micronaut.sourcegen.generator.InvokedSignature
 import io.micronaut.sourcegen.generator.OverrideResolver
 import io.micronaut.sourcegen.generator.SourceGenerator
@@ -2397,13 +2399,22 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 null
             }
             val varargs = signature?.varargs == true
+            // The variables the invoked method declares, with the receiver's type arguments for its class's
+            val callee = CalleeBounds(
+                callMethod?.typeVariables.orEmpty(),
+                callMethod?.let { method ->
+                    OverrideResolver.receiverArguments(owner, objectDef, method) - method.typeVariables.map { it.name }.toSet()
+                }.orEmpty(),
+                false
+            )
             for ((index, value) in values.withIndex()) {
                 if (index > 0) {
                     builder.add(", ")
                 }
                 val parameterType = sameArityTypes?.get(index)
-                // A variable the invoked method declares names the one of the caller: its bound is cast to
-                val castType = parameterType?.let { withoutCalleeVariables(it, callMethod) }
+                // A variable the invoked method declares names the one of the caller: its bounds are cast to
+                val castTypes = parameterType?.let { if (callee.names(it)) callee.of(it) else listOf(it) }
+                val castType = castTypes?.first()
                 val sourceType = sourceTypeOf(value, methodDef, objectDef)
                 val vararg = varargs && index == values.size - 1 && parameterType is TypeDef.Array
                 if (parameterType != null && !vararg
@@ -2420,10 +2431,18 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 // A variable the invoked method declares is inferred from the value; one of the class is fixed
                 val fixedVariable = parameterType is TypeDef.TypeVariable
                     && callMethod?.typeVariables?.none { it.name == parameterType.name } != false
+                if (castTypes != null && !vararg && parameterType is TypeDef.TypeVariable && !fixedVariable) {
+                    // A value inferred as a variable of the invoked method has to satisfy every bound
+                    if (castTypes.any { it != TypeDef.OBJECT && !satisfiesBound(it, valueType) }) {
+                        builder.add(renderCalleeCast(objectDef, methodDef, scope, value, castTypes))
+                    } else {
+                        builder.add(renderExpressionCode(objectDef, methodDef, scope, value))
+                    }
+                    continue
+                }
                 val argument = if (parameterType != null && (requiresImplicitCast(parameterType, valueType)
                         || !vararg && valueType == TypeDef.OBJECT
-                        && (parameterType is TypeDef.Array || fixedVariable
-                        || parameterType is TypeDef.TypeVariable && castType != TypeDef.OBJECT)
+                        && (parameterType is TypeDef.Array || fixedVariable)
                         // A value of a variable, or an array of another component, where an override narrowed the
                         // parameter
                         || !vararg && valueType is TypeDef.TypeVariable
@@ -2436,10 +2455,8 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                         || valueType is TypeDef.Array || valueType is TypeDef.Primitive)
                         || !vararg && valueType is TypeDef.Array && parameterType is TypeDef.Array
                         && valueType != parameterType)) {
-                    if (castType != null && castType != parameterType) {
-                        // The bound of a variable the invoked method declares: an unbounded wildcard of it is `*`
-                        builder.add("%L as %T", renderExpressionCode(objectDef, methodDef, scope, value),
-                            asStarProjected(castType, objectDef))
+                    if (castTypes != null && castType != parameterType) {
+                        builder.add(renderCalleeCast(objectDef, methodDef, scope, value, castTypes))
                         continue
                     }
                     value.cast(parameterType)
@@ -2451,36 +2468,95 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             return builder.build()
         }
 
-        private fun asStarProjected(type: TypeDef, objectDef: ObjectDef?): TypeName {
+        private fun asStarProjected(type: TypeDef, objectDef: ObjectDef?): TypeName =
+            asKotlinComparable(asStarProjectedType(type, objectDef))
+
+        /**
+         * A cast to a bound names `kotlin.Comparable`, which inference matches with a Kotlin type's supertypes.
+         */
+        private fun asKotlinComparable(type: TypeName): TypeName {
+            if (type !is ParameterizedTypeName) {
+                return type
+            }
+            val raw = if (type.rawType.canonicalName == "java.lang.Comparable") ClassName("kotlin", "Comparable") else type.rawType
+            return raw.parameterizedBy(type.typeArguments.map { asKotlinComparable(it) }).copy(nullable = type.isNullable)
+        }
+
+        private fun asStarProjectedType(type: TypeDef, objectDef: ObjectDef?): TypeName {
             if (type !is ClassTypeDef.Parameterized) {
                 return asType(type, objectDef)
             }
-            val raw = asType(type.rawType, objectDef) as? ClassName ?: return asType(type, objectDef)
-            return raw.parameterizedBy(type.typeArguments.map { argument ->
+            // Rendered as a whole, so that a Java type is named as Kotlin's - `kotlin.Comparable`
+            val rendered = asType(type, objectDef) as? ParameterizedTypeName ?: return asType(type, objectDef)
+            return rendered.rawType.parameterizedBy(type.typeArguments.mapIndexed { index, argument ->
                 if (argument is TypeDef.Wildcard && argument.lowerBounds.isEmpty()
                     && (argument.upperBounds.isEmpty() || argument.upperBounds[0] == TypeDef.OBJECT)) {
                     STAR
                 } else {
-                    asType(argument, objectDef)
+                    rendered.typeArguments[index]
                 }
-            })
+            }).copy(nullable = type.isNullable)
         }
 
         /**
-         * A parameter type with the variables the invoked method declares replaced by their bounds, which is how a
-         * cast to it reads where the method is called: a variable of the caller can have the same name.
+         * A value cast to the bounds of a variable the invoked method declares: an unbounded wildcard of one is
+         * `*`, and a value of several bounds is smart cast to each of them, where it is a parameter or a local.
          */
-        private fun withoutCalleeVariables(type: TypeDef, callMethod: MethodDef?): TypeDef {
-            val variables = callMethod?.typeVariables.orEmpty()
-            if (variables.isEmpty()) {
-                return type
+        private fun renderCalleeCast(
+            objectDef: ObjectDef?,
+            methodDef: MethodDef,
+            scope: RenderScope,
+            value: ExpressionDef,
+            castTypes: List<TypeDef>
+        ): CodeBlock {
+            var operand = renderExpressionCode(objectDef, methodDef, scope, value)
+            val bounds = castTypes.filter { it != TypeDef.OBJECT }.ifEmpty { castTypes }
+            if (bounds.size > 1 && (value is VariableDef.MethodParameter || value is VariableDef.Local)) {
+                // Written within a statement, whose continuation lines are indented twice: the body is indented
+                // once from the statement, and the closing brace aligned with it
+                val block = CodeBlock.builder().add("run {\n").unindent()
+                bounds.forEach { block.add("%L as %T\n", operand, asStarProjected(it, objectDef)) }
+                return block.add("%L\n", operand).unindent().add("}").indent().indent().build()
             }
-            val bounds = variables.associate { variable ->
-                val bound = variable.bounds.firstOrNull()
-                variable.name to (bound?.takeIf { !TypeHierarchy.containsVariableOtherThan(it, emptySet()) }
-                    ?: TypeDef.OBJECT)
+            if (requiresCastOperandParentheses(unwrapCasts(value))) {
+                operand = addParentheses(operand)
             }
-            return TypeHierarchy.substituted(type, bounds)
+            return CodeBlock.of("%L as %T", operand, asStarProjected(bounds.first(), objectDef))
+        }
+
+        /**
+         * Whether a value is known to satisfy a bound of a variable the invoked method declares, which Kotlin then
+         * infers the variable from: a subclass, the parameterization of a class, or a value of a variable of the caller.
+         */
+        private fun satisfiesBound(bound: TypeDef, value: TypeDef): Boolean {
+            val boxed = if (value is TypeDef.Primitive) value.wrapperType() else value
+            if (bound == TypeDef.OBJECT || bound == boxed) {
+                return true
+            }
+            if (bound is TypeDef.TypeVariable || boxed == TypeDef.OBJECT) {
+                return false
+            }
+            val lookup = VISITOR_CONTEXT.get()?.let { context ->
+                java.util.function.Function<String, ClassElement?> { name -> context.getClassElement(name).orElse(null) }
+            }
+            if (bound is ClassTypeDef.Parameterized) {
+                val inherited = OverrideResolver.inheritedAs(boxed, bound, lookup) as? ClassTypeDef.Parameterized
+                    ?: return false
+                return bound.typeArguments.size == inherited.typeArguments.size
+                    && bound.typeArguments.zip(inherited.typeArguments).all { (expected, actual) ->
+                        expected == actual || expected is TypeDef.Wildcard && expected.lowerBounds.isEmpty()
+                            && (expected.upperBounds.isEmpty() || expected.upperBounds[0] == TypeDef.OBJECT)
+                    }
+            }
+            if (bound is ClassTypeDef && boxed is ClassTypeDef) {
+                val boundClass = ClassUtils.forName(bound.name, javaClass.classLoader).orElse(null)
+                val valueClass = ClassUtils.forName(boxed.name, javaClass.classLoader).orElse(null)
+                if (boundClass != null && valueClass != null) {
+                    return boundClass.isAssignableFrom(valueClass)
+                }
+                return TypeHierarchy.inherits(boxed, bound.name, lookup)
+            }
+            return true
         }
 
         /**

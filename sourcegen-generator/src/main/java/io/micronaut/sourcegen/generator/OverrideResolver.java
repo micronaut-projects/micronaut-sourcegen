@@ -359,20 +359,31 @@ public final class OverrideResolver {
         }
         // For Java, a value that is not an `Object` is cast to a raw type: a parameterization does not convert to
         // another. Kotlin casts to the parameterization
-        List<@Nullable TypeDef> argumentBounds = new ArrayList<>(argumentTypes.size());
-        argumentTypes.forEach(type -> argumentBounds.add(null));
+        List<List<TypeDef>> argumentConversions = new ArrayList<>(argumentTypes.size());
+        argumentTypes.forEach(type -> argumentConversions.add(List.of()));
         if (!exact && functional != null && functional.getParameters().size() == argumentTypes.size()) {
             for (int i = 0; i < argumentTypes.size(); i++) {
                 TypeDef type = argumentTypes.get(i);
                 TypeDef passed = TypeHierarchy.unwrap(functional.getParameters().get(i).getType());
                 if (type != null && !TypeDef.OBJECT.equals(passed)) {
                     argumentTypes.set(i, asRaw(type));
-                    argumentBounds.set(i, boundConversion(type, passed, current, caller, context));
+                    // A primitive is boxed before it is cast to a variable, through a bound the box does not convert to
+                    TypeDef boxed = passed instanceof TypeDef.Primitive primitive
+                        && TypeHierarchy.unwrap(type) instanceof TypeDef.TypeVariable ? primitive.wrapperType() : null;
+                    TypeDef bound = boundConversion(type, boxed == null ? passed : boxed, current, caller, context);
+                    List<TypeDef> conversions = new ArrayList<>();
+                    if (bound != null) {
+                        conversions.add(bound);
+                    }
+                    if (boxed != null) {
+                        conversions.add(boxed);
+                    }
+                    argumentConversions.set(i, conversions);
                 }
             }
         }
         if (converted || resultType != null) {
-            return new ReferenceAdaptation(argumentTypes, argumentBounds,
+            return new ReferenceAdaptation(argumentTypes, argumentConversions,
                 resultType == null || exact ? resultType : asRaw(resultType),
                 exact || resultType == null ? null : boundConversion(resultType, returned, current, caller, context));
         }
@@ -447,11 +458,29 @@ public final class OverrideResolver {
                                                          MethodDef callMethod) {
         ObjectDef target = definitionOf(owner, current);
         if (target == null) {
-            return Map.of();
+            return loadedArguments(owner);
         }
         Map<String, TypeDef> arguments = bind(target, owner, Map.of());
         Map<String, TypeDef> declaring = declaringArguments(target, arguments, callMethod, 0);
         return declaring == null ? arguments : declaring;
+    }
+
+    /**
+     * The type arguments a parameterized receiver of a compiled class binds its variables with.
+     */
+    private static Map<String, TypeDef> loadedArguments(@Nullable ClassTypeDef owner) {
+        if (!(owner instanceof ClassTypeDef.Parameterized parameterized)) {
+            return Map.of();
+        }
+        Class<?> type = loaded(parameterized);
+        if (type == null || type.getTypeParameters().length != parameterized.typeArguments().size()) {
+            return Map.of();
+        }
+        Map<String, TypeDef> arguments = new HashMap<>();
+        for (int i = 0; i < type.getTypeParameters().length; i++) {
+            arguments.put(type.getTypeParameters()[i].getName(), parameterized.typeArguments().get(i));
+        }
+        return arguments;
     }
 
     /**
@@ -1002,13 +1031,13 @@ public final class OverrideResolver {
      * @param argumentTypes The type each value the functional interface passes is cast to, or {@code null} where it
      *                      is passed as is
      * @param resultType    The type the result is cast to, or {@code null} where it is returned as is
-     * @param argumentBounds The raw bound of a variable argument type each value is converted to first, or
-     *                      {@code null}
+     * @param argumentConversions The types each value is converted to before its argument type, the outer first:
+     *                      the raw bound of a variable, and the box of a primitive
      * @param resultBound   The raw bound of a variable result type the result is converted to first, or
      *                      {@code null}
      */
     public record ReferenceAdaptation(List<@Nullable TypeDef> argumentTypes,
-                                      List<@Nullable TypeDef> argumentBounds,
+                                      List<List<TypeDef>> argumentConversions,
                                       @Nullable TypeDef resultType,
                                       @Nullable TypeDef resultBound) {
     }
