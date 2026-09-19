@@ -2431,11 +2431,25 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 }
                 val valueType = value.type()
                 val smartCast = stableName(value)?.takeIf { scope.isSmartCast(it) }
-                if (parameterType != null && !vararg && smartCast != null && !callee.names(parameterType)) {
+                if (parameterType != null && castType != null && smartCast != null) {
                     // A value an earlier bound cast smart cast is passed as the type the model gives it, which keeps
-                    // the overload the model calls
-                    builder.add("%L as %T", renderExpressionCode(objectDef, methodDef, scope, value), asType(parameterType, objectDef))
+                    // the overload the model calls - an element of varargs as their component, and a variable of the
+                    // invoked method as its bound
+                    val passedType = if (vararg) (TypeHierarchy.unwrap(castType) as? TypeDef.Array)?.let { array ->
+                        if (array.dimensions == 1) array.componentType else TypeDef.array(array.componentType, array.dimensions - 1)
+                    } ?: castType else castType
+                    builder.add("%L as %T", renderExpressionCode(objectDef, methodDef, scope, value), asType(passedType, objectDef))
                     continue
+                }
+                if (parameterKind is TypeDef.Array && !vararg) {
+                    // An array of a variable of several bounds, which no array type expresses: a generic helper's
+                    // variable is inferred as them
+                    val component = TypeHierarchy.unwrap(parameterKind.componentType)
+                    val bounds = if (component is TypeDef.TypeVariable && callee.names(component)) callee.of(component) else null
+                    if (bounds != null && bounds.size > 1) {
+                        builder.add(renderIntersectionArray(objectDef, methodDef, scope, value, bounds, parameterKind.dimensions))
+                        continue
+                    }
                 }
                 // A variable the invoked method declares is inferred from the value; one of the class is fixed
                 val fixedVariable = parameterKind is TypeDef.TypeVariable
@@ -2551,6 +2565,27 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         }
 
         /**
+         * A value converted to an array of a variable of several bounds, by a generic helper of an anonymous object,
+         * whose variable the invocation infers as the intersection no array type expresses.
+         */
+        private fun renderIntersectionArray(
+            objectDef: ObjectDef?,
+            methodDef: MethodDef,
+            scope: RenderScope,
+            value: ExpressionDef,
+            bounds: List<TypeDef>,
+            dimensions: Int
+        ): CodeBlock {
+            var array: TypeName = TypeVariableName("T")
+            repeat(dimensions) { array = ARRAY.parameterizedBy(array) }
+            val constraints = bounds.map { CodeBlock.of("T : %T", asStarProjected(it, objectDef)) }.joinToCode(", ")
+            return CodeBlock.of(
+                "object { @Suppress(%S) fun <T> cast(value: Any?): %T where %L = value as %T }.cast(%L)",
+                "UNCHECKED_CAST", array, constraints, array, renderExpressionCode(objectDef, methodDef, scope, value)
+            )
+        }
+
+        /**
          * The name of a parameter or a local, which Kotlin smart casts, or `null` for another value.
          */
         private fun stableName(value: ExpressionDef): String? = when (value) {
@@ -2619,8 +2654,11 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 ownerOf(objectDef, instance.type()), objectDef, methodDef, reference, VISITOR_CONTEXT.get(), true
             ) ?: return null
             val lambdaScope = scope.nested(null)
+            // A parameter is read as the reference would - unless it is nullable, which is checked where the reference
+            // is created
+            val nullableReceiver = instance.type().isNullable
             val captured = instance !is VariableDef.This && instance !is VariableDef.Super
-                && instance !is VariableDef.MethodParameter
+                && (instance !is VariableDef.MethodParameter || nullableReceiver)
             val receiver = if (captured) lambdaScope.allocate("target").also { lambdaScope.declare(it) } else null
             val names = adaptation.argumentTypes().indices.map { index ->
                 generateSequence(0) { it + 1 }.map { "arg$index" + if (it == 0) "" else "_$it" }
@@ -2648,7 +2686,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 return lambda
             }
             return CodeBlock.of(
-                "%L.let { %N -> %L }",
+                if (nullableReceiver) "%L!!.let { %N -> %L }" else "%L.let { %N -> %L }",
                 renderExpressionWithParentheses(objectDef, methodDef, scope, instance, true),
                 receiver,
                 lambda

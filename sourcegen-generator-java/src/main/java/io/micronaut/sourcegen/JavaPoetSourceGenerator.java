@@ -18,6 +18,7 @@ package io.micronaut.sourcegen;
 import io.micronaut.core.annotation.Internal;
 
 import static io.micronaut.sourcegen.JavaExpressionRules.CastContext;
+import static io.micronaut.sourcegen.JavaExpressionRules.intersectionArrayBounds;
 import static io.micronaut.sourcegen.JavaExpressionRules.returnCasts;
 import static io.micronaut.sourcegen.JavaExpressionRules.argumentCasts;
 import static io.micronaut.sourcegen.JavaExpressionRules.arePrimitiveReferenceEqualityOperands;
@@ -1295,8 +1296,8 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             return null;
         }
         RenderScope lambdaScope = scope.nested(null);
-        boolean captured = !(instance instanceof VariableDef.This || instance instanceof VariableDef.Super
-            || instance instanceof VariableDef.MethodParameter);
+        // A receiver other than `this` is checked for `null` where the reference is created, as the reference would
+        boolean captured = !(instance instanceof VariableDef.This || instance instanceof VariableDef.Super);
         String receiver = captured ? lambdaScope.allocate("target") : "";
         lambdaScope.declare(receiver);
         List<CodeBlock> parameters = new ArrayList<>();
@@ -1324,9 +1325,15 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             call = CodeBlock.of("($T) $L", asType(adaptation.resultType(), objectDef, methodDef), call);
         }
         CodeBlock lambda = CodeBlock.of("($L) -> $L", CodeBlock.join(parameters, ", "), call);
-        return !captured ? lambda : CodeBlock.of("$T.of($L).<$T>map($L -> $L).get()", Optional.class,
-            renderExpression(objectDef, methodDef, scope, instance), asType(reference.type(), objectDef, methodDef),
-            receiver, lambda);
+        if (!captured) {
+            return lambda;
+        }
+        TypeName functional = asType(reference.type(), objectDef, methodDef);
+        CodeBlock read = CodeBlock.of("$T.of($L).<$T>map($L -> $L).get()", Optional.class,
+            renderExpression(objectDef, methodDef, scope, instance), functional, receiver, lambda);
+        // A lambda returning a raw type makes `map` an unchecked invocation, whose result is erased
+        return adaptation.resultType() != null && isRawGeneric(adaptation.resultType())
+            ? CodeBlock.of("($T) $L", functional, read) : read;
     }
 
     private CodeBlock renderMathOperand(@Nullable ObjectDef objectDef,
@@ -1484,6 +1491,12 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                         return renderExpression(objectDef, enclosingMethod, scope, value);
                     }
                     TypeDef sourceType = sourceTypeOf(value, enclosingMethod, objectDef);
+                    List<TypeDef> intersection = intersectionArrayBounds(paramType, sourceType, inferred, receiverArguments,
+                        objectDef, enclosingMethod);
+                    if (intersection != null) {
+                        return renderIntersectionArray(objectDef, enclosingMethod, scope, value, intersection,
+                            ((TypeDef.Array) TypeHierarchy.unwrap(paramType)).dimensions());
+                    }
                     List<List<TypeDef>> casts = argumentCasts(paramType, value.type(), sourceType,
                         declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null,
                         generated, inferred, receiverArguments, objectDef, enclosingMethod);
@@ -1506,6 +1519,42 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 return renderExpression(objectDef, enclosingMethod, scope, value);
             })
             .collect(CodeBlock.joining(", "));
+    }
+
+    /**
+     * A value converted to an array of a variable of several bounds, by a generic helper of an anonymous class, whose
+     * variable the invocation infers as the intersection no array type expresses.
+     */
+    private CodeBlock renderIntersectionArray(@Nullable ObjectDef objectDef,
+                                              @Nullable MethodDef methodDef,
+                                              RenderScope scope,
+                                              ExpressionDef value,
+                                              List<TypeDef> bounds,
+                                              int dimensions) {
+        TypeVariableName variable = TypeVariableName.get("T",
+            bounds.stream().map(bound -> asType(bound, objectDef)).toArray(TypeName[]::new));
+        TypeName array = variable;
+        for (int i = 0; i < dimensions; i++) {
+            array = ArrayTypeName.of(array);
+        }
+        TypeSpec helper = TypeSpec.anonymousClassBuilder("")
+            .addMethod(MethodSpec.methodBuilder("cast")
+                .addAnnotation(AnnotationSpec.builder(SuppressWarnings.class).addMember("value", "$S", "unchecked").build())
+                .addTypeVariable(variable)
+                .returns(array)
+                .addParameter(Object.class, "value")
+                .addStatement("return ($T) value", array)
+                .build())
+            .build();
+        return CodeBlock.of("$L.cast($L)", helper, renderExpression(objectDef, methodDef, scope, value));
+    }
+
+    private static boolean isRawGeneric(TypeDef type) {
+        TypeDef unwrapped = TypeHierarchy.unwrap(type);
+        if (unwrapped instanceof TypeDef.Array array) {
+            return isRawGeneric(array.componentType());
+        }
+        return unwrapped instanceof ClassTypeDef.JavaClass javaClass && javaClass.type().getTypeParameters().length > 0;
     }
 
     private CodeBlock renderCastOperand(@Nullable ObjectDef objectDef,

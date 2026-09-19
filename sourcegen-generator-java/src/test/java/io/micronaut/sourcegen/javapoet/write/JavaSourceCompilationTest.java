@@ -2751,11 +2751,12 @@ class JavaSourceCompilationTest extends AbstractWriteTest {
 
             import java.lang.Object;
             import java.lang.String;
+            import java.util.Optional;
             import java.util.function.Function;
 
             class ReferencingCaller {
               public Function<Object, Object> asFunction(ReferencedTarget target) {
-                return (arg) -> target.apply((String) arg);
+                return Optional.of(target).<Function<Object, Object>>map(target1 -> (arg) -> target1.apply((String) arg)).get();
               }
             }
             """, source);

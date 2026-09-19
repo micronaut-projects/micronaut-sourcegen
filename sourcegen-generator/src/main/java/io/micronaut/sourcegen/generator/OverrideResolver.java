@@ -30,6 +30,7 @@ import io.micronaut.sourcegen.model.TypeHierarchy;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -461,7 +462,7 @@ public final class OverrideResolver {
             return loadedArguments(owner, callMethod);
         }
         Map<String, TypeDef> arguments = bind(target, owner, Map.of());
-        Map<String, TypeDef> declaring = declaringArguments(target, arguments, callMethod, 0);
+        Map<String, TypeDef> declaring = declaringArguments(target, arguments, callMethod, new HashSet<>());
         return declaring == null ? arguments : declaring;
     }
 
@@ -483,7 +484,7 @@ public final class OverrideResolver {
                 arguments.put(type.getTypeParameters()[i].getName(), parameterized.typeArguments().get(i));
             }
         }
-        Map<String, TypeDef> declaring = loadedDeclaringArguments(type, arguments, callMethod, 0);
+        Map<String, TypeDef> declaring = loadedDeclaringArguments(type, arguments, callMethod, new HashSet<>());
         return declaring == null ? arguments : declaring;
     }
 
@@ -495,14 +496,12 @@ public final class OverrideResolver {
     private static Map<String, TypeDef> loadedDeclaringArguments(Class<?> type,
                                                                  Map<String, TypeDef> arguments,
                                                                  MethodDef callMethod,
-                                                                 int depth) {
-        boolean declares = Arrays.stream(type.getDeclaredMethods()).anyMatch(method ->
-            method.getName().equals(callMethod.getName()) && method.getParameterCount() == callMethod.getParameters().size());
-        if (declares) {
-            return arguments;
-        }
-        if (depth > MAX_DEPTH) {
+                                                                 Set<Class<?>> visited) {
+        if (!visited.add(type)) {
             return null;
+        }
+        if (Arrays.stream(type.getDeclaredMethods()).anyMatch(method -> declaresInvoked(method, callMethod))) {
+            return arguments;
         }
         List<Type> supertypes = new ArrayList<>();
         if (type.getGenericSuperclass() != null) {
@@ -511,24 +510,62 @@ public final class OverrideResolver {
         supertypes.addAll(Arrays.asList(type.getGenericInterfaces()));
         for (Type supertype : supertypes) {
             TypeDef converted = TypeHierarchy.typeDefOf(supertype);
-            Class<?> superclass = loaded(converted);
-            if (superclass == null) {
-                continue;
-            }
-            Map<String, TypeDef> superArguments = new HashMap<>();
-            if (converted instanceof ClassTypeDef.Parameterized parameterized
-                && superclass.getTypeParameters().length == parameterized.typeArguments().size()) {
-                for (int i = 0; i < superclass.getTypeParameters().length; i++) {
-                    superArguments.put(superclass.getTypeParameters()[i].getName(),
-                        TypeHierarchy.substituted(parameterized.typeArguments().get(i), arguments));
+            if (converted instanceof ClassTypeDef classType) {
+                Map<String, TypeDef> found = loadedSupertypeArguments(classType, arguments, callMethod, visited);
+                if (found != null) {
+                    return found;
                 }
-            }
-            Map<String, TypeDef> found = loadedDeclaringArguments(superclass, superArguments, callMethod, depth + 1);
-            if (found != null) {
-                return found;
             }
         }
         return null;
+    }
+
+    /**
+     * The type arguments of the compiled class declaring the method, from a supertype - of a compiled or a generated
+     * class - with the arguments of the class extending it.
+     */
+    @Nullable
+    private static Map<String, TypeDef> loadedSupertypeArguments(ClassTypeDef supertype,
+                                                                 Map<String, TypeDef> arguments,
+                                                                 MethodDef callMethod,
+                                                                 Set<Class<?>> visited) {
+        Class<?> superclass = loaded(supertype);
+        if (superclass == null) {
+            return null;
+        }
+        Map<String, TypeDef> superArguments = new HashMap<>();
+        if (supertype instanceof ClassTypeDef.Parameterized parameterized
+            && superclass.getTypeParameters().length == parameterized.typeArguments().size()) {
+            for (int i = 0; i < superclass.getTypeParameters().length; i++) {
+                superArguments.put(superclass.getTypeParameters()[i].getName(),
+                    TypeHierarchy.substituted(parameterized.typeArguments().get(i), arguments));
+            }
+        }
+        return loadedDeclaringArguments(superclass, superArguments, callMethod, visited);
+    }
+
+    /**
+     * Whether a compiled method is the one invoked: of its name and type variables, with a variable where the
+     * invoked method has one, and the erasure of its other parameters - not an unrelated overload of the same arity.
+     */
+    private static boolean declaresInvoked(Method method, MethodDef callMethod) {
+        if (!method.getName().equals(callMethod.getName())
+            || method.getParameterCount() != callMethod.getParameters().size()
+            || method.getTypeParameters().length != callMethod.getTypeVariables().size()) {
+            return false;
+        }
+        for (int i = 0; i < method.getParameterCount(); i++) {
+            TypeDef invoked = TypeHierarchy.unwrap(callMethod.getParameters().get(i).getType());
+            Type declared = method.getGenericParameterTypes()[i];
+            boolean matches = invoked instanceof TypeDef.TypeVariable
+                ? declared instanceof java.lang.reflect.TypeVariable<?>
+                : TypeHierarchy.erasedName(invoked instanceof ClassTypeDef.Parameterized parameterized
+                ? parameterized.rawType() : invoked).equals(TypeHierarchy.erasedName(TypeDef.of(method.getParameterTypes()[i])));
+            if (!matches) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -538,11 +575,12 @@ public final class OverrideResolver {
     private static Map<String, TypeDef> declaringArguments(ObjectDef definition,
                                                            Map<String, TypeDef> arguments,
                                                            MethodDef callMethod,
-                                                           int depth) {
+                                                           Set<String> visited) {
         if (declaredMethod(definition, callMethod) != null) {
             return arguments;
         }
-        if (depth > MAX_DEPTH) {
+        // A hierarchy of any depth is followed: the visited types end a cycle
+        if (!visited.add(definition.getName())) {
             return null;
         }
         List<TypeDef> supertypes = new ArrayList<>();
@@ -551,13 +589,16 @@ public final class OverrideResolver {
         }
         supertypes.addAll(definition.getSuperinterfaces());
         for (TypeDef supertype : supertypes) {
-            ObjectDef superDefinition = supertype instanceof ClassTypeDef classType ? definitionOf(classType, null) : null;
-            if (superDefinition != null) {
-                Map<String, TypeDef> found = declaringArguments(superDefinition,
-                    bind(superDefinition, (ClassTypeDef) supertype, arguments), callMethod, depth + 1);
-                if (found != null) {
-                    return found;
-                }
+            if (!(supertype instanceof ClassTypeDef classType)) {
+                continue;
+            }
+            ObjectDef superDefinition = definitionOf(classType, null);
+            // A compiled supertype is followed through reflection, with the arguments the generated class binds
+            Map<String, TypeDef> found = superDefinition != null
+                ? declaringArguments(superDefinition, bind(superDefinition, classType, arguments), callMethod, visited)
+                : loadedSupertypeArguments(classType, arguments, callMethod, new HashSet<>());
+            if (found != null) {
+                return found;
             }
         }
         return null;

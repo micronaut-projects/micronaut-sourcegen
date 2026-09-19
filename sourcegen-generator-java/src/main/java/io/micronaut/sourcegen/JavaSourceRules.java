@@ -210,18 +210,32 @@ final class JavaSourceRules {
     static boolean cannotCompleteNormally(StatementDef statementDef) {
         return switch (statementDef) {
             case StatementDef.Return _, StatementDef.Throw _ -> true;
-            case StatementDef.Multi multi ->
-                !multi.statements().isEmpty() && cannotCompleteNormally(multi.statements().getLast());
+            // A block ends with a statement that cannot complete, or already stops at one
+            case StatementDef.Multi multi -> multi.statements().stream().anyMatch(JavaSourceRules::cannotCompleteNormally);
             case StatementDef.IfElse ifElse ->
                 cannotCompleteNormally(ifElse.statement()) && cannotCompleteNormally(ifElse.elseStatement());
             case StatementDef.Switch aSwitch -> aSwitch.defaultCase() != null
                 && cannotCompleteNormally(aSwitch.defaultCase())
                 && aSwitch.cases().values().stream().allMatch(JavaSourceRules::cannotCompleteNormally);
-            case StatementDef.Try aTry -> aTry.finallyStatement() == null
-                && cannotCompleteNormally(aTry.statement())
+            // A finally that cannot complete ends the try, whatever the try does; one that can, completes as the try
+            // and its catches do
+            case StatementDef.Try aTry -> aTry.finallyStatement() != null && cannotCompleteNormally(aTry.finallyStatement())
+                || cannotCompleteNormally(aTry.statement())
                 && aTry.catches().stream().allMatch(aCatch -> cannotCompleteNormally(aCatch.statement()));
+            case StatementDef.Synchronized aSynchronized -> cannotCompleteNormally(aSynchronized.statement());
+            // The model has no break: `while (true)` only ends by a return or a throw
+            case StatementDef.While aWhile -> isConstantTrue(aWhile.expression());
             default -> false;
         };
+    }
+
+    private static boolean isConstantTrue(ExpressionDef expression) {
+        ExpressionDef unwrapped = expression;
+        while (unwrapped instanceof ExpressionDef.IsTrue isTrue || unwrapped instanceof ExpressionDef.Cast) {
+            unwrapped = unwrapped instanceof ExpressionDef.IsTrue isTrue ? isTrue.expression()
+                : ((ExpressionDef.Cast) unwrapped).expressionDef();
+        }
+        return unwrapped instanceof ExpressionDef.Constant constant && Boolean.TRUE.equals(constant.value());
     }
 
     static boolean hasSwitchYieldReturn(StatementDef statementDef) {

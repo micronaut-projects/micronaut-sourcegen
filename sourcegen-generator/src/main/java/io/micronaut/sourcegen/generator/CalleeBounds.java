@@ -84,7 +84,11 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
         if (declared != null) {
             List<TypeDef> bounds = new ArrayList<>();
             collect(declared, bounds, new HashSet<>());
-            return bounds.isEmpty() ? List.of(TypeDef.OBJECT) : bounds;
+            if (bounds.isEmpty()) {
+                bounds.add(TypeDef.OBJECT);
+            }
+            // A nullable occurrence of the variable - `T?` - is of nullable bounds
+            return type.isNullable() ? bounds.stream().map(TypeDef::makeNullable).toList() : bounds;
         }
         if (unwrapped instanceof TypeDef.Array array && names(array.componentType())) {
             TypeDef.Array bound = TypeDef.array(of(array.componentType()).get(0), array.dimensions());
@@ -94,7 +98,8 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
             if (raw) {
                 return List.of(parameterized.rawType());
             }
-            Map<String, TypeDef> firstBounds = new HashMap<>();
+            // The variables of the method are their first bounds, and those of its class the receiver's arguments
+            Map<String, TypeDef> firstBounds = new HashMap<>(receiverArguments);
             variables.forEach(own -> firstBounds.put(own.name(), of(own).get(0)));
             return List.of(TypeHierarchy.substituted(parameterized, firstBounds));
         }

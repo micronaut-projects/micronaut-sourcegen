@@ -539,6 +539,44 @@ final class JavaExpressionRules {
         return List.of();
     }
 
+    /**
+     * The bounds of the variable an array argument's component is inferred as, where the value does not satisfy all
+     * of several: no single array type expresses them, so the value is converted by a generic helper whose variable
+     * the invocation infers.
+     *
+     * @param paramType         The parameter type
+     * @param sourceType        The type of the value in the source
+     * @param inferred          The variables the invoked method declares
+     * @param receiverArguments The type arguments the receiver binds the variables of the method's class with
+     * @param objectDef         The definition being written
+     * @param methodDef         The method being written
+     * @return The bounds, or {@code null} where the value is converted otherwise
+     */
+    @Nullable
+    static List<TypeDef> intersectionArrayBounds(TypeDef paramType,
+                                                 TypeDef sourceType,
+                                                 List<TypeDef.TypeVariable> inferred,
+                                                 Map<String, TypeDef> receiverArguments,
+                                                 @Nullable ObjectDef objectDef,
+                                                 @Nullable MethodDef methodDef) {
+        if (!(TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array array)
+            || !(TypeHierarchy.unwrap(array.componentType()) instanceof TypeDef.TypeVariable component)) {
+            return null;
+        }
+        CalleeBounds calleeBounds = new CalleeBounds(inferred, receiverArguments, true);
+        if (!calleeBounds.names(component)) {
+            return null;
+        }
+        List<TypeDef> bounds = calleeBounds.of(component);
+        TypeDef sourceComponent = TypeHierarchy.unwrap(sourceType) instanceof TypeDef.Array sourceArray
+            && sourceArray.dimensions() == array.dimensions() ? sourceArray.componentType() : null;
+        if (bounds.size() < 2 || sourceComponent != null
+            && bounds.stream().allMatch(bound -> satisfies(bound, sourceComponent, objectDef, methodDef))) {
+            return null;
+        }
+        return bounds;
+    }
+
     private static TypeDef asRaw(TypeDef type) {
         return TypeHierarchy.unwrap(type) instanceof ClassTypeDef.Parameterized parameterized ? parameterized.rawType() : type;
     }
