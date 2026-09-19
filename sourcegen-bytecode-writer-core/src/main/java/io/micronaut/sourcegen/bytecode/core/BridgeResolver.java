@@ -85,7 +85,7 @@ public final class BridgeResolver {
         if (!inherited.name().equals(declared.methodDef().getName())
             || inherited.overrideParameters().size() != declared.parameterDescriptors().size()
             || inherited.finalMethod()
-            || (inherited.packagePrivate() && !type.getPackageName().equals(declared.objectDef().getPackageName()))) {
+            || (inherited.packagePrivate() && !type.getPackageName().equals(TypeHierarchy.packageOf(declared.objectDef())))) {
             return null;
         }
         // A variable the method declares of its own is not the type's of the same name: it is erased to its bound,

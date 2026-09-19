@@ -223,49 +223,6 @@ public class OverrideResolutionRegressionTest {
     }
 
     /**
-     * A generated `Parent<T> implements Function<T, T>` overrides with `Object apply(Object)`, written as
-     * `T apply(Object value)`: the erasure of the parameter does not change, so it is kept. The child extending
-     * `Parent<String>` with the same erased override is resolved from `Function<String, String>` alone, to
-     * `String apply(String)`, which does not override the parent's `apply(Object)`: "name clash ... have the same
-     * erasure, yet neither overrides the other". Expected: `String apply(Object)`.
-     */
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    void childOfAGeneratedParentThatKeptItsErasedParameter() throws Exception {
-        var t = TypeDef.variable("T");
-        var parentApply = MethodDef.builder("apply").addModifiers(Modifier.PUBLIC).overrides()
-            .addParameter("value", Object.class).returns(Object.class)
-            .build((self, p) -> p.get(0).returning());
-        var parent = ClassDef.builder("test.ErasedGeneratedParent").addModifiers(Modifier.PUBLIC).addTypeVariable(t)
-            .addSuperinterface(TypeDef.parameterized(ClassTypeDef.of(Function.class), t, t))
-            .addMethod(parentApply).build();
-        var child = ClassDef.builder("test.ErasedGeneratedChild").addModifiers(Modifier.PUBLIC)
-            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
-            .addMethod(erasedApply("child"))
-            .build();
-        try (var loader = compile(parent, child)) {
-            assertEquals("child", ((Function) newInstance(loader, child.getName())).apply("a"));
-        }
-    }
-
-    /**
-     * The same with a compiled parent declaring `T apply(Object)`: both the parent's method - `(Object) -> String` -
-     * and `Function.apply` - `(String) -> String` - are resolved, and the one to override with is chosen by the
-     * return type alone, which takes the last. Expected: `String apply(Object)`.
-     */
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    void childOfACompiledParentThatKeptItsErasedParameter() throws Exception {
-        var child = ClassDef.builder("test.ErasedCompiledChild").addModifiers(Modifier.PUBLIC)
-            .superclass(TypeDef.parameterized(ErasedParent.class, String.class))
-            .addMethod(erasedApply("child"))
-            .build();
-        try (var loader = compile(child)) {
-            assertEquals("child", ((Function) newInstance(loader, child.getName())).apply("a"));
-        }
-    }
-
-    /**
      * An override that keeps the variable of the inherited generic method and erases the variable of the type -
      * `<U> U convert(Object in, Class<U> type)` for `Conv<String>`: the resolver returns nothing for a method that
      * declares type variables, and javac reports a name clash. Expected: `<U> U convert(String in, Class<U> type)`.

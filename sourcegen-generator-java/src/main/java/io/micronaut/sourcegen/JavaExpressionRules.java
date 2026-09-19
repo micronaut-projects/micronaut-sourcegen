@@ -53,7 +53,38 @@ import java.util.stream.Collectors;
 @Internal
 final class JavaExpressionRules {
 
+    // The methods being written, the innermost first: a lambda body is one written in another
+    private static final ThreadLocal<java.util.Deque<MethodDef>> ENCLOSING_METHODS = ThreadLocal.withInitial(java.util.ArrayDeque::new);
+
     private JavaExpressionRules() {
+    }
+
+    static void enter(MethodDef method) {
+        ENCLOSING_METHODS.get().addFirst(method);
+    }
+
+    static void exit() {
+        ENCLOSING_METHODS.get().removeFirst();
+        if (ENCLOSING_METHODS.get().isEmpty()) {
+            ENCLOSING_METHODS.remove();
+        }
+    }
+
+    /**
+     * Whether a value is written through `Object` before it is cast, tested or compared: one an override narrowed to
+     * a type the other does not convert to - a `String value`, where the model casts its `Object value` to `Integer`.
+     */
+    static boolean widensFirst(ExpressionDef value, TypeDef other, @Nullable MethodDef enclosingMethod, @Nullable ObjectDef objectDef) {
+        TypeDef sourceType = sourceTypeOf(value, enclosingMethod, objectDef);
+        if (sourceType.equals(value.type()) || isNullLiteral(value)) {
+            return false;
+        }
+        Class<?> source = loaded(sourceType);
+        Class<?> target = loaded(other);
+        return source != null && target != null && !source.isPrimitive() && !target.isPrimitive()
+            && !source.isAssignableFrom(target) && !target.isAssignableFrom(source)
+            && (!source.isInterface() && !target.isInterface() || java.lang.reflect.Modifier.isFinal(source.getModifiers())
+            || java.lang.reflect.Modifier.isFinal(target.getModifiers()));
     }
 
     /**
@@ -116,6 +147,14 @@ final class JavaExpressionRules {
             for (ParameterDef declared : enclosingMethod.getParameters()) {
                 if (declared.getName().equals(parameter.name())) {
                     return declared.getType();
+                }
+            }
+            // A lambda captures the parameter of a method it is written in, as that method is written
+            for (MethodDef outer : ENCLOSING_METHODS.get()) {
+                for (ParameterDef declared : outer.getParameters()) {
+                    if (declared.getName().equals(parameter.name())) {
+                        return declared.getType();
+                    }
                 }
             }
         }
@@ -925,5 +964,13 @@ final class JavaExpressionRules {
         DEFAULT,
         OBJECT_REFERENCE,
         PRIMITIVE_EQUALITY
+    }
+
+    static boolean isFunctional(ExpressionDef value) {
+        return value instanceof ExpressionDef.Lambda || value instanceof io.micronaut.sourcegen.model.MethodReferenceExpression;
+    }
+
+    static boolean sameErasure(TypeDef type, TypeDef other) {
+        return TypeHierarchy.erasedName(type).equals(TypeHierarchy.erasedName(other));
     }
 }

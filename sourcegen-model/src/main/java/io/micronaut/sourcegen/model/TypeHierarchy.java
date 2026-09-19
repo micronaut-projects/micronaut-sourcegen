@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
 @Internal
 public final class TypeHierarchy {
 
-    private static final Set<String> TERMINAL_TYPES = Set.of("java.lang.Object", "java.lang.Record", "java.lang.Enum");
+    private static final Set<String> TERMINAL_TYPES = Set.of("java.lang.Object");
 
     private TypeHierarchy() {
     }
@@ -110,6 +110,12 @@ public final class TypeHierarchy {
         if (objectDef instanceof ClassDef classDef && classDef.getSuperclass() != null) {
             result.add(classDef.getSuperclass());
         }
+        // The superclass an enum and a record have without declaring it
+        if (objectDef instanceof EnumDef) {
+            result.add(TypeDef.parameterized(Enum.class, objectDef.asTypeDef()));
+        } else if (objectDef instanceof RecordDef) {
+            result.add(ClassTypeDef.of(Record.class));
+        }
         result.addAll(objectDef.getSuperinterfaces());
         return result;
     }
@@ -157,6 +163,19 @@ public final class TypeHierarchy {
                 || wildcard.lowerBounds().stream().anyMatch(bound -> containsVariable(bound, matches));
         }
         return false;
+    }
+
+    /**
+     * The package of a definition. A member type is of the package of its outermost type, which the binary name
+     * tells: the canonical name of {@code pkg.Outer$Member} ends its package at {@code Outer}.
+     *
+     * @param objectDef The definition
+     * @return The package name
+     */
+    public static String packageOf(ObjectDef objectDef) {
+        String binaryName = objectDef.asTypeDef().getName();
+        int i = binaryName.lastIndexOf('.');
+        return i == -1 ? "" : binaryName.substring(0, i);
     }
 
     /**

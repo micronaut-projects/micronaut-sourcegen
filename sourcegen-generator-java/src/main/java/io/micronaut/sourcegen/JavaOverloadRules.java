@@ -27,10 +27,13 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeHierarchy;
 
 import java.lang.reflect.Executable;
+import io.micronaut.sourcegen.generator.OverrideResolver;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Which method an invocation names. The bytecode binds the one of the model by its descriptor; Java selects the most
@@ -135,6 +138,35 @@ final class JavaOverloadRules {
             }
             return true;
         });
+    }
+
+    /**
+     * The methods of a definition without the bridges the model declares itself: an erased method that is resolved to
+     * the signature of another one, which javac writes the bridge of.
+     */
+    static List<MethodDef> writtenMethods(ObjectDef objectDef) {
+        Set<String> declared = new HashSet<>();
+        objectDef.getMethods().forEach(method -> declared.add(method.getName() + method.getParameters().stream()
+            .map(parameter -> TypeHierarchy.erasedName(parameter.getType(), objectDef)).toList()));
+        return objectDef.getMethods().stream().filter(method -> {
+            OverrideResolver.OverriddenMethod overridden = OverrideResolver.resolve(objectDef, method, JavaPoetNames.context());
+            if (overridden == null) {
+                return true;
+            }
+            String own = method.getName() + method.getParameters().stream()
+                .map(parameter -> TypeHierarchy.erasedName(parameter.getType(), objectDef)).toList();
+            String resolved = method.getName() + overridden.parameterTypes().stream()
+                .map(type -> TypeHierarchy.erasedName(type, objectDef)).toList();
+            if (!own.equals(resolved)) {
+                // Another method is declared with the signature this one is resolved to
+                return !declared.contains(resolved);
+            }
+            // Of two methods of one signature - they differ in the return type - the erased one is the bridge
+            return objectDef.getMethods().stream().noneMatch(other -> other != method && other.getName().equals(method.getName())
+                && own.equals(other.getName() + other.getParameters().stream()
+                .map(parameter -> TypeHierarchy.erasedName(parameter.getType(), objectDef)).toList())
+                && OverrideResolver.resolve(objectDef, other, JavaPoetNames.context()) == null);
+        }).toList();
     }
 
     /**

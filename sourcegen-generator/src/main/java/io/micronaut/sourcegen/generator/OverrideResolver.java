@@ -100,7 +100,6 @@ public final class OverrideResolver {
                                            @Nullable VisitorContext context,
                                            boolean exact) {
         if (objectDef == null || !methodDef.isOverride() || methodDef.isConstructor()
-            || !methodDef.getTypeVariables().isEmpty()
             || methodDef.getModifiers().contains(Modifier.STATIC)
             || methodDef.getModifiers().contains(Modifier.PRIVATE)
             || TypeHierarchy.superTypesOf(objectDef).isEmpty()) {
@@ -1035,19 +1034,36 @@ public final class OverrideResolver {
         if (!inherited.name().equals(methodDef.getName())
             || inherited.overrideParameters().size() != declared.parameterErasures().size()
             || inherited.finalMethod()
-            || (inherited.packagePrivate() && !type.getPackageName().equals(declared.objectDef().getPackageName()))) {
+            || (inherited.packagePrivate() && !type.getPackageName().equals(TypeHierarchy.packageOf(declared.objectDef())))) {
             return null;
         }
         // The declared method is the erasure of the inherited declaration. The erased parameters are compared: an
         // element of a parameterized supertype can report its parameters with the type arguments already bound
         List<String> declarationErasure = inherited.bridgeParameters().stream()
             .map(parameter -> TypeHierarchy.erasedName(type.erase(parameter))).toList();
-        if (!declarationErasure.equals(declared.parameterErasures())) {
+        // Or it declares the substituted parameters already, next to an erased return - `Object apply(String)` of a
+        // `Function<String, String>` - which the bytecode writer bridges as well
+        List<String> substitutedErasure = inherited.overrideParameters().stream()
+            .map(parameter -> TypeHierarchy.erasedName(type.erase(
+                type.substitute(parameter, inherited.typeVariables()), declared.declaringType()))).toList();
+        if (!declarationErasure.equals(declared.parameterErasures()) && !substitutedErasure.equals(declared.parameterErasures())) {
             return null;
+        }
+        // The variables the declared method names its own by: those of the inherited method, in their order
+        Map<String, TypeDef> ownVariables = new HashMap<>();
+        if (!methodDef.getTypeVariables().isEmpty()) {
+            if (methodDef.getTypeVariables().size() != inherited.typeVariables().size()) {
+                return null;
+            }
+            for (int i = 0; i < methodDef.getTypeVariables().size(); i++) {
+                ownVariables.put(TypeHierarchy.InheritedType.methodVariable(inherited.typeVariables().get(i).name()),
+                    methodDef.getTypeVariables().get(i));
+            }
         }
         // A variable the inherited method declares of its own is renamed by the substitution, so it is never taken
         // for one of the declaring type
-        Set<String> visibleVariables = declared.variables();
+        Set<String> visibleVariables = new HashSet<>(declared.variables());
+        methodDef.getTypeVariables().forEach(variable -> visibleVariables.add(variable.name()));
         Set<String> withMethodVariables = new HashSet<>(visibleVariables);
         inherited.typeVariables().forEach(variable ->
             withMethodVariables.add(TypeHierarchy.InheritedType.methodVariable(variable.name())));
@@ -1056,7 +1072,8 @@ public final class OverrideResolver {
         // `String echo(String, Object)` for `<U> T echo(T, U)` of a `Parent<String>`. Kotlin cannot
         boolean erasedSignature = false;
         for (int i = 0; i < declarationErasure.size(); i++) {
-            TypeDef substituted = type.substitute(inherited.overrideParameters().get(i), inherited.typeVariables());
+            TypeDef substituted = TypeHierarchy.substituted(
+                type.substitute(inherited.overrideParameters().get(i), inherited.typeVariables()), ownVariables);
             if (TypeHierarchy.containsVariableOtherThan(substituted, visibleVariables)) {
                 if (declared.exact() || TypeHierarchy.containsVariableOtherThan(substituted, withMethodVariables)) {
                     return null;
@@ -1077,7 +1094,7 @@ public final class OverrideResolver {
             TypeDef erased = type.erase(substituted, declared.declaringType());
             boolean parameterChanged = declared.exact()
                 ? !sameType(substituted, declaredType)
-                : !TypeHierarchy.erasedName(erased).equals(declarationErasure.get(i));
+                : !TypeHierarchy.erasedName(erased).equals(declared.parameterErasures().get(i));
             changed |= parameterChanged;
             // A Java parameter of the same erasure is a valid override as declared - a raw `List` for `List<T>` -
             // and the body is written against it; only a changed erasure takes the substituted type
@@ -1092,7 +1109,8 @@ public final class OverrideResolver {
             // A wider return cannot implement a narrower one, which another supertype may need erased: the narrower
             // one is a constraint on the return type as well - `Integer get()` next to `A<Number>.get()`, or next to
             // `A<T extends Number>.get()` erased to `Number get()`
-            TypeDef substituted = type.substitute(inherited.genericReturnType(), inherited.typeVariables());
+            TypeDef substituted = TypeHierarchy.substituted(
+                type.substitute(inherited.genericReturnType(), inherited.typeVariables()), ownVariables);
             if (TypeHierarchy.containsVariableOtherThan(substituted, visibleVariables)) {
                 return null;
             }
@@ -1100,7 +1118,8 @@ public final class OverrideResolver {
         }
         if (declarationReturnErasure.equals(declared.returnErasure())
             && !(TypeHierarchy.unwrap(returnType) instanceof TypeDef.Primitive)) {
-            TypeDef substituted = type.substitute(inherited.genericReturnType(), inherited.typeVariables());
+            TypeDef substituted = TypeHierarchy.substituted(
+                type.substitute(inherited.genericReturnType(), inherited.typeVariables()), ownVariables);
             if (TypeHierarchy.containsVariableOtherThan(substituted, visibleVariables)) {
                 // A variable of the method is written as its erasure
                 TypeDef erased = type.erase(substituted, declared.declaringType());
@@ -1118,6 +1137,18 @@ public final class OverrideResolver {
             if (returnChanged) {
                 changed = true;
                 returnType = substituted;
+            }
+        }
+        if (!declarationReturnErasure.equals(declared.returnErasure())
+            && !(TypeHierarchy.unwrap(returnType) instanceof TypeDef.Primitive)) {
+            // A return between the erasure and the type argument - `CharSequence get()` of a `Supplier<String>` -
+            // implements the inherited method only as the type argument
+            TypeDef substituted = TypeHierarchy.substituted(
+                type.substitute(inherited.genericReturnType(), inherited.typeVariables()), ownVariables);
+            Hierarchy hierarchy = new Hierarchy(declared.lookup(), declared.declaringType());
+            if (!TypeHierarchy.containsVariableOtherThan(substituted, visibleVariables)
+                && !isSubtype(returnType, substituted, hierarchy, 0) && isSubtype(substituted, returnType, hierarchy, 0)) {
+                return new OverriddenMethod(parameterTypes, substituted);
             }
         }
         return changed ? new OverriddenMethod(parameterTypes, returnType) : null;
@@ -1170,6 +1201,7 @@ public final class OverrideResolver {
                 .returns(returnType)
                 .addStatements(methodDef.getStatements())
                 .overrides();
+            methodDef.getTypeVariables().forEach(builder::addTypeVariable);
             for (int i = 0; i < parameterTypes.size(); i++) {
                 ParameterDef parameter = methodDef.getParameters().get(i);
                 builder.addParameter(ParameterDef.builder(parameter.getName(), parameterTypes.get(i))

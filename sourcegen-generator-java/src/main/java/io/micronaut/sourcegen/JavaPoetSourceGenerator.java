@@ -30,7 +30,9 @@ import static io.micronaut.sourcegen.JavaExpressionRules.requiresRawCastTo;
 import static io.micronaut.sourcegen.JavaExpressionRules.sourceTypeOf;
 import static io.micronaut.sourcegen.JavaExpressionRules.getMathOp;
 import static io.micronaut.sourcegen.JavaExpressionRules.getOpType;
+import static io.micronaut.sourcegen.JavaExpressionRules.isFunctional;
 import static io.micronaut.sourcegen.JavaExpressionRules.isNullLiteral;
+import static io.micronaut.sourcegen.JavaExpressionRules.sameErasure;
 import static io.micronaut.sourcegen.JavaExpressionRules.isOrCondition;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresCastOperandParentheses;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresMathParentheses;
@@ -250,7 +252,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
         buildFields(enumDef, enumDef.getFields(), enumBuilder);
 
-        for (MethodDef method : enumDef.getMethods()) {
+        for (MethodDef method : JavaOverloadRules.writtenMethods(enumDef)) {
             enumBuilder.addMethod(
                 asMethodSpec(enumDef, method)
             );
@@ -336,7 +338,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
         addInnerTypes(classDef.getInnerTypes(), classBuilder, false);
 
-        for (MethodDef method : classDef.getMethods()) {
+        for (MethodDef method : JavaOverloadRules.writtenMethods(classDef)) {
             classBuilder.addMethod(
                 asMethodSpec(classDef, method)
             );
@@ -383,7 +385,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
         addInnerTypes(recordDef.getInnerTypes(), classBuilder, false);
 
-        for (MethodDef method : recordDef.getMethods()) {
+        for (MethodDef method : JavaOverloadRules.writtenMethods(recordDef)) {
             classBuilder.addMethod(
                 asMethodSpec(recordDef, method)
             );
@@ -530,13 +532,18 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         }
         RenderScope methodScope = RenderScope.root(renderMethod);
         List<StatementDef> statements = method.getStatements();
-        for (int i = 0; i < statements.size(); i++) {
-            StatementDef statement = statements.get(i);
-            methodBuilder.addCode(renderStatementCodeBlock(objectDef, renderMethod, methodScope, statement,
-                i == statements.size() - 1));
-            if (cannotCompleteNormally(statement)) {
-                break;
+        JavaExpressionRules.enter(renderMethod);
+        try {
+            for (int i = 0; i < statements.size(); i++) {
+                StatementDef statement = statements.get(i);
+                methodBuilder.addCode(renderStatementCodeBlock(objectDef, renderMethod, methodScope, statement,
+                    i == statements.size() - 1));
+                if (cannotCompleteNormally(statement)) {
+                    break;
+                }
             }
+        } finally {
+            JavaExpressionRules.exit();
         }
 
         return methodBuilder.build();
@@ -1095,6 +1102,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 }
                 CodeBlock explicitCast = CodeBlock.of("($T)", asType(castType, objectDef, methodDef));
                 CodeBlock rendered = renderExpression(objectDef, methodDef, scope, exp);
+                if (JavaExpressionRules.widensFirst(exp, castType, methodDef, objectDef)) {
+                    return CodeBlock.of("$L ($T) $L", explicitCast, Object.class, renderCastOperand(objectDef, methodDef, scope, exp));
+                }
                 if (isFunctional(exp) && !sameErasure(castType, exp.type())) {
                     rendered = withTargetType(objectDef, methodDef, exp, rendered);
                 }
@@ -1580,14 +1590,6 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             ? parameterized.rawType() : array.componentType();
     }
 
-    private static boolean isFunctional(ExpressionDef value) {
-        return value instanceof Lambda || value instanceof MethodReferenceExpression;
-    }
-
-    private static boolean sameErasure(TypeDef type, TypeDef other) {
-        return TypeHierarchy.erasedName(type).equals(TypeHierarchy.erasedName(other));
-    }
-
     private CodeBlock withTargetType(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, ExpressionDef functional, CodeBlock rendered) {
         return CodeBlock.of("($T) $L", asType(functional.type(), objectDef, methodDef), rendered);
     }
@@ -1656,6 +1658,11 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
                 );
             }
             case ExpressionDef.ComparisonOperation comparisonOperation -> {
+                if (comparisonOperation.opType() == ExpressionDef.ComparisonOperation.OpType.EQUAL_TO
+                    || comparisonOperation.opType() == ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO) {
+                    return renderReferenceComparison(objectDef, methodDef, scope, comparisonOperation.left(),
+                        comparisonOperation.right(), getOpType(comparisonOperation), isRef);
+                }
                 return CodeBlock.concat(
                     renderExpressionWithParentheses(objectDef, methodDef, scope, comparisonOperation.left(), isRef),
                     CodeBlock.of(getOpType(comparisonOperation)),
@@ -1664,7 +1671,9 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             }
             case ExpressionDef.InstanceOf instanceOf -> {
                 return CodeBlock.concat(
-                    renderExpression(objectDef, methodDef, scope, instanceOf.expression(), true),
+                    JavaExpressionRules.widensFirst(instanceOf.expression(), instanceOf.instanceType(), methodDef, objectDef)
+                        ? CodeBlock.of("(($T) $L)", Object.class, renderCastOperand(objectDef, methodDef, scope, instanceOf.expression()))
+                        : renderExpression(objectDef, methodDef, scope, instanceOf.expression(), true),
                     CodeBlock.of(" instanceof "),
                     // Fully qualified like before, but passed as an argument so a `$` in the name is not a placeholder
                     CodeBlock.of("$L", asClassType(instanceOf.instanceType()).canonicalName())
@@ -1730,23 +1739,26 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
     }
 
     private CodeBlock renderEqualsReferentially(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef left, ExpressionDef right) {
-        CastContext castContext = arePrimitiveReferenceEqualityOperands(left, right)
-            ? CastContext.PRIMITIVE_EQUALITY
-            : CastContext.OBJECT_REFERENCE;
-        return CodeBlock.builder()
-            .add(renderExpressionWithParentheses(objectDef, methodDef, scope, left, castContext))
-            .add(" == ")
-            .add(renderExpressionWithParentheses(objectDef, methodDef, scope, right, castContext))
-            .build();
+        return renderReferenceComparison(objectDef, methodDef, scope, left, right, " == ", null);
     }
 
     private CodeBlock renderNotEqualsReferentially(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef left, ExpressionDef right) {
-        CastContext castContext = arePrimitiveReferenceEqualityOperands(left, right)
-            ? CastContext.PRIMITIVE_EQUALITY
-            : CastContext.OBJECT_REFERENCE;
+        return renderReferenceComparison(objectDef, methodDef, scope, left, right, " != ", null);
+    }
+
+    private CodeBlock renderReferenceComparison(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef left, ExpressionDef right, String operator, @Nullable Boolean isRef) {
+        CastContext castContext = isRef != null ? (isRef ? CastContext.OBJECT_REFERENCE : CastContext.DEFAULT)
+            : arePrimitiveReferenceEqualityOperands(left, right) ? CastContext.PRIMITIVE_EQUALITY : CastContext.OBJECT_REFERENCE;
+        // An operand an override narrowed to a type the other is not comparable with is compared as an `Object`
+        // - a cast to `Object` is not written in a comparison of references, so the operands are what it wraps
+        ExpressionDef leftOperand = left instanceof ExpressionDef.Cast cast && TypeDef.OBJECT.equals(cast.type()) ? cast.expressionDef() : left;
+        ExpressionDef rightOperand = right instanceof ExpressionDef.Cast cast && TypeDef.OBJECT.equals(cast.type()) ? cast.expressionDef() : right;
+        boolean widened = JavaExpressionRules.widensFirst(leftOperand, sourceTypeOf(rightOperand, methodDef, objectDef), methodDef, objectDef)
+            || JavaExpressionRules.widensFirst(rightOperand, sourceTypeOf(leftOperand, methodDef, objectDef), methodDef, objectDef);
         return CodeBlock.builder()
+            .add(widened ? CodeBlock.of("($T) ", Object.class) : CodeBlock.of(""))
             .add(renderExpressionWithParentheses(objectDef, methodDef, scope, left, castContext))
-            .add(" != ")
+            .add(operator)
             .add(renderExpressionWithParentheses(objectDef, methodDef, scope, right, castContext))
             .build();
     }
