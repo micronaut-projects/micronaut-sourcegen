@@ -6,6 +6,6 @@ import kotlin.CharSequence
 
 public class TypedConstructor {
   public fun create(`value`: Any): StringBuilder {
-    return StringBuilder(`value` as CharSequence)
+    return StringBuilder(`value` as CharSequence?)
   }
 }

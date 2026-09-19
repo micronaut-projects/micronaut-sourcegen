@@ -148,11 +148,11 @@ class ConversionWriteTest {
     fun writeNestedArrayCreation() {
         // `componentType` is always the innermost type, so a second dimension has to be put back
         Assertions.assertEquals(
-            "return arrayOfNulls<Array<String>>(2)",
+            "return (arrayOfNulls<Array<String>>(2) as Array<Array<String>>)",
             writeBody(TypeDef.STRING.array(2)) { _, _ -> TypeDef.STRING.array(2).instantiate(2).returning() }
         )
         Assertions.assertEquals(
-            "return arrayOfNulls<IntArray>(2)",
+            "return (arrayOfNulls<IntArray>(2) as Array<IntArray>)",
             writeBody(TypeDef.Primitive.INT.array(2)) { _, _ ->
                 TypeDef.Primitive.INT.array(2).instantiate(2).returning()
             }

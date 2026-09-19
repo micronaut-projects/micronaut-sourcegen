@@ -178,7 +178,7 @@ class OperatorWriteTest {
         val other = TypeDef.STRING.array(2).instantiate(0)
         Assertions.assertEquals(
             """
-            return `value`.contentDeepEquals(arrayOfNulls<Array<String>>(0))
+            return `value`.contentDeepEquals((arrayOfNulls<Array<String>>(0) as Array<Array<String>>))
             """.trimIndent(),
             writeBody(TypeDef.Primitive.BOOLEAN, TypeDef.STRING.array(2)) { _, params ->
                 params[0].equalsStructurally(other).returning()
@@ -186,7 +186,7 @@ class OperatorWriteTest {
         )
         Assertions.assertEquals(
             """
-            return !`value`.contentDeepEquals(arrayOfNulls<Array<String>>(0))
+            return !`value`.contentDeepEquals((arrayOfNulls<Array<String>>(0) as Array<Array<String>>))
             """.trimIndent(),
             writeBody(TypeDef.Primitive.BOOLEAN, TypeDef.STRING.array(2)) { _, params ->
                 params[0].notEqualsStructurally(other).returning()

@@ -51,10 +51,10 @@ class GenericHierarchyRegressionTest {
         assertCompiles(assertSource(def, """
             |package test
             |
-            |import java.lang.Number
             |import java.util.Collections
             |import java.util.function.Supplier
             |import kotlin.Any
+            |import kotlin.Number
             |import kotlin.String
             |import kotlin.collections.List
             |
@@ -107,11 +107,11 @@ class GenericHierarchyRegressionTest {
         assertCompiles(assertSource(def, """
             |package test
             |
-            |import java.lang.Number
             |import java.util.Arrays
             |import kotlin.Any
             |import kotlin.Array
             |import kotlin.Int
+            |import kotlin.Number
             |
             |public class InferredArrayCall<T : Number> {
             |  public fun call(`value`: Any, length: Int): Array<Any> {

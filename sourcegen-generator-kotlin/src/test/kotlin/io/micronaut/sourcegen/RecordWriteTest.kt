@@ -61,8 +61,8 @@ class RecordWriteTest {
         val expected = """
         package test
 
-        import java.lang.Number
         import java.util.function.Supplier
+        import kotlin.Number
 
         public data class TestRecord<K, V : Number> public constructor(
           public final val key: K,

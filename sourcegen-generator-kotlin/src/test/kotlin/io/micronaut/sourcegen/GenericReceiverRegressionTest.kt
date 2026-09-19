@@ -42,9 +42,9 @@ class GenericReceiverRegressionTest {
         assertCompiles(assertSource(def, """
             |package test
             |
-            |import java.lang.Number
             |import java.util.Collections
             |import kotlin.Any
+            |import kotlin.Number
             |import kotlin.collections.List
             |
             |public class ShadowedLibraryCall<T : Number> {

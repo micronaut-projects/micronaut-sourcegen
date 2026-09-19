@@ -241,7 +241,7 @@ class KotlinSourceCompilationTest {
             |  }
             |
             |  public fun create(`value`: Any): StringBuilder {
-            |    return StringBuilder(`value` as String)
+            |    return StringBuilder(`value` as String?)
             |  }
             |
             |  public fun narrow(`value`: Any): String {
@@ -2027,11 +2027,11 @@ class KotlinSourceCompilationTest {
             """
             |package test
             |
-            |import java.lang.Number
             |import java.util.function.Function
             |import java.util.function.ToIntFunction
             |import kotlin.Any
             |import kotlin.Int
+            |import kotlin.Number
             |
             |public class NumberReferenced<U : Number> : Function<Number, Number> {
             |  public override fun apply(arg0: Number): Number {

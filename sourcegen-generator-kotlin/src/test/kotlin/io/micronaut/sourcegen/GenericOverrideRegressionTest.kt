@@ -158,9 +158,9 @@ class GenericOverrideRegressionTest {
                 |
                 |import kotlin.collections.List
                 |
-                |public class GenericChild<T> : GenericParent<List<T>>() {
-                |  public override fun `get`(): List<T> {
-                |    return null as List<T>
+                |public class GenericChild<T> : GenericParent<List<T>?>() {
+                |  public override fun `get`(): List<T>? {
+                |    return null as List<T>?
                 |  }
                 |}
                 |""".trimMargin())

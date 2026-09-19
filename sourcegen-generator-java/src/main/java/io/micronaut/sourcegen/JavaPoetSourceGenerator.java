@@ -39,9 +39,9 @@ import static io.micronaut.sourcegen.JavaExpressionRules.requiresMathParentheses
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresMethodCallTargetParentheses;
 import static io.micronaut.sourcegen.JavaExpressionRules.requiresParentheses;
 import static io.micronaut.sourcegen.JavaExpressionRules.unwrapCasts;
-import static io.micronaut.sourcegen.JavaOverloadRules.hasApplicableOverload;
-import static io.micronaut.sourcegen.JavaOverloadRules.pinsOverload;
-import static io.micronaut.sourcegen.JavaOverloadRules.receiverBound;
+import static io.micronaut.sourcegen.generator.OverloadRules.hasApplicableOverload;
+import static io.micronaut.sourcegen.generator.OverloadRules.pinsOverload;
+import static io.micronaut.sourcegen.generator.OverloadRules.receiverBound;
 import static io.micronaut.sourcegen.JavaPoetNames.asClassName;
 import static io.micronaut.sourcegen.JavaPoetNames.asPrimitiveType;
 import static io.micronaut.sourcegen.JavaPoetNames.isVariablePartOfTheDefinition;
@@ -62,6 +62,7 @@ import io.micronaut.core.reflect.ClassUtils;
 import io.micronaut.inject.ast.Element;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.generator.InvokedSignature;
+import io.micronaut.sourcegen.generator.OverloadRules;
 import io.micronaut.sourcegen.generator.OverrideResolver;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.javapoet.AnnotationSpec;
@@ -252,7 +253,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
         buildFields(enumDef, enumDef.getFields(), enumBuilder);
 
-        for (MethodDef method : JavaOverloadRules.writtenMethods(enumDef)) {
+        for (MethodDef method : OverloadRules.writtenMethods(enumDef, JavaPoetNames.context())) {
             enumBuilder.addMethod(
                 asMethodSpec(enumDef, method)
             );
@@ -338,7 +339,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
         addInnerTypes(classDef.getInnerTypes(), classBuilder, false);
 
-        for (MethodDef method : JavaOverloadRules.writtenMethods(classDef)) {
+        for (MethodDef method : OverloadRules.writtenMethods(classDef, JavaPoetNames.context())) {
             classBuilder.addMethod(
                 asMethodSpec(classDef, method)
             );
@@ -385,7 +386,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
 
         addInnerTypes(recordDef.getInnerTypes(), classBuilder, false);
 
-        for (MethodDef method : JavaOverloadRules.writtenMethods(recordDef)) {
+        for (MethodDef method : OverloadRules.writtenMethods(recordDef, JavaPoetNames.context())) {
             classBuilder.addMethod(
                 asMethodSpec(recordDef, method)
             );
@@ -1401,7 +1402,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             && OverrideResolver.definitionOf(owner, objectDef) == null) {
             // A raw receiver of a compiled class erases the variables of the class, which share only their names
             // with the ones in scope where the method is called
-            receiverArguments.putAll(JavaOverloadRules.erasedClassVariables(owner));
+            receiverArguments.putAll(OverloadRules.erasedClassVariables(owner));
         }
         callMethod.getTypeVariables().forEach(variable -> receiverArguments.remove(variable.name()));
         return renderInvocationArguments(objectDef, enclosingMethod, scope, owner, callMethod.getName(),

@@ -95,9 +95,9 @@ class GenericInvocationRegressionTest {
         assertCompiles(assertSource(def, """
             |package test
             |
-            |import java.lang.Number
             |import java.util.function.Consumer
             |import kotlin.Int
+            |import kotlin.Number
             |
             |public class PrimitiveVariableArgument<T : Number> : Consumer<T> {
             |  public override fun accept(`value`: T) {
@@ -120,8 +120,8 @@ class GenericInvocationRegressionTest {
         assertCompiles(assertSource(def, """
             |package test
             |
-            |import java.lang.Number
             |import java.util.function.Supplier
+            |import kotlin.Number
             |
             |public class PrimitiveVariableReturn<T : Number> : Supplier<T> {
             |  public override fun `get`(): T {

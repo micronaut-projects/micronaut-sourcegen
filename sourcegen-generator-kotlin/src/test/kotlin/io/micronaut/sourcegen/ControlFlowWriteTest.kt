@@ -166,7 +166,8 @@ class ControlFlowWriteTest {
             params[0].asExpressionSwitch(TypeDef.STRING, cases, ExpressionDef.constant("many")).returning()
         }
         Assertions.assertTrue(body.contains("var held:kotlin.String = \"one\""), "was: $body")
-        Assertions.assertTrue(body.contains("return held"), "was: $body")
+        // The value of the branch is its last expression: a `return` would leave the function, not the `when`
+        Assertions.assertTrue(Regex("\\n\\s+held\\n").containsMatchIn(body), "was: $body")
     }
 
     @Test

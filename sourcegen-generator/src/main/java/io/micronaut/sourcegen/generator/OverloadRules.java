@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.micronaut.sourcegen;
+package io.micronaut.sourcegen.generator;
 
 import io.micronaut.core.annotation.Internal;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.core.reflect.ClassUtils;
+import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -27,7 +28,6 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeHierarchy;
 
 import java.lang.reflect.Executable;
-import io.micronaut.sourcegen.generator.OverrideResolver;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -36,23 +36,29 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Which method an invocation names. The bytecode binds the one of the model by its descriptor; Java selects the most
+ * Which method an invocation names. The bytecode binds the one of the model by its descriptor; a source language selects the most
  * specific one that takes the values as the source types them, so a value is cast to the parameter of the model
  * wherever another overload would take it - and to the type the receiver binds a variable of its class with.
  *
  * @since 2.2
  */
 @Internal
-final class JavaOverloadRules {
+public final class OverloadRules {
 
-    private JavaOverloadRules() {
+    private OverloadRules() {
     }
 
     /**
      * The parameter as the receiver sees it: a variable of the receiver's class is the type argument it is bound
      * with - the {@code E} of a {@code List<String>} is {@code String}, where the model has the erased {@code Object}.
+     *
+     * @param paramType         The parameter type of the model
+     * @param declaredType      The type the invoked method declares, or {@code null} where it is not known
+     * @param inferred          The variables the invoked method declares
+     * @param receiverArguments The type arguments the receiver binds the variables of its class with
+     * @return The parameter type as the receiver sees it
      */
-    static TypeDef receiverBound(TypeDef paramType,
+    public static TypeDef receiverBound(TypeDef paramType,
                                  @Nullable TypeDef declaredType,
                                  List<TypeDef.TypeVariable> inferred,
                                  Map<String, TypeDef> receiverArguments) {
@@ -73,8 +79,13 @@ final class JavaOverloadRules {
 
     /**
      * Whether a value is cast to the parameter so that the overload of the model is the one selected.
+     *
+     * @param paramType  The parameter type
+     * @param sourceType The type of the value in the source, or {@code null} for the {@code null} literal
+     * @param inferred   The variables the invoked method declares
+     * @return true if the value is cast
      */
-    static boolean pinsOverload(TypeDef paramType, @Nullable TypeDef sourceType, List<TypeDef.TypeVariable> inferred) {
+    public static boolean pinsOverload(TypeDef paramType, @Nullable TypeDef sourceType, List<TypeDef.TypeVariable> inferred) {
         TypeDef param = TypeHierarchy.unwrap(paramType);
         if (param instanceof TypeDef.TypeVariable || param instanceof TypeDef.Wildcard
             || param instanceof TypeDef.Array array && TypeHierarchy.unwrap(array.componentType()) instanceof TypeDef.TypeVariable
@@ -94,7 +105,7 @@ final class JavaOverloadRules {
      * @param sourceTypes    The types of the values in the source, {@code null} for the {@code null} literal
      * @return true if another overload is applicable
      */
-    static boolean hasApplicableOverload(@Nullable ClassTypeDef owner,
+    public static boolean hasApplicableOverload(@Nullable ClassTypeDef owner,
                                          @Nullable ObjectDef definition,
                                          String methodName,
                                          List<TypeDef> parameterTypes,
@@ -143,13 +154,17 @@ final class JavaOverloadRules {
     /**
      * The methods of a definition without the bridges the model declares itself: an erased method that is resolved to
      * the signature of another one, which javac writes the bridge of.
+     *
+     * @param objectDef The definition
+     * @param context   The context of the file being written, or {@code null}
+     * @return The methods to write
      */
-    static List<MethodDef> writtenMethods(ObjectDef objectDef) {
+    public static List<MethodDef> writtenMethods(ObjectDef objectDef, @Nullable VisitorContext context) {
         Set<String> declared = new HashSet<>();
         objectDef.getMethods().forEach(method -> declared.add(method.getName() + method.getParameters().stream()
             .map(parameter -> TypeHierarchy.erasedName(parameter.getType(), objectDef)).toList()));
         return objectDef.getMethods().stream().filter(method -> {
-            OverrideResolver.OverriddenMethod overridden = OverrideResolver.resolve(objectDef, method, JavaPoetNames.context());
+            OverrideResolver.OverriddenMethod overridden = OverrideResolver.resolve(objectDef, method, context);
             if (overridden == null) {
                 return true;
             }
@@ -165,14 +180,17 @@ final class JavaOverloadRules {
             return objectDef.getMethods().stream().noneMatch(other -> other != method && other.getName().equals(method.getName())
                 && own.equals(other.getName() + other.getParameters().stream()
                 .map(parameter -> TypeHierarchy.erasedName(parameter.getType(), objectDef)).toList())
-                && OverrideResolver.resolve(objectDef, other, JavaPoetNames.context()) == null);
+                && OverrideResolver.resolve(objectDef, other, context) == null);
         }).toList();
     }
 
     /**
      * The variables a compiled class declares, as a raw receiver sees them: erased to their bounds.
+     *
+     * @param owner The type of the receiver
+     * @return The erased bound of each variable, by its name
      */
-    static Map<String, TypeDef> erasedClassVariables(ClassTypeDef owner) {
+    public static Map<String, TypeDef> erasedClassVariables(ClassTypeDef owner) {
         Map<String, TypeDef> erased = new java.util.HashMap<>();
         for (Class<?> type = loaded(owner); type != null; type = type.getSuperclass()) {
             for (java.lang.reflect.TypeVariable<?> variable : type.getTypeParameters()) {
@@ -225,7 +243,7 @@ final class JavaOverloadRules {
             return javaClass.type();
         }
         if (unwrapped instanceof ClassTypeDef classTypeDef) {
-            return ClassUtils.forName(classTypeDef.getName(), JavaOverloadRules.class.getClassLoader()).orElse(null);
+            return ClassUtils.forName(classTypeDef.getName(), OverloadRules.class.getClassLoader()).orElse(null);
         }
         return null;
     }
