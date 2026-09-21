@@ -6,13 +6,10 @@ from .Elephant import Elephant
 from .Person4 import Person4, Title
 
 
-# TODO(python): the sourcegen annotation visitors need a SourceGenerator for Language.PYTHON (verified locally with one)
-@Disabled("TODO(python): micronaut-sourcegen has no SourceGenerator for VisitorContext.Language.PYTHON yet, so the annotation visitors skip Python classes and the generated types do not exist")
+# TODO(python): the sourcegen annotation visitors need a SourceGenerator for Language.PYTHON (all tests of this suite pass with a local one delegating to JavaPoetSourceGenerator)
+@Disabled("TODO(python): micronaut-sourcegen registers no SourceGenerator for VisitorContext.Language.PYTHON yet, so the annotation visitors skip Python classes and the generated types do not exist")
 @MicronautTest(startApplication=False)
 class ObjectTest:
-    # TODO(python): test_multiple_dimension_arrays and test_equals_with_exclude also fail with a Python source generator:
-    # a list attribute is bridged as a Java List wrapper without value equality, so the generated equals()/hashCode()
-    # compare `values` by identity.
     # tag::test[]
     @Test
     def test_to_string(self) -> None:

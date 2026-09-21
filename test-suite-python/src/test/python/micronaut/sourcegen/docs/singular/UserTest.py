@@ -3,8 +3,8 @@ from micronaut.test.extensions.junit5.annotation import MicronautTest
 from org.junit.jupiter.api import Disabled, Test
 
 
-# TODO(python): the sourcegen annotation visitors need a SourceGenerator for Language.PYTHON (verified locally with one)
-@Disabled("TODO(python): micronaut-sourcegen has no SourceGenerator for VisitorContext.Language.PYTHON yet, so the annotation visitors skip Python classes and the generated types do not exist")
+# TODO(python): the sourcegen annotation visitors need a SourceGenerator for Language.PYTHON (all tests of this suite pass with a local one delegating to JavaPoetSourceGenerator)
+@Disabled("TODO(python): micronaut-sourcegen registers no SourceGenerator for VisitorContext.Language.PYTHON yet, so the annotation visitors skip Python classes and the generated types do not exist")
 @MicronautTest(startApplication=False)
 class UserTest:
 

@@ -8,7 +8,9 @@ had to work around. Use it as the bug-fixing task list.
 
 - Last generated command: `rg -n "@Disabled\(" test-suite-python/src/test/python`.
 - Last full-suite command: `./gradlew :test-suite-python:test -Ppython-ci`.
-- Last full-suite result: build successful, 5 test classes (15 tests) compiled and skipped.
+- Last full-suite result: build successful, 5 test classes (15 tests) compiled and skipped (Micronaut core 5.2.3,
+  micronaut-build 8.1.2). With a local `SourceGenerator` for `Language.PYTHON` delegating to `JavaPoetSourceGenerator`
+  registered in the suite, all 15 tests pass.
 
 ## Migration Rules
 
@@ -22,18 +24,17 @@ had to work around. Use it as the bug-fixing task list.
   sourcegen visitors (`PersonBuilder`, `CatSuperBuilder`, `Person4Object`, ...): they do not exist when the Python
   compiler generates the shim modules, so there is no module to import from and they are loaded with
   `java.type("micronaut.sourcegen.docs....")` (see "`java.type` usages" below).
-- The documentation classes live in `src/main/python` (the `source="main"` snippets) and are compiled together with
-  the tests of `src/test/python` from one merged source root (see `build.gradle.kts`).
+- The documentation classes live in `src/main/python` (the `source="main"` snippets), the tests in `src/test/python`.
 
 ## Active `@Disabled` Tests
 
 | Test | Reason |
 | --- | --- |
-| `builder.PersonBuilderTest` | TODO(python): `micronaut-sourcegen` registers `SourceGenerator`s for `VisitorContext.Language.JAVA` and `GROOVY` only. The Python compiler runs the type element visitors with a `PythonVisitorContext` whose language is `PYTHON`, so `SourceGenerators.findByLanguage(context.getLanguage())` is empty and every sourcegen visitor returns without generating anything (silently). Verified locally: registering a `SourceGenerator` that returns `Language.PYTHON` and delegates to `JavaPoetSourceGenerator` makes the visitors run on the Python classes; the Java source is written through the Java visitor context, compiled with the stubs, and the generated types are usable from Python with `java.type(...)`. With that generator `PersonBuilderTest`, `EmployeeStagedBuilderTest`, `AnimalSuperBuilderTest`, `UserTest` and 5 of the 7 `ObjectTest` methods pass. `Language.PYTHON` only exists in core 5.2+, so the generator cannot be added to `sourcegen-generator-java` on this branch (core 5.1). |
+| `builder.PersonBuilderTest` | TODO(python): `micronaut-sourcegen` registers `SourceGenerator`s for `VisitorContext.Language.JAVA` and `GROOVY` only. The Python compiler runs the type element visitors with a `PythonVisitorContext` whose language is `PYTHON`, so `SourceGenerators.findByLanguage(context.getLanguage())` is empty and every sourcegen visitor returns without generating anything (silently). Verified locally: registering a `SourceGenerator` that returns `Language.PYTHON` and delegates to `JavaPoetSourceGenerator` makes the visitors run on the Python classes; the Java source is written through the Java visitor context, compiled with the stubs, and the generated types are usable from Python with `java.type(...)`. With that generator all 15 tests of this suite pass (core 5.2.3). Now that this branch uses core 5.2 (`Language.PYTHON` exists), such a generator can be added to `sourcegen-generator-java` as a module follow-up. |
 | `stagedbuilder.EmployeeStagedBuilderTest` | Same as above. |
 | `superbuilder.AnimalSuperBuilderTest` | Same as above. |
 | `singular.UserTest` | Same as above. |
-| `objects.ObjectTest` | Same as above. `test_multiple_dimension_arrays` and `test_equals_with_exclude` additionally fail with a Python source generator: the `list[list[int]]` attribute is bridged as a `List<List<Integer>>` wrapper created on every getter call and without value-based `equals()`/`hashCode()`, so the generated `ElephantObject.equals()`/`hashCode()` compare `values` by identity. |
+| `objects.ObjectTest` | Same as above. |
 
 ## `java.type` usages
 
@@ -74,8 +75,6 @@ None.
 | Gap | Workaround |
 | --- | --- |
 | An attribute named `bytes` shadows the builtin in the class body, so `bytes: bytes` cannot be declared; `bytes \| None` is bridged as `java.lang.Byte` instead of `byte[]`. | `Person.data: bytes = b""` and `Person4.data: bytes` (the Java samples use `byte[] bytes`); the `toString()` expectation of `ObjectTest.test_to_string` uses `data=` accordingly. |
-| A dataclass extending a dataclass generates a stub constructor without the inherited fields, called positionally, so the generated `CatSuperBuilder.build()` assigned `meowLevel`/`bread` to `name`/`age`. | `Animal`, `Cat` and `Dog` are plain classes with attribute defaults (no `@dataclass`): the stub has a default constructor and the builder assigns every property through the generated setters. |
 | The generated builders' no-arg constructors are package-private (`CatSuperBuilder()`), which host interop cannot call from Python even from the same package name (`'polyglot.ForeignAbstractClass' object is not callable`). | The Python tests use the public static `CatSuperBuilder.builder()` / `UserSuperBuilder.builder()` factory. |
-| Nested annotation types referenced as `Outer.Inner` in `Annotated[...]` metadata (`EqualsAndHashCode.Exclude`, `ToString.Exclude`) are silently ignored; importing them as `from micronaut.sourcegen.annotations.ToString import Exclude` applies them at compile time but the generated `ToString.py` shim does not export `Exclude`, so the module fails to import at runtime. | `Elephant` imports the nested annotations under `if TYPE_CHECKING:` with `from __future__ import annotations`, which the compiler still resolves. |
 | The Java `Elephant(String name, int age, boolean hasSibling, int value)` constructor fills a 3x3 `int[][]`; a dataclass has no such constructor. | The Python `Elephant` is a dataclass whose `values: list[list[int]]` is passed by the tests (`[[1] * 3] * 3`). |
 | Nested classes are not supported by the Python compiler (`Person4.Title` in Java). | `Title` is a top-level `Enum` next to `Person4`. |
