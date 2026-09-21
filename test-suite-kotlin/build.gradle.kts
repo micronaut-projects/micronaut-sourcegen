@@ -10,6 +10,7 @@ dependencies {
     ksp(projects.sourcegenGeneratorKotlin)
     ksp(projects.testSuiteCustomGenerators)
     ksp(mnValidation.micronaut.validation.processor)
+    kspTest(mn.micronaut.inject.kotlin)
 
     implementation(mnValidation.micronaut.validation)
     implementation(mn.kotlin.stdlib)
