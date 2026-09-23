@@ -4,7 +4,7 @@ from org.junit.jupiter.api import Disabled, Test
 
 
 # TODO(python): the sourcegen annotation visitors need a SourceGenerator for Language.PYTHON (all tests of this suite pass with a local one delegating to JavaPoetSourceGenerator)
-@Disabled("TODO(python): micronaut-sourcegen registers no SourceGenerator for VisitorContext.Language.PYTHON yet, so the annotation visitors skip Python classes and the generated types do not exist")
+@Disabled("TODO(python): micronaut-sourcegen registers no SourceGenerator for VisitorContext.Language.PYTHON yet, so the annotation visitors skip Python classes and the generated types do not exist (unchanged with micronaut-core 5.2.4: `KeyError: host symbol micronaut.sourcegen.docs....<Generated> is not defined`)")
 @MicronautTest(startApplication=False)
 class PersonBuilderTest:
 

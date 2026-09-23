@@ -8,9 +8,14 @@ had to work around. Use it as the bug-fixing task list.
 
 - Last generated command: `rg -n "@Disabled\(" test-suite-python/src/test/python`.
 - Last full-suite command: `./gradlew :test-suite-python:test -Ppython-ci`.
-- Last full-suite result: build successful, 5 test classes (15 tests) compiled and skipped (Micronaut core 5.2.3,
-  micronaut-build 8.1.2). With a local `SourceGenerator` for `Language.PYTHON` delegating to `JavaPoetSourceGenerator`
-  registered in the suite, all 15 tests pass.
+- Last full-suite result: build successful, 5 test classes (15 tests) compiled and skipped (Micronaut core 5.2.4,
+  micronaut-build 8.1.3, GraalVM 25.4). With a local `SourceGenerator` for `Language.PYTHON` delegating to
+  `JavaPoetSourceGenerator` registered in the suite, all 15 tests pass.
+- Re-checked against core 5.2.4 with every `@Disabled` removed: all 15 tests fail with
+  `KeyError: host symbol micronaut.sourcegen.docs.<pkg>.<Generated> is not defined or access has been denied`
+  (`PersonBuilder`, `EmployeeStagedBuilder`, `CatSuperBuilder`, `DogSuperBuilder`, `UserSuperBuilder`,
+  `Person4Object`, `ElephantObject`), i.e. the blocker is unchanged: it is a micronaut-sourcegen gap, not a
+  Python-compiler one. The `@Disabled`s were restored.
 
 ## Migration Rules
 
@@ -30,7 +35,7 @@ had to work around. Use it as the bug-fixing task list.
 
 | Test | Reason |
 | --- | --- |
-| `builder.PersonBuilderTest` | TODO(python): `micronaut-sourcegen` registers `SourceGenerator`s for `VisitorContext.Language.JAVA` and `GROOVY` only. The Python compiler runs the type element visitors with a `PythonVisitorContext` whose language is `PYTHON`, so `SourceGenerators.findByLanguage(context.getLanguage())` is empty and every sourcegen visitor returns without generating anything (silently). Verified locally: registering a `SourceGenerator` that returns `Language.PYTHON` and delegates to `JavaPoetSourceGenerator` makes the visitors run on the Python classes; the Java source is written through the Java visitor context, compiled with the stubs, and the generated types are usable from Python with `java.type(...)`. With that generator all 15 tests of this suite pass (core 5.2.3). Now that this branch uses core 5.2 (`Language.PYTHON` exists), such a generator can be added to `sourcegen-generator-java` as a module follow-up. |
+| `builder.PersonBuilderTest` | TODO(python): `micronaut-sourcegen` registers `SourceGenerator`s for `VisitorContext.Language.JAVA` and `GROOVY` only. The Python compiler runs the type element visitors with a `PythonVisitorContext` whose language is `PYTHON`, so `SourceGenerators.findByLanguage(context.getLanguage())` is empty and every sourcegen visitor returns without generating anything (silently). Verified locally: registering a `SourceGenerator` that returns `Language.PYTHON` and delegates to `JavaPoetSourceGenerator` makes the visitors run on the Python classes; the Java source is written through the Java visitor context, compiled with the stubs, and the generated types are usable from Python with `java.type(...)`. With that generator all 15 tests of this suite pass (verified with core 5.2.3; re-checked unchanged with core 5.2.4). Now that this branch uses core 5.2 (`Language.PYTHON` exists), such a generator can be added to `sourcegen-generator-java` as a module follow-up. |
 | `stagedbuilder.EmployeeStagedBuilderTest` | Same as above. |
 | `superbuilder.AnimalSuperBuilderTest` | Same as above. |
 | `singular.UserTest` | Same as above. |
