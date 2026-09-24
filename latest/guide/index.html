@@ -24,7 +24,7 @@
         }
     </script>
     <style type="text/css">
-        .lang-java { display: block }; .lang-python { display: block }; .lang-kotlin { display: block }; .lang-groovy { display: block }; 
+        .lang-java { display: block }; .lang-python { display: block }; .lang-kotlin { display: block }; .lang-groovy { display: block }; .lang-scala { display: block }; 
     </style>
 </head>
 
@@ -123,7 +123,7 @@
         <h1>Compilation time source code generators</h1>
         <p></p>
         <p>Micronaut SourceGen exposes a language-neutral API for source code generation.</p>
-        <p><strong>Version:</strong> 2.2.1 </p>
+        <p><strong>Version:</strong> 2.2.2 </p>
     </div>
     
 <h1 id="introduction"><a class="anchor" href="#introduction"></a>1 Introduction</h1>
@@ -210,6 +210,15 @@
 &lt;/annotationProcessorPaths&gt;</code></pre>
 </div>
 </div>
+<div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-toml hljs" data-lang="pyronaut">[tool.pyronaut.dependencies]
+build = [
+    <span class="hljs-string">"io.micronaut.sourcegen:micronaut-sourcegen-generator-java"</span>,
+]</code></pre>
+</div>
+</div>
 </p>
 </div>
 <div class="paragraph">
@@ -231,6 +240,15 @@
 &lt;/dependency&gt;</code></pre>
 </div>
 </div>
+<div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-toml hljs" data-lang="pyronaut">[tool.pyronaut.dependencies]
+build = [
+    <span class="hljs-string">"io.micronaut.sourcegen:micronaut-sourcegen-generator-kotlin"</span>,
+]</code></pre>
+</div>
+</div>
 </p>
 </div>
 <div class="paragraph">
@@ -250,6 +268,15 @@
     &lt;artifactId&gt;micronaut-sourcegen-generator-kotlin&lt;/artifactId&gt;
     &lt;scope&gt;kapt&lt;/scope&gt;
 &lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-toml hljs" data-lang="pyronaut">[tool.pyronaut.dependencies]
+build = [
+    <span class="hljs-string">"io.micronaut.sourcegen:micronaut-sourcegen-generator-kotlin"</span>,
+]</code></pre>
 </div>
 </div>
 </p>
@@ -288,6 +315,15 @@
 &lt;/dependency&gt;</code></pre>
 </div>
 </div>
+<div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-toml hljs" data-lang="pyronaut">[tool.pyronaut.dependencies]
+runtime = [
+    <span class="hljs-string">"io.micronaut:micronaut-core-processor"</span>,
+]</code></pre>
+</div>
+</div>
 </p>
 </div>
 <div class="paragraph">
@@ -306,6 +342,15 @@
     &lt;groupId&gt;io.micronaut.sourcegen&lt;/groupId&gt;
     &lt;artifactId&gt;micronaut-sourcegen-model&lt;/artifactId&gt;
 &lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-toml hljs" data-lang="pyronaut">[tool.pyronaut.dependencies]
+runtime = [
+    <span class="hljs-string">"io.micronaut.sourcegen:micronaut-sourcegen-model"</span>,
+]</code></pre>
 </div>
 </div>
 </p>
@@ -485,6 +530,15 @@ classes that reference compile-scope dependencies need the compilation&#8217;s c
     &lt;groupId&gt;io.micronaut.sourcegen&lt;/groupId&gt;
     &lt;artifactId&gt;micronaut-sourcegen-annotations&lt;/artifactId&gt;
 &lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock multi-language-sample">
+<div class="title"></div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-toml hljs" data-lang="pyronaut">[tool.pyronaut.dependencies]
+runtime = [
+    <span class="hljs-string">"io.micronaut.sourcegen:micronaut-sourcegen-annotations"</span>,
+]</code></pre>
 </div>
 </div>
 </p>
