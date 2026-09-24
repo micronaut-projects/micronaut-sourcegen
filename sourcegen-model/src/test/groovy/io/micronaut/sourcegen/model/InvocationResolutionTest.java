@@ -211,6 +211,67 @@ class InvocationResolutionTest {
         assertEquals(List.of(TypeDef.STRING, TypeDef.STRING), parameterTypes(call.method()));
     }
 
+    @Test
+    void aGenericVariableArityTailIsPackedIntoAnArrayOfTheRequestedElementType() {
+        // List.of declares fixed arity overloads up to ten elements, so an eleventh can only resolve to
+        // List.of(E...), whose erased Object[] would pin E to Object
+        ExpressionDef.InvokeStaticMethod call = ClassTypeDef.of(List.class)
+            .invokeStatic("of", TypeDef.parameterized(List.class, TypeDef.STRING), elements(11));
+
+        assertEquals(List.of(TypeDef.OBJECT.array()), parameterTypes(call.method()));
+        ExpressionDef packed = call.values().get(0);
+        assertEquals(TypeDef.STRING.array(), packed.type());
+        assertEquals(11, ((ExpressionDef.NewArrayInitialized) packed).expressions().size());
+    }
+
+    @Test
+    void aRequestedObjectElementTypeKeepsTheErasedArray() {
+        ExpressionDef.InvokeStaticMethod call = ClassTypeDef.of(List.class)
+            .invokeStatic("of", TypeDef.parameterized(List.class, TypeDef.OBJECT), elements(11));
+
+        assertEquals(TypeDef.OBJECT.array(), call.values().get(0).type());
+    }
+
+    @Test
+    void anElementNotAssignableToTheRequestedElementTypeKeepsTheErasedArray() {
+        List<ExpressionDef> values = new ArrayList<>(elements(10));
+        values.add(ExpressionDef.constant(1));
+
+        ExpressionDef.InvokeStaticMethod call = ClassTypeDef.of(List.class)
+            .invokeStatic("of", TypeDef.parameterized(List.class, TypeDef.STRING), values);
+
+        assertEquals(TypeDef.OBJECT.array(), call.values().get(0).type());
+    }
+
+    @Test
+    void aRequestedParameterizedElementTypeKeepsTheErasedArray() {
+        // A generic array cannot be created
+        ExpressionDef.InvokeStaticMethod call = ClassTypeDef.of(List.class)
+            .invokeStatic("of",
+                TypeDef.parameterized(List.class, TypeDef.parameterized(List.class, TypeDef.STRING)),
+                elements(11));
+
+        assertEquals(TypeDef.OBJECT.array(), call.values().get(0).type());
+    }
+
+    @Test
+    void aVariableArityParameterThatIsNotErasedKeepsItsComponentType() {
+        // firstOf(String...) is not erased to Object[], so its own component type is kept
+        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("firstOf", TypeDef.STRING,
+            List.of(A_STRING, B_STRING));
+
+        assertEquals(List.of(TypeDef.STRING.array()), parameterTypes(call.method()));
+        assertEquals(TypeDef.STRING.array(), call.values().get(0).type());
+    }
+
+    private static List<ExpressionDef> elements(int count) {
+        List<ExpressionDef> values = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            values.add(ExpressionDef.constant("value" + i));
+        }
+        return values;
+    }
+
     @SuppressWarnings("unused")
     static class Support {
 
@@ -220,6 +281,10 @@ class InvocationResolutionTest {
 
         static String of(Object... elements) {
             return String.valueOf(elements.length);
+        }
+
+        static String firstOf(String... values) {
+            return values[0];
         }
 
         static String ambiguous(CharSequence value) {

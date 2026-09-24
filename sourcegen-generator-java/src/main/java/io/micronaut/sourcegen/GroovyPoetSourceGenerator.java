@@ -17,9 +17,15 @@ package io.micronaut.sourcegen;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.javapoet.AnnotationSpec;
+import io.micronaut.sourcegen.javapoet.ClassName;
+import io.micronaut.sourcegen.javapoet.TypeSpec;
+import io.micronaut.sourcegen.model.ObjectDef;
 
 /**
  * Reuse the Java source generator for Groovy.
+ * Every generated class, record, enum and interface is annotated with
+ * {@code groovy.transform.CompileStatic} so that the Groovy compiler compiles it statically.
  *
  * @author Denis Stepanov
  * @since 1.0
@@ -27,8 +33,15 @@ import io.micronaut.inject.visitor.VisitorContext;
 @Internal
 public final class GroovyPoetSourceGenerator extends JavaPoetSourceGenerator {
 
+    private static final ClassName COMPILE_STATIC = ClassName.get("groovy.transform", "CompileStatic");
+
     @Override
     public VisitorContext.Language getLanguage() {
         return VisitorContext.Language.GROOVY;
+    }
+
+    @Override
+    protected void customizeTypeBuilder(ObjectDef objectDef, TypeSpec.Builder typeBuilder) {
+        typeBuilder.addAnnotation(AnnotationSpec.builder(COMPILE_STATIC).build());
     }
 }
