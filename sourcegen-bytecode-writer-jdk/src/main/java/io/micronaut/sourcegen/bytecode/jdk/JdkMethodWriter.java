@@ -221,14 +221,14 @@ final class JdkMethodWriter {
 
     private void writeReturn(@Nullable ExpressionDef expression) {
         // The gaps the cleanups are written in end past the instruction that leaves
-        int openGaps = this.openGaps.size();
+        int gapsBefore = openGaps.size();
         YieldTarget yieldTarget = yieldTargets.peek();
         if (yieldTarget != null) {
             writeYield(expression, yieldTarget);
         } else {
             writeMethodReturn(expression);
         }
-        closeGaps(openGaps);
+        closeGaps(gapsBefore);
     }
 
     private void writeMethodReturn(@Nullable ExpressionDef expression) {
