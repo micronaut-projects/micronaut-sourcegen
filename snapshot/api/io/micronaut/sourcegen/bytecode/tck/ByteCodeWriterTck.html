@@ -105,6 +105,8 @@ loadScripts(document, 'script');</script>
 <li><a href="#synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows()" tabindex="0">synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows()</a></li>
 <li><a href="#finallyThatThrowsAfterAYieldRunsOnce()" tabindex="0">finallyThatThrowsAfterAYieldRunsOnce()</a></li>
 <li><a href="#writesConstructorDelegationWithoutRepeatingFieldInitializers()" tabindex="0">writesConstructorDelegationWithoutRepeatingFieldInitializers()</a></li>
+<li><a href="#writesLambdasDeclaredInsideNestedBlocks()" tabindex="0">writesLambdasDeclaredInsideNestedBlocks()</a></li>
+<li><a href="#writesThisInsideANestedBlockOfALambdaBody()" tabindex="0">writesThisInsideANestedBlockOfALambdaBody()</a></li>
 </ol>
 </li>
 </ol>
@@ -264,19 +266,25 @@ the fallbacks it offers, belong in that backend's own tests.</div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesInterfacesWithAbstractDefaultAndStaticMethods()" class="member-name-link">writesInterfacesWithAbstractDefaultAndStaticMethods</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesNestedCastsWithoutUnboxingAndReboxingAReference()" class="member-name-link">writesNestedCastsWithoutUnboxingAndReboxingAReference</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesLambdasDeclaredInsideNestedBlocks()" class="member-name-link">writesLambdasDeclaredInsideNestedBlocks</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesReferencesToAMemberTypeByItsBinaryName()" class="member-name-link">writesReferencesToAMemberTypeByItsBinaryName</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesNestedCastsWithoutUnboxingAndReboxingAReference()" class="member-name-link">writesNestedCastsWithoutUnboxingAndReboxingAReference</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesReflectedGenericBridgeAndGenericSignatures()" class="member-name-link">writesReflectedGenericBridgeAndGenericSignatures</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesReferencesToAMemberTypeByItsBinaryName()" class="member-name-link">writesReferencesToAMemberTypeByItsBinaryName</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesSuperCallsAndSuperConstructorDelegation()" class="member-name-link">writesSuperCallsAndSuperConstructorDelegation</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesReflectedGenericBridgeAndGenericSignatures()" class="member-name-link">writesReflectedGenericBridgeAndGenericSignatures</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesSwitchesSharingOneBodyAcrossManyKeys()" class="member-name-link">writesSwitchesSharingOneBodyAcrossManyKeys</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesSuperCallsAndSuperConstructorDelegation()" class="member-name-link">writesSuperCallsAndSuperConstructorDelegation</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesSwitchesSharingOneBodyAcrossManyKeys()" class="member-name-link">writesSwitchesSharingOneBodyAcrossManyKeys</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesThisInsideANestedBlockOfALambdaBody()" class="member-name-link">writesThisInsideANestedBlockOfALambdaBody</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesTryWhoseCatchCompletesInsideAnIfBranch()" class="member-name-link">writesTryWhoseCatchCompletesInsideAnIfBranch</a>()</code></div>
@@ -913,6 +921,34 @@ the TCK by quietly declining to write the definition itself.</div>
 <div class="member-signature"><span class="annotations">@Test
 </span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesConstructorDelegationWithoutRepeatingFieldInitializers</span>()
                                                                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="writesLambdasDeclaredInsideNestedBlocks()">
+<h3>writesLambdasDeclaredInsideNestedBlocks</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="annotations">@Test
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesLambdasDeclaredInsideNestedBlocks</span>()
+                                             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="writesThisInsideANestedBlockOfALambdaBody()">
+<h3>writesThisInsideANestedBlockOfALambdaBody</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="annotations">@Test
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesThisInsideANestedBlockOfALambdaBody</span>()
+                                               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
