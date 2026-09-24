@@ -50,7 +50,9 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.TypePath;
 import org.objectweb.asm.TypeReference;
 import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TryCatchBlockNode;
 import org.objectweb.asm.util.CheckClassAdapter;
 
 import javax.lang.model.element.Modifier;
@@ -994,6 +996,9 @@ public final class ByteCodeWriter {
             generatorAdapter.visitMaxs(20, 20);
         }
         generatorAdapter.visitEnd();
+        // A try whose body ends with a return leaves an empty exception range past the finally block the
+        // return writes. The JVM rejects an empty range, and javac leaves such ranges out as well
+        methodNode.tryCatchBlocks.removeIf(ByteCodeWriter::protectsNoInstruction);
         methodNode.accept(visitMaxs ? methodVisitor : new WithoutMaxsMethodVisitor(methodVisitor));
 
         for (MethodDef lambdaDef: context.lambdaMethods()) {
@@ -1003,6 +1008,15 @@ public final class ByteCodeWriter {
         if (!isLambda && (extraModifiersFlag & ACC_BRIDGE) == 0) {
             writeBridgeMethods(classVisitor, objectDef, methodDef, emittedBridges);
         }
+    }
+
+    private static boolean protectsNoInstruction(TryCatchBlockNode tryCatchBlock) {
+        for (AbstractInsnNode node = tryCatchBlock.start; node != null && node != tryCatchBlock.end; node = node.getNext()) {
+            if (node.getOpcode() >= 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

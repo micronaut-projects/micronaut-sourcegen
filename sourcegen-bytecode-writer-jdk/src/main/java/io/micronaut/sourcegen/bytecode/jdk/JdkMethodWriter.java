@@ -31,7 +31,11 @@ import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.classfile.CodeBuilder;
+import java.lang.classfile.CodeElement;
+import java.lang.classfile.CodeTransform;
+import java.lang.classfile.Instruction;
 import java.lang.classfile.Label;
+import java.lang.classfile.MethodBuilder;
 import java.lang.classfile.Opcode;
 import java.lang.classfile.TypeKind;
 import java.lang.constant.ClassDesc;
@@ -50,6 +54,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.LinkedHashSet;
+import java.util.function.BiConsumer;
 
 import javax.lang.model.element.Modifier;
 
@@ -75,28 +80,43 @@ final class JdkMethodWriter {
     private final ObjectDef objectDef;
     private final ClassDesc owner;
     private final Map<String, Local> locals = new LinkedHashMap<>();
-    private final List<Runnable> cleanups = new ArrayList<>();
+    private final List<Cleanup> cleanups = new ArrayList<>();
+    private final List<Gap> openGaps = new ArrayList<>();
     private final Deque<YieldTarget> yieldTargets = new ArrayDeque<>();
     private final List<MethodDef> lambdaMethods = new ArrayList<>();
     private final MethodDef methodDef;
+    private final InstructionCounter instructions;
 
-    private JdkMethodWriter(CodeBuilder code, ObjectDef objectDef, MethodDef methodDef, ClassDesc owner) {
+    private JdkMethodWriter(CodeBuilder code, ObjectDef objectDef, MethodDef methodDef, ClassDesc owner,
+                            InstructionCounter instructions) {
         this.code = code;
         this.objectDef = objectDef;
         this.owner = owner;
         this.methodDef = methodDef;
+        this.instructions = instructions;
         for (int i = 0; i < methodDef.getParameters().size(); i++) {
             var parameter = methodDef.getParameters().get(i);
             locals.put(parameter.getName(), new Local(parameter.getType(), code.parameterSlot(i)));
         }
     }
 
-    static void write(CodeBuilder code, ObjectDef objectDef, MethodDef methodDef, ClassDesc owner) {
-        new JdkMethodWriter(code, objectDef, methodDef, owner).writeStatements(methodDef.getStatements());
-    }
-
-    static JdkMethodWriter create(CodeBuilder code, ObjectDef objectDef, MethodDef methodDef, ClassDesc owner) {
-        return new JdkMethodWriter(code, objectDef, methodDef, owner);
+    /**
+     * Writes the code of a method with a writer. The code builder handed to the handler counts the
+     * instructions written, which is how the writer leaves out an exception range protecting none.
+     *
+     * @param methodBuilder The method builder
+     * @param objectDef     The object the method belongs to
+     * @param methodDef     The method
+     * @param owner         The class the method belongs to
+     * @param handler       Writes the code with the code builder and the writer
+     */
+    static void withCode(MethodBuilder methodBuilder, ObjectDef objectDef, MethodDef methodDef, ClassDesc owner,
+                         BiConsumer<CodeBuilder, JdkMethodWriter> handler) {
+        methodBuilder.withCode(code -> {
+            InstructionCounter instructions = new InstructionCounter();
+            code.transforming(instructions, counted ->
+                handler.accept(counted, new JdkMethodWriter(counted, objectDef, methodDef, owner, instructions)));
+        });
     }
 
     List<MethodDef> lambdaMethods() {
@@ -200,11 +220,18 @@ final class JdkMethodWriter {
     }
 
     private void writeReturn(@Nullable ExpressionDef expression) {
+        // The gaps the cleanups are written in end past the instruction that leaves
+        int openGaps = this.openGaps.size();
         YieldTarget yieldTarget = yieldTargets.peek();
         if (yieldTarget != null) {
             writeYield(expression, yieldTarget);
-            return;
+        } else {
+            writeMethodReturn(expression);
         }
+        closeGaps(openGaps);
+    }
+
+    private void writeMethodReturn(@Nullable ExpressionDef expression) {
         TypeDef returnType = methodDef.getReturnType();
         if (expression == null || returnType.equals(TypeDef.VOID)) {
             // A void method may still return the result of an expression, which is evaluated for
@@ -279,35 +306,99 @@ final class JdkMethodWriter {
      * runs those, not the finally block again.
      */
     private void writeCleanup(int index) {
-        List<Runnable> opened = cleanups.subList(index, cleanups.size());
-        List<Runnable> suspended = new ArrayList<>(opened);
+        List<Cleanup> opened = cleanups.subList(index, cleanups.size());
+        List<Cleanup> suspended = new ArrayList<>(opened);
         opened.clear();
         try {
-            suspended.getFirst().run();
+            Cleanup cleanup = suspended.getFirst();
+            if (cleanup.inGap()) {
+                openGap(cleanup);
+                cleanup.code().run();
+            } else {
+                cleanup.code().run();
+                openGap(cleanup);
+            }
         } finally {
             cleanups.addAll(suspended);
         }
     }
 
+    private void openGap(Cleanup cleanup) {
+        Gap gap = new Gap(position());
+        cleanup.gaps().add(gap);
+        openGaps.add(gap);
+    }
+
+    /**
+     * Closes the gaps opened by a return or a yield, once it has written the instruction that leaves.
+     *
+     * @param from The number of gaps that were open before the return or the yield
+     */
+    private void closeGaps(int from) {
+        List<Gap> opened = openGaps.subList(from, openGaps.size());
+        if (opened.isEmpty()) {
+            return;
+        }
+        Position end = position();
+        for (Gap gap : opened) {
+            gap.end = end;
+        }
+        opened.clear();
+    }
+
+    private Position position() {
+        return new Position(code.newBoundLabel(), instructions.count);
+    }
+
+    private Position position(Label label) {
+        code.labelBinding(label);
+        return new Position(label, instructions.count);
+    }
+
+    /**
+     * Adds the entries of a handler for a range of code, leaving out the gaps in it. The JVM rejects an
+     * entry protecting no instruction, which a try leaves where its body ends with a return, past the
+     * finally block the return writes, so such an entry is left out as javac does.
+     *
+     * @param range   The range
+     * @param handler The handler
+     * @param type    The exception type handled, or null for any
+     */
+    private void exceptionCatch(Range range, Label handler, @Nullable ClassDesc type) {
+        Position from = range.start();
+        for (Gap gap : range.gaps()) {
+            exceptionCatch(from, gap.start, handler, type);
+            from = Objects.requireNonNull(gap.end, "The gap is not closed");
+        }
+        exceptionCatch(from, range.end(), handler, type);
+    }
+
+    private void exceptionCatch(Position start, Position end, Label handler, @Nullable ClassDesc type) {
+        if (end.instructions() == start.instructions()) {
+            return;
+        }
+        if (type == null) {
+            code.exceptionCatchAll(start.label(), end.label(), handler);
+        } else {
+            code.exceptionCatch(start.label(), end.label(), handler, type);
+        }
+    }
+
     private void writeTry(StatementDef.Try aTry) {
         StatementDef finallyStatement = aTry.finallyStatement();
-        Label tryStart = code.newLabel();
-        Label tryEnd = code.newLabel();
         Label end = code.newLabel();
         Label finallyHandler = finallyStatement == null ? null : code.newLabel();
         List<CatchHandler> handlers = new ArrayList<>();
         for (StatementDef.Try.Catch aCatch : aTry.catches()) {
-            handlers.add(new CatchHandler(aCatch, code.newLabel(), finallyHandler == null ? null : code.newLabel()));
+            handlers.add(new CatchHandler(aCatch, code.newLabel()));
         }
 
-        code.labelBinding(tryStart);
-        writeTryBody(aTry.statement(), finallyStatement);
-        code.labelBinding(tryEnd);
+        Range body = writeTryBody(aTry.statement(), finallyStatement);
         if (canCompleteNormally(aTry.statement())) {
             writeFinallyAndExit(finallyStatement, end);
         }
 
-        writeCatchHandlers(handlers, finallyStatement, end);
+        List<Range> catchBodies = writeCatchHandlers(handlers, finallyStatement, end);
         if (finallyHandler != null) {
             writeFinallyHandler(finallyHandler, finallyStatement);
         }
@@ -315,53 +406,48 @@ final class JdkMethodWriter {
 
         // The JVM takes the first entry of the exception table that matches, so the entries of the try
         // follow those of the statements nested in it, which were added as they were written
-        registerCatchHandlers(tryStart, tryEnd, handlers);
+        for (CatchHandler handler : handlers) {
+            exceptionCatch(body, handler.label(), classDesc(handler.aCatch().exception()));
+        }
         if (finallyHandler != null) {
-            registerFinallyHandlers(tryStart, tryEnd, finallyHandler, handlers);
-        }
-    }
-
-    private void registerCatchHandlers(Label tryStart, Label tryEnd, List<CatchHandler> handlers) {
-        for (CatchHandler handler : handlers) {
-            code.exceptionCatch(tryStart, tryEnd, handler.label(), classDesc(handler.aCatch().exception()));
-        }
-    }
-
-    private void registerFinallyHandlers(Label tryStart, Label tryEnd, Label finallyHandler,
-                                         List<CatchHandler> handlers) {
-        code.exceptionCatchAll(tryStart, tryEnd, finallyHandler);
-        for (CatchHandler handler : handlers) {
-            Label protectedEnd = handler.protectedEnd();
-            if (protectedEnd != null) {
-                code.exceptionCatchAll(handler.label(), protectedEnd, finallyHandler);
+            exceptionCatch(body, finallyHandler, null);
+            for (Range catchBody : catchBodies) {
+                exceptionCatch(catchBody, finallyHandler, null);
             }
         }
     }
 
-    private void writeTryBody(StatementDef statement, @Nullable StatementDef finallyStatement) {
-        addCleanup(finallyStatement);
+    private Range writeTryBody(StatementDef statement, @Nullable StatementDef finallyStatement) {
+        Position start = position();
+        List<Gap> gaps = addCleanup(finallyStatement);
         writeStatement(statement);
         removeCleanup(finallyStatement);
+        return new Range(start, position(), gaps);
     }
 
-    private void writeCatchHandlers(List<CatchHandler> handlers, @Nullable StatementDef finallyStatement, Label end) {
+    /**
+     * Writes the catch blocks of a try.
+     *
+     * @return The ranges of the catch blocks, from their handlers to the end of their bodies
+     */
+    private List<Range> writeCatchHandlers(List<CatchHandler> handlers, @Nullable StatementDef finallyStatement,
+                                           Label end) {
+        List<Range> bodies = new ArrayList<>(handlers.size());
         for (CatchHandler handler : handlers) {
-            code.labelBinding(handler.label());
+            Position start = position(handler.label());
             int slot = code.allocateLocal(TypeKind.REFERENCE);
             code.storeLocal(TypeKind.REFERENCE, slot);
             locals.put(EXCEPTION_NAME, new Local(handler.aCatch().exception(), slot));
-            addCleanup(finallyStatement);
+            List<Gap> gaps = addCleanup(finallyStatement);
             writeStatement(handler.aCatch().statement());
             removeCleanup(finallyStatement);
             locals.remove(EXCEPTION_NAME);
-            Label protectedEnd = handler.protectedEnd();
-            if (protectedEnd != null) {
-                code.labelBinding(protectedEnd);
-            }
+            bodies.add(new Range(start, position(), gaps));
             if (canCompleteNormally(handler.aCatch().statement())) {
                 writeFinallyAndExit(finallyStatement, end);
             }
         }
+        return bodies;
     }
 
     private void writeFinallyHandler(Label finallyHandler, @Nullable StatementDef finallyStatement) {
@@ -373,10 +459,18 @@ final class JdkMethodWriter {
         code.loadLocal(TypeKind.REFERENCE, slot).athrow();
     }
 
-    private void addCleanup(@Nullable StatementDef finallyStatement) {
-        if (finallyStatement != null) {
-            cleanups.add(() -> writeStatements(finallyStatement.flatten()));
+    /**
+     * Opens the finally block of a try as the cleanup of the body being written.
+     *
+     * @return The gaps the returns and the yields in the body write the finally block in
+     */
+    private List<Gap> addCleanup(@Nullable StatementDef finallyStatement) {
+        if (finallyStatement == null) {
+            return List.of();
         }
+        Cleanup cleanup = new Cleanup(() -> writeStatements(finallyStatement.flatten()), true);
+        cleanups.add(cleanup);
+        return cleanup.gaps();
     }
 
     private void removeCleanup(@Nullable StatementDef finallyStatement) {
@@ -408,16 +502,16 @@ final class JdkMethodWriter {
         int monitorSlot = code.allocateLocal(TypeKind.REFERENCE);
         code.storeLocal(TypeKind.REFERENCE, monitorSlot);
         code.loadLocal(TypeKind.REFERENCE, monitorSlot).monitorenter();
-        Label start = code.newLabel();
-        Label end = code.newLabel();
         Label handler = code.newLabel();
         Label complete = code.newLabel();
-        code.labelBinding(start);
+        Position start = position();
         Runnable exit = () -> code.loadLocal(TypeKind.REFERENCE, monitorSlot).monitorexit();
-        cleanups.add(exit);
+        // The release stays protected, as javac does, and the finally blocks around the block do not
+        Cleanup release = new Cleanup(exit, false);
+        cleanups.add(release);
         writeStatement(synchronizedStatement.statement());
         cleanups.removeLast();
-        code.labelBinding(end);
+        Range body = new Range(start, position(), release.gaps());
         if (canCompleteNormally(synchronizedStatement.statement())) {
             exit.run();
             code.goto_(complete);
@@ -431,7 +525,7 @@ final class JdkMethodWriter {
 
         // The JVM takes the first entry of the exception table that matches, so the entry releasing the
         // monitor follows those of the statements nested in the block
-        code.exceptionCatchAll(start, end, handler);
+        exceptionCatch(body, handler, null);
     }
 
     private void writeSwitch(StatementDef.Switch aSwitch) {
@@ -1729,10 +1823,76 @@ final class JdkMethodWriter {
     /**
      * A catch block of a try being written.
      *
-     * @param aCatch       The catch block
-     * @param label        The label of its handler
-     * @param protectedEnd The end of the handler's range covered by the finally block, if there is one
+     * @param aCatch The catch block
+     * @param label  The label of its handler
      */
-    private record CatchHandler(StatementDef.Try.Catch aCatch, Label label, @Nullable Label protectedEnd) {
+    private record CatchHandler(StatementDef.Try.Catch aCatch, Label label) {
+    }
+
+    /**
+     * The code a return or a yield writes on its way out of a try or synchronized statement being
+     * written.
+     *
+     * @param code  Writes the finally block, or the release of the monitor
+     * @param inGap Whether the code is written in the gap: a finally block is, the release of the monitor
+     *              stays protected as javac does, and the gap follows it
+     * @param gaps  The gaps the returns and the yields leaving the statement opened
+     */
+    private record Cleanup(Runnable code, boolean inGap, List<Gap> gaps) {
+
+        private Cleanup(Runnable code, boolean inGap) {
+            this(code, inGap, new ArrayList<>());
+        }
+    }
+
+    /**
+     * The code a return or a yield writes on its way out of a try or synchronized statement: from the
+     * copy of the finally block, or from past the release of the monitor, to past the instruction that
+     * leaves. As javac does, the statement leaves the gap out of its exception ranges, so that it does
+     * not handle an exception thrown by its own finally block, or release its monitor twice.
+     */
+    private static final class Gap {
+
+        private final Position start;
+        private @Nullable Position end;
+
+        private Gap(Position start) {
+            this.start = start;
+        }
+    }
+
+    /**
+     * A position in the code.
+     *
+     * @param label        The label bound there
+     * @param instructions The number of instructions written before it
+     */
+    private record Position(Label label, int instructions) {
+    }
+
+    /**
+     * A range of code a statement protects.
+     *
+     * @param start The start of the range
+     * @param end   The end of the range
+     * @param gaps  The gaps the statement leaves out of the range, in the order of the code
+     */
+    private record Range(Position start, Position end, List<Gap> gaps) {
+    }
+
+    /**
+     * Counts the instructions written, which tells whether a range of code protects any.
+     */
+    private static final class InstructionCounter implements CodeTransform {
+
+        private int count;
+
+        @Override
+        public void accept(CodeBuilder builder, CodeElement element) {
+            if (element instanceof Instruction) {
+                count++;
+            }
+            builder.with(element);
+        }
     }
 }
