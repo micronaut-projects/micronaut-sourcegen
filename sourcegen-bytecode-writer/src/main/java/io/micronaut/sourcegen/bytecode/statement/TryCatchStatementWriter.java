@@ -119,8 +119,27 @@ public final class TryCatchStatementWriter implements StatementWriter {
 
         generatorAdapter.visitLabel(end);
 
-        // The JVM takes the first entry of the exception table that matches, so the handlers of the try
-        // follow those of the statements nested in it, which were visited as they were written
+        visitTryCatchBlocks(generatorAdapter, context, tryStart, tryEnd, exceptionHandlers, finallyExceptionHandler);
+    }
+
+    /**
+     * Visits the exception handlers of the try once it is written. The JVM takes the first entry of the
+     * exception table that matches, so the handlers of the try follow those of the statements nested in
+     * it, which were visited as they were written.
+     *
+     * @param generatorAdapter        The generator adapter
+     * @param context                 The method context
+     * @param tryStart                The start of the try block
+     * @param tryEnd                  The end of the try block
+     * @param exceptionHandlers       The catch blocks
+     * @param finallyExceptionHandler The handler running the finally block, if there is one
+     */
+    private static void visitTryCatchBlocks(GeneratorAdapter generatorAdapter,
+                                            MethodContext context,
+                                            Label tryStart,
+                                            Label tryEnd,
+                                            List<CatchBlock> exceptionHandlers,
+                                            @Nullable Label finallyExceptionHandler) {
         for (CatchBlock catchBlock : exceptionHandlers) {
             generatorAdapter.visitTryCatchBlock(
                 tryStart,
