@@ -49,16 +49,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
         List<CatchBlock> exceptionHandlers = new ArrayList<>();
 
         for (StatementDef.Try.Catch aCatch : aTry.catches()) {
-            Label exceptionHandler = new Label();
-
-            exceptionHandlers.add(new CatchBlock(aCatch, exceptionHandler));
-
-            generatorAdapter.visitTryCatchBlock(
-                tryStart,
-                tryEnd,
-                exceptionHandler,
-                TypeUtils.getType(aCatch.exception(), context.objectDef()).getInternalName()
-            );
+            exceptionHandlers.add(new CatchBlock(aCatch, new Label()));
         }
 
         Label finallyExceptionHandler = null;
@@ -66,27 +57,15 @@ public final class TryCatchStatementWriter implements StatementWriter {
 
         if (finallyStatement != null) {
             finallyExceptionHandler = new Label();
-            generatorAdapter.visitTryCatchBlock(
-                tryStart,
-                tryEnd,
-                finallyExceptionHandler,
-                null
-            );
             for (CatchBlock catchBlock : exceptionHandlers) {
                 catchBlock.to = new Label();
-                generatorAdapter.visitTryCatchBlock(
-                    catchBlock.from,
-                    catchBlock.to,
-                    finallyExceptionHandler,
-                    null
-                );
             }
         }
 
         generatorAdapter.visitLabel(tryStart);
 
-        Runnable thisFinallyBlock = finallyStatement == null ? null : () -> StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, finallyBlock);
-        StatementWriter.of(aTry.statement()).writeScoped(generatorAdapter, context, thisFinallyBlock);
+        List<MethodContext.Gap> tryGaps = new ArrayList<>();
+        StatementWriter.of(aTry.statement()).writeScoped(generatorAdapter, context, exit(generatorAdapter, context, finallyBlock, tryGaps));
 
         generatorAdapter.visitLabel(tryEnd);
 
@@ -107,7 +86,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
             String varName = EXCEPTION_NAME;
             context.locals().put(varName, new MethodContext.LocalData(varName, exceptionType, catchBlock.from, local));
 
-            StatementWriter.of(aCatch.statement()).writeScoped(generatorAdapter, context, thisFinallyBlock);
+            StatementWriter.of(aCatch.statement()).writeScoped(generatorAdapter, context, exit(generatorAdapter, context, finallyBlock, catchBlock.gaps));
 
             context.locals().remove(varName);
 
@@ -116,7 +95,8 @@ public final class TryCatchStatementWriter implements StatementWriter {
             }
 
             if (finallyStatement != null) {
-                StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, thisFinallyBlock);
+                // Outside of the try, so a return in it runs only the finally blocks around the try
+                StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, finallyBlock);
             }
 
             generatorAdapter.goTo(end);
@@ -138,6 +118,100 @@ public final class TryCatchStatementWriter implements StatementWriter {
         }
 
         generatorAdapter.visitLabel(end);
+
+        visitTryCatchBlocks(generatorAdapter, context, tryStart, tryEnd, tryGaps, exceptionHandlers, finallyExceptionHandler);
+    }
+
+    /**
+     * Visits the exception handlers of the try once it is written. The JVM takes the first entry of the
+     * exception table that matches, so the handlers of the try follow those of the statements nested in
+     * it, which were visited as they were written.
+     *
+     * @param generatorAdapter        The generator adapter
+     * @param context                 The method context
+     * @param tryStart                The start of the try block
+     * @param tryEnd                  The end of the try block
+     * @param tryGaps                 The gaps in the try block
+     * @param exceptionHandlers       The catch blocks
+     * @param finallyExceptionHandler The handler running the finally block, if there is one
+     */
+    private static void visitTryCatchBlocks(GeneratorAdapter generatorAdapter,
+                                            MethodContext context,
+                                            Label tryStart,
+                                            Label tryEnd,
+                                            List<MethodContext.Gap> tryGaps,
+                                            List<CatchBlock> exceptionHandlers,
+                                            @Nullable Label finallyExceptionHandler) {
+        for (CatchBlock catchBlock : exceptionHandlers) {
+            visitTryCatchBlocksAroundGaps(
+                generatorAdapter,
+                tryStart,
+                tryEnd,
+                tryGaps,
+                catchBlock.from,
+                TypeUtils.getType(catchBlock.aCatch.exception(), context.objectDef()).getInternalName()
+            );
+        }
+        if (finallyExceptionHandler != null) {
+            visitTryCatchBlocksAroundGaps(generatorAdapter, tryStart, tryEnd, tryGaps, finallyExceptionHandler, null);
+            for (CatchBlock catchBlock : exceptionHandlers) {
+                if (catchBlock.to != null) {
+                    visitTryCatchBlocksAroundGaps(generatorAdapter, catchBlock.from, catchBlock.to, catchBlock.gaps, finallyExceptionHandler, null);
+                }
+            }
+        }
+    }
+
+    /**
+     * The way out of the try body or of a catch body for a return or a yield: the finally block, then the
+     * finally blocks and the monitor releases of the statements around the try.
+     *
+     * @param generatorAdapter The adapter
+     * @param context          The method context
+     * @param finallyBlock     The way out of the statements around the try
+     * @param gaps             The gaps of the body, which the copies of the finally block are written in
+     * @return The way out of the body
+     */
+    private @Nullable Runnable exit(GeneratorAdapter generatorAdapter,
+                                    MethodContext context,
+                                    @Nullable Runnable finallyBlock,
+                                    List<MethodContext.Gap> gaps) {
+        StatementDef finallyStatement = aTry.finallyStatement();
+        if (finallyStatement == null) {
+            return finallyBlock;
+        }
+        return () -> {
+            gaps.add(context.openGap(generatorAdapter));
+            StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, finallyBlock);
+            if (finallyBlock != null && canCompleteNormally(finallyStatement)) {
+                finallyBlock.run();
+            }
+        };
+    }
+
+    /**
+     * Visits the try/catch blocks of a range of code, leaving out the gaps in it. A block that protects no
+     * instruction is removed once the method is written.
+     *
+     * @param generatorAdapter The adapter
+     * @param start            The start of the range
+     * @param end              The end of the range
+     * @param gaps             The gaps in the range, in the order of the code
+     * @param handler          The handler
+     * @param type             The internal name of the exception type handled, or null for any
+     */
+    static void visitTryCatchBlocksAroundGaps(GeneratorAdapter generatorAdapter,
+                                              Label start,
+                                              Label end,
+                                              List<MethodContext.Gap> gaps,
+                                              Label handler,
+                                              @Nullable String type) {
+        Label from = start;
+        for (MethodContext.Gap gap : gaps) {
+            generatorAdapter.visitTryCatchBlock(from, gap.start(), handler, type);
+            from = gap.end();
+        }
+        generatorAdapter.visitTryCatchBlock(from, end, handler, type);
     }
 
     /**
@@ -166,6 +240,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
 
         private final StatementDef.Try.Catch aCatch;
         private final Label from;
+        private final List<MethodContext.Gap> gaps = new ArrayList<>();
         private @Nullable Label to;
 
         private CatchBlock(StatementDef.Try.Catch aCatch, Label from) {

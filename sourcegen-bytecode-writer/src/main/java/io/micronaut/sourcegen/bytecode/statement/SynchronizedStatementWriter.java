@@ -24,6 +24,9 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 final class SynchronizedStatementWriter implements StatementWriter {
     private final StatementDef.Synchronized aSynchronized;
 
@@ -38,8 +41,6 @@ final class SynchronizedStatementWriter implements StatementWriter {
         Label synchronizedEnd = new Label();
         Label synchronizedException = new Label();
         Label synchronizedExceptionEnd = new Label();
-        generatorAdapter.visitTryCatchBlock(synchronizedStart, synchronizedEnd, synchronizedException, null);
-        generatorAdapter.visitTryCatchBlock(synchronizedException, synchronizedExceptionEnd, synchronizedException, null);
 
         ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aSynchronized.monitor(), aSynchronized.monitor().type());
         generatorAdapter.dup();
@@ -50,9 +51,12 @@ final class SynchronizedStatementWriter implements StatementWriter {
 
         generatorAdapter.visitLabel(synchronizedStart);
 
+        List<MethodContext.Gap> gaps = new ArrayList<>();
         StatementWriter.of(aSynchronized.statement()).writeScoped(generatorAdapter, context, () -> {
             generatorAdapter.loadLocal(monitorLocal);
             generatorAdapter.monitorExit();
+            // The release stays protected, as javac does, and the finally blocks around the block do not
+            gaps.add(context.openGap(generatorAdapter));
             if (finallyBlock != null) {
                 finallyBlock.run();
             }
@@ -78,6 +82,11 @@ final class SynchronizedStatementWriter implements StatementWriter {
         generatorAdapter.throwException();
 
         generatorAdapter.visitLabel(end);
+
+        // The JVM takes the first entry of the exception table that matches, so the handler releasing
+        // the monitor follows those of the statements nested in the block
+        TryCatchStatementWriter.visitTryCatchBlocksAroundGaps(generatorAdapter, synchronizedStart, synchronizedEnd, gaps, synchronizedException, null);
+        generatorAdapter.visitTryCatchBlock(synchronizedException, synchronizedExceptionEnd, synchronizedException, null);
     }
 
 }

@@ -41,6 +41,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -56,6 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -974,6 +976,332 @@ public abstract class ByteCodeWriterTck {
     }
 
     @Test
+    public void innerHandlerWinsOverAnOuterHandlerOfTheSameType() throws Exception {
+        // try { try { throw ISE } catch (ISE) { return "inner" } } catch (ISE) { return "outer" }
+        ClassDef definition = ClassDef.builder("example.TckNestedHandlers")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("pick")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> StatementDef.doTry(
+                        StatementDef.doTry(throwIllegalState())
+                            .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant("inner").returning()))
+                    .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant("outer").returning())))
+            .build();
+
+        assertEquals("inner", define(definition).getMethod("pick").invoke(null));
+    }
+
+    @Test
+    public void innerFinallyRunsBeforeTheOuterCatch() throws Exception {
+        // String s = ""; try { try { throw ISE } finally { s += "f" } } catch (ISE) { s += "c" } return s
+        VariableDef.Local trace = new VariableDef.Local("trace", TypeDef.STRING);
+        ClassDef definition = ClassDef.builder("example.TckInnerFinally")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("trace")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> StatementDef.multi(
+                    trace.defineAndAssign(ExpressionDef.constant("")),
+                    StatementDef.doTry(StatementDef.doTry(throwIllegalState())
+                            .doFinally(trace.assign(trace.stringConcat(ExpressionDef.constant("f")))))
+                        .doCatch(IllegalStateException.class,
+                            exception -> trace.assign(trace.stringConcat(ExpressionDef.constant("c")))),
+                    trace.returning()
+                )))
+            .build();
+
+        assertEquals("fc", define(definition).getMethod("trace").invoke(null));
+    }
+
+    @Test
+    public void synchronizedBlockReleasesItsMonitorWhenAnOuterCatchHandlesTheException() throws Exception {
+        // try { synchronized (lock) { throw ISE } } catch (ISE) { } return Thread.holdsLock(lock)
+        ClassDef definition = ClassDef.builder("example.TckSynchronizedInTry")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("holdsLockAfterCatch")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("lock", TypeDef.OBJECT)
+                .returns(TypeDef.Primitive.BOOLEAN)
+                .build((ignored, parameters) -> StatementDef.multi(
+                    StatementDef.doTry(new StatementDef.Synchronized(parameters.get(0), throwIllegalState()))
+                        .doCatch(IllegalStateException.class, exception -> StatementDef.multi()),
+                    ClassTypeDef.of(Thread.class)
+                        .invokeStatic("holdsLock", TypeDef.Primitive.BOOLEAN, parameters.get(0))
+                        .returning()
+                )))
+            .build();
+
+        assertFalse((boolean) define(definition).getMethod("holdsLockAfterCatch", Object.class).invoke(null, new Object()));
+    }
+
+    @Test
+    public void finallyReturnOverridesTheReturnOfTheTry() throws Exception {
+        // try { return value; } finally { return 42; }
+        ClassDef definition = ClassDef.builder("example.TckFinallyReturn")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("pick")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.Primitive.INT)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.doTry(parameters.get(0).returning())
+                    .doFinally(ExpressionDef.constant(42).returning())))
+            .build();
+
+        assertEquals(42, define(definition).getMethod("pick", int.class).invoke(null, 1));
+    }
+
+    @Test
+    public void finallyThatReturnsRunsOnceAfterACatchCompletes() throws Exception {
+        // int count = 0; try { throw ISE } catch (ISE) { } finally { count++; return count; }
+        VariableDef.Local count = new VariableDef.Local("count", TypeDef.Primitive.INT);
+        ClassDef definition = ClassDef.builder("example.TckFinallyReturnAfterCatch")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("count")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.multi(
+                    count.defineAndAssign(ExpressionDef.constant(0)),
+                    StatementDef.doTry(throwIllegalState())
+                        .doCatch(IllegalStateException.class, exception -> StatementDef.multi())
+                        .doFinally(StatementDef.multi(
+                            count.assign(count.math(ExpressionDef.MathBinaryOperation.OpType.ADDITION,
+                                ExpressionDef.constant(1))),
+                            count.returning()
+                        ))
+                )))
+            .build();
+
+        assertEquals(1, define(definition).getMethod("count").invoke(null));
+    }
+
+    @Test
+    public void finallyThatThrowsAfterAReturnRunsOnce() throws Exception {
+        // try { return 1; } catch (ISE) { return 2; } finally { counter++; throw ISE }
+        ClassDef definition = ClassDef.builder("example.TckThrowingFinallyAfterReturn")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("counter", AtomicInteger.class)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.doTry(ExpressionDef.constant(1).returning())
+                    .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant(2).returning())
+                    .doFinally(StatementDef.multi(
+                        increment(parameters.get(0)),
+                        throwIllegalState("finally")
+                    ))))
+            .build();
+
+        AtomicInteger counter = new AtomicInteger();
+        assertThrowsIllegalState("finally", define(definition).getMethod("run", AtomicInteger.class), counter);
+        assertEquals(1, counter.get());
+    }
+
+    @Test
+    public void finallyThatThrowsAfterAReturnInACatchRunsOnce() throws Exception {
+        // try { throw ISE } catch (ISE) { return 2; } finally { counter++; throw ISE }
+        ClassDef definition = ClassDef.builder("example.TckThrowingFinallyAfterCatchReturn")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("counter", AtomicInteger.class)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.doTry(throwIllegalState())
+                    .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant(2).returning())
+                    .doFinally(StatementDef.multi(
+                        increment(parameters.get(0)),
+                        throwIllegalState("finally")
+                    ))))
+            .build();
+
+        AtomicInteger counter = new AtomicInteger();
+        assertThrowsIllegalState("finally", define(definition).getMethod("run", AtomicInteger.class), counter);
+        assertEquals(1, counter.get());
+    }
+
+    @Test
+    public void returnInAnInnerTryRunsTheInnerAndTheOuterFinally() throws Exception {
+        // try { try { return 1; } finally { inner++; } } finally { outer++; }
+        ClassDef definition = ClassDef.builder("example.TckNestedFinallyAfterReturn")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("inner", AtomicInteger.class)
+                .addParameter("outer", AtomicInteger.class)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.doTry(
+                        StatementDef.doTry(ExpressionDef.constant(1).returning())
+                            .doFinally(increment(parameters.get(0))))
+                    .doFinally(increment(parameters.get(1)))))
+            .build();
+
+        AtomicInteger inner = new AtomicInteger();
+        AtomicInteger outer = new AtomicInteger();
+        Method run = define(definition).getMethod("run", AtomicInteger.class, AtomicInteger.class);
+        assertEquals(1, run.invoke(null, inner, outer));
+        assertEquals(1, inner.get());
+        assertEquals(1, outer.get());
+    }
+
+    @Test
+    public void returnInATryWithoutFinallyRunsTheOuterFinally() throws Exception {
+        // try { try { return 1; } catch (ISE) { return 2; } } finally { counter++; }
+        ClassDef definition = ClassDef.builder("example.TckOuterFinallyAfterCatchingTry")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("fail", TypeDef.Primitive.BOOLEAN)
+                .addParameter("counter", AtomicInteger.class)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.doTry(
+                        StatementDef.doTry(StatementDef.multi(
+                                parameters.get(0).isTrue().doIf(throwIllegalState()),
+                                ExpressionDef.constant(1).returning()
+                            ))
+                            .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant(2).returning()))
+                    .doFinally(increment(parameters.get(1)))))
+            .build();
+
+        AtomicInteger counter = new AtomicInteger();
+        Method run = define(definition).getMethod("run", boolean.class, AtomicInteger.class);
+        assertEquals(1, run.invoke(null, false, counter));
+        assertEquals(1, counter.get());
+        assertEquals(2, run.invoke(null, true, counter));
+        assertEquals(2, counter.get());
+    }
+
+    @Test
+    public void innerFinallyThatThrowsAfterAReturnRunsOnceAndThenTheOuterFinally() throws Exception {
+        // try { try { return 1; } finally { inner++; throw ISE } } finally { outer++; }
+        ClassDef definition = ClassDef.builder("example.TckThrowingInnerFinallyAfterReturn")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("inner", AtomicInteger.class)
+                .addParameter("outer", AtomicInteger.class)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.doTry(
+                        StatementDef.doTry(ExpressionDef.constant(1).returning())
+                            .doFinally(StatementDef.multi(
+                                increment(parameters.get(0)),
+                                throwIllegalState("inner")
+                            )))
+                    .doFinally(increment(parameters.get(1)))))
+            .build();
+
+        AtomicInteger inner = new AtomicInteger();
+        AtomicInteger outer = new AtomicInteger();
+        Method run = define(definition).getMethod("run", AtomicInteger.class, AtomicInteger.class);
+        assertThrowsIllegalState("inner", run, inner, outer);
+        assertEquals(1, inner.get());
+        assertEquals(1, outer.get());
+    }
+
+    @Test
+    public void outerFinallyThatThrowsAfterAReturnInAnInnerTryRunsOnce() throws Exception {
+        // try { try { return 1; } finally { inner++; } } finally { outer++; throw ISE }
+        ClassDef definition = ClassDef.builder("example.TckThrowingOuterFinallyAfterReturn")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("inner", AtomicInteger.class)
+                .addParameter("outer", AtomicInteger.class)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.doTry(
+                        StatementDef.doTry(ExpressionDef.constant(1).returning())
+                            .doFinally(increment(parameters.get(0))))
+                    .doFinally(StatementDef.multi(
+                        increment(parameters.get(1)),
+                        throwIllegalState("outer")
+                    ))))
+            .build();
+
+        AtomicInteger inner = new AtomicInteger();
+        AtomicInteger outer = new AtomicInteger();
+        Method run = define(definition).getMethod("run", AtomicInteger.class, AtomicInteger.class);
+        assertThrowsIllegalState("outer", run, inner, outer);
+        assertEquals(1, inner.get());
+        assertEquals(1, outer.get());
+    }
+
+    @Test
+    public void returnInATryInsideASynchronizedBlockReleasesTheMonitor() throws Exception {
+        // synchronized (lock) { try { return 1; } catch (ISE) { return 2; } }
+        ClassDef definition = ClassDef.builder("example.TckReturnInTryInSynchronized")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("lock", TypeDef.OBJECT)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> new StatementDef.Synchronized(parameters.get(0),
+                    StatementDef.doTry(ExpressionDef.constant(1).returning())
+                        .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant(2).returning()))))
+            .build();
+
+        Object lock = new Object();
+        assertEquals(1, define(definition).getMethod("run", Object.class).invoke(null, lock));
+        assertFalse(Thread.holdsLock(lock));
+    }
+
+    @Test
+    public void synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows() throws Exception {
+        // try { synchronized (lock) { return 1; } } finally { counter++; throw ISE }
+        ClassDef definition = ClassDef.builder("example.TckThrowingFinallyAfterSynchronizedReturn")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("lock", TypeDef.OBJECT)
+                .addParameter("counter", AtomicInteger.class)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.doTry(
+                        new StatementDef.Synchronized(parameters.get(0), ExpressionDef.constant(1).returning()))
+                    .doFinally(StatementDef.multi(
+                        increment(parameters.get(1)),
+                        throwIllegalState("finally")
+                    ))))
+            .build();
+
+        Method run = define(definition).getMethod("run", Object.class, AtomicInteger.class);
+        Object lock = new Object();
+        AtomicInteger counter = new AtomicInteger();
+        // Releasing the monitor a second time throws from the handler releasing it, which the handler
+        // may protect as javac does, so a failure can loop there
+        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
+            assertThrowsIllegalState("finally", run, lock, counter);
+            assertFalse(Thread.holdsLock(lock));
+        });
+        assertEquals(1, counter.get());
+    }
+
+    @Test
+    public void finallyThatThrowsAfterAYieldRunsOnce() throws Exception {
+        // return switch (value) { case 1 -> { try { yield 1; } finally { counter++; throw ISE } } default -> 0 };
+        ClassDef definition = ClassDef.builder("example.TckThrowingFinallyAfterYield")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.Primitive.INT)
+                .addParameter("counter", AtomicInteger.class)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> new ExpressionDef.Switch(
+                    parameters.get(0),
+                    TypeDef.Primitive.INT,
+                    Map.of(ExpressionDef.constant(1), new ExpressionDef.SwitchYieldCase(TypeDef.Primitive.INT,
+                        StatementDef.doTry(ExpressionDef.constant(1).returning())
+                            .doFinally(StatementDef.multi(
+                                increment(parameters.get(1)),
+                                throwIllegalState("finally")
+                            )))),
+                    ExpressionDef.constant(0)
+                ).returning()))
+            .build();
+
+        AtomicInteger counter = new AtomicInteger();
+        assertThrowsIllegalState("finally", define(definition).getMethod("run", int.class, AtomicInteger.class), 1, counter);
+        assertEquals(1, counter.get());
+    }
+
+    @Test
     @SuppressWarnings("removal")
     public void writesConstructorDelegationWithoutRepeatingFieldInitializers() throws Exception {
         ClassTypeDef self = ClassTypeDef.of("example.TckConstructorDelegationParity");
@@ -1102,6 +1430,24 @@ public abstract class ByteCodeWriterTck {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     private @interface ParameterMarker {
+    }
+
+    private static StatementDef throwIllegalState() {
+        return throwIllegalState("boom");
+    }
+
+    private static StatementDef throwIllegalState(String message) {
+        return ClassTypeDef.of(IllegalStateException.class).instantiate(ExpressionDef.constant(message)).doThrow();
+    }
+
+    private static StatementDef increment(VariableDef counter) {
+        return counter.invoke("incrementAndGet", TypeDef.Primitive.INT);
+    }
+
+    private static void assertThrowsIllegalState(String message, Method method, Object... arguments) {
+        InvocationTargetException exception = assertThrows(InvocationTargetException.class,
+            () -> method.invoke(null, arguments));
+        assertEquals(message, assertInstanceOf(IllegalStateException.class, exception.getCause()).getMessage());
     }
 
     private static MethodDef binaryMethod(String name,
