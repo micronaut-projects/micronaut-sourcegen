@@ -22,6 +22,7 @@ import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
+import io.micronaut.sourcegen.model.LambdaDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
@@ -1024,6 +1025,80 @@ public abstract class ByteCodeWriterTck {
         assertEquals(1, generated.getField("initializations").get(null));
     }
 
+    @Test
+    public void writesLambdasDeclaredInsideNestedBlocks() throws Exception {
+        LambdaDef supplier = ClassTypeDef.of(Supplier.class).getLambda(Map.of("T", TypeDef.STRING));
+        VariableDef.Local top = new VariableDef.Local("top", ClassTypeDef.of(Supplier.class));
+        ClassDef definition = ClassDef.builder("example.TckNestedBlockLambdas")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("afterTopLevel")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("flag", TypeDef.Primitive.BOOLEAN)
+                .addParameter("value", TypeDef.STRING)
+                .returns(TypeDef.OBJECT)
+                .build((ignored, parameters) -> StatementDef.multi(
+                    top.defineAndAssign(prefixed(supplier, "top:", parameters.get(1))),
+                    parameters.get(0).isTrue().doIf(
+                        prefixed(supplier, "if:", parameters.get(1)).invoke().returning()),
+                    top.invoke("get", TypeDef.OBJECT).returning()
+                )))
+            .addMethod(MethodDef.builder("branch")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("flag", TypeDef.Primitive.BOOLEAN)
+                .addParameter("value", TypeDef.STRING)
+                .returns(TypeDef.OBJECT)
+                .build((ignored, parameters) -> parameters.get(0).isTrue().doIfElse(
+                    prefixed(supplier, "if:", parameters.get(1)).invoke().returning(),
+                    prefixed(supplier, "else:", parameters.get(1)).invoke().returning()
+                )))
+            .addMethod(MethodDef.builder("caught")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.STRING)
+                .returns(TypeDef.OBJECT)
+                .build((ignored, parameters) -> StatementDef.doTry(
+                    ClassTypeDef.of(IllegalStateException.class).instantiate(parameters.get(0)).doThrow()
+                ).doCatch(IllegalStateException.class, exception -> prefixed(supplier, "catch:", parameters.get(0))
+                    .invoke().returning())))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        // A lambda in a nested block must not be linked to the one declared before it in the method body
+        Method afterTopLevel = generated.getMethod("afterTopLevel", boolean.class, String.class);
+        assertEquals("if:value", afterTopLevel.invoke(null, true, "value"));
+        assertEquals("top:value", afterTopLevel.invoke(null, false, "value"));
+        Method branch = generated.getMethod("branch", boolean.class, String.class);
+        assertEquals("if:value", branch.invoke(null, true, "value"));
+        assertEquals("else:value", branch.invoke(null, false, "value"));
+        assertEquals("catch:value", generated.getMethod("caught", String.class).invoke(null, "value"));
+    }
+
+    @Test
+    public void writesThisInsideANestedBlockOfALambdaBody() throws Exception {
+        LambdaDef supplier = ClassTypeDef.of(Supplier.class).getLambda(Map.of("T", TypeDef.STRING));
+        FieldDef name = FieldDef.builder("name", TypeDef.STRING).addModifiers(Modifier.PUBLIC).build();
+        ClassDef definition = ClassDef.builder("example.TckLambdaNestedThis")
+            .addModifiers(Modifier.PUBLIC)
+            .addField(name)
+            .addMethod(MethodDef.builder("describe")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter("named", TypeDef.Primitive.BOOLEAN)
+                .returns(TypeDef.OBJECT)
+                .build((aThis, parameters) -> supplier.implement((ignored, lambdaParameters) -> StatementDef.multi(
+                    parameters.get(0).isTrue().doIf(aThis.field(name).returning()),
+                    ExpressionDef.constant("anonymous").returning()
+                )).invoke().returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+        Object value = generated.getConstructor().newInstance();
+        generated.getField("name").set(value, "Ada");
+
+        Method describe = generated.getMethod("describe", boolean.class);
+        assertEquals("Ada", describe.invoke(value, true));
+        assertEquals("anonymous", describe.invoke(value, false));
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     private @interface ParameterMarker {
@@ -1038,6 +1113,11 @@ public abstract class ByteCodeWriterTck {
             .addParameter("right", type)
             .returns(type)
             .build((ignored, parameters) -> parameters.get(0).math(operation, parameters.get(1)).returning());
+    }
+
+    private static ExpressionDef.Lambda prefixed(LambdaDef supplier, String prefix, ExpressionDef value) {
+        return supplier.implement((ignored, parameters) -> ExpressionDef.constant(prefix)
+            .invoke("concat", TypeDef.STRING, value).returning());
     }
 
     private static MethodDef comparisonMethod(String name,
