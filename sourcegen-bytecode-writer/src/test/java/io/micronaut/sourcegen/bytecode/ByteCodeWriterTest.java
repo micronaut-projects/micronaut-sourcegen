@@ -2925,41 +2925,49 @@ class test/MyClass {
   // access flags 0x1
   public interceptedTarget()Ljava/lang/Object;
     TRYCATCHBLOCK L0 L1 L2 null
+    TRYCATCHBLOCK L3 L4 L2 null
+    TRYCATCHBLOCK L5 L6 L2 null
    L0
     ALOAD 0
     GETFIELD test/MyClass.myField : Ljava/lang/Integer;
-    IFNONNULL L3
+    IFNONNULL L7
     ICONST_1
     INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
     ASTORE 1
+   L1
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Hello"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 1
     ARETURN
    L3
+   L7
     ALOAD 0
     GETFIELD test/MyClass.myField : Ljava/lang/Integer;
-    IFNULL L4
+    IFNULL L8
     ICONST_2
     INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
     ASTORE 2
+   L4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Hello"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 2
     ARETURN
-   L4
+   L5
+   L8
     ALOAD 0
     GETFIELD test/MyClass.myField : Ljava/lang/Integer;
     ASTORE 3
+   L6
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Hello"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 3
     ARETURN
-   L1
-    GOTO L5
+   L9
+   L10
+    GOTO L11
    L2
     ASTORE 4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
@@ -2967,8 +2975,8 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 4
     ATHROW
-    GOTO L5
-   L5
+    GOTO L11
+   L11
 }
 """, bytecode);
 
@@ -2979,23 +2987,24 @@ class MyClass {
    private Integer myField;
 
    public Object interceptedTarget() {
+      Integer var1;
       try {
-         if (this.myField == null) {
-            Integer var1 = 1;
-            System.out.println("Hello");
-            return var1;
-         } else if (this.myField != null) {
-            Integer var2 = 2;
-            System.out.println("Hello");
-            return var2;
-         } else {
+         if (this.myField != null) {
+            if (this.myField != null) {
+               Integer var2 = 2;
+               return var2;
+            }
+
             Integer var3 = this.myField;
-            System.out.println("Hello");
             return var3;
          }
+
+         var1 = 1;
       } finally {
          System.out.println("Hello");
       }
+
+      return var1;
    }
 }
 """, decompileToJava(bytes));
@@ -3067,14 +3076,16 @@ class test/MyClass {
     PUTFIELD test/MyClass.target : Ljava/lang/Object;
     ALOAD 2
     ASTORE 3
+   L1
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 3
     ARETURN
    L5
-   L1
-    GOTO L6
+   L6
+   L7
+    GOTO L8
    L2
     ASTORE 4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
@@ -3082,11 +3093,11 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 4
     ATHROW
-    GOTO L6
-   L6
-   L7
-    LOCALVARIABLE target Ljava/lang/Object; L4 L5 2
-    LOCALVARIABLE arg1 Ljava/lang/Object; L3 L7 1
+    GOTO L8
+   L8
+   L9
+    LOCALVARIABLE target Ljava/lang/Object; L4 L6 2
+    LOCALVARIABLE arg1 Ljava/lang/Object; L3 L9 1
 }
 """, bytecode);
 
@@ -3099,14 +3110,16 @@ class MyClass {
    public Object swap(Object arg1) {
       System.out.println("Hello");
 
+      Object var3;
       try {
          Object target = this.target;
          this.target = arg1;
-         System.out.println("World");
-         return target;
+         var3 = target;
       } finally {
          System.out.println("World");
       }
+
+      return var3;
    }
 }
 """, decompileToJava(bytes));
@@ -3332,29 +3345,34 @@ class test/MyClass {
   // access flags 0x1
   public bothReturn(Z)Ljava/lang/String;
     TRYCATCHBLOCK L0 L1 L2 null
-   L3
+    TRYCATCHBLOCK L3 L4 L2 null
+   L5
    L0
     ILOAD 1
     ICONST_1
-    IF_ICMPNE L4
+    IF_ICMPNE L6
     LDC "a"
     ASTORE 2
+   L1
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 2
     ARETURN
-   L5
-   L4
+   L3
+   L7
+   L6
     LDC "b"
     ASTORE 3
+   L4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 3
     ARETURN
-   L1
-    GOTO L6
+   L8
+   L9
+    GOTO L10
    L2
     ASTORE 4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
@@ -3362,33 +3380,36 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 4
     ATHROW
-    GOTO L6
-   L6
-   L7
-    LOCALVARIABLE flag Z L3 L7 1
+    GOTO L10
+   L10
+   L11
+    LOCALVARIABLE flag Z L5 L11 1
 
   // access flags 0x1
   public elseFallsThrough(Z)V
     TRYCATCHBLOCK L0 L1 L2 null
-   L3
+    TRYCATCHBLOCK L3 L4 L2 null
+   L5
    L0
     ILOAD 1
     ICONST_1
-    IF_ICMPNE L4
-    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
-    LDC "World"
-    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
-    RETURN
-   L5
-   L4
-    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
-    LDC "Else"
-    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    IF_ICMPNE L6
    L1
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
-    GOTO L6
+    RETURN
+   L3
+   L7
+   L6
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "Else"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+   L4
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    GOTO L8
    L2
     ASTORE 2
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
@@ -3396,11 +3417,11 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 2
     ATHROW
-    GOTO L6
-   L6
+    GOTO L8
+   L8
     RETURN
-   L7
-    LOCALVARIABLE flag Z L3 L7 1
+   L9
+    LOCALVARIABLE flag Z L5 L9 1
 
   // access flags 0x1
   public thenFallsThrough(Z)V
@@ -3415,15 +3436,17 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
    L5
    L4
-    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
-    LDC "World"
-    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
-    RETURN
    L1
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
-    GOTO L6
+    RETURN
+   L6
+   L7
+    GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
+    LDC "World"
+    INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
+    GOTO L8
    L2
     ASTORE 2
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
@@ -3431,11 +3454,11 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 2
     ATHROW
-    GOTO L6
-   L6
+    GOTO L8
+   L8
     RETURN
-   L7
-    LOCALVARIABLE flag Z L3 L7 1
+   L9
+    LOCALVARIABLE flag Z L3 L9 1
 }
 """, bytecode);
 
@@ -3444,29 +3467,27 @@ package test;
 
 class MyClass {
    public String bothReturn(boolean flag) {
+      String var2;
       try {
-         if (flag) {
-            String var2 = "a";
-            System.out.println("World");
-            return var2;
-         } else {
+         if (!flag) {
             String var3 = "b";
-            System.out.println("World");
             return var3;
          }
+
+         var2 = "a";
       } finally {
          System.out.println("World");
       }
+
+      return var2;
    }
 
    public void elseFallsThrough(boolean flag) {
       try {
-         if (flag) {
-            System.out.println("World");
+         if (!flag) {
+            System.out.println("Else");
             return;
          }
-
-         System.out.println("Else");
       } finally {
          System.out.println("World");
       }
@@ -3478,11 +3499,10 @@ class MyClass {
          if (flag) {
             System.out.println("Then");
          }
-
-         System.out.println("World");
       } finally {
          System.out.println("World");
       }
+
    }
 }
 """, decompileToJava(bytes));

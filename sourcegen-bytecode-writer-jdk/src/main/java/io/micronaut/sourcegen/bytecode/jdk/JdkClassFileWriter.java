@@ -540,18 +540,15 @@ final class JdkClassFileWriter {
                                          ClassDesc owner) {
         int flags = classDef.getModifiers().contains(javax.lang.model.element.Modifier.PUBLIC)
             ? ModifierUtils.ACC_PUBLIC : 0;
-        builder.withMethod(MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void, flags, methodBuilder -> {
-            methodBuilder.withCode(code -> {
-            code.aload(0).invokespecial(superclass == null ? ConstantDescs.CD_Object : classDesc(superclass, classDef),
-                MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void);
-            JdkMethodWriter writer = JdkMethodWriter.create(code, classDef,
-                MethodDef.constructor().build(), owner);
-            writeInstanceInitializers(writer, classDef);
-            syntheticMethods.addAll(writer.lambdaMethods());
-            writer.writeLocalVariables();
-            code.return_();
-            });
-        });
+        builder.withMethod(MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void, flags, methodBuilder ->
+            JdkMethodWriter.withCode(methodBuilder, classDef, MethodDef.constructor().build(), owner, (code, writer) -> {
+                code.aload(0).invokespecial(superclass == null ? ConstantDescs.CD_Object : classDesc(superclass, classDef),
+                    MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void);
+                writeInstanceInitializers(writer, classDef);
+                syntheticMethods.addAll(writer.lambdaMethods());
+                writer.writeLocalVariables();
+                code.return_();
+            }));
     }
 
     private void writeConstructor(ClassBuilder builder, ObjectDef objectDef, MethodDef method, ClassDesc owner,
@@ -560,8 +557,7 @@ final class JdkClassFileWriter {
         builder.withMethod(method.getName(), type, methodFlags(method), methodBuilder -> {
             addMethodMetadata(methodBuilder, objectDef, method);
             addTypeAnnotations(methodBuilder, method);
-            methodBuilder.withCode(code -> {
-                JdkMethodWriter writer = JdkMethodWriter.create(code, objectDef, method, owner);
+            JdkMethodWriter.withCode(methodBuilder, objectDef, method, owner, (code, writer) -> {
                 // Mirror the ASM writer. Field initializers run straight after the constructor
                 // call, so the call is hoisted to the front only when there are any; otherwise the
                 // statements stay as they are, because the call may use locals defined before it.
@@ -610,11 +606,10 @@ final class JdkClassFileWriter {
         builder.withMethod(method.getName(), type, flags, methodBuilder -> {
             addMethodMetadata(methodBuilder, objectDef, method, (extraFlags & ModifierUtils.ACC_BRIDGE) == 0);
             addTypeAnnotations(methodBuilder, method);
-            methodBuilder.withCode(code -> {
+            JdkMethodWriter.withCode(methodBuilder, objectDef, method, owner, (code, writer) -> {
                 if (method.getStatements().isEmpty()) {
                     code.return_();
                 } else {
-                    JdkMethodWriter writer = JdkMethodWriter.create(code, objectDef, method, owner);
                     writer.writeStatements(method.getStatements());
                     syntheticMethods.addAll(writer.lambdaMethods());
                     if (JdkMethodWriter.canCompleteNormally(StatementDef.multi(method.getStatements()))) {

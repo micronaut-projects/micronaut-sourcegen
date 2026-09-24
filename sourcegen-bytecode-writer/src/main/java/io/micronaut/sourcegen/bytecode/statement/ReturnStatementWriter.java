@@ -40,6 +40,7 @@ final class ReturnStatementWriter implements StatementWriter {
             return;
         }
         aReturn.validate(context.methodDef());
+        int openGaps = context.openGaps().size();
         if (aReturn.expression() != null) {
             ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aReturn.expression(), context.methodDef().getReturnType());
             pushFinallyStatement(generatorAdapter, context, finallyBlock, context.methodDef().getReturnType());
@@ -49,6 +50,7 @@ final class ReturnStatementWriter implements StatementWriter {
             }
         }
         generatorAdapter.returnValue();
+        context.closeGaps(generatorAdapter, openGaps);
     }
 
     /**
@@ -65,10 +67,12 @@ final class ReturnStatementWriter implements StatementWriter {
         }
         ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, expression, yieldTarget.type());
         generatorAdapter.storeLocal(yieldTarget.slot(), TypeUtils.getType(yieldTarget.type(), context.objectDef()));
+        int openGaps = context.openGaps().size();
         if (finallyBlock != null) {
             finallyBlock.run();
         }
         generatorAdapter.goTo(yieldTarget.end());
+        context.closeGaps(generatorAdapter, openGaps);
     }
 
     private void pushFinallyStatement(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock, TypeDef expTypeDef) {
