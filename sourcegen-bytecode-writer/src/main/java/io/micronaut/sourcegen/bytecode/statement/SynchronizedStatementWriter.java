@@ -85,7 +85,7 @@ final class SynchronizedStatementWriter implements StatementWriter {
 
         // The JVM takes the first entry of the exception table that matches, so the handler releasing
         // the monitor follows those of the statements nested in the block
-        TryCatchStatementWriter.visitTryCatchBlocks(generatorAdapter, synchronizedStart, synchronizedEnd, gaps, synchronizedException, null);
+        TryCatchStatementWriter.visitTryCatchBlocksAroundGaps(generatorAdapter, synchronizedStart, synchronizedEnd, gaps, synchronizedException, null);
         generatorAdapter.visitTryCatchBlock(synchronizedException, synchronizedExceptionEnd, synchronizedException, null);
     }
 

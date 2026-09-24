@@ -119,7 +119,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
 
         generatorAdapter.visitLabel(end);
 
-        visitTryCatchBlocks(generatorAdapter, context, tryStart, tryEnd, exceptionHandlers, finallyExceptionHandler);
+        visitTryCatchBlocks(generatorAdapter, context, tryStart, tryEnd, tryGaps, exceptionHandlers, finallyExceptionHandler);
     }
 
     /**
@@ -131,6 +131,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
      * @param context                 The method context
      * @param tryStart                The start of the try block
      * @param tryEnd                  The end of the try block
+     * @param tryGaps                 The gaps in the try block
      * @param exceptionHandlers       The catch blocks
      * @param finallyExceptionHandler The handler running the finally block, if there is one
      */
@@ -138,10 +139,11 @@ public final class TryCatchStatementWriter implements StatementWriter {
                                             MethodContext context,
                                             Label tryStart,
                                             Label tryEnd,
+                                            List<MethodContext.Gap> tryGaps,
                                             List<CatchBlock> exceptionHandlers,
                                             @Nullable Label finallyExceptionHandler) {
         for (CatchBlock catchBlock : exceptionHandlers) {
-            visitTryCatchBlocks(
+            visitTryCatchBlocksAroundGaps(
                 generatorAdapter,
                 tryStart,
                 tryEnd,
@@ -151,10 +153,10 @@ public final class TryCatchStatementWriter implements StatementWriter {
             );
         }
         if (finallyExceptionHandler != null) {
-            visitTryCatchBlocks(generatorAdapter, tryStart, tryEnd, tryGaps, finallyExceptionHandler, null);
+            visitTryCatchBlocksAroundGaps(generatorAdapter, tryStart, tryEnd, tryGaps, finallyExceptionHandler, null);
             for (CatchBlock catchBlock : exceptionHandlers) {
                 if (catchBlock.to != null) {
-                    visitTryCatchBlocks(generatorAdapter, catchBlock.from, catchBlock.to, catchBlock.gaps, finallyExceptionHandler, null);
+                    visitTryCatchBlocksAroundGaps(generatorAdapter, catchBlock.from, catchBlock.to, catchBlock.gaps, finallyExceptionHandler, null);
                 }
             }
         }
@@ -198,12 +200,12 @@ public final class TryCatchStatementWriter implements StatementWriter {
      * @param handler          The handler
      * @param type             The internal name of the exception type handled, or null for any
      */
-    static void visitTryCatchBlocks(GeneratorAdapter generatorAdapter,
-                                    Label start,
-                                    Label end,
-                                    List<MethodContext.Gap> gaps,
-                                    Label handler,
-                                    @Nullable String type) {
+    static void visitTryCatchBlocksAroundGaps(GeneratorAdapter generatorAdapter,
+                                              Label start,
+                                              Label end,
+                                              List<MethodContext.Gap> gaps,
+                                              Label handler,
+                                              @Nullable String type) {
         Label from = start;
         for (MethodContext.Gap gap : gaps) {
             generatorAdapter.visitTryCatchBlock(from, gap.start(), handler, type);
