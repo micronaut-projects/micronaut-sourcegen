@@ -72,14 +72,14 @@ final class Invocations {
         }
         if (returningType == null) {
             List<MethodDef> possible = narrowByArguments(candidates, values);
-            return possible.size() == 1 ? resolved(possible.get(0), values) : null;
+            return possible.size() == 1 ? resolved(possible.get(0), null, values) : null;
         }
         List<MethodDef> matching = narrowByArguments(candidates.stream()
             .filter(m -> sameErasure(m.getReturnType(), returningType))
             .toList(), values);
         // A requested return type that matches none of the declarations is left alone: it is legal for the
         // Java writer, which lets javac resolve the call, and the bytecode writer reports it instead
-        return matching.size() == 1 ? resolved(matching.get(0), values) : null;
+        return matching.size() == 1 ? resolved(matching.get(0), returningType, values) : null;
     }
 
     /**
@@ -248,9 +248,11 @@ final class Invocations {
         };
     }
 
-    private static Resolved resolved(MethodDef method, List<? extends ExpressionDef> values) {
+    private static Resolved resolved(MethodDef method,
+                                     @Nullable TypeDef returningType,
+                                     List<? extends ExpressionDef> values) {
         List<TypeDef> parameterTypes = method.getParameters().stream().map(ParameterDef::getType).toList();
-        return new Resolved(parameterTypes, adaptToVarArgs(parameterTypes, values));
+        return new Resolved(parameterTypes, adaptToVarArgs(parameterTypes, returningType, values));
     }
 
     /**
@@ -258,10 +260,12 @@ final class Invocations {
      * matches the declared parameters.
      *
      * @param parameterTypes The declared parameter types
+     * @param returningType  The return type the caller expects, or {@code null} when it is not known
      * @param values         The argument expressions
      * @return The adapted arguments
      */
     private static List<? extends ExpressionDef> adaptToVarArgs(List<TypeDef> parameterTypes,
+                                                                @Nullable TypeDef returningType,
                                                                 List<? extends ExpressionDef> values) {
         if (parameterTypes.isEmpty()) {
             return values;
@@ -274,10 +278,73 @@ final class Invocations {
             // The caller already passed the array
             return values;
         }
+        List<ExpressionDef> packed = List.copyOf(values.subList(fixed, values.size()));
         List<ExpressionDef> adapted = new ArrayList<>(parameterTypes.size());
         adapted.addAll(values.subList(0, fixed));
-        adapted.add(new ExpressionDef.NewArrayInitialized(array, List.copyOf(values.subList(fixed, values.size()))));
+        adapted.add(new ExpressionDef.NewArrayInitialized(packedArrayType(array, returningType, packed), packed));
         return adapted;
+    }
+
+    /**
+     * The type of the array a variable arity tail is packed into.
+     *
+     * <p>A variable arity parameter declared with a type variable - {@code List.of(E...)} - erases to
+     * {@code Object[]}, and an {@code Object[]} argument pins the variable to {@link Object}. The Java
+     * writer then renders {@code List.of(new Object[]{...})}, which javac rejects against a
+     * {@code List<Entry>} target with "inference variable E has incompatible bounds"; the fixed arity
+     * overloads hide this until there are more arguments than any of them takes. Typing the array with
+     * the element type the call site asks for - the array javac itself builds for a variable arity call -
+     * keeps the rendered source compiling and remains a valid argument for the erased descriptor the
+     * bytecode writer emits.
+     *
+     * @param declared      The declared array parameter type
+     * @param returningType The return type the caller expects, or {@code null} when it is not known
+     * @param packed        The arguments being packed into the array
+     * @return The array type to pack them into
+     */
+    private static TypeDef.Array packedArrayType(TypeDef.Array declared,
+                                                 @Nullable TypeDef returningType,
+                                                 List<? extends ExpressionDef> packed) {
+        if (packed.isEmpty() || declared.dimensions() != 1 || !isObject(declared.componentType())) {
+            return declared;
+        }
+        TypeDef elementType = requestedElementType(returningType);
+        if (elementType == null || isObject(elementType)) {
+            return declared;
+        }
+        for (ExpressionDef value : packed) {
+            if (!maybeAssignable(elementType, value.type())) {
+                return declared;
+            }
+        }
+        return new TypeDef.Array(elementType, 1, declared.nullable());
+    }
+
+    /**
+     * The element type a return type pins, for a declaration that returns the container of its variable
+     * arity elements - {@code List.of}, {@code Set.of}, {@code Arrays.asList}, {@code Stream.of}. A type
+     * that cannot be written as an array component - a parameterized type, a wildcard or a variable -
+     * pins nothing, because a generic array cannot be created.
+     *
+     * @param returningType The return type the caller expects, or {@code null} when it is not known
+     * @return The element type, or {@code null} when none is pinned
+     */
+    @Nullable
+    private static TypeDef requestedElementType(@Nullable TypeDef returningType) {
+        if (!(returningType instanceof ClassTypeDef.Parameterized parameterized)
+            || parameterized.typeArguments().size() != 1) {
+            return null;
+        }
+        TypeDef typeArgument = parameterized.typeArguments().get(0);
+        return typeArgument instanceof ClassTypeDef
+            && !(typeArgument instanceof ClassTypeDef.Parameterized)
+            && !(typeArgument instanceof ClassTypeDef.AnnotatedClassTypeDef)
+            ? typeArgument : null;
+    }
+
+    private static boolean isObject(TypeDef typeDef) {
+        return erase(typeDef) instanceof ClassTypeDef classTypeDef
+            && Object.class.getName().equals(classTypeDef.getName());
     }
 
     /**
