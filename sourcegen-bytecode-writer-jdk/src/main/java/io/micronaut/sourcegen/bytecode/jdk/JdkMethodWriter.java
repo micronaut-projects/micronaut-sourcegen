@@ -269,7 +269,23 @@ final class JdkMethodWriter {
 
     private void writeCleanups(int from) {
         for (int i = cleanups.size() - 1; i >= from; i--) {
-            cleanups.get(i).run();
+            writeCleanup(i);
+        }
+    }
+
+    /**
+     * Writes a pending cleanup. The cleanup belongs outside of the statement that opened it, so only
+     * the cleanups opened before it are pending while it is written - a return in a finally block
+     * runs those, not the finally block again.
+     */
+    private void writeCleanup(int index) {
+        List<Runnable> opened = cleanups.subList(index, cleanups.size());
+        List<Runnable> suspended = new ArrayList<>(opened);
+        opened.clear();
+        try {
+            suspended.getFirst().run();
+        } finally {
+            cleanups.addAll(suspended);
         }
     }
 
@@ -279,17 +295,16 @@ final class JdkMethodWriter {
         Label tryEnd = code.newLabel();
         Label end = code.newLabel();
         Label finallyHandler = finallyStatement == null ? null : code.newLabel();
-        List<CatchHandler> handlers = registerCatchHandlers(aTry, tryStart, tryEnd);
-        if (finallyHandler != null) {
-            registerFinallyHandlers(tryStart, tryEnd, finallyHandler, handlers);
+        List<CatchHandler> handlers = new ArrayList<>();
+        for (StatementDef.Try.Catch aCatch : aTry.catches()) {
+            handlers.add(new CatchHandler(aCatch, code.newLabel(), finallyHandler == null ? null : code.newLabel()));
         }
 
         code.labelBinding(tryStart);
         writeTryBody(aTry.statement(), finallyStatement);
         code.labelBinding(tryEnd);
         if (canCompleteNormally(aTry.statement())) {
-            writeFinally(finallyStatement);
-            code.goto_(end);
+            writeFinallyAndExit(finallyStatement, end);
         }
 
         writeCatchHandlers(handlers, finallyStatement, end);
@@ -297,24 +312,29 @@ final class JdkMethodWriter {
             writeFinallyHandler(finallyHandler, finallyStatement);
         }
         code.labelBinding(end);
+
+        // The JVM takes the first entry of the exception table that matches, so the entries of the try
+        // follow those of the statements nested in it, which were added as they were written
+        registerCatchHandlers(tryStart, tryEnd, handlers);
+        if (finallyHandler != null) {
+            registerFinallyHandlers(tryStart, tryEnd, finallyHandler, handlers);
+        }
     }
 
-    private List<CatchHandler> registerCatchHandlers(StatementDef.Try aTry, Label tryStart, Label tryEnd) {
-        List<CatchHandler> handlers = new ArrayList<>();
-        for (StatementDef.Try.Catch aCatch : aTry.catches()) {
-            Label handler = code.newLabel();
-            handlers.add(new CatchHandler(aCatch, handler));
-            code.exceptionCatch(tryStart, tryEnd, handler, classDesc(aCatch.exception()));
+    private void registerCatchHandlers(Label tryStart, Label tryEnd, List<CatchHandler> handlers) {
+        for (CatchHandler handler : handlers) {
+            code.exceptionCatch(tryStart, tryEnd, handler.label(), classDesc(handler.aCatch().exception()));
         }
-        return handlers;
     }
 
     private void registerFinallyHandlers(Label tryStart, Label tryEnd, Label finallyHandler,
                                          List<CatchHandler> handlers) {
         code.exceptionCatchAll(tryStart, tryEnd, finallyHandler);
         for (CatchHandler handler : handlers) {
-            handler.protectedEnd = code.newLabel();
-            code.exceptionCatchAll(handler.label, handler.protectedEnd, finallyHandler);
+            Label protectedEnd = handler.protectedEnd();
+            if (protectedEnd != null) {
+                code.exceptionCatchAll(handler.label(), protectedEnd, finallyHandler);
+            }
         }
     }
 
@@ -326,20 +346,20 @@ final class JdkMethodWriter {
 
     private void writeCatchHandlers(List<CatchHandler> handlers, @Nullable StatementDef finallyStatement, Label end) {
         for (CatchHandler handler : handlers) {
-            code.labelBinding(handler.label);
+            code.labelBinding(handler.label());
             int slot = code.allocateLocal(TypeKind.REFERENCE);
             code.storeLocal(TypeKind.REFERENCE, slot);
-            locals.put(EXCEPTION_NAME, new Local(handler.aCatch.exception(), slot));
+            locals.put(EXCEPTION_NAME, new Local(handler.aCatch().exception(), slot));
             addCleanup(finallyStatement);
-            writeStatement(handler.aCatch.statement());
+            writeStatement(handler.aCatch().statement());
             removeCleanup(finallyStatement);
             locals.remove(EXCEPTION_NAME);
-            if (handler.protectedEnd != null) {
-                code.labelBinding(handler.protectedEnd);
+            Label protectedEnd = handler.protectedEnd();
+            if (protectedEnd != null) {
+                code.labelBinding(protectedEnd);
             }
-            if (canCompleteNormally(handler.aCatch.statement())) {
-                writeFinally(finallyStatement);
-                code.goto_(end);
+            if (canCompleteNormally(handler.aCatch().statement())) {
+                writeFinallyAndExit(finallyStatement, end);
             }
         }
     }
@@ -371,6 +391,18 @@ final class JdkMethodWriter {
         }
     }
 
+    /**
+     * Writes the finally block of a try block or catch block that completed, then the jump past the
+     * try. A finally block that cannot complete takes no jump: the try cannot complete either, so its
+     * end may be the end of the code.
+     */
+    private void writeFinallyAndExit(@Nullable StatementDef finallyStatement, Label end) {
+        writeFinally(finallyStatement);
+        if (finallyStatement == null || canCompleteNormally(finallyStatement)) {
+            code.goto_(end);
+        }
+    }
+
     private void writeSynchronized(StatementDef.Synchronized synchronizedStatement) {
         writeExpression(synchronizedStatement.monitor());
         int monitorSlot = code.allocateLocal(TypeKind.REFERENCE);
@@ -380,7 +412,6 @@ final class JdkMethodWriter {
         Label end = code.newLabel();
         Label handler = code.newLabel();
         Label complete = code.newLabel();
-        code.exceptionCatchAll(start, end, handler);
         code.labelBinding(start);
         Runnable exit = () -> code.loadLocal(TypeKind.REFERENCE, monitorSlot).monitorexit();
         cleanups.add(exit);
@@ -397,6 +428,10 @@ final class JdkMethodWriter {
         exit.run();
         code.loadLocal(TypeKind.REFERENCE, exceptionSlot).athrow();
         code.labelBinding(complete);
+
+        // The JVM takes the first entry of the exception table that matches, so the entry releasing the
+        // monitor follows those of the statements nested in the block
+        code.exceptionCatchAll(start, end, handler);
     }
 
     private void writeSwitch(StatementDef.Switch aSwitch) {
@@ -1691,14 +1726,13 @@ final class JdkMethodWriter {
     private record Local(TypeDef type, int slot) {
     }
 
-    private static final class CatchHandler {
-        private final StatementDef.Try.Catch aCatch;
-        private final Label label;
-        private @Nullable Label protectedEnd;
-
-        private CatchHandler(StatementDef.Try.Catch aCatch, Label label) {
-            this.aCatch = aCatch;
-            this.label = label;
-        }
+    /**
+     * A catch block of a try being written.
+     *
+     * @param aCatch       The catch block
+     * @param label        The label of its handler
+     * @param protectedEnd The end of the handler's range covered by the finally block, if there is one
+     */
+    private record CatchHandler(StatementDef.Try.Catch aCatch, Label label, @Nullable Label protectedEnd) {
     }
 }

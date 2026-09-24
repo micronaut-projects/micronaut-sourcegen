@@ -49,16 +49,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
         List<CatchBlock> exceptionHandlers = new ArrayList<>();
 
         for (StatementDef.Try.Catch aCatch : aTry.catches()) {
-            Label exceptionHandler = new Label();
-
-            exceptionHandlers.add(new CatchBlock(aCatch, exceptionHandler));
-
-            generatorAdapter.visitTryCatchBlock(
-                tryStart,
-                tryEnd,
-                exceptionHandler,
-                TypeUtils.getType(aCatch.exception(), context.objectDef()).getInternalName()
-            );
+            exceptionHandlers.add(new CatchBlock(aCatch, new Label()));
         }
 
         Label finallyExceptionHandler = null;
@@ -66,20 +57,8 @@ public final class TryCatchStatementWriter implements StatementWriter {
 
         if (finallyStatement != null) {
             finallyExceptionHandler = new Label();
-            generatorAdapter.visitTryCatchBlock(
-                tryStart,
-                tryEnd,
-                finallyExceptionHandler,
-                null
-            );
             for (CatchBlock catchBlock : exceptionHandlers) {
                 catchBlock.to = new Label();
-                generatorAdapter.visitTryCatchBlock(
-                    catchBlock.from,
-                    catchBlock.to,
-                    finallyExceptionHandler,
-                    null
-                );
             }
         }
 
@@ -116,7 +95,8 @@ public final class TryCatchStatementWriter implements StatementWriter {
             }
 
             if (finallyStatement != null) {
-                StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, thisFinallyBlock);
+                // Outside of the try, so a return in it runs only the finally blocks around the try
+                StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, finallyBlock);
             }
 
             generatorAdapter.goTo(end);
@@ -138,6 +118,44 @@ public final class TryCatchStatementWriter implements StatementWriter {
         }
 
         generatorAdapter.visitLabel(end);
+
+        visitTryCatchBlocks(generatorAdapter, context, tryStart, tryEnd, exceptionHandlers, finallyExceptionHandler);
+    }
+
+    /**
+     * Visits the exception handlers of the try once it is written. The JVM takes the first entry of the
+     * exception table that matches, so the handlers of the try follow those of the statements nested in
+     * it, which were visited as they were written.
+     *
+     * @param generatorAdapter        The generator adapter
+     * @param context                 The method context
+     * @param tryStart                The start of the try block
+     * @param tryEnd                  The end of the try block
+     * @param exceptionHandlers       The catch blocks
+     * @param finallyExceptionHandler The handler running the finally block, if there is one
+     */
+    private static void visitTryCatchBlocks(GeneratorAdapter generatorAdapter,
+                                            MethodContext context,
+                                            Label tryStart,
+                                            Label tryEnd,
+                                            List<CatchBlock> exceptionHandlers,
+                                            @Nullable Label finallyExceptionHandler) {
+        for (CatchBlock catchBlock : exceptionHandlers) {
+            generatorAdapter.visitTryCatchBlock(
+                tryStart,
+                tryEnd,
+                catchBlock.from,
+                TypeUtils.getType(catchBlock.aCatch.exception(), context.objectDef()).getInternalName()
+            );
+        }
+        if (finallyExceptionHandler != null) {
+            generatorAdapter.visitTryCatchBlock(tryStart, tryEnd, finallyExceptionHandler, null);
+            for (CatchBlock catchBlock : exceptionHandlers) {
+                if (catchBlock.to != null) {
+                    generatorAdapter.visitTryCatchBlock(catchBlock.from, catchBlock.to, finallyExceptionHandler, null);
+                }
+            }
+        }
     }
 
     /**

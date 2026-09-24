@@ -38,8 +38,6 @@ final class SynchronizedStatementWriter implements StatementWriter {
         Label synchronizedEnd = new Label();
         Label synchronizedException = new Label();
         Label synchronizedExceptionEnd = new Label();
-        generatorAdapter.visitTryCatchBlock(synchronizedStart, synchronizedEnd, synchronizedException, null);
-        generatorAdapter.visitTryCatchBlock(synchronizedException, synchronizedExceptionEnd, synchronizedException, null);
 
         ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aSynchronized.monitor(), aSynchronized.monitor().type());
         generatorAdapter.dup();
@@ -78,6 +76,11 @@ final class SynchronizedStatementWriter implements StatementWriter {
         generatorAdapter.throwException();
 
         generatorAdapter.visitLabel(end);
+
+        // The JVM takes the first entry of the exception table that matches, so the handler releasing
+        // the monitor follows those of the statements nested in the block
+        generatorAdapter.visitTryCatchBlock(synchronizedStart, synchronizedEnd, synchronizedException, null);
+        generatorAdapter.visitTryCatchBlock(synchronizedException, synchronizedExceptionEnd, synchronizedException, null);
     }
 
 }

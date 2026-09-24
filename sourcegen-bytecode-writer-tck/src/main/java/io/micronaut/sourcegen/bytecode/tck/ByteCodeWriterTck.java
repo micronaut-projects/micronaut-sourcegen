@@ -973,6 +973,106 @@ public abstract class ByteCodeWriterTck {
     }
 
     @Test
+    public void innerHandlerWinsOverAnOuterHandlerOfTheSameType() throws Exception {
+        // try { try { throw ISE } catch (ISE) { return "inner" } } catch (ISE) { return "outer" }
+        ClassDef definition = ClassDef.builder("example.TckNestedHandlers")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("pick")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> StatementDef.doTry(
+                        StatementDef.doTry(throwIllegalState())
+                            .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant("inner").returning()))
+                    .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant("outer").returning())))
+            .build();
+
+        assertEquals("inner", define(definition).getMethod("pick").invoke(null));
+    }
+
+    @Test
+    public void innerFinallyRunsBeforeTheOuterCatch() throws Exception {
+        // String s = ""; try { try { throw ISE } finally { s += "f" } } catch (ISE) { s += "c" } return s
+        VariableDef.Local trace = new VariableDef.Local("trace", TypeDef.STRING);
+        ClassDef definition = ClassDef.builder("example.TckInnerFinally")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("trace")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.STRING)
+                .build((ignored, parameters) -> StatementDef.multi(
+                    trace.defineAndAssign(ExpressionDef.constant("")),
+                    StatementDef.doTry(StatementDef.doTry(throwIllegalState())
+                            .doFinally(trace.assign(trace.stringConcat(ExpressionDef.constant("f")))))
+                        .doCatch(IllegalStateException.class,
+                            exception -> trace.assign(trace.stringConcat(ExpressionDef.constant("c")))),
+                    trace.returning()
+                )))
+            .build();
+
+        assertEquals("fc", define(definition).getMethod("trace").invoke(null));
+    }
+
+    @Test
+    public void synchronizedBlockReleasesItsMonitorWhenAnOuterCatchHandlesTheException() throws Exception {
+        // try { synchronized (lock) { throw ISE } } catch (ISE) { } return Thread.holdsLock(lock)
+        ClassDef definition = ClassDef.builder("example.TckSynchronizedInTry")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("holdsLockAfterCatch")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("lock", TypeDef.OBJECT)
+                .returns(TypeDef.Primitive.BOOLEAN)
+                .build((ignored, parameters) -> StatementDef.multi(
+                    StatementDef.doTry(new StatementDef.Synchronized(parameters.get(0), throwIllegalState()))
+                        .doCatch(IllegalStateException.class, exception -> StatementDef.multi()),
+                    ClassTypeDef.of(Thread.class)
+                        .invokeStatic("holdsLock", TypeDef.Primitive.BOOLEAN, parameters.get(0))
+                        .returning()
+                )))
+            .build();
+
+        assertFalse((boolean) define(definition).getMethod("holdsLockAfterCatch", Object.class).invoke(null, new Object()));
+    }
+
+    @Test
+    public void finallyReturnOverridesTheReturnOfTheTry() throws Exception {
+        // try { return value; } finally { return 42; }
+        ClassDef definition = ClassDef.builder("example.TckFinallyReturn")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("pick")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", TypeDef.Primitive.INT)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.doTry(parameters.get(0).returning())
+                    .doFinally(ExpressionDef.constant(42).returning())))
+            .build();
+
+        assertEquals(42, define(definition).getMethod("pick", int.class).invoke(null, 1));
+    }
+
+    @Test
+    public void finallyThatReturnsRunsOnceAfterACatchCompletes() throws Exception {
+        // int count = 0; try { throw ISE } catch (ISE) { } finally { count++; return count; }
+        VariableDef.Local count = new VariableDef.Local("count", TypeDef.Primitive.INT);
+        ClassDef definition = ClassDef.builder("example.TckFinallyReturnAfterCatch")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("count")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.Primitive.INT)
+                .build((ignored, parameters) -> StatementDef.multi(
+                    count.defineAndAssign(ExpressionDef.constant(0)),
+                    StatementDef.doTry(throwIllegalState())
+                        .doCatch(IllegalStateException.class, exception -> StatementDef.multi())
+                        .doFinally(StatementDef.multi(
+                            count.assign(count.math(ExpressionDef.MathBinaryOperation.OpType.ADDITION,
+                                ExpressionDef.constant(1))),
+                            count.returning()
+                        ))
+                )))
+            .build();
+
+        assertEquals(1, define(definition).getMethod("count").invoke(null));
+    }
+
+    @Test
     @SuppressWarnings("removal")
     public void writesConstructorDelegationWithoutRepeatingFieldInitializers() throws Exception {
         ClassTypeDef self = ClassTypeDef.of("example.TckConstructorDelegationParity");
@@ -1027,6 +1127,10 @@ public abstract class ByteCodeWriterTck {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     private @interface ParameterMarker {
+    }
+
+    private static StatementDef throwIllegalState() {
+        return ClassTypeDef.of(IllegalStateException.class).instantiate(ExpressionDef.constant("boom")).doThrow();
     }
 
     private static MethodDef binaryMethod(String name,
