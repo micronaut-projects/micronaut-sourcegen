@@ -2799,19 +2799,19 @@ class test/MyClass {
 
   // access flags 0x1
   public interceptedTarget()Ljava/lang/Object;
-   L0
+    TRYCATCHBLOCK L0 L1 L2 null
+    TRYCATCHBLOCK L2 L3 L2 null
+   L4
     ALOAD 0
     GETFIELD test/MyClass.target : Ltest/SomeTarget;
     ASTORE 1
     ALOAD 1
-    IFNONNULL L1
-    TRYCATCHBLOCK L2 L3 L4 null
-    TRYCATCHBLOCK L4 L5 L4 null
+    IFNONNULL L5
     ALOAD 0
     DUP
     ASTORE 2
     MONITORENTER
-   L2
+   L0
     ALOAD 0
     GETFIELD test/MyClass.target : Ltest/SomeTarget;
     ASTORE 1
@@ -2826,22 +2826,22 @@ class test/MyClass {
    L6
     ALOAD 2
     MONITOREXIT
-   L3
+   L1
     GOTO L7
-   L4
+   L2
     ASTORE 3
     ALOAD 2
     MONITOREXIT
-   L5
+   L3
     ALOAD 3
     ATHROW
    L7
-   L1
+   L5
     ALOAD 0
     GETFIELD test/MyClass.target : Ltest/SomeTarget;
     ARETURN
    L8
-    LOCALVARIABLE target Ltest/SomeTarget; L0 L8 1
+    LOCALVARIABLE target Ltest/SomeTarget; L4 L8 1
 }
 """, bytecode);
 
@@ -3052,12 +3052,12 @@ class test/MyClass {
 
   // access flags 0x1
   public swap(Ljava/lang/Object;)Ljava/lang/Object;
-   L0
+    TRYCATCHBLOCK L0 L1 L2 null
+   L3
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Hello"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
-    TRYCATCHBLOCK L1 L2 L3 null
-   L1
+   L0
    L4
     ALOAD 0
     GETFIELD test/MyClass.target : Ljava/lang/Object;
@@ -3073,10 +3073,9 @@ class test/MyClass {
     ALOAD 3
     ARETURN
    L5
-    LOCALVARIABLE target Ljava/lang/Object; L4 L5 2
-   L2
+   L1
     GOTO L6
-   L3
+   L2
     ASTORE 4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
@@ -3086,7 +3085,8 @@ class test/MyClass {
     GOTO L6
    L6
    L7
-    LOCALVARIABLE arg1 Ljava/lang/Object; L0 L7 1
+    LOCALVARIABLE target Ljava/lang/Object; L4 L5 2
+    LOCALVARIABLE arg1 Ljava/lang/Object; L3 L7 1
 }
 """, bytecode);
 
@@ -3331,9 +3331,9 @@ class test/MyClass {
 
   // access flags 0x1
   public bothReturn(Z)Ljava/lang/String;
+    TRYCATCHBLOCK L0 L1 L2 null
+   L3
    L0
-    TRYCATCHBLOCK L1 L2 L3 null
-   L1
     ILOAD 1
     ICONST_1
     IF_ICMPNE L4
@@ -3353,9 +3353,9 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 3
     ARETURN
-   L2
+   L1
     GOTO L6
-   L3
+   L2
     ASTORE 4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
@@ -3365,13 +3365,13 @@ class test/MyClass {
     GOTO L6
    L6
    L7
-    LOCALVARIABLE flag Z L0 L7 1
+    LOCALVARIABLE flag Z L3 L7 1
 
   // access flags 0x1
   public elseFallsThrough(Z)V
+    TRYCATCHBLOCK L0 L1 L2 null
+   L3
    L0
-    TRYCATCHBLOCK L1 L2 L3 null
-   L1
     ILOAD 1
     ICONST_1
     IF_ICMPNE L4
@@ -3384,12 +3384,12 @@ class test/MyClass {
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Else"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
-   L2
+   L1
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     GOTO L6
-   L3
+   L2
     ASTORE 2
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
@@ -3400,13 +3400,13 @@ class test/MyClass {
    L6
     RETURN
    L7
-    LOCALVARIABLE flag Z L0 L7 1
+    LOCALVARIABLE flag Z L3 L7 1
 
   // access flags 0x1
   public thenFallsThrough(Z)V
+    TRYCATCHBLOCK L0 L1 L2 null
+   L3
    L0
-    TRYCATCHBLOCK L1 L2 L3 null
-   L1
     ILOAD 1
     ICONST_1
     IF_ICMPNE L4
@@ -3419,12 +3419,12 @@ class test/MyClass {
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     RETURN
-   L2
+   L1
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     GOTO L6
-   L3
+   L2
     ASTORE 2
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
@@ -3435,7 +3435,7 @@ class test/MyClass {
    L6
     RETURN
    L7
-    LOCALVARIABLE flag Z L0 L7 1
+    LOCALVARIABLE flag Z L3 L7 1
 }
 """, bytecode);
 
@@ -3527,37 +3527,37 @@ class test/MyClass {
 
   // access flags 0x1
   public run(Ljava/lang/Object;)V
-   L0
-    TRYCATCHBLOCK L1 L2 L3 null
-   L1
+    TRYCATCHBLOCK L0 L1 L2 null
+    TRYCATCHBLOCK L2 L3 L2 null
     TRYCATCHBLOCK L4 L5 L6 null
-    TRYCATCHBLOCK L6 L7 L6 null
+   L7
+   L4
     ALOAD 1
     DUP
     ASTORE 2
     MONITORENTER
-   L4
+   L0
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Hello"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 2
     MONITOREXIT
-   L5
+   L1
     GOTO L8
-   L6
+   L2
     ASTORE 3
     ALOAD 2
     MONITOREXIT
-   L7
+   L3
     ALOAD 3
     ATHROW
    L8
-   L2
+   L5
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     GOTO L9
-   L3
+   L6
     ASTORE 4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
@@ -3568,7 +3568,7 @@ class test/MyClass {
    L9
     RETURN
    L10
-    LOCALVARIABLE monitor Ljava/lang/Object; L0 L10 1
+    LOCALVARIABLE monitor Ljava/lang/Object; L7 L10 1
 }
 """, bytecode);
 

@@ -50,6 +50,7 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.TypePath;
 import org.objectweb.asm.TypeReference;
 import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.util.CheckClassAdapter;
 
 import javax.lang.model.element.Modifier;
@@ -971,7 +972,11 @@ public final class ByteCodeWriter {
             modifiersFlag |= ACC_SYNTHETIC;
         }
         MethodVisitor methodVisitor = visitMethodHeader(classVisitor, objectDef, methodDef, modifiersFlag, name, methodDescriptor);
-        GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, methodDescriptor);
+        // The method is buffered: a try registers its exception handlers after those of the statements
+        // nested in it, once their labels are visited, and the buffer replays them ahead of the code as a
+        // method visitor expects
+        MethodNode methodNode = new MethodNode(Opcodes.ASM9, modifiersFlag, name, methodDescriptor, null, null);
+        GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodNode, modifiersFlag, name, methodDescriptor);
         writeMethodAnnotations(generatorAdapter, methodDef);
 
         MethodContext context = new MethodContext(objectDef, methodDef, isLambda);
@@ -984,11 +989,12 @@ public final class ByteCodeWriter {
         if (!statements.isEmpty()) {
             writeStatements(generatorAdapter, objectDef, methodDef, context, statements, startMethod);
         }
-        writeLocalVariableTable(methodVisitor, generatorAdapter, context);
+        writeLocalVariableTable(methodNode, generatorAdapter, context);
         if (visitMaxs && !statements.isEmpty()) {
             generatorAdapter.visitMaxs(20, 20);
         }
         generatorAdapter.visitEnd();
+        methodNode.accept(visitMaxs ? methodVisitor : new WithoutMaxsMethodVisitor(methodVisitor));
 
         for (MethodDef lambdaDef: context.lambdaMethods()) {
             writeMethod(classVisitor, objectDef, lambdaDef, true, 0, emittedBridges);
@@ -1394,6 +1400,22 @@ public final class ByteCodeWriter {
     private interface Annotatable {
 
         AnnotationVisitor visitAnnotation(String descriptor, boolean visible);
+    }
+
+    /**
+     * Replays a buffered method to a writer asked not to visit the maximum stack size and locals, which a
+     * buffered method always visits.
+     */
+    private static final class WithoutMaxsMethodVisitor extends MethodVisitor {
+
+        private WithoutMaxsMethodVisitor(MethodVisitor methodVisitor) {
+            super(Opcodes.ASM9, methodVisitor);
+        }
+
+        @Override
+        public void visitMaxs(int maxStack, int maxLocals) {
+            // Left out on purpose
+        }
     }
 
 }

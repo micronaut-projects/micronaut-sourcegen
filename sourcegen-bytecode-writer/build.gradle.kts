@@ -13,6 +13,7 @@ dependencies {
     api(projects.sourcegenBytecodeWriterCore)
     implementation(libs.managed.asm)
     implementation(libs.managed.asm.commons)
+    implementation(libs.managed.asm.tree)
     implementation(libs.managed.asm.util)
 
     compileOnly(mn.micronaut.core.processor) {

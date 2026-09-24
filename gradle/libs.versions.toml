@@ -30,6 +30,7 @@ managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", ver
 
 managed-asm = { module = "org.ow2.asm:asm", version.ref = "managed-asm" }
 managed-asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "managed-asm" }
+managed-asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "managed-asm" }
 managed-asm-util = { module = "org.ow2.asm:asm-util", version.ref = "managed-asm" }
 
 gradle-errorprone = { module = "net.ltgt.errorprone:net.ltgt.errorprone.gradle.plugin", version.ref = "errorprone-gradle-plugin" }
