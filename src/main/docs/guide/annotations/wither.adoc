@@ -1,16 +1,12 @@
 If you annotate a Java Record with `@Wither`, a `YourRecordWither` interface is generated at compilation-time with all the methods having a default implementation (nothing needs to be implemented). The record class can add that interface using `implements YourRecordWither` which will expand it with the default `withProperty` copy style methods like `YourRecord withPropertyName(PropertyValue)`, calling those methods will create a copy of the record with a modified property.
 
-[source,java]
-----
-include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/Walrus.java[tags=clazz,indent=0]
-----
+NOTE: `@Wither` is only supported on Java records: the annotated record implements the interface generated from it, which Kotlin data classes (which are not records, even with `@JvmRecord`), Groovy records (the generated interface is not resolvable in the same Groovy compilation) and Python classes cannot do.
+
+snippet::io.micronaut.sourcegen.docs.wither.Walrus[tags="clazz", indent=0, project-base="test-suite", source="main", language="java"]
 
 Example of different ways to use the copy methods:
 
-[source,java]
-----
-include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/WalrusTest.java[tags=test,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.wither.WalrusTest[tags="test", indent=0, project-base="test-suite", language="java"]
 
 If your record is annotated with api:sourcegen.annotations.Builder[] the wither interface will also include:
 
@@ -18,30 +14,18 @@ If your record is annotated with api:sourcegen.annotations.Builder[] the wither 
 
 - `default YourRecord with(Consumer<YourRecordBuilder> consumer) {...}` a method receiving a lambda that can modify the populated record builder with the current values of the record and producing a new instance of a record as a result
 
-[source,java]
-----
-include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/Walrus2.java[tags=clazz,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.wither.Walrus2[tags="clazz", indent=0, project-base="test-suite", source="main", language="java"]
 
 Example of different ways to use the copy and builder methods:
 
-[source,java]
-----
-include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/Walrus2Test.java[tags=test,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.wither.Walrus2Test[tags="test", indent=0, project-base="test-suite", language="java"]
 
 === Selecting the properties
 
 The `@Wither` annotation can also be placed directly on the record components, in that case a `with` method is only generated for the annotated components. This is useful when only a subset of the record should be copy-modifiable. Placing `@Wither` on a component also works when the record itself is annotated with `@Wither`, the component level annotations then restrict the generation to the annotated components.
 
-[source,java]
-----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/Walrus4.java[tags=clazz,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.wither.Walrus4[tags="clazz", indent=0, project-base="test-suite", source="main", language="java"]
 
-[source,java]
-----
-include::test-suite-java/src/test/java/io/micronaut/sourcegen/example/Walrus4Test.java[tags=test,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.wither.Walrus4Test[tags="test", indent=0, project-base="test-suite", language="java"]
 
 NOTE: The generated interface still declares the accessors of every record component, because all of them are required to create the modified copy.

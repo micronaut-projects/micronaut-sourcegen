@@ -1,25 +1,15 @@
-If you annotate a Java interface with `@Delegate`, a `<type>Delegate` abstract class is generated at compilation-time.
+If you annotate an interface with `@Delegate`, a `<type>Delegate` abstract class is generated at compilation-time.
 
-[source,java]
-----
-include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/delegate/Worker.java[tags=clazz,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.delegate.Worker[tags="clazz", indent=0, project-base="test-suite", source="main", languages="java,kotlin"]
 
-[source,java]
-----
-include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/delegate/SimpleWorker.java[tags=clazz,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.delegate.SimpleWorker[tags="clazz", indent=0, project-base="test-suite", source="main", languages="java,kotlin"]
 
 You can use a delegate pattern to change the behavior of a Worker delegatee:
 
-[source,java]
-----
-include::test-suite-java/src/main/java/io/micronaut/sourcegen/example/delegate/OvertimeWorker.java[tags=clazz,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.delegate.OvertimeWorker[tags="clazz", indent=0, project-base="test-suite", source="main", languages="java,kotlin"]
+
+NOTE: The delegate extends the generated `WorkerDelegate` abstract class, which Python classes cannot do (a Python class cannot extend a Java class) and Groovy classes cannot resolve in the same compilation, so this example is only shown for Java and Kotlin.
 
 The delegate will delegate the behavior to inner object except for changed methods:
 
-[source,java]
-----
-include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/delegate/DelegateWorkerTest.java[tags=test,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.delegate.DelegateWorkerTest[tags="test", indent=0, project-base="test-suite", languages="java,kotlin"]

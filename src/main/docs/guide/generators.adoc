@@ -14,7 +14,10 @@ WARNING: The module you build will have to be placed on the annotation processor
 
 The following is an example of using the API:
 
-snippet::io.micronaut.sourcegen.custom.visitor.GenerateInterfaceBuilder[tags="class", indent=0, project="test-suite-custom-generators", source=main]
+snippet::io.micronaut.sourcegen.custom.visitor.GenerateInterfaceBuilder[tags="class", indent=0, project="test-suite-custom-generators", source="main", language="java"]
+
+[.lang-python]
+NOTE: A source generator runs inside the compiler as a `TypeElementVisitor` and is written in Java, also when the annotated sources it generates code for are Python classes.
 
 <1> A source generator should implement `TypeElementVisitor`. The first type argument is the type-level annotation you want to visit in source code the second argument is the member level (field, method, constructor) level annotation. You can specify `Object` to visit all.
 <2> The `VisitorKind` should typically be `ISOLATING` if you generate a single source file corresponding to a single originating source file (1-to-1 mapping). If you generate a source file that takes into account multiple other source files then change this to `AGGREGATING`

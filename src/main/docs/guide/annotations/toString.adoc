@@ -8,14 +8,14 @@ with a static implementation of the java.utils.Object's toString() method.
 
 NOTE: The user is expected to use the generated static method by overriding the toString() method themselves.
 
+[.lang-groovy]
+NOTE: A Groovy class cannot call the class generated from itself (`ElephantObject`) because the generated source is not resolvable in the same Groovy compilation, so the `toString()`, `equals()` and `hashCode()` overrides of this example are only shown for Java, Kotlin and Python.
+
+[.lang-python]
+NOTE: A Python class overrides `+__str__+`, `+__eq__+` and `+__hash__+` instead and loads the generated class with `java.type(...)`, because the generated type has no Python module yet.
+
 .An example annotated bean with different type of properties and an overridden toString() method:
-[source,java]
-----
-include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/Elephant.java[tags=clazs,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.objects.Elephant[tags="clazz", indent=0, project-base="test-suite", source="main", languages="java,kotlin,python"]
 
 .A test case with different examples how new methods can be used
-[source,java]
-----
-include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/ObjectTest.java[tags=test,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.objects.ObjectTest[tags="test", indent=0, project-base="test-suite", languages="java,kotlin,python"]

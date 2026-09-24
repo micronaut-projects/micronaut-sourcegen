@@ -19,13 +19,10 @@ The annotation only following collection types:
 NOTE: The final collection is always immutable
 
 .An example of a bean with two properties annotated as singular
-[source,java]
-----
-include::test-suite-tck/src/main/java/io/micronaut/sourcegen/example/User.java[tags=clazz,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.singular.User[tags="clazz", indent=0, project-base="test-suite", source="main", languages="java,groovy,python"]
+
+[.lang-kotlin]
+NOTE: `@Singular` is not supported for Kotlin classes yet: the Kotlin source generator emits a builder that does not compile (`entrySet`, `size()` and nullable collection fields).
 
 .A test case with different examples how new methods can be used
-[source,java]
-----
-include::test-suite-tck/src/test/java/io/micronaut/sourcegen/example/UserTest.java[tags=test,indent=0]
-----
+snippet::io.micronaut.sourcegen.docs.singular.UserTest[tags="test", indent=0, project-base="test-suite", languages="java,groovy,python"]

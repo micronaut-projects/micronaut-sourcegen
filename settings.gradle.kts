@@ -6,7 +6,7 @@ pluginManagement {
 }
 
 plugins {
-    id("io.micronaut.build.shared.settings") version "8.1.2"
+    id("io.micronaut.build.shared.settings") version "8.1.3"
 }
 
 rootProject.name = "sourcegen-parent"
@@ -27,8 +27,12 @@ include("sourcegen-bom")
 include("test-suite-java")
 include("test-suite-bytecode")
 include("test-suite-bytecode-jdk")
+// Needs micronaut-core 5.3 (micronaut-projects/micronaut-core#13179 compiles the generated sources in
+// the Groovy compilation); the Groovy sources of the documentation snippets are kept here and verified against a core
+// 5.3 snapshot until then.
 //include("test-suite-groovy")
 include("test-suite-kotlin")
+include("test-suite-python")
 include("test-suite-custom-annotations")
 include("test-suite-custom-generators")
 include("test-suite-custom-generators-kotlin")
