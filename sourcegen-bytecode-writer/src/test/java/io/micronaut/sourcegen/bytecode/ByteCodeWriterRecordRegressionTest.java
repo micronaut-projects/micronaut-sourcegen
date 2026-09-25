@@ -1,6 +1,7 @@
 package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.core.annotation.AnnotationMetadata;
+import io.micronaut.sourcegen.bytecode.tck.GeneratedClassLoader;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassDef;
@@ -266,16 +267,7 @@ class ByteCodeWriterRecordRegressionTest {
         definitions.put(emittedInner.getName(), writer.write(emittedInner, outer.asTypeDef()));
         definitions.put(emittedDeep.getName(), writer.write(emittedDeep, emittedInner.asTypeDef()));
 
-        ClassLoader loader = new ClassLoader() {
-            @Override
-            protected Class<?> findClass(String name) throws ClassNotFoundException {
-                byte[] bytes = definitions.get(name);
-                if (bytes == null) {
-                    return super.findClass(name);
-                }
-                return defineClass(name, bytes, 0, bytes.length);
-            }
-        };
+        ClassLoader loader = new GeneratedClassLoader(definitions);
         Class<?> outerClass = loader.loadClass("example.Outer");
         Class<?> innerClass = loader.loadClass("example.Outer$Inner");
         Class<?> deepClass = loader.loadClass("example.Outer$Inner$Deep");
@@ -309,11 +301,7 @@ class ByteCodeWriterRecordRegressionTest {
 
     private static Class<?> define(RecordDef recordDef) {
         byte[] bytes = new ByteCodeWriter().write(recordDef);
-        return new ClassLoader() {
-            Class<?> define() {
-                return defineClass(recordDef.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        return GeneratedClassLoader.defineDirectly(recordDef.getName(), bytes);
     }
 
     private static String trace(byte[] bytes) {

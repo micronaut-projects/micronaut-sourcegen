@@ -1,0 +1,11 @@
+package test;
+
+import java.lang.Object;
+import java.util.Optional;
+import java.util.function.Supplier;
+
+public class BoxReferenceCall {
+  public Supplier<Box<Object>> reference(BoxSource target) {
+    return (Supplier<Box<Object>>) Optional.of(target).<Supplier<Box<Object>>>map(target1 -> () -> (Box) target1.get()).get();
+  }
+}

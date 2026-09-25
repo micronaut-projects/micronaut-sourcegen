@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode.jdk;
 
+import io.micronaut.sourcegen.bytecode.tck.GeneratedClassLoader;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.AnnotationObjectDef.AnnotationMemberDef;
@@ -160,10 +161,6 @@ class JdkAnnotationObjectWriterTest {
         byte[] bytes = new JdkClassFileWriter(true).write(definition, null)
             .orElseThrow(() -> new AssertionError("Expected direct ClassFile lowering for " + definition.getName()));
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
-        return new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        return GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
     }
 }

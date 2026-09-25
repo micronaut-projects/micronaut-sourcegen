@@ -7,6 +7,7 @@ import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.compile;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -231,6 +233,24 @@ public class RecordWriteTest {
 
         assertTrue(source.contains("static StaticSelfRecord<Object> create()"), source);
         JavaCompileAssertions.assertCompiles(source);
+    }
+
+    /**
+     * A constructor of a record that assigns the field of a component itself: a plain {@code <init>} in bytecode,
+     * "constructor is not canonical, so it must invoke another constructor" for javac.
+     */
+    @Test
+    void recordConstructorAssigningItsComponentDirectly() throws Exception {
+        var record = RecordDef.builder("test.NumberedRecord").addModifiers(Modifier.PUBLIC)
+            .addProperty(PropertyDef.builder("name").ofType(String.class).build())
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC).addParameter("number", int.class)
+                .build((self, p) -> self.field("name", TypeDef.STRING).put(
+                    TypeDef.STRING.invokeStatic("valueOf", TypeDef.STRING, p.getFirst()))))
+            .build();
+        try (var loader = compile(record)) {
+            var cls = loader.loadClass(record.getName());
+            assertEquals("7", cls.getMethod("name").invoke(cls.getConstructor(int.class).newInstance(7)));
+        }
     }
 
     private String writeRecordFile(RecordDef recordDef) throws IOException {

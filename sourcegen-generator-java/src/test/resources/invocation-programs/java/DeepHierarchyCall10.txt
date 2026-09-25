@@ -1,0 +1,10 @@
+package test;
+
+import java.lang.Object;
+import java.lang.String;
+
+public class DeepHierarchyCall10 {
+  public Object call(HierarchyLevel9 target, Object value) {
+    return target.identity((String) value);
+  }
+}

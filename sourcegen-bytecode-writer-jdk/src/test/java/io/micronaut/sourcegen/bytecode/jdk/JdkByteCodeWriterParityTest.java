@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode.jdk;
 
+import io.micronaut.sourcegen.bytecode.tck.GeneratedClassLoader;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -28,10 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.lang.classfile.ClassFile;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -58,7 +56,7 @@ class JdkByteCodeWriterParityTest {
             .build();
         byte[] enumBytes = writer.write(enumDef);
         assertVerified(enumBytes);
-        Class<?> enumClass = new MapClassLoader(Map.of(enumDef.getName(), enumBytes)).loadClass(enumDef.getName());
+        Class<?> enumClass = new GeneratedClassLoader(Map.of(enumDef.getName(), enumBytes)).loadClass(enumDef.getName());
         assertEquals(List.of("ONE", "TWO"), Arrays.stream(enumClass.getEnumConstants()).map(Object::toString).toList());
 
         InterfaceDef interfaceDef = InterfaceDef.builder("example.JdkFallbackInterface")
@@ -70,7 +68,7 @@ class JdkByteCodeWriterParityTest {
             .build();
         byte[] interfaceBytes = writer.write(interfaceDef);
         assertVerified(interfaceBytes);
-        Class<?> interfaceClass = new MapClassLoader(Map.of(interfaceDef.getName(), interfaceBytes))
+        Class<?> interfaceClass = new GeneratedClassLoader(Map.of(interfaceDef.getName(), interfaceBytes))
             .loadClass(interfaceDef.getName());
         assertTrue(interfaceClass.isInterface());
 
@@ -84,7 +82,7 @@ class JdkByteCodeWriterParityTest {
         assertTrue(classes.containsKey(outer.getName()));
         assertTrue(classes.containsKey(outer.getName() + "$Inner"));
         classes.values().forEach(JdkByteCodeWriterParityTest::assertVerified);
-        MapClassLoader loader = new MapClassLoader(classes);
+        GeneratedClassLoader loader = new GeneratedClassLoader(classes);
         Class<?> outerClass = loader.loadClass(outer.getName());
         Class<?> innerClass = loader.loadClass(outer.getName() + "$Inner");
         assertSame(outerClass, innerClass.getDeclaringClass());
@@ -118,7 +116,7 @@ class JdkByteCodeWriterParityTest {
 
     @Test
     void publicWriterFallsBackToJavacForConstructsTheDirectWriterDeclines() throws Exception {
-        // A char selector is not lowered directly
+        // A string constant held in a StringBuilder is not lowered directly
         ClassDef definition = ClassDef.builder("example.JdkJavacFallback")
             .addModifiers(Modifier.PUBLIC)
             .addMethod(MethodDef.builder("describe")
@@ -126,7 +124,7 @@ class JdkByteCodeWriterParityTest {
                 .addParameter("value", TypeDef.Primitive.CHAR)
                 .returns(TypeDef.STRING)
                 .build((ignored, parameters) -> parameters.get(0).asStatementSwitch(TypeDef.STRING,
-                    Map.of(ExpressionDef.constant(1), ExpressionDef.constant("one").returning()),
+                    Map.of(ExpressionDef.constant(1), JdkSourceFallbackTest.declinedConstant("one").returning()),
                     ExpressionDef.constant("other").returning())))
             .build();
         assertTrue(new JdkClassFileWriter(true).write(definition, null).isEmpty());
@@ -137,7 +135,7 @@ class JdkByteCodeWriterParityTest {
         byte[] second = writer.write(definition);
         assertArrayEquals(first, second);
         assertVerified(first);
-        Class<?> generated = new MapClassLoader(Map.of(definition.getName(), first)).loadClass(definition.getName());
+        Class<?> generated = new GeneratedClassLoader(Map.of(definition.getName(), first)).loadClass(definition.getName());
         assertEquals("one", generated.getMethod("describe", char.class).invoke(null, (char) 1));
         assertEquals("other", generated.getMethod("describe", char.class).invoke(null, (char) 9));
     }
@@ -167,7 +165,7 @@ class JdkByteCodeWriterParityTest {
         var innerResult = new JdkClassFileWriter(true).write(inner, outer.asTypeDef());
         assertTrue(innerResult.isPresent(), "Expected direct ClassFile lowering for the member type");
         assertVerified(innerResult.orElseThrow());
-        MapClassLoader loader = new MapClassLoader(Map.of(
+        GeneratedClassLoader loader = new GeneratedClassLoader(Map.of(
             outer.getName(), writeDirect(outer),
             inner.getName(), innerResult.orElseThrow()
         ));
@@ -199,7 +197,7 @@ class JdkByteCodeWriterParityTest {
             .build();
 
         // The stack map at the join needs the hierarchy of two classes that exist only as models
-        MapClassLoader loader = new MapClassLoader(Map.of(
+        GeneratedClassLoader loader = new GeneratedClassLoader(Map.of(
             first.getName(), writeDirect(first),
             second.getName(), writeDirect(second),
             definition.getName(), writeDirect(definition)
@@ -221,24 +219,6 @@ class JdkByteCodeWriterParityTest {
     private static void assertVerified(byte[] bytes) {
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
         assertEquals(ClassFile.JAVA_17_VERSION, ((bytes[6] & 0xff) << 8) | (bytes[7] & 0xff));
-    }
-
-    private static final class MapClassLoader extends ClassLoader {
-        private final Map<String, byte[]> classes;
-
-        private MapClassLoader(Map<String, byte[]> classes) {
-            super(JdkByteCodeWriterParityTest.class.getClassLoader());
-            this.classes = new LinkedHashMap<>(classes);
-        }
-
-        @Override
-        protected Class<?> findClass(String name) throws ClassNotFoundException {
-            byte[] bytes = classes.get(name);
-            if (bytes == null) {
-                return super.findClass(name);
-            }
-            return defineClass(name, bytes, 0, bytes.length);
-        }
     }
 }
 

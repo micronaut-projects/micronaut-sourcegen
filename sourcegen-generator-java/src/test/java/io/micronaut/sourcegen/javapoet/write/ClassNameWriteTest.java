@@ -13,6 +13,9 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.util.Map;
 
+import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.compile;
+import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.run;
+import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.stringMethod;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -242,6 +245,93 @@ public class Example {
             .build();
 
         JavaCompileAssertions.assertCompiles(writeClass(resolverDef), writeClass(userDef));
+    }
+
+    /**
+     * A nested class whose own simple name has a {@code $}: the bytecode writer names it by its binary name, the
+     * source declares {@code Impl} and refers to {@code DollarNested.Inner.Impl}.
+     */
+    @Test
+    void nestedClassWithADollarInItsSimpleName() throws Exception {
+        var outerName = "test.DollarNested";
+        var nestedType = new ClassTypeDef.ClassName(outerName + "$Inner$Impl", true);
+        var def = ClassDef.builder(outerName).addModifiers(Modifier.PUBLIC)
+            .addInnerType(ClassDef.builder("test.Inner$Impl").addModifiers(Modifier.PUBLIC, Modifier.STATIC).build())
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).returns(Object.class)
+                .build((self, p) -> nestedType.instantiate().returning()))
+            .build();
+        assertEquals(outerName + "$Inner$Impl", run(def).getClass().getName());
+    }
+
+    /**
+     * A generated class named {@code String} that returns a {@code java.lang.String}.
+     */
+    @Test
+    void generatedClassNamedString() throws Exception {
+        var def = stringMethod("test.String", ExpressionDef.constant("ok").returning());
+        assertEquals("ok", run(def));
+    }
+
+    /**
+     * A nested class named {@code String} beside a method returning a {@code java.lang.String}.
+     */
+    @Test
+    void nestedClassNamedString() throws Exception {
+        var inner = ClassDef.builder("test.String").addModifiers(Modifier.PUBLIC, Modifier.STATIC).build();
+        var def = ClassDef.builder("test.NestedString").addModifiers(Modifier.PUBLIC).addInnerType(inner)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).returns(String.class)
+                .build((self, p) -> ExpressionDef.constant("ok").returning()))
+            .build();
+        assertEquals("ok", run(def));
+    }
+
+    /**
+     * A type variable named {@code String} beside a method returning a {@code java.lang.String}.
+     */
+    @Test
+    void typeVariableNamedLikeAReferencedType() throws Exception {
+        var def = ClassDef.builder("test.ShadowingVariable").addModifiers(Modifier.PUBLIC)
+            .addTypeVariable(TypeDef.variable("String"))
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).returns(String.class)
+                .build((self, p) -> ExpressionDef.constant("ok").returning()))
+            .build();
+        assertEquals("ok", run(def));
+    }
+
+    /**
+     * An imported type whose simple name is a member type the class inherits: {@code State} in a subclass of
+     * {@code Thread} is {@code Thread.State}, not the imported {@code test.other.State}.
+     */
+    @Test
+    void importedTypeNamedLikeAnInheritedMemberType() throws Exception {
+        var state = ClassDef.builder("test.other.State").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC).build()).build();
+        var def = ClassDef.builder("test.Worker").addModifiers(Modifier.PUBLIC).superclass(ClassTypeDef.of(Thread.class))
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).returns(Object.class)
+                .build((self, p) -> state.asTypeDef().instantiate().returning()))
+            .build();
+        try (var loader = compile(state, def)) {
+            var cls = loader.loadClass(def.getName());
+            var result = cls.getMethod("call").invoke(cls.getConstructor().newInstance());
+            assertEquals("test.other.State", result.getClass().getName());
+        }
+    }
+
+    /**
+     * A generated class in a package with an upper case segment, which the name guessing cannot split.
+     */
+    @Test
+    void generatedClassInAPackageWithAnUpperCaseSegment() throws Exception {
+        var target = ClassDef.builder("test.Upper.Target").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC).build()).build();
+        var def = ClassDef.builder("test.UpperCaller").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).returns(Object.class)
+                .build((self, p) -> target.asTypeDef().instantiate().returning()))
+            .build();
+        try (var loader = compile(target, def)) {
+            var cls = loader.loadClass(def.getName());
+            assertEquals("test.Upper.Target", cls.getMethod("call").invoke(cls.getConstructor().newInstance()).getClass().getName());
+        }
     }
 
 }

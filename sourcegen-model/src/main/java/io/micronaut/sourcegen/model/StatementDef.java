@@ -162,6 +162,10 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
     @Experimental
     record Throw(ExpressionDef expression) implements StatementDef {
 
+        public Throw {
+            ModelChecks.requireThrowable(expression);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(expression);
@@ -209,6 +213,10 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
     record Assign(VariableDef.Local variable,
                   ExpressionDef expression) implements StatementDef {
 
+        public Assign {
+            ModelChecks.requireAssignable("Assign " + variable.name(), variable.type(), expression);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(variable, expression);
@@ -226,6 +234,10 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
     @Experimental
     record PutField(VariableDef.Field field,
                     ExpressionDef expression) implements StatementDef {
+
+        public PutField {
+            ModelChecks.requireAssignable("Put field " + field.name(), field.type(), expression);
+        }
 
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
@@ -245,6 +257,10 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
     record PutStaticField(VariableDef.StaticField field,
                           ExpressionDef expression) implements StatementDef {
 
+        public PutStaticField {
+            ModelChecks.requireAssignable("Put static field " + field.name(), field.type(), expression);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(field, expression);
@@ -263,6 +279,10 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
     record DefineAndAssign(VariableDef.Local variable,
                            ExpressionDef expression) implements StatementDef {
 
+        public DefineAndAssign {
+            ModelChecks.requireAssignable("Define and assign " + variable.name(), variable.type(), expression);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(variable, expression);
@@ -277,6 +297,10 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
      */
     @Experimental
     record If(ExpressionDef condition, StatementDef statement) implements StatementDef {
+
+        public If {
+            ModelChecks.requireCondition("If", condition);
+        }
 
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
@@ -299,6 +323,10 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
     record IfElse(ExpressionDef condition,
                   StatementDef statement,
                   StatementDef elseStatement) implements StatementDef {
+
+        public IfElse {
+            ModelChecks.requireCondition("If-else", condition);
+        }
 
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
@@ -329,6 +357,7 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
                   Map<ExpressionDef.Constant, StatementDef> cases,
                   @Nullable StatementDef defaultCase) implements StatementDef {
         public Switch {
+            ModelChecks.requireValue("Switch", "selector", expression);
             cases = new LinkedHashMap<>(cases);
         }
 
@@ -354,6 +383,10 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
      */
     @Experimental
     record While(ExpressionDef expression, StatementDef statement) implements StatementDef {
+
+        public While {
+            ModelChecks.requireCondition("While", expression);
+        }
 
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
@@ -436,6 +469,10 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
     @Experimental
     record Synchronized(ExpressionDef monitor, StatementDef statement) implements StatementDef {
 
+        public Synchronized {
+            ModelChecks.requireMonitor(monitor);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.concat(
@@ -467,6 +504,7 @@ public sealed interface StatementDef permits StatementDef.InvokeSuperConstructor
             if (method.getParameters().size() != values.size()) {
                 throw new IllegalStateException("Method " + method.getName() + " parameters: " + method.getParameters().size() + " doesn't match values provided: " + values.size());
             }
+            ModelChecks.requireValues("Invoke super constructor", "argument", values);
         }
 
         @Override

@@ -13,6 +13,7 @@ micronautBuild {
 dependencies {
     api(projects.sourcegenModel)
     api(mnTest.junit.jupiter.api)
+    api(mnTest.junit.jupiter.params)
     api(mn.micronaut.core.processor) {
         exclude("io.micronaut.sourcegen")
     }

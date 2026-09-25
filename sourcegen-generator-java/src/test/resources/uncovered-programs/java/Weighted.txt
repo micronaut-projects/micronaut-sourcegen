@@ -1,0 +1,21 @@
+package test;
+
+public enum Weighted {
+
+  LIGHT(1),
+  HEAVY(10);
+
+  private final int weight;
+
+  private Weighted(int weight) {
+    this.weight = weight;
+  }
+
+  public static Weighted heavier(Weighted left, Weighted right) {
+    return left.weight > right.weight ? left : right;
+  }
+
+  public int weight() {
+    return this.weight;
+  }
+}

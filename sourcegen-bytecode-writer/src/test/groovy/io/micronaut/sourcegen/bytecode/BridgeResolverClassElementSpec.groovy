@@ -2,11 +2,14 @@ package io.micronaut.sourcegen.bytecode
 
 import io.micronaut.annotation.processing.test.AbstractTypeElementSpec
 import io.micronaut.inject.ast.ClassElement
+import io.micronaut.sourcegen.bytecode.core.BridgeResolver as CoreBridgeResolver
+import io.micronaut.sourcegen.bytecode.core.TypeUtils as CoreTypeUtils
 import io.micronaut.sourcegen.model.ClassDef
 import io.micronaut.sourcegen.model.ClassTypeDef
 import io.micronaut.sourcegen.model.MethodDef
 import io.micronaut.sourcegen.model.TypeDef
-
+import java.util.function.Function
+import java.util.function.Supplier
 import javax.lang.model.element.Modifier
 
 /**
@@ -137,5 +140,65 @@ abstract class Plain {
 
         expect:
         BridgeResolver.resolve(child, method).isEmpty()
+    }
+
+    void "an inherited implementation from an uncompiled source class gets a bridge"() {
+        given:
+        def parent = buildClassElement('''
+package test;
+class SourceSupplierParent {
+    public Number get() { return 7; }
+}
+''')
+        def child = ClassDef.builder("test.SourceSupplierChild").addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(parent))
+            .addSuperinterface(TypeDef.parameterized(Supplier, TypeDef.of(Number))).build()
+
+        when:
+        def bridges = CoreBridgeResolver.resolveInherited(child)
+
+        then:
+        bridges.size() == 1
+        bridges[0].target().name == 'get'
+        CoreTypeUtils.getDescriptor(bridges[0].bridge().returnType(), null) == 'Ljava/lang/Object;'
+    }
+
+    void "source inherited specialization receives its interface bridge"() {
+        given:
+        def target = buildClassElement('''
+package test;
+class NumericIdentity<T extends Number> {
+    public T apply(T value) { return value; }
+}
+''')
+        def child = ClassDef.builder('test.NumericChild').addModifiers(Modifier.PUBLIC)
+            .superclass(TypeDef.parameterized(ClassTypeDef.of(target), TypeDef.of(Integer)))
+            .addSuperinterface(TypeDef.parameterized(Function, TypeDef.of(Integer), TypeDef.of(Integer)))
+            .build()
+
+        when:
+        def bridges = CoreBridgeResolver.resolveInherited(child)
+
+        then:
+        bridges.size() == 1
+        CoreTypeUtils.getDescriptor(bridges[0].bridge().returnType(), null) == 'Ljava/lang/Object;'
+        bridges[0].bridge().parameterTypes().collect { CoreTypeUtils.getDescriptor(it, null) } == ['Ljava/lang/Object;']
+    }
+
+    void "source inherited non-generic implementation still receives a bridge"() {
+        given:
+        def target = buildClassElement('''
+package test;
+class StringIdentity {
+    public String apply(String value) { return value; }
+}
+''')
+        def child = ClassDef.builder('test.StringChild').addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(target))
+            .addSuperinterface(TypeDef.parameterized(Function, TypeDef.STRING, TypeDef.STRING))
+            .build()
+
+        expect:
+        CoreBridgeResolver.resolveInherited(child).size() == 1
     }
 }

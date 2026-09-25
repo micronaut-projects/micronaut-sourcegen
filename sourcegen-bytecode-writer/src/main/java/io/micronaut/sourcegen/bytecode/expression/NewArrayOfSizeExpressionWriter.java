@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.bytecode.expression;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 final class NewArrayOfSizeExpressionWriter implements ExpressionWriter {
@@ -30,6 +31,9 @@ final class NewArrayOfSizeExpressionWriter implements ExpressionWriter {
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
         generatorAdapter.push(newArray.size());
-        generatorAdapter.newArray(TypeUtils.getType(newArray.type().componentType(), context.objectDef()));
+        // The array counts every dimension at once: the elements of `new int[2][]` are `int[]`s
+        TypeDef.Array type = newArray.type();
+        TypeDef element = type.dimensions() > 1 ? TypeDef.array(type.componentType(), type.dimensions() - 1) : type.componentType();
+        generatorAdapter.newArray(TypeUtils.getScopedType(element, context));
     }
 }
