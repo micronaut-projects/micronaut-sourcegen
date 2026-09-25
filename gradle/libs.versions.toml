@@ -13,10 +13,10 @@ nullaway = "0.13.8"
 
 managed-asm = "9.10.1"
 
-micronaut = "5.2.2"
+micronaut = "5.2.5"
 micronaut-platform = "5.1.5"
 micronaut-data = "5.1.5"
-micronaut-validation = "5.1.0"
+micronaut-validation = "5.2.0"
 micronaut-gradle-plugin = "5.0.2"
 
 [libraries]
@@ -30,6 +30,7 @@ managed-kotlinpoet-javapoet = { module = "com.squareup:kotlinpoet-javapoet", ver
 
 managed-asm = { module = "org.ow2.asm:asm", version.ref = "managed-asm" }
 managed-asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "managed-asm" }
+managed-asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "managed-asm" }
 managed-asm-util = { module = "org.ow2.asm:asm-util", version.ref = "managed-asm" }
 
 gradle-errorprone = { module = "net.ltgt.errorprone:net.ltgt.errorprone.gradle.plugin", version.ref = "errorprone-gradle-plugin" }

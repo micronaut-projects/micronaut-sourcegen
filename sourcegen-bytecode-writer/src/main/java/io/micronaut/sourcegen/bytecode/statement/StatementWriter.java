@@ -22,7 +22,6 @@ import io.micronaut.sourcegen.model.StatementDef;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -112,7 +111,8 @@ public sealed interface StatementWriter permits AssignVariableStatementWriter, D
                              @Nullable Runnable finallyBlock) {
         Map<String, MethodContext.LocalData> oldLocals = context.locals();
         Map<String, MethodContext.LocalData> newLocals = new LinkedHashMap<>(oldLocals);
-        MethodContext newContext = new MethodContext(context.objectDef(), context.methodDef(), newLocals, new ArrayList<>(), false, context.yieldTargets());
+        // Only the locals are scoped: a lambda written in the scope still belongs to the method
+        MethodContext newContext = new MethodContext(context.objectDef(), context.methodDef(), newLocals, context.lambdaMethods(), context.isLambda(), context.yieldTargets(), context.openGaps());
         write(generatorAdapter, newContext, finallyBlock);
         oldLocals.keySet().forEach(newLocals::remove); // Remove locals not created in the scope
         Label endMethod = new Label();
