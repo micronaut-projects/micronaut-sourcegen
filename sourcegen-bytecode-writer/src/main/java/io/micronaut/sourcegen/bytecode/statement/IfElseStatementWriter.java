@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode.statement;
 
+import io.micronaut.sourcegen.model.Completion;
 import io.micronaut.sourcegen.bytecode.AbstractConditionalWriter;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.model.StatementDef;
@@ -36,7 +37,7 @@ final class IfElseStatementWriter extends AbstractConditionalWriter implements S
         Label end = new Label();
         StatementWriter.of(ifStatement.statement()).writeScoped(generatorAdapter, context, finallyBlock);
         // A then branch that completes continues after the statement, not into the else branch
-        boolean completes = TryCatchStatementWriter.canCompleteNormally(ifStatement.statement());
+        boolean completes = Completion.BYTECODE.canCompleteNormally(ifStatement.statement());
         if (completes) {
             generatorAdapter.goTo(end);
         }

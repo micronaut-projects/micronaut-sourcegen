@@ -1,0 +1,6 @@
+package test
+
+import io.micronaut.sourcegen.CalleeBoundsRegressionTest
+import kotlin.String
+
+public open class GeneratedChild : CalleeBoundsRegressionTest.Parent<String>()

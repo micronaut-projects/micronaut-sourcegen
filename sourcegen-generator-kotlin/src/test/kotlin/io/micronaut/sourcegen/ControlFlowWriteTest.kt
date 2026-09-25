@@ -1,5 +1,9 @@
 package io.micronaut.sourcegen
 
+import io.micronaut.sourcegen.KotlinCompileAssertions.compile
+import io.micronaut.sourcegen.KotlinCompileAssertions.newInstance
+import io.micronaut.sourcegen.KotlinCompileAssertions.outcomeOf
+import io.micronaut.sourcegen.KotlinCompileAssertions.runMethod
 import io.micronaut.sourcegen.model.ClassDef
 import io.micronaut.sourcegen.model.ClassTypeDef
 import io.micronaut.sourcegen.model.ExpressionDef
@@ -7,8 +11,15 @@ import io.micronaut.sourcegen.model.MethodDef
 import io.micronaut.sourcegen.model.StatementDef
 import io.micronaut.sourcegen.model.TypeDef
 import io.micronaut.sourcegen.model.VariableDef
+import java.util.function.Function
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Named.named
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.Arguments.arguments
+import org.junit.jupiter.params.provider.MethodSource
 import java.io.StringWriter
 import javax.lang.model.element.Modifier
 
@@ -27,7 +38,7 @@ class ControlFlowWriteTest {
             }
             return `value`
             """.trimIndent(),
-            writeBody(TypeDef.STRING, TypeDef.STRING) { _, params ->
+            writeIndentedBody(TypeDef.STRING, TypeDef.STRING) { _, params ->
                 StatementDef.multi(
                     params[0].isNull().doIf(ExpressionDef.constant("empty").returning()),
                     params[0].returning()
@@ -46,7 +57,7 @@ class ControlFlowWriteTest {
               return `value`
             }
             """.trimIndent(),
-            writeBody(TypeDef.STRING, TypeDef.STRING) { _, params ->
+            writeIndentedBody(TypeDef.STRING, TypeDef.STRING) { _, params ->
                 params[0].isNull().doIfElse(
                     ExpressionDef.constant("empty").returning(),
                     params[0].returning()
@@ -66,7 +77,7 @@ class ControlFlowWriteTest {
             }
             return counter
             """.trimIndent(),
-            writeBody(TypeDef.Primitive.INT) { _, _ ->
+            writeIndentedBody(TypeDef.Primitive.INT) { _, _ ->
                 StatementDef.multi(
                     counter.defineAndAssign(ExpressionDef.constant(0)),
                     StatementDef.While(
@@ -93,7 +104,7 @@ class ControlFlowWriteTest {
             """
             throw IllegalStateException("broken")
             """.trimIndent(),
-            writeBody(TypeDef.VOID) { _, _ ->
+            writeIndentedBody(TypeDef.VOID) { _, _ ->
                 ClassTypeDef.of(IllegalStateException::class.java)
                     .instantiate(ExpressionDef.constant("broken"))
                     .doThrow()
@@ -121,7 +132,7 @@ class ControlFlowWriteTest {
               }
             }
             """.trimIndent(),
-            writeBody(TypeDef.STRING, TypeDef.Primitive.INT) { _, params ->
+            writeIndentedBody(TypeDef.STRING, TypeDef.Primitive.INT) { _, params ->
                 params[0].asStatementSwitch(
                     TypeDef.STRING,
                     cases,
@@ -144,7 +155,7 @@ class ControlFlowWriteTest {
                   2 -> "two";
                   else -> "many"}
             """.trimIndent(),
-            writeBody(TypeDef.STRING, TypeDef.Primitive.INT) { _, params ->
+            writeIndentedBody(TypeDef.STRING, TypeDef.Primitive.INT) { _, params ->
                 params[0].asExpressionSwitch(TypeDef.STRING, cases, ExpressionDef.constant("many"))
                     .returning()
             }
@@ -162,11 +173,12 @@ class ControlFlowWriteTest {
                 )
             )
         )
-        val body = writeBody(TypeDef.STRING, TypeDef.Primitive.INT) { _, params ->
+        val body = writeIndentedBody(TypeDef.STRING, TypeDef.Primitive.INT) { _, params ->
             params[0].asExpressionSwitch(TypeDef.STRING, cases, ExpressionDef.constant("many")).returning()
         }
         Assertions.assertTrue(body.contains("var held:kotlin.String = \"one\""), "was: $body")
-        Assertions.assertTrue(body.contains("return held"), "was: $body")
+        // The value of the branch is its last expression: a `return` would leave the function, not the `when`
+        Assertions.assertTrue(Regex("\\n\\s+held\\n").containsMatchIn(body), "was: $body")
     }
 
     @Test
@@ -176,7 +188,7 @@ class ControlFlowWriteTest {
             """
             return Function {arg0: Any -> arg0}
             """.trimIndent(),
-            writeBody(fnType) { _, _ ->
+            writeIndentedBody(fnType) { _, _ ->
                 fnType.getLambda().implement { _, params -> params[0].returning() }.returning()
             }
         )
@@ -206,9 +218,9 @@ class ControlFlowWriteTest {
     fun writeCallWithSeveralArguments() {
         Assertions.assertEquals(
             """
-            return `value`.substring(1, 2)
+            return (`value` as java.lang.String).substring(1, 2)
             """.trimIndent(),
-            writeBody(TypeDef.STRING, TypeDef.STRING) { _, params ->
+            writeIndentedBody(TypeDef.STRING, TypeDef.STRING) { _, params ->
                 params[0].invoke(
                     "substring",
                     listOf(TypeDef.Primitive.INT, TypeDef.Primitive.INT),
@@ -225,7 +237,7 @@ class ControlFlowWriteTest {
             """
             return LangString.format("%s", `value`)
             """.trimIndent(),
-            writeBody(TypeDef.STRING, TypeDef.OBJECT) { _, params ->
+            writeIndentedBody(TypeDef.STRING, TypeDef.OBJECT) { _, params ->
                 ClassTypeDef.of(String::class.java).invokeStatic(
                     "format",
                     listOf(TypeDef.STRING, TypeDef.OBJECT.array()),
@@ -242,7 +254,7 @@ class ControlFlowWriteTest {
             """
             return (if (`value` == null) arrayOf<String>("a") else arrayOf<String>("b"))[0]
             """.trimIndent(),
-            writeBody(TypeDef.STRING, TypeDef.OBJECT) { _, params ->
+            writeIndentedBody(TypeDef.STRING, TypeDef.OBJECT) { _, params ->
                 params[0].isNull()
                     .doIfElse(
                         TypeDef.STRING.array().instantiate(ExpressionDef.constant("a")),
@@ -261,7 +273,7 @@ class ControlFlowWriteTest {
             """
             return LangString.valueOf(1) + 2
             """.trimIndent(),
-            writeBody(TypeDef.STRING) { _, _ ->
+            writeIndentedBody(TypeDef.STRING) { _, _ ->
                 ExpressionDef.StringConcatenation(
                     ExpressionDef.constant(1),
                     ExpressionDef.constant(2)
@@ -270,7 +282,142 @@ class ControlFlowWriteTest {
         )
     }
 
-    private fun writeBody(
+    // A yielding case of a switch expression is written with `return`, which in Kotlin returns from the method instead of giving the `when` its value: "one" instead of "one!". The Java generator yields.
+    @Test
+    fun switchExpressionYieldAssignedToLocal() {
+        val def = ClassDef.builder("test.C22")
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).addParameter("value", TypeDef.Primitive.INT).returns(TypeDef.STRING)
+                .build { _, p -> p[0].asExpressionSwitch(TypeDef.STRING, mapOf(
+                    ExpressionDef.constant(1) to ExpressionDef.SwitchYieldCase(TypeDef.STRING, ExpressionDef.constant("one").returning())
+                ), ExpressionDef.constant("other")).newLocal("text") { text -> text.stringConcat(ExpressionDef.constant("!")).returning() } })
+            .build()
+        compile(def).use { loader ->
+            val o = newInstance(loader, def)
+            assertEquals("one!", o.javaClass.getMethod("call", Int::class.javaPrimitiveType).invoke(o, 1))
+        }
+    }
+
+    @Test
+    fun switchOnAByteComparesByteKeys() {
+        val def = ClassDef.builder("test.ByteSwitch").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).addParameter("value", TypeDef.Primitive.BYTE).returns(String::class.java)
+                .build { _, p -> p[0].asStatementSwitch(TypeDef.STRING,
+                    mapOf(TypeDef.Primitive.BYTE.constant(1.toByte()) to ExpressionDef.constant("one").returning()),
+                    ExpressionDef.constant("other").returning()) })
+            .build()
+        compile(def).use { loader ->
+            val cls = loader.loadClass(def.name)
+            assertEquals("one", cls.getMethod("call", Byte::class.javaPrimitiveType).invoke(cls.getConstructor().newInstance(), 1.toByte()))
+        }
+    }
+
+    @Test
+    fun yieldCaseWithAPercentSign() {
+        val def = ClassDef.builder("test.PercentYield").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).addParameter("value", TypeDef.Primitive.INT).returns(String::class.java)
+                .build { _, p -> p[0].asExpressionSwitch(TypeDef.STRING, mapOf(
+                    ExpressionDef.constant(1) to ExpressionDef.SwitchYieldCase(TypeDef.STRING, StatementDef.multi(
+                        ExpressionDef.constant("100%").newLocal("label"),
+                        ExpressionDef.constant("all").returning()))),
+                    ExpressionDef.constant("none")).returning() })
+            .build()
+        compile(def).use { loader ->
+            val cls = loader.loadClass(def.name)
+            assertEquals("all", cls.getMethod("call", Int::class.javaPrimitiveType).invoke(cls.getConstructor().newInstance(), 1))
+        }
+    }
+
+    @Test
+    fun yieldCaseReturningFromBothBranches() {
+        val def = ClassDef.builder("test.BranchYield").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).addParameter("value", TypeDef.Primitive.INT)
+                .addParameter("flag", TypeDef.Primitive.BOOLEAN).returns(String::class.java)
+                .build { _, p -> ExpressionDef.constant("result:").stringConcat(p[0].asExpressionSwitch(TypeDef.STRING, mapOf(
+                    ExpressionDef.constant(1) to ExpressionDef.SwitchYieldCase(TypeDef.STRING,
+                        p[1].isTrue().doIfElse(ExpressionDef.constant("yes").returning(), ExpressionDef.constant("no").returning()))),
+                    ExpressionDef.constant("none"))).returning() })
+            .build()
+        compile(def).use { loader ->
+            val cls = loader.loadClass(def.name)
+            assertEquals("result:yes", cls.getMethod("call", Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
+                .invoke(cls.getConstructor().newInstance(), 1, true))
+        }
+    }
+
+    @Test
+    fun yieldCaseWithAnEarlyReturnYieldsIt() {
+        val def = ClassDef.builder("test.EarlyYield").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).addParameter("value", TypeDef.Primitive.INT)
+                .addParameter("text", TypeDef.STRING.makeNullable()).returns(String::class.java)
+                .build { _, p -> ExpressionDef.constant("result:").stringConcat(p[0].asExpressionSwitch(TypeDef.STRING, mapOf(
+                    ExpressionDef.constant(1) to ExpressionDef.SwitchYieldCase(TypeDef.STRING, StatementDef.multi(
+                        p[1].isNull().doIf(ExpressionDef.constant("missing").returning()),
+                        ExpressionDef.constant("present").returning()))),
+                    ExpressionDef.constant("none"))).returning() })
+            .build()
+        compile(def).use { loader ->
+            val cls = loader.loadClass(def.name)
+            assertEquals("result:missing", cls.getMethod("call", Int::class.javaPrimitiveType, String::class.java)
+                .invoke(cls.getConstructor().newInstance(), 1, null))
+        }
+    }
+
+    @Test
+    fun switchOnAnEnumWithoutADefaultCase() {
+        val unit = ClassTypeDef.of(java.util.concurrent.TimeUnit::class.java)
+        val def = ClassDef.builder("test.EnumSwitch").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).addParameter("unit", unit).returns(String::class.java)
+                .build { _, p -> StatementDef.multi(
+                    p[0].asStatementSwitch(TypeDef.STRING, mapOf(
+                        ExpressionDef.Constant(unit, java.util.concurrent.TimeUnit.SECONDS) to ExpressionDef.constant("s").returning())),
+                    ExpressionDef.constant("other").returning()) })
+            .build()
+        compile(def).use { loader ->
+            val cls = loader.loadClass(def.name)
+            val instance = cls.getConstructor().newInstance()
+            assertEquals("s", cls.getMethod("call", java.util.concurrent.TimeUnit::class.java).invoke(instance, java.util.concurrent.TimeUnit.SECONDS))
+            assertEquals("other", cls.getMethod("call", java.util.concurrent.TimeUnit::class.java).invoke(instance, java.util.concurrent.TimeUnit.DAYS))
+        }
+    }
+
+    @Test
+    fun synchronizedAndInfiniteLoopBodiesThatOnlyReturn() {
+        val def = ClassDef.builder("test.TerminalBlocks").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("locked").addModifiers(Modifier.PUBLIC).returns(TypeDef.Primitive.INT)
+                .build { self, _ -> StatementDef.Synchronized(self, ExpressionDef.constant(1).returning()) })
+            .addMethod(MethodDef.builder("looped").addModifiers(Modifier.PUBLIC).returns(TypeDef.Primitive.INT)
+                .build { _, _ -> ExpressionDef.trueValue().whileLoop(ExpressionDef.constant(2).returning()) })
+            .build()
+        compile(def).use { loader ->
+            val cls = loader.loadClass(def.name)
+            val instance = cls.getConstructor().newInstance()
+            assertEquals(1, cls.getMethod("locked").invoke(instance))
+            assertEquals(2, cls.getMethod("looped").invoke(instance))
+        }
+    }
+
+    @Test
+    fun voidMethodReturnsEarly() {
+        val counter = ClassTypeDef.of(java.util.concurrent.atomic.AtomicInteger::class.java)
+        val increment = java.util.concurrent.atomic.AtomicInteger::class.java.getMethod("incrementAndGet")
+        val def = ClassDef.builder("test.EarlyVoid").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).addParameter("counter", counter)
+                .addParameter("skip", TypeDef.Primitive.BOOLEAN).returns(TypeDef.VOID)
+                .build { _, p -> StatementDef.multi(
+                    p[1].isTrue().doIf(StatementDef.Return(null)),
+                    p[0].invoke(increment)) })
+            .build()
+        compile(def).use { loader ->
+            val cls = loader.loadClass(def.name)
+            val instance = cls.getConstructor().newInstance()
+            val count = java.util.concurrent.atomic.AtomicInteger()
+            cls.getMethod("call", count.javaClass, Boolean::class.javaPrimitiveType).invoke(instance, count, true)
+            cls.getMethod("call", count.javaClass, Boolean::class.javaPrimitiveType).invoke(instance, count, false)
+            assertEquals(1, count.get())
+        }
+    }
+
+    private fun writeIndentedBody(
         returns: TypeDef,
         vararg parameters: TypeDef,
         body: (ExpressionDef, List<ExpressionDef>) -> StatementDef
@@ -295,5 +442,46 @@ class ControlFlowWriteTest {
                 .takeWhile { it != "  }" }
                 .joinToString("\n") { it.removePrefix("    ") }
         }
+    }
+
+    /**
+     * Each branch of a conditional is converted to the conditional's type, as Java converts it: a byte, a short or a
+     * char to the int of an `Integer`, and a reference cast, which throws for another type.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("conditionalBranches")
+    fun conditionalBranchIsConvertedToItsType(type: TypeDef, first: TypeDef, second: TypeDef, flag: Boolean, firstValue: Any?,
+                                              secondValue: Any?, expected: Any?) {
+        assertEquals(expected, outcomeOf {
+            runMethod("test.ConditionalBranch", type, listOf(TypeDef.Primitive.BOOLEAN, first, second), flag, firstValue, secondValue) { _, p ->
+                ExpressionDef.IfElse(p[0].isTrue, p[1], p[2], type).returning()
+            }
+        })
+    }
+
+    companion object {
+        private val INTEGER = TypeDef.of(Integer::class.java)
+        private val LONG_BOX = TypeDef.of(java.lang.Long::class.java)
+        private val NUMBER = TypeDef.of(Number::class.java)
+
+        @JvmStatic
+        fun conditionalBranches(): List<Arguments> = listOf(
+            arguments(named("an int or a String as an Integer, the int", INTEGER), TypeDef.Primitive.INT, TypeDef.STRING, true, 5, "x", 5),
+            arguments(named("an int or a String as an Integer, the String", INTEGER), TypeDef.Primitive.INT, TypeDef.STRING, false, 5, "x",
+                ClassCastException::class.java),
+            arguments(named("a char or a String as an Integer, the char's code", INTEGER), TypeDef.Primitive.CHAR, TypeDef.STRING, true,
+                'a', "x", 97),
+            arguments(named("a byte or an Object as an Integer, the byte's value", INTEGER), TypeDef.Primitive.BYTE, TypeDef.OBJECT, true,
+                7.toByte(), 1, 7),
+            arguments(named("an Integer or an Integer as a String, a null", TypeDef.STRING), INTEGER, INTEGER, true, null, 6, null),
+            arguments(named("an Integer or an Integer as a String, a number", TypeDef.STRING), INTEGER, INTEGER, true, 5, 6,
+                ClassCastException::class.java),
+            arguments(named("a Long or a Long as an Integer, converted", INTEGER), LONG_BOX, LONG_BOX, true, 5L, 6L, 5),
+            arguments(named("an Object or a double as a Number, the double", NUMBER), TypeDef.OBJECT, TypeDef.Primitive.DOUBLE, false,
+                "x", 2.5, 2.5),
+            arguments(named("a Character or an Integer as a Number, the Integer", NUMBER), TypeDef.of(Character::class.java), INTEGER, false,
+                'a', 3, 3),
+            arguments(named("a String or an int as a Number, the int", NUMBER), TypeDef.STRING, TypeDef.Primitive.INT, false, "x", 4, 4)
+        )
     }
 }

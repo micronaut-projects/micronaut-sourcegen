@@ -1,0 +1,14 @@
+package test
+
+import kotlin.Boolean
+import kotlin.String
+
+public open class ExhaustiveBranches {
+  public open fun call(flag: Boolean): String {
+    if (flag) {
+      return "yes"
+    } else {
+      return "no"
+    }
+  }
+}

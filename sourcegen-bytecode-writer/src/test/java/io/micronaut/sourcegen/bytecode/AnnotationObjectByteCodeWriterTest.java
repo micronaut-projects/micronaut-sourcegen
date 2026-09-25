@@ -1,5 +1,6 @@
 package io.micronaut.sourcegen.bytecode;
 
+import io.micronaut.sourcegen.bytecode.tck.GeneratedClassLoader;
 import io.micronaut.sourcegen.custom.visitor.GenerateAnnotationClassVisitor;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.AnnotationObjectDef;
@@ -113,10 +114,6 @@ class AnnotationObjectByteCodeWriterTest {
         var classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         new ByteCodeWriter(false, true).writeObject(new CheckClassAdapter(classWriter), objectDef, null);
         byte[] bytes = classWriter.toByteArray();
-        return new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(objectDef.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        return GeneratedClassLoader.defineDirectly(objectDef.getName(), bytes);
     }
 }

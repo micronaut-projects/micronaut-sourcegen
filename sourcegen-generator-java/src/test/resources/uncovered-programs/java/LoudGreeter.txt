@@ -1,0 +1,9 @@
+package test;
+
+import java.lang.String;
+
+public class LoudGreeter implements DefaultGreeter {
+  public String greet() {
+    return DefaultGreeter.super.greet() + "!";
+  }
+}

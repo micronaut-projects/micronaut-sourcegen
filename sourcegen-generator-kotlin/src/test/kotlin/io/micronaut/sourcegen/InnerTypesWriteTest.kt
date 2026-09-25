@@ -1,11 +1,24 @@
 package io.micronaut.sourcegen
 
+import io.micronaut.sourcegen.KotlinCompileAssertions.compile
+import io.micronaut.sourcegen.KotlinCompileAssertions.render
 import io.micronaut.sourcegen.model.*
+import io.micronaut.sourcegen.model.ClassDef
 import io.micronaut.sourcegen.model.ClassDef.ClassDefBuilder
+import io.micronaut.sourcegen.model.ClassTypeDef
 import io.micronaut.sourcegen.model.EnumDef.EnumDefBuilder
+import io.micronaut.sourcegen.model.ExpressionDef
+import io.micronaut.sourcegen.model.FieldDef
+import io.micronaut.sourcegen.model.InterfaceDef
 import io.micronaut.sourcegen.model.InterfaceDef.InterfaceDefBuilder
+import io.micronaut.sourcegen.model.MethodDef
+import io.micronaut.sourcegen.model.PropertyDef
+import io.micronaut.sourcegen.model.RecordDef
 import io.micronaut.sourcegen.model.RecordDef.RecordDefBuilder
+import io.micronaut.sourcegen.model.TypeDef
+import java.util.function.Consumer
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.IOException
 import java.io.StringWriter
@@ -27,8 +40,11 @@ class InnerTypesWriteTest {
 
         val className: String
         when (classType) {
-            "record" -> className = "data class"
+            // A record without components is no data class, which needs one
+            "record" -> className = "class"
             "enum" -> className = "enum class"
+            // A class that is not final can be extended
+            "class" -> className = "open class"
             else -> className = classType
         }
         val CLASS_REGEX = Pattern.compile(
@@ -140,7 +156,7 @@ class InnerTypesWriteTest {
               HELLO,
               ;
 
-              public class Inner
+              public open class Inner
             }
             """.trimIndent()
         val innerClassBuilder = ClassDef.builder("Inner")
@@ -181,7 +197,7 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
-            public class StatusClass {
+            public open class StatusClass {
               public enum class Status {
                 SINGLE,
                 MARRIED,
@@ -204,7 +220,7 @@ class InnerTypesWriteTest {
 
             import kotlin.Int
 
-            public class ExampleRecordClass {
+            public open class ExampleRecordClass {
               public data class ExampleRecord public constructor(
                 public final val id: Int,
               )
@@ -225,8 +241,8 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
-            public class InnerClass {
-              public class Inner
+            public open class InnerClass {
+              public open class Inner
             }
             """.trimIndent()
         val innerClassBuilder = ClassDef.builder("Inner")
@@ -244,12 +260,12 @@ class InnerTypesWriteTest {
 
             import kotlin.String
 
-            public class InnerClass {
-              private class Inner {
-                public var name: String
+            public open class InnerClass {
+              private open class Inner {
+                public var name: String? = null
 
                 public constructor(name: String) {
-                  this. name = name
+                  this.name = name
                 }
 
                 public constructor()
@@ -273,7 +289,7 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
-            public class InterfaceClass {
+            public open class InterfaceClass {
               public interface Interface
             }
             """.trimIndent()
@@ -294,7 +310,7 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
-            public data class StatusRecord {
+            public class StatusRecord {
               public enum class Status {
                 SINGLE,
                 MARRIED,
@@ -318,7 +334,7 @@ class InnerTypesWriteTest {
 
             import kotlin.Int
 
-            public data class ExampleRecord {
+            public class ExampleRecord {
               public data class Example public constructor(
                 public final val id: Int,
               )
@@ -339,8 +355,8 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
-            public data class InnerRecord {
-              public class Inner
+            public class InnerRecord {
+              public open class Inner
             }
             """.trimIndent()
         val innerClassBuilder = ClassDef.builder("Inner")
@@ -356,7 +372,7 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
-            public data class InterfaceRecord {
+            public class InterfaceRecord {
               public interface Interface
             }
             """.trimIndent()
@@ -423,7 +439,7 @@ class InnerTypesWriteTest {
             package test
 
             public interface InnerInterface {
-              public class Inner
+              public open class Inner
             }
             """.trimIndent()
         val innerClassBuilder = ClassDef.builder("Inner")
@@ -448,6 +464,64 @@ class InnerTypesWriteTest {
         val classBuilder: InterfaceDefBuilder = getInterfaceDefBuilderWith(interfaceBuilder.build())
         val actual = writeClass(classBuilder.build(), "interface")
         Assertions.assertEquals(expectedString.trim(), actual)
+    }
+
+    @Test
+    fun enclosingClassCallsAPrivateMethodOfItsNestedClass() {
+        val secret = MethodDef.builder("secret").addModifiers(Modifier.PRIVATE).returns(String::class.java)
+            .build { _, _ -> ExpressionDef.constant("nested").returning() }
+        val nested = ClassDef.builder("NestedHolder").addModifiers(Modifier.PUBLIC, Modifier.STATIC).addMethod(secret).build()
+        val nestedType = ClassTypeDef.of("test.NestOuter\$NestedHolder", true)
+        val outer = ClassDef.builder("test.NestOuter").addModifiers(Modifier.PUBLIC).addInnerType(nested)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).returns(String::class.java)
+                .build { _, _ -> nestedType.instantiate().invoke(secret).returning() })
+            .build()
+        compile(outer).use { loader ->
+            val cls = loader.loadClass(outer.name)
+            assertEquals("nested", cls.getMethod("call").invoke(cls.getConstructor().newInstance()))
+        }
+    }
+
+    @Test
+    fun nestedTypeOfAClassWhoseNameHasADollar() {
+        val holder = ClassDef.builder("Holder").addModifiers(Modifier.PUBLIC, Modifier.STATIC).build()
+        val holderType = ClassTypeDef.of("test.\$Outer\$Holder", true)
+        val def = ClassDef.builder("test.\$Outer").addModifiers(Modifier.PUBLIC).addInnerType(holder)
+            .addMethod(MethodDef.builder("create").addModifiers(Modifier.PUBLIC).returns(TypeDef.OBJECT)
+                .build { _, _ -> holderType.instantiate().returning() })
+            .build()
+        compile(def).use { loader ->
+            val cls = loader.loadClass(def.name)
+            assertEquals("test.\$Outer\$Holder", cls.getMethod("create").invoke(cls.getConstructor().newInstance()).javaClass.name)
+        }
+    }
+
+    /**
+     * A static nested type calls the narrowed `accept(String)` of its outer type, which it can only name. The Java
+     * generator finds the outer definition in the file being written; the Kotlin one did not record that file, so it
+     * passed the `Any` value unconverted and kotlinc rejected the call.
+     */
+    @Test
+    fun nestedTypeCallsANarrowedMethodOfItsOuterType() {
+        val accept = MethodDef.builder("accept").addModifiers(Modifier.PUBLIC).overrides()
+            .addParameter("value", Any::class.java).returns(Void.TYPE)
+            .build { _, p -> p[0].invoke("toString", TypeDef.STRING) }
+        val nested = ClassDef.builder("Nested").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addMethod(MethodDef.builder("run").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("target", ClassTypeDef.of("test.NarrowedOuter")).addParameter("value", Any::class.java)
+                .returns(Void.TYPE)
+                .build { _, p -> p[0].invoke(accept, p[1]) })
+            .build()
+        val outer = ClassDef.builder("test.NarrowedOuter").addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(Consumer::class.java, String::class.java))
+            .addMethod(accept).addInnerType(nested)
+            .build()
+        KotlinCompileAssertions.compileAndLoad(render(outer)).use { loader ->
+            val instance = loader.loadClass(outer.name).getConstructor().newInstance()
+            // A static method is a function of the companion object
+            val companion = loader.loadClass("test.NarrowedOuter\$Nested").getField("Companion").get(null)
+            companion.javaClass.getMethod("run", instance.javaClass, Any::class.java).invoke(companion, instance, "v")
+        }
     }
 
 }

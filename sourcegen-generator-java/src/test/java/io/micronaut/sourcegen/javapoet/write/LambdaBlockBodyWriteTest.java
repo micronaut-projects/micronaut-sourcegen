@@ -1,12 +1,10 @@
 package io.micronaut.sourcegen.javapoet.write;
 
-import io.micronaut.sourcegen.JavaPoetSourceGenerator;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
-import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -14,12 +12,12 @@ import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.render;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -46,13 +44,6 @@ public class LambdaBlockBodyWriteTest extends AbstractWriteTest {
             tmp.defineAndAssign(params.get(0).invoke("trim", TypeDef.STRING)),
             tmp.returning()
         ));
-    }
-
-    private static String writeObject(ObjectDef objectDef) throws IOException {
-        try (StringWriter writer = new StringWriter()) {
-            new JavaPoetSourceGenerator().write(objectDef, writer);
-            return writer.toString();
-        }
     }
 
     @Test
@@ -86,7 +77,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+        JavaCompileAssertions.assertCompiles(render(functionDef), data);
     }
 
     @Test
@@ -117,7 +108,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+        JavaCompileAssertions.assertCompiles(render(functionDef), data);
     }
 
     @Test
@@ -156,7 +147,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+        JavaCompileAssertions.assertCompiles(render(functionDef), data);
     }
 
     @Test
@@ -205,7 +196,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+        JavaCompileAssertions.assertCompiles(render(functionDef), data);
     }
 
     @Test
@@ -297,7 +288,7 @@ public class MyClass {
   public List<String> copy(List<String> items) {
     List<String> sink = new java.util.ArrayList();
     items.forEach((t) -> {
-      sink.add(t);
+      sink.add((String) t);
     });
     return sink;
   }
@@ -347,5 +338,4 @@ public class MyClass {
 }
             """, data);
     }
-
 }

@@ -2,6 +2,9 @@ package io.micronaut.sourcegen.model;
 
 import io.micronaut.inject.ast.ClassElement;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import javax.lang.model.element.Modifier;
 
@@ -10,8 +13,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Named.named;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 /**
  * Tests that an invocation built from the arguments alone takes its signature from the declaration when
@@ -197,18 +203,62 @@ class InvocationResolutionTest {
     }
 
     @Test
-    void ambiguousOverloadsKeepTheInferredSignature() {
+    void overloadsResolveToTheMostSpecificApplicableOne() {
+        // As javac selects it: both overloads take a String, and `CharSequence` is the more specific
         ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("ambiguous", TypeDef.STRING, A_STRING);
 
-        assertEquals(List.of(TypeDef.STRING), parameterTypes(call.method()));
+        assertEquals(List.of(TypeDef.of(CharSequence.class)), parameterTypes(call.method()));
     }
 
     @Test
     void aReturnTypeMatchingNoDeclarationKeepsTheInferredSignature() {
-        // The Java writer lets javac resolve this; the bytecode writer reports it
-        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("concat", TypeDef.OBJECT, A_STRING, B_STRING);
+        // The Java writer lets javac resolve this; the bytecode writer reports it. A String converts to no Integer
+        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("concat", TypeDef.of(Integer.class), A_STRING, B_STRING);
 
         assertEquals(List.of(TypeDef.STRING, TypeDef.STRING), parameterTypes(call.method()));
+    }
+
+    @Test
+    void aReturnTypeTheDeclaredOneConvertsToResolvesTheCall() {
+        // `Object value = concat("a", "b")`: the String concat returns is an Object
+        ExpressionDef.InvokeStaticMethod call = SUPPORT.invokeStatic("concat", TypeDef.OBJECT, A_STRING, B_STRING);
+
+        assertEquals(List.of(TypeDef.OBJECT, TypeDef.OBJECT), parameterTypes(call.method()));
+    }
+
+    @Test
+    void typeArgumentsCountForSpecificityAgainstANonGenericMethod() {
+        // javac: "reference to ambiguous is ambiguous" - neither `ambiguous(List<String>, Object)` nor
+        // `<T> ambiguous(List<T>, String)` is more specific, though they are by their erasures
+        ExpressionDef strings = new VariableDef.Local("values", TypeDef.parameterized(List.class, String.class));
+
+        OverloadResolution.Resolution resolution = OverloadResolution.resolve(List.of(ClassTypeDef.of(Generic.class)), "ambiguous",
+            TypeDef.STRING, List.of(strings, A_STRING), null, null);
+
+        assertEquals(OverloadResolution.Outcome.AMBIGUOUS, resolution.outcome());
+        assertEquals(2, resolution.ambiguous().size());
+    }
+
+    @Test
+    void anAmbiguousCallIsLeftUnresolvedByTheModel() {
+        // The bytecode writers reject it where it is written, javac where it is compiled
+        ExpressionDef strings = new VariableDef.Local("values", TypeDef.parameterized(List.class, String.class));
+
+        ExpressionDef.InvokeStaticMethod call = ClassTypeDef.of(Generic.class).invokeStatic("ambiguous", TypeDef.STRING, strings, A_STRING);
+
+        assertEquals(List.of(TypeDef.parameterized(List.class, String.class), TypeDef.STRING), parameterTypes(call.method()));
+    }
+
+    @SuppressWarnings("unused")
+    static class Generic {
+
+        static String ambiguous(List<String> values, Object value) {
+            return "list-object";
+        }
+
+        static <T> String ambiguous(List<T> values, String value) {
+            return "generic-string";
+        }
     }
 
     @Test
@@ -224,34 +274,29 @@ class InvocationResolutionTest {
         assertEquals(11, ((ExpressionDef.NewArrayInitialized) packed).expressions().size());
     }
 
-    @Test
-    void aRequestedObjectElementTypeKeepsTheErasedArray() {
-        ExpressionDef.InvokeStaticMethod call = ClassTypeDef.of(List.class)
-            .invokeStatic("of", TypeDef.parameterized(List.class, TypeDef.OBJECT), elements(11));
+    /**
+     * The variable arity tail of {@code List.of(E...)} keeps its erased {@code Object[]} when the requested return type
+     * cannot pin it to another array: an {@code Object} element type, an element that is not of the requested type, or
+     * a parameterized element type, of which no array can be created.
+     */
+    @ParameterizedTest(name = "a variable arity tail keeps the erased Object[] for {0}")
+    @MethodSource("tailsKeepingTheErasedArray")
+    void aVariableArityTailTheRequestedTypeCannotPinKeepsTheErasedArray(TypeDef requested, List<ExpressionDef> values) {
+        ExpressionDef.InvokeStaticMethod call = ClassTypeDef.of(List.class).invokeStatic("of", requested, values);
 
         assertEquals(TypeDef.OBJECT.array(), call.values().get(0).type());
     }
 
-    @Test
-    void anElementNotAssignableToTheRequestedElementTypeKeepsTheErasedArray() {
-        List<ExpressionDef> values = new ArrayList<>(elements(10));
-        values.add(ExpressionDef.constant(1));
-
-        ExpressionDef.InvokeStaticMethod call = ClassTypeDef.of(List.class)
-            .invokeStatic("of", TypeDef.parameterized(List.class, TypeDef.STRING), values);
-
-        assertEquals(TypeDef.OBJECT.array(), call.values().get(0).type());
-    }
-
-    @Test
-    void aRequestedParameterizedElementTypeKeepsTheErasedArray() {
-        // A generic array cannot be created
-        ExpressionDef.InvokeStaticMethod call = ClassTypeDef.of(List.class)
-            .invokeStatic("of",
-                TypeDef.parameterized(List.class, TypeDef.parameterized(List.class, TypeDef.STRING)),
-                elements(11));
-
-        assertEquals(TypeDef.OBJECT.array(), call.values().get(0).type());
+    static Stream<Arguments> tailsKeepingTheErasedArray() {
+        List<ExpressionDef> notAllStrings = new ArrayList<>(elements(10));
+        notAllStrings.add(ExpressionDef.constant(1));
+        return Stream.of(
+            arguments(named("a requested List<Object>", TypeDef.parameterized(List.class, TypeDef.OBJECT)), elements(11)),
+            arguments(named("an int element of a requested List<String>", TypeDef.parameterized(List.class, TypeDef.STRING)),
+                notAllStrings),
+            arguments(named("a requested List<List<String>>",
+                TypeDef.parameterized(List.class, TypeDef.parameterized(List.class, TypeDef.STRING))), elements(11))
+        );
     }
 
     @Test

@@ -35,7 +35,7 @@ final class DefineAndAssignStatementWriter implements StatementWriter {
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context, @Nullable Runnable finallyBlock) {
         VariableDef.Local local = assign.variable();
-        Type localType = TypeUtils.getType(local.type(), context.objectDef());
+        Type localType = TypeUtils.getScopedType(local.type(), context);
         Label startVariable = new Label();
         generatorAdapter.visitLabel(startVariable);
         int localIndex = generatorAdapter.newLocal(localType);

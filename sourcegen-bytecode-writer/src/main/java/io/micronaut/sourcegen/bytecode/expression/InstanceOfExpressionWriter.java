@@ -30,6 +30,6 @@ final class InstanceOfExpressionWriter implements ExpressionWriter {
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
         ExpressionWriter.writeExpression(generatorAdapter, context, instanceOf.expression());
-        generatorAdapter.instanceOf(TypeUtils.getType(instanceOf.instanceType(), context.objectDef()));
+        generatorAdapter.instanceOf(TypeUtils.getScopedType(instanceOf.instanceType(), context));
     }
 }

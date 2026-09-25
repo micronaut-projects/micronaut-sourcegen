@@ -25,6 +25,7 @@ import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.TypeLookup;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 
@@ -362,11 +363,7 @@ public final class AnnotationTargetUtils {
         if (typeDef instanceof ClassTypeDef.JavaClass javaClass) {
             return javaClass.type();
         }
-        try {
-            return Class.forName(typeDef.getName(), false,
-                classLoader == null ? AnnotationTargetUtils.class.getClassLoader() : classLoader);
-        } catch (ClassNotFoundException | LinkageError e) {
-            return null;
-        }
+        TypeLookup lookup = classLoader == null ? TypeLookup.reflective() : TypeLookup.of(null, classLoader);
+        return lookup.loadClass(typeDef.getName());
     }
 }
