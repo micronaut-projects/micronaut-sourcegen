@@ -1,0 +1,10 @@
+package test;
+
+import java.lang.Object;
+import java.lang.String;
+
+public class MixedHierarchyCall {
+  public Object call(GeneratedChild target, Object value) {
+    return target.identity((String) value);
+  }
+}

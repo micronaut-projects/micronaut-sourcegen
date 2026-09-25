@@ -31,6 +31,6 @@ final class ArrayElementExpressionWriter implements ExpressionWriter {
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
         ExpressionWriter.writeExpression(generatorAdapter, context, arrayElement.expression());
         ExpressionWriter.writeExpression(generatorAdapter, context, arrayElement.indexExpression());
-        generatorAdapter.arrayLoad(TypeUtils.getType(arrayElement.type(), context.objectDef()));
+        generatorAdapter.arrayLoad(TypeUtils.getScopedType(arrayElement.type(), context));
     }
 }

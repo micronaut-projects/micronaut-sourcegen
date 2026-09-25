@@ -1,0 +1,9 @@
+package test;
+
+import java.lang.String;
+
+public interface DefaultGreeter {
+  default String greet() {
+    return "hello";
+  }
+}

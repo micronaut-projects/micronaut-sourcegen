@@ -17,12 +17,15 @@ package io.micronaut.sourcegen.bytecode.expression;
 
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.sourcegen.bytecode.MethodContext;
+import io.micronaut.sourcegen.bytecode.core.InvocationPlan;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.objectweb.asm.commons.GeneratorAdapter;
+
+import java.util.List;
 
 /**
  * The expression writer.
@@ -115,7 +118,34 @@ public sealed interface ExpressionWriter
         if (expressionDef instanceof ExpressionDef.Constant constant) {
             expressionDef = adjustConstant(expressionDef, expectedType, constant);
         }
+        if (io.micronaut.sourcegen.bytecode.core.TypeUtils.packedInterfaceArray(expressionDef, expectedType)) {
+            // A variable arity tail packed into an array of interfaces is passed as it is, as javac passes it
+            writeExpression(generatorAdapter, context, expressionDef);
+            return;
+        }
         ExpressionWriter.of(new ExpressionDef.Cast(expectedType, expressionDef)).write(generatorAdapter, context);
+    }
+
+    /**
+     * Writes the arguments of an invocation, converted to the parameters it plans, and emits it and the conversion
+     * of its result. The receiver, if any, is written first by the caller as the plan says.
+     *
+     * @param generatorAdapter The adapter
+     * @param context          The method context
+     * @param plan             The invocation
+     * @since 2.3
+     */
+    static void writeInvocation(GeneratorAdapter generatorAdapter, MethodContext context, InvocationPlan plan) {
+        List<TypeDef> parameterTypes = plan.parameterTypes();
+        for (int i = 0; i < plan.values().size(); i++) {
+            writeExpressionCheckCast(generatorAdapter, context, plan.values().get(i), parameterTypes.get(i));
+        }
+        generatorAdapter.visitMethodInsn(plan.kind().opcode(), plan.ownerInternalName(), plan.name(), plan.descriptor(),
+            plan.ownerInterface());
+        InvocationPlan.ResultConversion result = plan.result();
+        if (result != null) {
+            CastExpressionWriter.cast(generatorAdapter, context, result.from(), result.to());
+        }
     }
 
     private static ExpressionDef adjustConstant(ExpressionDef expressionDef, TypeDef expectedType, ExpressionDef.Constant constant) {

@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * An if/else statement whose then branch completes normally continues after the whole statement, not into the else
  * branch.
  *
- * @since 2.2.3
+ * @since 2.3
  */
 public abstract class IfElseCompletionTck {
     /**

@@ -1,0 +1,19 @@
+package test
+
+import io.micronaut.sourcegen.UncoveredShapeProgramTest
+
+@UncoveredShapeProgramTest.Members(
+  texts = ["a",
+  "${'$'}b"],
+  numbers = [1,
+  2],
+  none = [],
+  types = [java.lang.String::class,
+  kotlin.Int::class],
+  policies = [kotlin.`annotation`.AnnotationRetention.RUNTIME,
+  kotlin.`annotation`.AnnotationRetention.SOURCE],
+  letter = '\'',
+  ratio = 1.5f,
+  nested = io.micronaut.sourcegen.UncoveredShapeProgramTest.Nested(value = "inner"),
+)
+public open class AnnotatedMembers

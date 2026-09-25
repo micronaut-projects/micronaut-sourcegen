@@ -1,0 +1,14 @@
+package test;
+
+import java.lang.Boolean;
+
+public class Shadowloop {
+  public static int value;
+
+  static {
+    while (Boolean.parseBoolean("false")) {
+      int value = 1;
+    }
+    Shadowloop.value = 9;
+  }
+}

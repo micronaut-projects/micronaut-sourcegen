@@ -66,7 +66,7 @@ final class ReturnStatementWriter implements StatementWriter {
             throw new IllegalStateException("Switch yield return has no value");
         }
         ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, expression, yieldTarget.type());
-        generatorAdapter.storeLocal(yieldTarget.slot(), TypeUtils.getType(yieldTarget.type(), context.objectDef()));
+        generatorAdapter.storeLocal(yieldTarget.slot(), TypeUtils.getScopedType(yieldTarget.type(), context));
         int openGaps = context.openGaps().size();
         if (finallyBlock != null) {
             finallyBlock.run();
@@ -80,7 +80,7 @@ final class ReturnStatementWriter implements StatementWriter {
             if (expTypeDef.equals(TypeDef.VOID)) {
                 finallyBlock.run();
             } else {
-                Type expType = TypeUtils.getType(expTypeDef, context.objectDef());
+                Type expType = TypeUtils.getScopedType(expTypeDef, context);
                 int returnLocal = generatorAdapter.newLocal(expType);
                 generatorAdapter.storeLocal(returnLocal);
                 finallyBlock.run();

@@ -15,18 +15,11 @@
  */
 package io.micronaut.sourcegen.bytecode.expression;
 
-import org.jspecify.annotations.Nullable;
 import io.micronaut.sourcegen.bytecode.MethodContext;
-import io.micronaut.sourcegen.bytecode.TypeUtils;
+import io.micronaut.sourcegen.bytecode.core.InvocationPlan;
 import io.micronaut.sourcegen.model.ExpressionDef;
-import io.micronaut.sourcegen.model.ObjectDef;
-import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
-import org.objectweb.asm.commons.Method;
-
-import java.util.Collection;
-import java.util.Iterator;
 
 final class NewInstanceExpressionWriter extends AbstractStatementAwareExpressionWriter implements ExpressionWriter {
     private final ExpressionDef.NewInstance newInstance;
@@ -37,28 +30,10 @@ final class NewInstanceExpressionWriter extends AbstractStatementAwareExpression
 
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
-        Type type = TypeUtils.getType(newInstance.type(), context.objectDef());
-        generatorAdapter.newInstance(type);
+        InvocationPlan plan = InvocationPlan.ofNewInstance(newInstance, context.objectDef(), context.methodDef(), context.enclosingScope());
+        generatorAdapter.newInstance(Type.getType(plan.ownerDescriptor()));
         generatorAdapter.dup();
-        Iterator<TypeDef> iterator = newInstance.parameterTypes().iterator();
-        for (ExpressionDef expression : newInstance.values()) {
-            ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, expression, iterator.next());
-        }
-        generatorAdapter.invokeConstructor(
-            type,
-            new Method("<init>", getConstructorDescriptor(context.objectDef(), newInstance.parameterTypes()))
-        );
+        ExpressionWriter.writeInvocation(generatorAdapter, context, plan);
         popValueIfNeeded(generatorAdapter, newInstance.type());
-    }
-
-    private static String getConstructorDescriptor(@Nullable ObjectDef objectDef, Collection<TypeDef> types) {
-        StringBuilder builder = new StringBuilder();
-        builder.append('(');
-
-        for (TypeDef argumentType : types) {
-            builder.append(TypeUtils.getType(argumentType, objectDef).getDescriptor());
-        }
-
-        return builder.append(")V").toString();
     }
 }

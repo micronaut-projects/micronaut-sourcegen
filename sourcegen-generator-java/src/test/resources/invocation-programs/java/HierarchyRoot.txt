@@ -1,0 +1,9 @@
+package test;
+
+import java.lang.CharSequence;
+
+public class HierarchyRoot<X extends CharSequence> {
+  public <U extends X> U identity(U value) {
+    return value;
+  }
+}

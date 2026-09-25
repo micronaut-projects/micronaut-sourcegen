@@ -15,6 +15,12 @@
  */
 package io.micronaut.sourcegen.bytecode.jdk;
 
+import io.micronaut.sourcegen.bytecode.core.EnclosingScope;
+import io.micronaut.sourcegen.model.Completion;
+import io.micronaut.sourcegen.bytecode.core.Conversions;
+import io.micronaut.sourcegen.bytecode.core.InvocationPlan;
+import io.micronaut.sourcegen.bytecode.core.ReferenceComparisons;
+import io.micronaut.sourcegen.bytecode.core.SwitchKeys;
 import io.micronaut.sourcegen.bytecode.core.TypeUtils;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
@@ -23,7 +29,6 @@ import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.ObjectDef;
-import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -85,11 +90,13 @@ final class JdkMethodWriter {
     private final Deque<YieldTarget> yieldTargets = new ArrayDeque<>();
     private final List<MethodDef> lambdaMethods = new ArrayList<>();
     private final MethodDef methodDef;
+    private final EnclosingScope enclosingScope;
     private final InstructionCounter instructions;
 
     private JdkMethodWriter(CodeBuilder code, ObjectDef objectDef, MethodDef methodDef, ClassDesc owner,
-                            InstructionCounter instructions) {
+                            EnclosingScope enclosingScope, InstructionCounter instructions) {
         this.code = code;
+        this.enclosingScope = enclosingScope;
         this.objectDef = objectDef;
         this.owner = owner;
         this.methodDef = methodDef;
@@ -104,18 +111,19 @@ final class JdkMethodWriter {
      * Writes the code of a method with a writer. The code builder handed to the handler counts the
      * instructions written, which is how the writer leaves out an exception range protecting none.
      *
-     * @param methodBuilder The method builder
-     * @param objectDef     The object the method belongs to
-     * @param methodDef     The method
-     * @param owner         The class the method belongs to
-     * @param handler       Writes the code with the code builder and the writer
+     * @param methodBuilder  The method builder
+     * @param objectDef      The object the method belongs to
+     * @param methodDef      The method
+     * @param owner          The class the method belongs to
+     * @param enclosingScope The enclosing scope of the class being written
+     * @param handler        Writes the code with the code builder and the writer
      */
     static void withCode(MethodBuilder methodBuilder, ObjectDef objectDef, MethodDef methodDef, ClassDesc owner,
-                         BiConsumer<CodeBuilder, JdkMethodWriter> handler) {
+                         EnclosingScope enclosingScope, BiConsumer<CodeBuilder, JdkMethodWriter> handler) {
         methodBuilder.withCode(code -> {
             InstructionCounter instructions = new InstructionCounter();
             code.transforming(instructions, counted ->
-                handler.accept(counted, new JdkMethodWriter(counted, objectDef, methodDef, owner, instructions)));
+                handler.accept(counted, new JdkMethodWriter(counted, objectDef, methodDef, owner, enclosingScope, instructions)));
         });
     }
 
@@ -163,20 +171,21 @@ final class JdkMethodWriter {
                 writeExpression(putField.field().instance());
                 writeExpression(new ExpressionDef.Cast(putField.field().type(), putField.expression()));
                 code.putfield(classDesc(putField.field().declaringType()), putField.field().name(),
-                    classDesc(putField.field().type()));
+                    memberDesc(putField.field().declaringType(), putField.field().name(), putField.field().type()));
             }
             case StatementDef.PutStaticField putStaticField -> {
                 writeExpression(new ExpressionDef.Cast(putStaticField.field().type(), putStaticField.expression()));
                 code.putstatic(classDesc(putStaticField.field().ownerType()), putStaticField.field().name(),
-                    classDesc(putStaticField.field().type()));
+                    memberDesc(putStaticField.field().ownerType(), putStaticField.field().name(), putStaticField.field().type()));
             }
             case ExpressionDef.InvokeInstanceMethod invoke -> {
-                writeInvocation(invoke.instance(), invoke.method(), invoke.values(), invoke.isDefault());
-                popIfNeeded(invoke.method().getReturnType());
+                writeInvocation(invoke.instance(), invoke.method(), invoke.values());
+                // The call leaves what it is typed as, converted from the declared return type
+                popIfNeeded(invoke.type());
             }
             case ExpressionDef.InvokeStaticMethod invoke -> {
                 writeStaticInvocation(invoke.classDef(), invoke.method(), invoke.values());
-                popIfNeeded(invoke.method().getReturnType());
+                popIfNeeded(invoke.type());
             }
             case StatementDef.InvokeSuperConstructor invoke -> writeSuperConstructor(invoke);
             case StatementDef.If anIf -> {
@@ -190,7 +199,7 @@ final class JdkMethodWriter {
                 var end = code.newLabel();
                 writeCondition(ifElse.condition(), null, elseLabel);
                 writeStatement(ifElse.statement());
-                boolean thenCompletes = canCompleteNormally(ifElse.statement());
+                boolean thenCompletes = Completion.BYTECODE.canCompleteNormally(ifElse.statement());
                 if (thenCompletes) {
                     code.goto_(end);
                 }
@@ -394,7 +403,7 @@ final class JdkMethodWriter {
         }
 
         Range body = writeTryBody(aTry.statement(), finallyStatement);
-        if (canCompleteNormally(aTry.statement())) {
+        if (Completion.BYTECODE.canCompleteNormally(aTry.statement())) {
             writeFinallyAndExit(finallyStatement, end);
         }
 
@@ -443,7 +452,7 @@ final class JdkMethodWriter {
             removeCleanup(finallyStatement);
             locals.remove(EXCEPTION_NAME);
             bodies.add(new Range(start, position(), gaps));
-            if (canCompleteNormally(handler.aCatch().statement())) {
+            if (Completion.BYTECODE.canCompleteNormally(handler.aCatch().statement())) {
                 writeFinallyAndExit(finallyStatement, end);
             }
         }
@@ -492,7 +501,7 @@ final class JdkMethodWriter {
      */
     private void writeFinallyAndExit(@Nullable StatementDef finallyStatement, Label end) {
         writeFinally(finallyStatement);
-        if (finallyStatement == null || canCompleteNormally(finallyStatement)) {
+        if (finallyStatement == null || Completion.BYTECODE.canCompleteNormally(finallyStatement)) {
             code.goto_(end);
         }
     }
@@ -512,7 +521,7 @@ final class JdkMethodWriter {
         writeStatement(synchronizedStatement.statement());
         cleanups.removeLast();
         Range body = new Range(start, position(), release.gaps());
-        if (canCompleteNormally(synchronizedStatement.statement())) {
+        if (Completion.BYTECODE.canCompleteNormally(synchronizedStatement.statement())) {
             exit.run();
             code.goto_(complete);
         }
@@ -533,7 +542,7 @@ final class JdkMethodWriter {
             writeStringSwitch(aSwitch);
             return;
         }
-        writeExpression(aSwitch.expression());
+        writeSwitchSelector(aSwitch.expression());
         Label defaultLabel = code.newLabel();
         Label end = code.newLabel();
         List<Map.Entry<Label, StatementDef>> bodies = new ArrayList<>();
@@ -542,7 +551,7 @@ final class JdkMethodWriter {
         for (Map.Entry<Label, StatementDef> body : bodies) {
             code.labelBinding(body.getKey());
             writeStatement(body.getValue());
-            if (canCompleteNormally(body.getValue())) {
+            if (Completion.BYTECODE.canCompleteNormally(body.getValue())) {
                 code.goto_(end);
             }
         }
@@ -566,7 +575,7 @@ final class JdkMethodWriter {
         for (Map.Entry<Label, StatementDef> body : bodies) {
             code.labelBinding(body.getKey());
             writeStatement(body.getValue());
-            if (canCompleteNormally(body.getValue())) {
+            if (Completion.BYTECODE.canCompleteNormally(body.getValue())) {
                 code.goto_(end);
             }
         }
@@ -672,48 +681,23 @@ final class JdkMethodWriter {
         }
     }
 
+    /**
+     * Writes the selector of a switch on an int: a char, a short or a byte is widened, and a wrapper unboxed, which
+     * throws for null, as javac switches on them.
+     */
+    private void writeSwitchSelector(ExpressionDef selector) {
+        writeExpression(new ExpressionDef.Cast(TypeDef.Primitive.INT, selector));
+    }
+
     private static int switchKey(ExpressionDef.Constant constant) {
-        if (constant.value() instanceof Integer integer) {
-            return integer;
-        }
         if (constant.value() instanceof String string) {
             return string.hashCode();
         }
+        Integer key = SwitchKeys.key(constant);
+        if (key != null) {
+            return key;
+        }
         throw new UnsupportedOperationException("Unsupported switch constant: " + constant.value());
-    }
-
-    /**
-     * Whether control can reach the end of a statement, following JLS 14.22. Being wrong in the
-     * "cannot complete" direction is not just a verifier error: an if/else then-branch judged as
-     * non-completing gets no jump over the else-branch and falls through into it.
-     *
-     * @param statement The statement
-     * @return {@code true} if the statement can complete normally
-     */
-    static boolean canCompleteNormally(StatementDef statement) {
-        List<StatementDef> statements = statement.flatten();
-        if (statements.isEmpty()) {
-            return true;
-        }
-        StatementDef last = statements.getLast();
-        if (last instanceof StatementDef.IfElse ifElse) {
-            return canCompleteNormally(ifElse.statement()) || canCompleteNormally(ifElse.elseStatement());
-        }
-        if (last instanceof StatementDef.Try aTry) {
-            boolean bodyOrCatchCompletes = canCompleteNormally(aTry.statement())
-                || aTry.catches().stream().anyMatch(aCatch -> canCompleteNormally(aCatch.statement()));
-            return bodyOrCatchCompletes
-                && (aTry.finallyStatement() == null || canCompleteNormally(aTry.finallyStatement()));
-        }
-        if (last instanceof StatementDef.Synchronized synchronizedStatement) {
-            return canCompleteNormally(synchronizedStatement.statement());
-        }
-        if (last instanceof StatementDef.Switch aSwitch) {
-            return aSwitch.defaultCase() == null
-                || canCompleteNormally(aSwitch.defaultCase())
-                || aSwitch.cases().values().stream().anyMatch(JdkMethodWriter::canCompleteNormally);
-        }
-        return !(last instanceof StatementDef.Return || last instanceof StatementDef.Throw);
     }
 
     void writeExpression(ExpressionDef expression) {
@@ -722,34 +706,48 @@ final class JdkMethodWriter {
             case VariableDef variable -> writeVariable(variable);
             case ExpressionDef.Cast cast -> writeCast(cast);
             case ExpressionDef.NewInstance newInstance -> {
-                ClassDesc type = classDesc(newInstance.type());
-                code.new_(type).dup();
-                for (int i = 0; i < newInstance.values().size(); i++) {
-                    writeArgument(newInstance.values().get(i), newInstance.parameterTypes().get(i));
-                }
-                code.invokespecial(type, MethodDef.CONSTRUCTOR, methodType(newInstance.parameterTypes(), TypeDef.VOID));
+                InvocationPlan plan = InvocationPlan.ofNewInstance(newInstance, objectDef, methodDef, enclosingScope);
+                code.new_(ClassDesc.ofDescriptor(plan.ownerDescriptor())).dup();
+                writeInvocation(plan);
             }
-            case ExpressionDef.InvokeInstanceMethod invoke -> writeInvocation(invoke.instance(), invoke.method(), invoke.values(), invoke.isDefault());
+            case ExpressionDef.InvokeInstanceMethod invoke -> writeInvocation(invoke.instance(), invoke.method(), invoke.values());
             case ExpressionDef.InvokeStaticMethod invoke -> writeStaticInvocation(invoke.classDef(), invoke.method(), invoke.values());
             case ExpressionDef.MathBinaryOperation math -> {
                 writeExpression(math.left());
-                writeExpression(math.right());
                 if (kind(math.type()) == TypeKind.LONG && isShift(math.opType())) {
-                    code.l2i();
+                    // The JVM shifts a long by an int distance, which the model converts to the type of the operation
+                    ExpressionDef distance = math.right();
+                    if (distance instanceof ExpressionDef.Cast cast && cast.expressionDef().type().isPrimitive()
+                        && exactKind(cast.expressionDef().type()) != TypeKind.BOOLEAN && kind(cast.expressionDef().type()) == TypeKind.INT) {
+                        // An int widened to long only to be narrowed again
+                        distance = cast.expressionDef();
+                    }
+                    writeExpression(distance);
+                    if (kind(distance.type()) == TypeKind.LONG) {
+                        code.l2i();
+                    }
+                } else {
+                    writeExpression(math.right());
                 }
                 writeMath(math);
+                narrow(math.type());
             }
             case ExpressionDef.MathUnaryOperation math -> {
-                writeExpression(math.expression());
+                // A wrapper is unboxed, negated as the primitive it holds and boxed again: the model types the
+                // negation as its operand
+                TypeDef operand = TypeDef.Primitive.unboxIfPossible(math.type());
+                writeExpression(new ExpressionDef.Cast(operand, math.expression()));
                 if (math.opType() == ExpressionDef.MathUnaryOperation.OpType.NEGATE) {
-                    switch (kind(math.type())) {
+                    switch (kind(operand)) {
                         case INT -> code.ineg();
                         case LONG -> code.lneg();
                         case FLOAT -> code.fneg();
                         case DOUBLE -> code.dneg();
                         default -> throw unsupported(expression);
                     }
+                    narrow(operand);
                 }
+                writeConversion(operand, math.type());
             }
             case ExpressionDef.StringConcatenation concat -> writeConcat(concat);
             case ExpressionDef.Lambda lambda -> writeLambda(lambda);
@@ -802,10 +800,22 @@ final class JdkMethodWriter {
             }
             case ExpressionDef.EqualsReferentially equals -> writeReferenceComparison(equals.instance(), equals.other(), false);
             case ExpressionDef.NotEqualsReferentially notEquals -> writeReferenceComparison(notEquals.instance(), notEquals.other(), true);
-            case ExpressionDef.EqualsStructurally equals -> writeStructuralEquals(equals.instance(), equals.other());
+            case ExpressionDef.EqualsStructurally equals -> {
+                ExpressionDef.ComparisonOperation primitive = primitiveEquals(equals.instance(), equals.other(), false);
+                if (primitive != null) {
+                    writeBooleanExpression(primitive);
+                } else {
+                    writeStructuralEquals(equals.instance(), equals.other());
+                }
+            }
             case ExpressionDef.NotEqualsStructurally notEquals -> {
-                writeStructuralEquals(notEquals.instance(), notEquals.other());
-                code.loadConstant(1).ixor();
+                ExpressionDef.ComparisonOperation primitive = primitiveEquals(notEquals.instance(), notEquals.other(), true);
+                if (primitive != null) {
+                    writeBooleanExpression(primitive);
+                } else {
+                    writeStructuralEquals(notEquals.instance(), notEquals.other());
+                    code.loadConstant(1).ixor();
+                }
             }
             case ExpressionDef.ComparisonOperation comparison -> writeBooleanExpression(comparison);
             case ExpressionDef.IsNull isNull -> writeBooleanExpression(isNull);
@@ -832,29 +842,29 @@ final class JdkMethodWriter {
         List<VariableDef> captured = captureVariables(lambda.implementation());
         List<ParameterDef> parameters = new ArrayList<>();
         for (VariableDef variable : captured) {
-            parameters.add(ParameterDef.builder(captureName(variable), variable.type()).build());
+            parameters.add(ParameterDef.builder(Objects.requireNonNull(captureName(variable)), capturedType(variable)).build());
         }
         parameters.addAll(lambda.implementation().getParameters());
-        MethodDef implementation = MethodDef.builder("lambda$" + lambdaOwnerName(methodDef) + "$" + lambdaMethods.size())
+        MethodDef.MethodDefBuilder builder = MethodDef.builder("lambda$" + lambdaOwnerName(methodDef) + "$" + lambdaMethods.size())
             .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
             .addParameters(parameters)
             .returns(lambda.implementation().getReturnType())
-            .addStatements(lambda.implementation().getStatements())
-            .build();
+            .addStatements(lambda.implementation().getStatements());
+        // The body is in the scope of the enclosing method: a captured value of its variable erases to the bound
+        List<TypeDef.TypeVariable> own = lambda.implementation().getTypeVariables();
+        own.forEach(builder::addTypeVariable);
+        methodDef.getTypeVariables().stream()
+            .filter(variable -> own.stream().noneMatch(declared -> declared.name().equals(variable.name())))
+            .forEach(builder::addTypeVariable);
+        MethodDef implementation = builder.build();
         lambdaMethods.add(implementation);
         for (VariableDef variable : captured) {
             writeExpression(variable);
         }
-        ClassDesc factory = ClassDesc.of("java.lang.invoke.LambdaMetafactory");
-        MethodTypeDesc bootstrapType = MethodTypeDesc.of(ConstantDescs.CD_CallSite,
-            ConstantDescs.CD_MethodHandles_Lookup, ConstantDescs.CD_String, ConstantDescs.CD_MethodType,
-            ConstantDescs.CD_MethodType, ConstantDescs.CD_MethodHandle, ConstantDescs.CD_MethodType);
-        DirectMethodHandleDesc bootstrap = MethodHandleDesc.ofMethod(DirectMethodHandleDesc.Kind.STATIC,
-            factory, "metafactory", bootstrapType);
         MethodHandleDesc implementationHandle = MethodHandleDesc.ofMethod(DirectMethodHandleDesc.Kind.STATIC,
             owner, implementation.getName(), methodType(implementation));
-        DynamicCallSiteDesc callSite = DynamicCallSiteDesc.of(bootstrap, lambda.target().getName(),
-            methodType(captured.stream().map(VariableDef::type).toList(), lambda.type()),
+        DynamicCallSiteDesc callSite = DynamicCallSiteDesc.of(lambdaMetafactory(), lambda.target().getName(),
+            methodType(captured.stream().map(this::capturedType).toList(), lambda.type()),
             methodType(lambda.target()), implementationHandle, methodType(lambda.implementation()));
         code.invokedynamic(callSite);
     }
@@ -864,6 +874,14 @@ final class JdkMethodWriter {
      * initializers are named {@code <init>} and {@code <clinit>}, which are not valid in a member
      * name, so use the same {@code new} and {@code static} placeholders that javac does.
      */
+    /**
+     * The type a lambda captures a variable as. `super` is the receiver: the special call the body makes on it is only
+     * verified for a value of the class that makes it, not of its superclass.
+     */
+    private TypeDef capturedType(VariableDef variable) {
+        return variable instanceof VariableDef.Super ? objectDef.asTypeDef() : variable.type();
+    }
+
     private static String lambdaOwnerName(MethodDef methodDef) {
         return switch (methodDef.getName()) {
             case MethodDef.CONSTRUCTOR -> "new";
@@ -874,8 +892,28 @@ final class JdkMethodWriter {
 
     private void writeMethodReference(MethodReferenceExpression methodReference) {
         ExpressionDef instance = methodReference.instance();
+        if (instance instanceof VariableDef.Super superInstance) {
+            // `super::name` is the method of the superclass, which a handle on it would dispatch past: javac writes a
+            // lambda that makes the special call, and so does this
+            writeLambda(methodReference.type().getLambda().implement((aThis, parameters) -> {
+                ExpressionDef.InvokeInstanceMethod call = superInstance.invoke(methodReference.method(), parameters);
+                return TypeDef.VOID.equals(methodReference.method().getReturnType()) ? call : call.returning();
+            }));
+            return;
+        }
+        ExpressionDef adapter = io.micronaut.sourcegen.bytecode.core.ReferenceAdapters.varargsAdapter(methodReference);
+        if (adapter instanceof ExpressionDef.Lambda lambda) {
+            // The values of a variable arity call are packed into its array, which no handle does
+            writeLambda(lambda);
+            return;
+        }
         if (instance != null) {
             writeExpression(instance);
+            if (!(instance instanceof VariableDef.This)) {
+                // A bound reference checks its receiver where it is created, as `target::apply` does in source
+                code.dup().invokestatic(ClassDesc.of("java.util.Objects"), "requireNonNull",
+                    MethodTypeDesc.of(ConstantDescs.CD_Object, ConstantDescs.CD_Object)).pop();
+            }
         }
         ClassDesc referencedOwner = classDesc(ObjectDef.getContextualType(objectDef, methodReference.owner()));
         DirectMethodHandleDesc.Kind handleKind;
@@ -884,15 +922,16 @@ final class JdkMethodWriter {
             handleKind = methodReference.owner().isInterface()
                 ? DirectMethodHandleDesc.Kind.INTERFACE_STATIC : DirectMethodHandleDesc.Kind.STATIC;
             handle = MethodHandleDesc.ofMethod(handleKind, referencedOwner, methodReference.method().getName(),
-                methodType(methodReference.method()));
+                referencedType(methodReference));
         } else if (methodReference.isConstructor()) {
+            // Erased in the scope of the constructor, as its class declares it
             handle = MethodHandleDesc.ofConstructor(referencedOwner,
-                methodReference.method().getParameters().stream().map(parameter -> classDesc(parameter.getType())).toArray(ClassDesc[]::new));
+                referencedType(methodReference).parameterList().toArray(ClassDesc[]::new));
         } else {
             handleKind = methodReference.owner().isInterface()
                 ? DirectMethodHandleDesc.Kind.INTERFACE_VIRTUAL : DirectMethodHandleDesc.Kind.VIRTUAL;
             handle = MethodHandleDesc.ofMethod(handleKind, referencedOwner, methodReference.method().getName(),
-                methodType(methodReference.method()));
+                referencedType(methodReference));
         }
         DynamicCallSiteDesc callSite = DynamicCallSiteDesc.of(
             lambdaMetafactory(), methodReference.instantiated().getName(),
@@ -900,6 +939,16 @@ final class JdkMethodWriter {
             methodType(methodReference.target()), handle, methodType(methodReference.instantiated())
         );
         code.invokedynamic(callSite);
+    }
+
+    /**
+     * The descriptor of a referenced method, erased in the scope of the class and the method declaring it.
+     */
+    private MethodTypeDesc referencedType(MethodReferenceExpression methodReference) {
+        TypeDef owner = ObjectDef.getContextualType(objectDef, methodReference.owner());
+        ObjectDef scope = TypeUtils.declaringScope(owner, objectDef, methodReference.method(), enclosingScope);
+        return MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(scope,
+            TypeUtils.inDeclaringScope(methodReference.method(), scope, objectDef), enclosingScope));
     }
 
     private static DirectMethodHandleDesc lambdaMetafactory() {
@@ -927,14 +976,7 @@ final class JdkMethodWriter {
 
     private void captureVariables(ExpressionDef expression, Set<String> variables, List<VariableDef> captured) {
         if (expression instanceof VariableDef variable) {
-            String name = switch (variable) {
-                case VariableDef.Local local -> local.name();
-                case VariableDef.MethodParameter parameter -> parameter.name();
-                case VariableDef.This _ -> "this";
-                case VariableDef.Super _ -> SUPER;
-                case VariableDef.ExceptionVar _ -> "exception";
-                default -> null;
-            };
+            String name = captureName(variable);
             if (name != null && variables.add(name)) {
                 captured.add(variable);
             }
@@ -946,14 +988,19 @@ final class JdkMethodWriter {
         }
     }
 
+    /**
+     * The name a lambda captures a variable by: its own, or {@code this}, {@code super} or {@code exception}; a field
+     * is not captured, its instance is.
+     */
+    @Nullable
     private static String captureName(VariableDef variable) {
         return switch (variable) {
             case VariableDef.Local local -> local.name();
             case VariableDef.MethodParameter parameter -> parameter.name();
             case VariableDef.This _ -> "this";
-                case VariableDef.Super _ -> SUPER;
+            case VariableDef.Super _ -> SUPER;
             case VariableDef.ExceptionVar _ -> "exception";
-            default -> variable.type().toString();
+            default -> null;
         };
     }
 
@@ -992,7 +1039,7 @@ final class JdkMethodWriter {
             writeStringExpressionSwitch(aSwitch);
             return;
         }
-        writeExpression(aSwitch.expression());
+        writeSwitchSelector(aSwitch.expression());
         Label defaultLabel = code.newLabel();
         Label end = code.newLabel();
         List<Map.Entry<Label, ExpressionDef>> bodies = new ArrayList<>();
@@ -1073,12 +1120,22 @@ final class JdkMethodWriter {
             case ExpressionDef.ComparisonOperation comparison ->
                 writeComparisonBranch(comparison, trueLabel, falseLabel);
             case ExpressionDef.EqualsStructurally equals -> {
-                writeStructuralEquals(equals.instance(), equals.other());
-                jump(IFNE, trueLabel, falseLabel);
+                ExpressionDef.ComparisonOperation primitive = primitiveEquals(equals.instance(), equals.other(), false);
+                if (primitive != null) {
+                    writeComparisonBranch(primitive, trueLabel, falseLabel);
+                } else {
+                    writeStructuralEquals(equals.instance(), equals.other());
+                    jump(IFNE, trueLabel, falseLabel);
+                }
             }
             case ExpressionDef.NotEqualsStructurally notEquals -> {
-                writeStructuralEquals(notEquals.instance(), notEquals.other());
-                jump(IFEQ, trueLabel, falseLabel);
+                ExpressionDef.ComparisonOperation primitive = primitiveEquals(notEquals.instance(), notEquals.other(), true);
+                if (primitive != null) {
+                    writeComparisonBranch(primitive, trueLabel, falseLabel);
+                } else {
+                    writeStructuralEquals(notEquals.instance(), notEquals.other());
+                    jump(IFEQ, trueLabel, falseLabel);
+                }
             }
             default -> throw unsupported(condition);
         }
@@ -1119,13 +1176,41 @@ final class JdkMethodWriter {
         writeExpression(JavaIdioms.equalsStructurally(left, right));
     }
 
+    /**
+     * Structural equality of a primitive operand is the numeric comparison {@code ==}, as the ASM writer lowers it:
+     * boxing both floats into {@code Objects.equals} would take a NaN for equal to itself.
+     *
+     * @return The comparison, the other operand converted to the primitive's type, or {@code null} for two references
+     */
+    private static ExpressionDef.@Nullable ComparisonOperation primitiveEquals(ExpressionDef left, ExpressionDef right, boolean negate) {
+        ExpressionDef.ComparisonOperation.OpType opType = negate
+            ? ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO : ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
+        if (left.type().isPrimitive()) {
+            return new ExpressionDef.ComparisonOperation(opType, left, right.cast(left.type()));
+        }
+        if (right.type().isPrimitive()) {
+            return new ExpressionDef.ComparisonOperation(opType, left.cast(right.type()), right);
+        }
+        return null;
+    }
+
     private void writeComparisonBranch(ExpressionDef.ComparisonOperation comparison,
                                        @Nullable Label trueLabel,
                                        @Nullable Label falseLabel) {
         TypeKind leftKind = kind(comparison.left().type());
         writeExpression(comparison.left());
         writeExpression(comparison.right());
-        boolean notEqual = comparison.opType() == ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO;
+        compareAndJump(leftKind, comparison.opType(), trueLabel, falseLabel);
+    }
+
+    /**
+     * Compares the two values of a kind on the stack and jumps as the comparison answers.
+     */
+    private void compareAndJump(TypeKind leftKind,
+                                ExpressionDef.ComparisonOperation.OpType opType,
+                                @Nullable Label trueLabel,
+                                @Nullable Label falseLabel) {
+        boolean notEqual = opType == ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO;
         if (leftKind == TypeKind.REFERENCE) {
             jump(notEqual ? java.lang.classfile.Opcode.IF_ACMPNE : java.lang.classfile.Opcode.IF_ACMPEQ,
                 trueLabel, falseLabel);
@@ -1134,11 +1219,11 @@ final class JdkMethodWriter {
         if (leftKind == TypeKind.LONG) {
             code.lcmp();
         } else if (leftKind == TypeKind.FLOAT) {
-            compareFloat(comparison);
+            compareFloat(opType);
         } else if (leftKind == TypeKind.DOUBLE) {
-            compareDouble(comparison);
+            compareDouble(opType);
         }
-        int operation = switch (comparison.opType()) {
+        int operation = switch (opType) {
             case EQUAL_TO -> 0;
             case NOT_EQUAL_TO -> 1;
             case LESS_THAN -> 2;
@@ -1171,6 +1256,23 @@ final class JdkMethodWriter {
                                       @Nullable Label trueLabel,
                                       @Nullable Label falseLabel,
                                       boolean negate) {
+        ReferenceComparisons.PrimitiveComparison primitive = ReferenceComparisons.primitiveComparison(left, right);
+        if (primitive != null) {
+            // Two primitives are compared as values, promoted to a common type as javac promotes them
+            writeExpression(primitive.left());
+            writeConversion(primitive.left().type(), primitive.type());
+            writeExpression(primitive.right());
+            writeConversion(primitive.right().type(), primitive.type());
+            compareAndJump(kind(primitive.type()), negate ? ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO
+                : ExpressionDef.ComparisonOperation.OpType.EQUAL_TO, trueLabel, falseLabel);
+            return;
+        }
+        if (left.type().isPrimitive() && right.type().isPrimitive()) {
+            // A boolean and a number, which javac does not compare: as the ASM writer compares them
+            writeComparisonBranch(new ExpressionDef.ComparisonOperation(negate ? ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO
+                : ExpressionDef.ComparisonOperation.OpType.EQUAL_TO, left, right), trueLabel, falseLabel);
+            return;
+        }
         writeExpression(left);
         writeExpression(right);
         jump(negate ? java.lang.classfile.Opcode.IF_ACMPNE : java.lang.classfile.Opcode.IF_ACMPEQ,
@@ -1228,24 +1330,35 @@ final class JdkMethodWriter {
         }
     }
 
+    /**
+     * Narrows the int the JVM computes a byte, short or char operation in to the type of the operation, as a cast of
+     * the operation does in Java: {@code (byte) (a + b)}.
+     */
+    private void narrow(TypeDef type) {
+        TypeKind exact = exactKind(type);
+        if (exact == TypeKind.BYTE || exact == TypeKind.SHORT || exact == TypeKind.CHAR) {
+            code.conversion(TypeKind.INT, exact);
+        }
+    }
+
     private static boolean isShift(ExpressionDef.MathBinaryOperation.OpType opType) {
         return opType == ExpressionDef.MathBinaryOperation.OpType.BITWISE_LEFT_SHIFT
             || opType == ExpressionDef.MathBinaryOperation.OpType.BITWISE_RIGHT_SHIFT
             || opType == ExpressionDef.MathBinaryOperation.OpType.BITWISE_UNSIGNED_RIGHT_SHIFT;
     }
 
-    private void compareFloat(ExpressionDef.ComparisonOperation comparison) {
-        if (comparison.opType() == ExpressionDef.ComparisonOperation.OpType.GREATER_THAN
-            || comparison.opType() == ExpressionDef.ComparisonOperation.OpType.GREATER_THAN_OR_EQUAL) {
+    private void compareFloat(ExpressionDef.ComparisonOperation.OpType opType) {
+        if (opType == ExpressionDef.ComparisonOperation.OpType.GREATER_THAN
+            || opType == ExpressionDef.ComparisonOperation.OpType.GREATER_THAN_OR_EQUAL) {
             code.fcmpl();
         } else {
             code.fcmpg();
         }
     }
 
-    private void compareDouble(ExpressionDef.ComparisonOperation comparison) {
-        if (comparison.opType() == ExpressionDef.ComparisonOperation.OpType.GREATER_THAN
-            || comparison.opType() == ExpressionDef.ComparisonOperation.OpType.GREATER_THAN_OR_EQUAL) {
+    private void compareDouble(ExpressionDef.ComparisonOperation.OpType opType) {
+        if (opType == ExpressionDef.ComparisonOperation.OpType.GREATER_THAN
+            || opType == ExpressionDef.ComparisonOperation.OpType.GREATER_THAN_OR_EQUAL) {
             code.dcmpl();
         } else {
             code.dcmpg();
@@ -1368,9 +1481,10 @@ final class JdkMethodWriter {
             case VariableDef.Local local -> load(local.name(), local.type());
             case VariableDef.Field field -> {
                 writeExpression(field.instance());
-                code.getfield(classDesc(field.declaringType()), field.name(), classDesc(field.type()));
+                code.getfield(classDesc(field.declaringType()), field.name(), memberDesc(field.declaringType(), field.name(), field.type()));
             }
-            case VariableDef.StaticField field -> code.getstatic(classDesc(field.ownerType()), field.name(), classDesc(field.type()));
+            case VariableDef.StaticField field -> code.getstatic(classDesc(field.ownerType()), field.name(),
+                memberDesc(field.ownerType(), field.name(), field.type()));
             case VariableDef.ExceptionVar exception -> load(EXCEPTION_NAME, exception.type());
             case VariableDef.Super superVariable -> {
                 if (methodDef.getModifiers().contains(Modifier.STATIC)) {
@@ -1398,91 +1512,47 @@ final class JdkMethodWriter {
     }
 
     private void writeCast(ExpressionDef.Cast cast) {
-        ExpressionDef expression = withoutRedundantCasts(cast.expressionDef());
+        // Only the last cast of a chain is written, unless an inner one converts or checks what it does not
+        ExpressionDef expression = Conversions.castOperand(cast, objectDef, methodDef, enclosingScope);
         writeExpression(expression);
         if (expression instanceof ExpressionDef.Constant constant && constant.value() == null) {
-            // null is assignable to every reference type, so it needs no cast
+            // null is assignable to every reference type, so it needs no cast; to a primitive it is unboxed, which
+            // throws, as javac unboxes it
+            if (cast.type() instanceof TypeDef.Primitive primitive && !primitive.equals(TypeDef.VOID)) {
+                writeConversion(primitive.wrapperType(), primitive);
+            }
             return;
         }
         writeConversion(expression.type(), cast.type());
     }
 
     /**
-     * Mirrors the ASM writer: only the last cast of a chain is emitted. Keeping an inner primitive
-     * cast would unbox and rebox a reference, turning a legitimate null into a
-     * NullPointerException; a primitive cast of something that is not Object is a real conversion
-     * and stays.
+     * Emits the conversion {@link Conversions#plan} plans, leaving out a checkcast to {@code Object} or to the type the
+     * value already has. These casts are inserted on every argument and every return, so leaving the redundant ones
+     * out keeps generated methods well inside the 64KB limit.
      */
-    private static ExpressionDef withoutRedundantCasts(ExpressionDef expression) {
-        ExpressionDef result = expression;
-        while (result instanceof ExpressionDef.Cast nested
-            && !(nested.type().isPrimitive() && !nested.expressionDef().type().equals(TypeDef.OBJECT))) {
-            result = nested.expressionDef();
-        }
-        return result;
-    }
-
     private void writeConversion(TypeDef source, TypeDef target) {
-        // The exact kinds matter here: a boolean boxes to Boolean, not Integer, and an int
-        // narrows to byte with i2b even though both load as int
-        TypeKind sourceKind = exactKind(source);
-        TypeKind targetKind = exactKind(target);
-        boolean sourceReference = sourceKind == TypeKind.REFERENCE;
-        boolean targetReference = targetKind == TypeKind.REFERENCE;
-        if (sourceReference && targetReference) {
-            writeCheckCast(target, classDesc(source));
-        } else if (!sourceReference && !targetReference) {
-            if (sourceKind != targetKind) {
-                code.conversion(sourceKind, targetKind);
+        for (Conversions.Step step : Conversions.plan(source, target, objectDef, methodDef, Conversions.Checkcasts.ERASURE, enclosingScope)) {
+            switch (step) {
+                case Conversions.CheckCast checkCast -> code.checkcast(ClassDesc.ofDescriptor(checkCast.descriptor()));
+                case Conversions.Unboxing unboxing -> {
+                    ClassDesc owner = ClassDesc.ofInternalName(unboxing.owner());
+                    code.checkcast(owner).invokevirtual(owner, unboxing.method(), MethodTypeDesc.ofDescriptor(unboxing.methodDescriptor()));
+                }
+                case Conversions.PrimitiveConversion conversion -> code.conversion(primitiveKind(conversion.from()), primitiveKind(conversion.to()));
+                case Conversions.Box box -> code.invokestatic(ClassDesc.ofInternalName(box.owner()), "valueOf",
+                    MethodTypeDesc.ofDescriptor(box.methodDescriptor()));
             }
-        } else if (sourceReference) {
-            unbox(targetKind);
-        } else {
-            box(sourceKind);
-            // The target may be narrower than the box, and may even be unrelated to it when the
-            // model casts through a shared dispatch signature; a checkcast keeps that verifiable
-            writeCheckCast(target, wrapper(sourceKind));
         }
     }
 
-    /**
-     * Emits a checkcast unless it would be a no-op: a cast to Object, or to the type the value
-     * already has. These casts are inserted on every argument and every return, so leaving the
-     * redundant ones out keeps generated methods well inside the 64KB limit.
-     */
-    private void writeCheckCast(TypeDef target, ClassDesc redundant) {
-        ClassDesc targetDesc = classDesc(target);
-        if (!targetDesc.equals(ConstantDescs.CD_Object) && !targetDesc.equals(redundant)) {
-            code.checkcast(targetDesc);
-        }
+    private static TypeKind primitiveKind(TypeDef.Primitive primitive) {
+        return TypeKind.fromDescriptor(TypeUtils.getDescriptor(primitive, null, EnclosingScope.NONE));
     }
 
     private void box(TypeKind kind) {
         ClassDesc wrapper = wrapper(kind);
         code.invokestatic(wrapper, "valueOf", MethodTypeDesc.of(wrapper, kindClass(kind)));
-    }
-
-    private void unbox(TypeKind kind) {
-        // Any Number unboxes to any numeric primitive, so a reference holding a Long can be read
-        // as an int the way the ASM backend allows; only boolean and char need their exact box
-        ClassDesc boxed = kind == TypeKind.BOOLEAN || kind == TypeKind.CHAR
-            ? wrapper(kind)
-            : ClassDesc.of("java.lang.Number");
-        code.checkcast(boxed).invokevirtual(boxed, primitiveName(kind), MethodTypeDesc.of(kindClass(kind)));
-    }
-
-    private static String primitiveName(TypeKind kind) {
-        return switch (kind) {
-            case BOOLEAN -> "booleanValue";
-            case BYTE -> "byteValue";
-            case CHAR -> "charValue";
-            case SHORT -> "shortValue";
-            case INT -> "intValue";
-            case LONG -> "longValue";
-            case FLOAT -> "floatValue";
-            case DOUBLE -> "doubleValue";
-            default -> throw new IllegalArgumentException("Not primitive: " + kind);
-        };
     }
 
     private static ClassDesc wrapper(TypeKind kind) {
@@ -1637,70 +1707,47 @@ final class JdkMethodWriter {
         return null;
     }
 
-    private void writeInvocation(ExpressionDef instance, MethodDef method, List<? extends ExpressionDef> values,
-                                 boolean isDefault) {
+    private void writeInvocation(ExpressionDef instance, MethodDef method, List<? extends ExpressionDef> values) {
+        InvocationPlan plan = InvocationPlan.ofInstance(instance, method, values, objectDef, methodDef, enclosingScope);
         writeExpression(instance);
-        for (int i = 0; i < values.size(); i++) {
-            writeArgument(values.get(i), method.getParameters().get(i).getType());
+        if (plan.receiver() == InvocationPlan.Receiver.DISCARD) {
+            code.pop();
+        } else if (plan.receiver() == InvocationPlan.Receiver.CAST) {
+            code.checkcast(ClassDesc.ofDescriptor(plan.receiverCast()));
         }
-        MethodTypeDesc type = methodType(method.getParameters().stream().map(param -> param.getType()).toList(), method.getReturnType());
-        if (instance instanceof VariableDef.Super aSuper) {
-            // A super call, including the deprecated form of an explicit super constructor call,
-            // is dispatched non-virtually against the supertype
-            ClassTypeDef superType = superTypeOf(aSuper);
-            code.invokespecial(classDesc(superType), method.getName(), type, superType.isInterface() && isDefault);
-            return;
-        }
-        ClassDesc methodOwner = methodOwner(instance.type());
-        if (method.isConstructor()) {
-            code.invokespecial(methodOwner, MethodDef.CONSTRUCTOR, type);
-        } else if (isInterfaceType(instance.type())) {
-            // isDefault only qualifies a super call; an ordinary call on an interface receiver is
-            // still dispatched with invokeinterface, even when the target is a default method
-            code.invokeinterface(methodOwner, method.getName(), type);
-        } else {
-            code.invokevirtual(methodOwner, method.getName(), type);
-        }
+        writeInvocation(plan);
     }
 
     private void writeStaticInvocation(ClassTypeDef classDef, MethodDef method, List<? extends ExpressionDef> values) {
-        for (int i = 0; i < values.size(); i++) {
-            writeArgument(values.get(i), method.getParameters().get(i).getType());
-        }
-        ClassDesc methodOwner = classDesc(classDef);
-        code.invokestatic(methodOwner, method.getName(),
-            methodType(method.getParameters().stream().map(parameter -> parameter.getType()).toList(), method.getReturnType()),
-            isInterfaceType(classDef));
-    }
-
-    private boolean isInterfaceType(TypeDef type) {
-        // THIS and SUPER only know whether they are an interface once resolved against the definition
-        type = ObjectDef.getContextualType(objectDef, type);
-        if (type instanceof ClassTypeDef.Parameterized parameterized) {
-            return isInterfaceType(parameterized.rawType());
-        }
-        if (type instanceof TypeDef.TypeVariable variable) {
-            return !variable.bounds().isEmpty() && isInterfaceType(variable.bounds().getFirst());
-        }
-        if (type instanceof TypeDef.AnnotatedTypeDef annotated) {
-            return isInterfaceType(annotated.typeDef());
-        }
-        if (type instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
-            return isInterfaceType(annotated.typeDef());
-        }
-        return type instanceof ClassTypeDef classTypeDef && classTypeDef.isInterface();
+        writeInvocation(InvocationPlan.ofStatic(classDef, method, values, objectDef, methodDef, enclosingScope));
     }
 
     private void writeSuperConstructor(StatementDef.InvokeSuperConstructor invocation) {
         code.aload(code.receiverSlot());
-        for (int i = 0; i < invocation.values().size(); i++) {
-            writeArgument(invocation.values().get(i), invocation.method().getParameters().get(i).getType());
+        writeInvocation(InvocationPlan.ofSuperConstructor(invocation, objectDef, methodDef, enclosingScope));
+    }
+
+    /**
+     * Writes the arguments of an invocation, converted to the parameters it plans, and emits it and the conversion of
+     * its result. The receiver, if any, is written first as the plan says.
+     */
+    private void writeInvocation(InvocationPlan plan) {
+        List<TypeDef> parameterTypes = plan.parameterTypes();
+        for (int i = 0; i < plan.values().size(); i++) {
+            writeArgument(plan.values().get(i), parameterTypes.get(i));
         }
-        ClassDesc superClass = invocation.superInstance().type().equals(TypeDef.SUPER)
-            ? classDesc(superType())
-            : classDesc(invocation.superInstance().type());
-        code.invokespecial(superClass, MethodDef.CONSTRUCTOR,
-            methodType(invocation.method().getParameters().stream().map(parameter -> parameter.getType()).toList(), TypeDef.VOID));
+        ClassDesc methodOwner = ClassDesc.ofDescriptor(plan.ownerDescriptor());
+        MethodTypeDesc type = MethodTypeDesc.ofDescriptor(plan.descriptor());
+        switch (plan.kind()) {
+            case STATIC -> code.invokestatic(methodOwner, plan.name(), type, plan.ownerInterface());
+            case SPECIAL -> code.invokespecial(methodOwner, plan.name(), type, plan.ownerInterface());
+            case INTERFACE -> code.invokeinterface(methodOwner, plan.name(), type);
+            default -> code.invokevirtual(methodOwner, plan.name(), type);
+        }
+        InvocationPlan.ResultConversion result = plan.result();
+        if (result != null) {
+            writeConversion(result.from(), result.to());
+        }
     }
 
     private void popIfNeeded(TypeDef type) {
@@ -1714,6 +1761,11 @@ final class JdkMethodWriter {
     }
 
     private void writeArgument(ExpressionDef expression, TypeDef expectedType) {
+        if (TypeUtils.packedInterfaceArray(expression, expectedType)) {
+            // A variable arity tail packed into an array of interfaces is passed as it is, as javac passes it
+            writeExpression(expression);
+            return;
+        }
         writeExpression(new ExpressionDef.Cast(expectedType, expression));
     }
 
@@ -1742,37 +1794,6 @@ final class JdkMethodWriter {
             : type.componentType();
     }
 
-    private ClassDesc methodOwner(TypeDef type) {
-        if (type.equals(TypeDef.THIS)) {
-            return owner;
-        }
-        if (type.equals(TypeDef.SUPER)) {
-            return classDesc(superType());
-        }
-        return classDesc(type);
-    }
-
-    /**
-     * The supertype a {@code super} reference resolves against: the one it names, or the
-     * definition's own supertype when it is the placeholder {@link TypeDef#SUPER}.
-     */
-    private ClassTypeDef superTypeOf(VariableDef.Super aSuper) {
-        return aSuper.type().equals(TypeDef.SUPER) ? superType() : aSuper.type();
-    }
-
-    private ClassTypeDef superType() {
-        if (objectDef instanceof RecordDef) {
-            return ClassTypeDef.of(Record.class);
-        }
-        if (objectDef instanceof ClassDef classDef) {
-            ClassTypeDef superclass = classDef.getSuperclass();
-            if (superclass != null) {
-                return superclass;
-            }
-        }
-        return TypeDef.OBJECT;
-    }
-
     /**
      * The kind a value of the type occupies on the stack and in locals: boolean, byte, char and
      * short all load and store as int.
@@ -1786,7 +1807,7 @@ final class JdkMethodWriter {
      * types: boxing, array creation and element access, and narrowing conversions.
      */
     private TypeKind exactKind(TypeDef type) {
-        return TypeKind.fromDescriptor(TypeUtils.getDescriptor(type, objectDef));
+        return TypeKind.fromDescriptor(TypeUtils.getDescriptor(type, objectDef, enclosingScope));
     }
 
     private MethodTypeDesc methodType(List<TypeDef> parameters, TypeDef returnType) {
@@ -1797,8 +1818,16 @@ final class JdkMethodWriter {
         return methodType(method.getParameters().stream().map(ParameterDef::getType).toList(), method.getReturnType());
     }
 
+    /**
+     * A type of a member, erased in the scope of the class declaring it, whose variables the caller's can shadow.
+     */
+    private ClassDesc memberDesc(TypeDef owner, String name, TypeDef type) {
+        return ClassDesc.ofDescriptor(TypeUtils.getDescriptor(type, TypeUtils.fieldScope(owner, objectDef, name), enclosingScope));
+    }
+
     private ClassDesc classDesc(TypeDef type) {
-        return ClassDesc.ofDescriptor(TypeUtils.getDescriptor(type, objectDef));
+        // A value of the body is typed in the scope of the method, whose variables shadow the class's
+        return ClassDesc.ofDescriptor(TypeUtils.getDescriptor(type, objectDef, methodDef, enclosingScope));
     }
 
     private static UnsupportedOperationException unsupported(Object value) {

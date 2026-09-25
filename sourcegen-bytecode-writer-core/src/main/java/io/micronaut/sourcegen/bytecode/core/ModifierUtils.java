@@ -17,10 +17,14 @@ package io.micronaut.sourcegen.bytecode.core;
 
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.sourcegen.model.AnnotationObjectDef;
+import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
+import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
+import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import javax.lang.model.element.Modifier;
 import org.jspecify.annotations.Nullable;
@@ -159,5 +163,97 @@ public final class ModifierUtils {
             access |= ACC_PUBLIC;
         }
         return access;
+    }
+
+    /**
+     * Maps the access modifiers alone - {@code public}, {@code protected} and {@code private} - as a member that
+     * takes the access of its definition, the implicit canonical constructor of a record, is written.
+     *
+     * @param modifiers Java modifiers
+     * @return JVMS access flags
+     * @since 2.3
+     */
+    public static int accessFlags(Set<Modifier> modifiers) {
+        return memberFlags(modifiers) & (ACC_PUBLIC | ACC_PROTECTED | ACC_PRIVATE);
+    }
+
+    /**
+     * Maps the flags of a method: its modifiers, and {@code ACC_SYNTHETIC} for a synthetic one.
+     *
+     * @param method The method
+     * @return JVMS flags
+     * @since 2.3
+     */
+    public static int methodFlags(MethodDef method) {
+        int flags = memberFlags(method.getModifiers());
+        if (method.isSynthetic()) {
+            flags |= ACC_SYNTHETIC;
+        }
+        return flags;
+    }
+
+    /**
+     * Maps the flags of a field: its modifiers, {@code ACC_SYNTHETIC} for a synthetic one and {@code ACC_ENUM} for
+     * the constant of an enum.
+     *
+     * @param objectDef The definition declaring the field, in its lowered class form for an enum
+     * @param field     The field
+     * @return JVMS flags
+     * @since 2.3
+     */
+    public static int fieldFlags(ObjectDef objectDef, FieldDef field) {
+        int flags = memberFlags(field.getModifiers());
+        if (field.isSynthetic()) {
+            flags |= ACC_SYNTHETIC;
+        }
+        if (EnumGenUtils.isEnumField(objectDef, field)) {
+            flags |= ACC_ENUM;
+        }
+        return flags;
+    }
+
+    /**
+     * Maps the flags of a method parameter, as the {@code MethodParameters} attribute carries them.
+     *
+     * @param parameter The parameter
+     * @return JVMS flags
+     * @since 2.3
+     */
+    public static int parameterFlags(ParameterDef parameter) {
+        int flags = parameter.getModifiers().contains(Modifier.FINAL) ? ACC_FINAL : 0;
+        if (parameter.isSynthetic()) {
+            flags |= ACC_SYNTHETIC;
+        }
+        return flags;
+    }
+
+    /**
+     * Maps the flags of the class file of a definition: the kind of type it is, its {@link #classFlags class flags},
+     * {@code ACC_SYNTHETIC} for a synthetic one and {@code ACC_ENUM} for the lowered class form of an enum. A record
+     * is final; the {@code Record} attribute, not a flag, marks it as a record.
+     *
+     * @param objectDef The definition, in its lowered class form for an enum
+     * @param outerType The enclosing type, or {@code null}
+     * @return JVMS class flags
+     * @since 2.3
+     */
+    public static int classFileFlags(ObjectDef objectDef, @Nullable ClassTypeDef outerType) {
+        if (objectDef instanceof EnumDef enumDef) {
+            return classFileFlags(EnumGenUtils.toClassDef(enumDef), outerType);
+        }
+        int flags = classFlags(objectDef.getModifiers(), outerType);
+        if (objectDef instanceof InterfaceDef) {
+            flags |= ACC_INTERFACE | ACC_ABSTRACT;
+        } else if (objectDef instanceof RecordDef) {
+            flags |= ACC_FINAL;
+        } else if (objectDef instanceof AnnotationObjectDef) {
+            flags |= ACC_ANNOTATION | ACC_INTERFACE | ACC_ABSTRACT;
+        } else if (objectDef instanceof ClassDef classDef && EnumGenUtils.isEnum(classDef)) {
+            flags |= ACC_ENUM;
+        }
+        if (objectDef.isSynthetic()) {
+            flags |= ACC_SYNTHETIC;
+        }
+        return flags;
     }
 }

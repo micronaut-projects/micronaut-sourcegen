@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode.jdk;
 
+import io.micronaut.sourcegen.bytecode.tck.GeneratedClassLoader;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
@@ -55,7 +56,7 @@ class JdkExpressionLoweringTest {
     private static Class<?> define(ClassDef definition) throws ClassNotFoundException {
         byte[] bytes = new JdkClassFileWriter(true).write(definition, null)
             .orElseThrow(() -> new AssertionError("Expected direct lowering of " + definition.getName()));
-        return new MapClassLoader(Map.of(definition.getName(), bytes)).loadClass(definition.getName());
+        return new GeneratedClassLoader(Map.of(definition.getName(), bytes)).loadClass(definition.getName());
     }
 
     @Test
@@ -460,7 +461,7 @@ class JdkExpressionLoweringTest {
                 .parameterAnnotations().getFirst().stream().map(a -> a.classSymbol().descriptorString()).toList());
 
         // And the runtime sees only the one that asked to be seen
-        Class<?> generated = new MapClassLoader(Map.of(definition.getName(), bytes))
+        Class<?> generated = new GeneratedClassLoader(Map.of(definition.getName(), bytes))
             .loadClass(definition.getName());
         assertTrue(generated.isAnnotationPresent(RuntimeMarker.class));
         assertFalse(generated.isAnnotationPresent(ClassMarker.class));
@@ -508,23 +509,5 @@ class JdkExpressionLoweringTest {
 
     @Retention(RetentionPolicy.SOURCE)
     @interface SourceMarker {
-    }
-
-    private static final class MapClassLoader extends ClassLoader {
-        private final Map<String, byte[]> classes;
-
-        private MapClassLoader(Map<String, byte[]> classes) {
-            super(JdkExpressionLoweringTest.class.getClassLoader());
-            this.classes = new LinkedHashMap<>(classes);
-        }
-
-        @Override
-        protected Class<?> findClass(String name) throws ClassNotFoundException {
-            byte[] bytes = classes.get(name);
-            if (bytes == null) {
-                return super.findClass(name);
-            }
-            return defineClass(name, bytes, 0, bytes.length);
-        }
     }
 }

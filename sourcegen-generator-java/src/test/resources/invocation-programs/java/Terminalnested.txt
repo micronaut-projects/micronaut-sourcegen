@@ -1,0 +1,13 @@
+package test;
+
+import java.lang.String;
+
+public class Terminalnested {
+  public String call() {
+    if (true) {
+      return "reached";
+    } else {
+      return "reached";
+    }
+  }
+}

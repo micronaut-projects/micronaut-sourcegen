@@ -1,12 +1,10 @@
 package io.micronaut.sourcegen.javapoet.write;
 
-import io.micronaut.sourcegen.JavaPoetSourceGenerator;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
-import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -14,11 +12,18 @@ import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.lang.reflect.Method;
+import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.compile;
+import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.render;
+import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.run;
+import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.single;
+import static io.micronaut.sourcegen.javapoet.write.JavaCompileAssertions.stringMethod;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -27,13 +32,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * in scope, and a lambda body may capture the enclosing method's parameters.
  */
 public class LambdaScopeWriteTest extends AbstractWriteTest {
-
-    private static String writeObject(ObjectDef objectDef) throws IOException {
-        try (StringWriter writer = new StringWriter()) {
-            new JavaPoetSourceGenerator().write(objectDef, writer);
-            return writer.toString();
-        }
-    }
 
     /**
      * {@code interface Nested { Nested apply(String context); }} - a functional interface whose method
@@ -92,7 +90,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(nestedDef), data);
+        JavaCompileAssertions.assertCompiles(render(nestedDef), data);
     }
 
     @Test
@@ -128,7 +126,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(nestedDef), data);
+        JavaCompileAssertions.assertCompiles(render(nestedDef), data);
     }
 
     @Test
@@ -170,7 +168,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+        JavaCompileAssertions.assertCompiles(render(functionDef), data);
     }
 
     @Test
@@ -204,7 +202,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+        JavaCompileAssertions.assertCompiles(render(functionDef), data);
     }
 
     @Test
@@ -245,7 +243,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+        JavaCompileAssertions.assertCompiles(render(functionDef), data);
     }
 
     @Test
@@ -281,7 +279,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+        JavaCompileAssertions.assertCompiles(render(functionDef), data);
     }
 
     @Test
@@ -370,7 +368,7 @@ public class MyClass {
 }
             """, data);
 
-        JavaCompileAssertions.assertCompiles(writeObject(functionDef), data);
+        JavaCompileAssertions.assertCompiles(render(functionDef), data);
     }
 
     @Test
@@ -392,4 +390,101 @@ public class MyClass {
         assertEquals(true, e.getMessage().contains("evaluate"), e.getMessage());
     }
 
+    /**
+     * A local of a lambda body named like a local of the enclosing method: a redeclaration in Java ("variable value
+     * is already defined"). Only the lambda's parameters are renamed.
+     */
+    @Test
+    void lambdaBodyLocalNamedLikeAnEnclosingLocal() throws Exception {
+        var supplier = TypeDef.parameterized(Supplier.class, String.class);
+        var lambda = supplier.getLambda().implement((ls, lp) ->
+            ExpressionDef.constant("inner").newLocal("value", VariableDef::returning));
+        var def = stringMethod("test.LambdaLocalShadow", ExpressionDef.constant("outer").newLocal("value", outer ->
+            lambda.newLocal("supplier", s -> s.invoke("get", TypeDef.OBJECT).cast(TypeDef.STRING).returning())));
+        assertEquals("inner", run(def));
+    }
+
+    /**
+     * A local of a lambda body named like a parameter of the enclosing method.
+     */
+    @Test
+    void lambdaBodyLocalNamedLikeAnEnclosingParameter() throws Exception {
+        var supplier = TypeDef.parameterized(Supplier.class, String.class);
+        var lambda = supplier.getLambda().implement((ls, lp) ->
+            ExpressionDef.constant("inner").newLocal("value", VariableDef::returning));
+        var def = ClassDef.builder("test.LambdaParameterShadow").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).addParameter("value", String.class)
+                .returns(String.class)
+                .build((self, p) -> lambda.newLocal("supplier", s -> s.invoke("get", TypeDef.OBJECT).cast(TypeDef.STRING).returning())))
+            .build();
+        try (var loader = compile(def)) {
+            var cls = loader.loadClass(def.getName());
+            assertEquals("inner", cls.getMethod("call", String.class).invoke(cls.getConstructor().newInstance(), "outer"));
+        }
+    }
+
+    /**
+     * A local captured by a lambda and assigned afterwards: the bytecode writer passes its value at the point the
+     * lambda is created, javac requires it to be effectively final.
+     */
+    @Test
+    void localReassignedAfterALambdaCapturesIt() throws Exception {
+        var supplier = TypeDef.parameterized(Supplier.class, String.class);
+        var def = stringMethod("test.CapturedThenReassigned", ExpressionDef.constant("first").newLocal("value", value -> {
+            var local = (VariableDef.Local) value;
+            return supplier.getLambda().implement((ls, lp) -> local.returning())
+                .newLocal("supplier", s -> StatementDef.multi(
+                    local.assign(ExpressionDef.constant("second")),
+                    s.invoke("get", TypeDef.OBJECT).cast(TypeDef.STRING).returning()));
+        }));
+        assertEquals("first", run(def));
+    }
+
+    /**
+     * A lambda body assigning a local it captures: the bytecode writer assigns the lambda's copy, javac rejects it.
+     */
+    @Test
+    void lambdaAssigningACapturedLocal() throws Exception {
+        var supplier = TypeDef.parameterized(Supplier.class, String.class);
+        var def = stringMethod("test.LambdaAssignsCaptured", ExpressionDef.constant("outer").newLocal("value", value -> {
+            var local = (VariableDef.Local) value;
+            return supplier.getLambda().implement((ls, lp) -> StatementDef.multi(
+                    local.assign(ExpressionDef.constant("inner")),
+                    local.returning()))
+                .newLocal("supplier", s -> s.invoke("get", TypeDef.OBJECT).cast(TypeDef.STRING)
+                    .stringConcat(local).returning());
+        }));
+        assertEquals("innerouter", run(def));
+    }
+
+    // A local assigned twice and then captured: the bytecode captures its value, javac rejects a local that is not
+    // effectively final.
+    @Test
+    void lambdaCapturesReassignedLocal() throws Exception {
+        var supplier = TypeDef.parameterized(Supplier.class, String.class);
+        var text = new VariableDef.Local("text", TypeDef.STRING);
+        var get = Supplier.class.getMethod("get");
+        var def = single("ReassignedCapture", Object.class, List.of(), (self, p) -> StatementDef.multi(
+            text.defineAndAssign(ExpressionDef.constant("a")),
+            text.assign(ExpressionDef.constant("b")),
+            supplier.getLambda().implement((ls, lp) -> text.returning()).invoke(get).returning()));
+        assertEquals("b", run(def));
+    }
+
+    @Test
+    void renamedLambdaParameterDoesNotCollideWithBodyLocal() throws Exception {
+        var function = TypeDef.parameterized(Function.class, String.class, String.class);
+        var def = ClassDef.builder("test.LambdaLocalCollision").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("reference").addModifiers(Modifier.PUBLIC).addParameter("value", String.class)
+                .returns(function).build((s, p) -> function.getLambda().implement(List.of("value"),
+                    (ls, lp) -> ExpressionDef.constant("local").newLocal("value1", local -> lp.getFirst().returning()))
+                    .returning())).build();
+        try (var loader = compile(def)) {
+            var cls = loader.loadClass(def.getName());
+            @SuppressWarnings("unchecked")
+            var functionValue = (Function<String, String>) cls.getMethod("reference", String.class)
+                .invoke(cls.getConstructor().newInstance(), "outer");
+            assertEquals("input", functionValue.apply("input"));
+        }
+    }
 }

@@ -31,6 +31,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -42,7 +43,8 @@ import java.util.stream.Stream;
  * @since 1.0
  */
 @Experimental
-public sealed interface ClassTypeDef extends TypeDef {
+public sealed interface ClassTypeDef extends TypeDef permits ClassTypeDef.JavaClass, ClassTypeDef.ClassName,
+    ClassTypeDef.ClassElementType, ClassTypeDef.ClassDefType, ClassTypeDef.Parameterized, EnclosedClassType {
 
     ClassTypeDef OBJECT = of(Object.class);
 
@@ -61,14 +63,28 @@ public sealed interface ClassTypeDef extends TypeDef {
             if (o instanceof Parameterized parameterized2) {
                 return parameterized1.getName().equals(parameterized2.getName())
                     && parameterized1.typeArguments.equals(parameterized2.typeArguments)
-                    && parameterized1.isNullable() == parameterized2.isNullable();
+                    && parameterized1.isNullable() == parameterized2.isNullable()
+                    && Objects.equals(enclosingOf(parameterized1.rawType, parameterized2.rawType), enclosingOf(parameterized2.rawType, parameterized1.rawType));
             }
             return false; // Avoid comparing not-parameterized and parameterized
         }
         if (o instanceof Parameterized) {
             return false; // Avoid comparing not-parameterized and parameterized
         }
-        return o instanceof ClassTypeDef other && classTypeDef.getName().equals(other.getName()) && classTypeDef.isNullable() == other.isNullable();
+        return o instanceof ClassTypeDef other && classTypeDef.getName().equals(other.getName()) && classTypeDef.isNullable() == other.isNullable()
+            // A substituted or reflected member of a parameterized enclosing type is not the one of another parameterization
+            && Objects.equals(enclosingOf(classTypeDef, other), enclosingOf(other, classTypeDef));
+    }
+
+    /**
+     * The enclosing type compared: only where one of the two carries it, so that the types of the public model
+     * compare by name, as they always have.
+     */
+    private static @Nullable ClassTypeDef enclosingOf(ClassTypeDef classTypeDef, ClassTypeDef other) {
+        if (!(classTypeDef instanceof EnclosedClassType) && !(other instanceof EnclosedClassType)) {
+            return null;
+        }
+        return TypeHierarchy.enclosingOf(classTypeDef);
     }
 
     /**
@@ -272,7 +288,7 @@ public sealed interface ClassTypeDef extends TypeDef {
         LambdaDef lambda = getLambda();
         return new InstanceMethodReferenceExpression(
             lambda.getType(), lambda.getMethod(), lambda.getImplementation(),
-            receiverType(instance), instance, method);
+            receiverType(instance, method), instance, method);
     }
 
     /**
@@ -305,16 +321,32 @@ public sealed interface ClassTypeDef extends TypeDef {
     @Experimental
     default MethodReferenceExpression methodReference(ExpressionDef instance, String name) {
         return methodReference(instance,
-            MethodReferences.resolve(receiverType(instance), name, getLambda().getImplementation().getParameters().size()));
+            MethodReferences.resolve(receiverType(instance, null), name, getLambda().getImplementation().getParameters().size()));
     }
 
     /**
      * @param instance The receiver of a method reference
-     * @return The type of the receiver, which must be a class type
+     * @param method   The referenced method, if known
+     * @return The type of the receiver: a class type, or the bound of a variable that declares the method
      */
-    private static ClassTypeDef receiverType(ExpressionDef instance) {
-        if (instance.type() instanceof ClassTypeDef owner) {
+    private static ClassTypeDef receiverType(ExpressionDef instance, @Nullable MethodDef method) {
+        TypeDef type = TypeOperations.unwrap(instance.type());
+        if (type instanceof ClassTypeDef owner) {
             return owner;
+        }
+        if (type instanceof TypeDef.TypeVariable variable) {
+            // `value::length` of a `T extends CharSequence`: the method of the bound declaring it
+            List<ClassTypeDef> bounds = variable.bounds().stream().map(TypeHierarchy::unwrap)
+                .filter(ClassTypeDef.class::isInstance).map(ClassTypeDef.class::cast)
+                .map(bound -> bound instanceof Parameterized parameterized ? parameterized.rawType() : bound).toList();
+            for (ClassTypeDef bound : bounds) {
+                if (method == null || !bound.findDeclaredMethods(method.getName(), method.getParameters().size()).isEmpty()) {
+                    return bound;
+                }
+            }
+            if (!bounds.isEmpty()) {
+                return bounds.getFirst();
+            }
         }
         throw new IllegalArgumentException(
             "The receiver of a method reference must be of a class type, but was: " + instance.type());
@@ -411,9 +443,9 @@ public sealed interface ClassTypeDef extends TypeDef {
     default ExpressionDef.NewInstance instantiate(List<? extends ExpressionDef> values) {
         Invocations.Resolved resolved = Invocations.resolve(this, MethodDef.CONSTRUCTOR, null, values);
         if (resolved != null) {
-            return instantiate(resolved.parameterTypes(), resolved.values());
+            return new ExpressionDef.NewInstance(this, resolved.parameterTypes(), resolved.values());
         }
-        return instantiate(values.stream().map(ExpressionDef::type).toList(), values);
+        return new ExpressionDef.NewInstance(this, values.stream().map(ExpressionDef::type).toList(), values);
     }
 
     /**
@@ -530,10 +562,10 @@ public sealed interface ClassTypeDef extends TypeDef {
                                                           TypeDef returningType,
                                                           List<? extends ExpressionDef> values) {
         Invocations.Resolved resolved = Invocations.resolve(this, name, returningType, values);
-        if (resolved != null) {
-            return invokeStatic(name, resolved.parameterTypes(), returningType, resolved.values());
-        }
-        return invokeStatic(name, values.stream().map(ExpressionDef::type).toList(), returningType, values);
+        List<TypeDef> parameterTypes = resolved != null ? resolved.parameterTypes() : values.stream().map(ExpressionDef::type).toList();
+        List<? extends ExpressionDef> arguments = resolved != null ? resolved.values() : values;
+        MethodDef.MethodDefBuilder method = MethodDef.builder(name).addParameters(parameterTypes).returns(returningType);
+        return new ExpressionDef.InvokeStaticMethod(this, method.build(), arguments);
     }
 
     /**
@@ -759,9 +791,13 @@ public sealed interface ClassTypeDef extends TypeDef {
         if (classElement.isPrimitive()) {
             throw new IllegalStateException("Primitive classes cannot be of type: " + ClassTypeDef.class.getName());
         }
-        if (!classElement.getTypeArguments().isEmpty()) {
+        // A member of a parameterized enclosing type is still the element's type: the writers take the enclosing
+        // type's arguments from the element (TypeHierarchy#enclosingOf)
+        ClassTypeDef type = new ClassElementType(classElement, classElement.isNullable());
+        // A raw type is still reported with its type arguments defaulted; keep it raw
+        if (!classElement.isRawType() && !classElement.getTypeArguments().isEmpty()) {
             return new Parameterized(
-                new ClassElementType(classElement, classElement.isNullable()),
+                type,
                 classElement.getTypeArguments().values()
                     .stream()
                     // Erasure applies to the type itself; the arguments keep the generic signature, so
@@ -770,7 +806,7 @@ public sealed interface ClassTypeDef extends TypeDef {
                     .toList()
             );
         }
-        return new ClassElementType(classElement, classElement.isNullable());
+        return type;
     }
 
     /**
@@ -1160,11 +1196,34 @@ public sealed interface ClassTypeDef extends TypeDef {
 
         @Override
         public List<MethodDef> findDeclaredMethods(String name, int argumentCount) {
-            return objectDef.getMethods()
+            List<MethodDef> declared = objectDef.getMethods()
                 .stream()
                 .filter(m -> m.getName().equals(name))
                 .filter(m -> matchesArity(m.getParameters().size(), false, argumentCount))
                 .toList();
+            if (MethodDef.CONSTRUCTOR.equals(name)) {
+                return declared;
+            }
+            // The methods it inherits are invoked on it too, as a class file resolves them: those it does not
+            // override, from its superclass and superinterfaces
+            List<MethodDef> result = new java.util.ArrayList<>(declared);
+            java.util.Set<String> signatures = new java.util.HashSet<>();
+            declared.forEach(m -> signatures.add(erasedParameters(m)));
+            for (TypeDef superType : TypeHierarchy.superTypesOf(objectDef)) {
+                if (TypeOperations.unwrap(superType) instanceof ClassTypeDef superClass) {
+                    ClassTypeDef raw = superClass instanceof Parameterized parameterized ? parameterized.rawType() : superClass;
+                    for (MethodDef inherited : raw.findDeclaredMethods(name, argumentCount)) {
+                        if (!inherited.getModifiers().contains(Modifier.PRIVATE) && signatures.add(erasedParameters(inherited))) {
+                            result.add(inherited);
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        private static String erasedParameters(MethodDef method) {
+            return method.getParameters().stream().map(parameter -> TypeHierarchy.erasedName(parameter.getType())).toList().toString();
         }
 
         @Override

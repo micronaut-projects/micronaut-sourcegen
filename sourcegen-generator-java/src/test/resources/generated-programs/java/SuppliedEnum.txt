@@ -1,0 +1,13 @@
+package test;
+
+import java.lang.String;
+import java.util.function.Supplier;
+
+public enum SuppliedEnum implements Supplier<String> {
+
+  ONE;
+
+  public String get() {
+    return "one";
+  }
+}

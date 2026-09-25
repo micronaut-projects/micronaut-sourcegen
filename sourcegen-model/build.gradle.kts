@@ -16,6 +16,7 @@ dependencies {
         exclude("io.micronaut.sourcegen")
     }
     testImplementation(mnTest.junit.jupiter.api)
+    testImplementation(mnTest.junit.jupiter.params)
 
     testRuntimeOnly(mnTest.junit.jupiter.engine)
 }
