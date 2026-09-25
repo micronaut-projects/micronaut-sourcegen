@@ -3360,7 +3360,6 @@ class test/MyClass {
     ALOAD 2
     ARETURN
    L3
-   L7
    L6
     LDC "b"
     ASTORE 3
@@ -3370,9 +3369,9 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 3
     ARETURN
+   L7
    L8
-   L9
-    GOTO L10
+    GOTO L9
    L2
     ASTORE 4
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
@@ -3380,10 +3379,10 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 4
     ATHROW
-    GOTO L10
+    GOTO L9
+   L9
    L10
-   L11
-    LOCALVARIABLE flag Z L5 L11 1
+    LOCALVARIABLE flag Z L5 L10 1
 
   // access flags 0x1
   public elseFallsThrough(Z)V
@@ -3400,7 +3399,6 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     RETURN
    L3
-   L7
    L6
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Else"
@@ -3409,7 +3407,7 @@ class test/MyClass {
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
-    GOTO L8
+    GOTO L7
    L2
     ASTORE 2
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
@@ -3417,11 +3415,11 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     ALOAD 2
     ATHROW
-    GOTO L8
-   L8
+    GOTO L7
+   L7
     RETURN
-   L9
-    LOCALVARIABLE flag Z L5 L9 1
+   L8
+    LOCALVARIABLE flag Z L5 L8 1
 
   // access flags 0x1
   public thenFallsThrough(Z)V
@@ -3434,7 +3432,7 @@ class test/MyClass {
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "Then"
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
-   L5
+    GOTO L5
    L4
    L1
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
@@ -3442,6 +3440,7 @@ class test/MyClass {
     INVOKEVIRTUAL java/io/PrintStream.println (Ljava/lang/String;)V
     RETURN
    L6
+   L5
    L7
     GETSTATIC java/lang/System.out : Ljava/io/PrintStream;
     LDC "World"
@@ -3498,6 +3497,7 @@ class MyClass {
       try {
          if (flag) {
             System.out.println("Then");
+            return;
          }
       } finally {
          System.out.println("World");
