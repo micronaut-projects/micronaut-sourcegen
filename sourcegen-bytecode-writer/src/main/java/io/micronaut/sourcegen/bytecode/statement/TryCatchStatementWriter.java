@@ -221,7 +221,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
      * @param statement The statement
      * @return true if the execution can continue after the statement
      */
-    private static boolean canCompleteNormally(StatementDef statement) {
+    static boolean canCompleteNormally(StatementDef statement) {
         List<StatementDef> statements = statement.flatten();
         if (statements.isEmpty()) {
             return true;
