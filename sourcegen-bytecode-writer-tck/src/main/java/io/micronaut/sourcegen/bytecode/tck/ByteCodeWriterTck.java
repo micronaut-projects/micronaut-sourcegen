@@ -42,6 +42,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -93,6 +94,32 @@ public abstract class ByteCodeWriterTck {
      */
     protected final Class<?> define(ObjectDef definition) throws ClassNotFoundException {
         return new MapClassLoader(Map.of(definition.getName(), write(definition))).loadClass(definition.getName());
+    }
+
+    @Test
+    public void callsAVariableArityMethodWithMoreArgumentsThanItsFixedArityOverloadsTake() throws Exception {
+        // List.of declares fixed arity overloads up to ten elements, so an eleventh can only resolve to
+        // List.of(E...), whose tail is packed into an array of the requested element type
+        List<ExpressionDef> values = new ArrayList<>();
+        for (int i = 0; i < 14; i++) {
+            values.add(ExpressionDef.constant("value" + i));
+        }
+        TypeDef returnType = TypeDef.parameterized(List.class, TypeDef.STRING);
+        ClassDef classDef = ClassDef.builder("example.TckVariableArity")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("values")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(returnType)
+                .build((ignored, parameters) -> ClassTypeDef.of(List.class)
+                    .invokeStatic("of", returnType, values)
+                    .returning()))
+            .build();
+
+        Class<?> generated = define(classDef);
+
+        assertEquals(List.of("value0", "value1", "value2", "value3", "value4", "value5", "value6",
+            "value7", "value8", "value9", "value10", "value11", "value12", "value13"),
+            generated.getMethod("values").invoke(null));
     }
 
     @Test
