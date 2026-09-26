@@ -13,9 +13,9 @@ nullaway = "0.13.8"
 
 managed-asm = "9.10.1"
 
-micronaut = "5.2.6"
+micronaut = "5.2.8"
 micronaut-platform = "5.1.5"
-micronaut-data = "5.1.5"
+micronaut-data = "5.2.0"
 micronaut-validation = "5.2.0"
 micronaut-gradle-plugin = "5.0.2"
 
