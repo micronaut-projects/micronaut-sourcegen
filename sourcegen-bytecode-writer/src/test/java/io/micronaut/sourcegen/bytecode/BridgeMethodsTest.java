@@ -325,7 +325,7 @@ public class example/Example extends example/Parent {
     }
 
     @Test
-    void testAbstractOverrideGetsAnAbstractBridge() {
+    void testAbstractOverrideGetsAConcreteBridge() {
         ClassDef parent = ClassDef.builder("example.Top")
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
             .addTypeVariable(TypeDef.variable("T"))
@@ -358,8 +358,11 @@ public abstract class example/Example extends example/Top {
   // access flags 0x401
   public abstract get()Ljava/lang/String;
 
-  // access flags 0x1441
-  public abstract synthetic bridge get()Ljava/lang/Object;
+  // access flags 0x1041
+  public synthetic bridge get()Ljava/lang/Object;
+    ALOAD 0
+    INVOKEVIRTUAL example/Example.get ()Ljava/lang/String;
+    ARETURN
 }
 """, generate(def));
     }
@@ -806,7 +809,7 @@ public class example/Example extends example/UnknownParent {
     }
 
     @Test
-    void testAbstractOverrideWithErasedParameterGetsAnAbstractBridge() {
+    void testAbstractOverrideWithErasedParameterGetsAConcreteBridge() {
         ClassDef parent = ClassDef.builder("example.Parent")
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
             .addTypeVariable(TypeDef.variable("T"))
@@ -828,7 +831,8 @@ public class example/Example extends example/UnknownParent {
             .build();
 
         assertEquals(
-            List.of("set(Ljava/lang/Object;)V (abstract)"),
+            // As javac writes it, the bridge of an abstract method is concrete: it dispatches to the implementation
+            List.of("set(Ljava/lang/Object;)V"),
             bridgeMethodsOf(new ByteCodeWriter(false, false).write(def))
         );
     }

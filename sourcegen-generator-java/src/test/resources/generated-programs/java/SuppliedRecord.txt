@@ -1,0 +1,12 @@
+package test;
+
+import java.lang.CharSequence;
+import java.util.function.Supplier;
+
+public record SuppliedRecord<T extends CharSequence>(
+    T value
+) implements Supplier<T> {
+  public T get() {
+    return this.value;
+  }
+}

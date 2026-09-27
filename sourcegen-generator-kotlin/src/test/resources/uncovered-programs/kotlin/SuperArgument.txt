@@ -1,0 +1,17 @@
+package test
+
+import io.micronaut.sourcegen.UncoveredShapeProgramTest
+import kotlin.Boolean
+import kotlin.String
+
+public open class SuperArgument public constructor(
+  label: String,
+) : UncoveredShapeProgramTest.Labelled(label) {
+  public open fun typeName(): String {
+    return this.javaClass.getSimpleName()
+  }
+
+  public open fun stableHash(): Boolean {
+    return (this.hashCode()) == (this.hashCode())
+  }
+}

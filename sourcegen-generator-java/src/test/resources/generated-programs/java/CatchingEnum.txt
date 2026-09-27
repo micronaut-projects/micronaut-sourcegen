@@ -1,0 +1,19 @@
+package test;
+
+import java.lang.Throwable;
+
+public enum CatchingEnum {
+
+  ONE;
+
+  private Throwable e0;
+
+  public Throwable call() {
+    try {
+      throw new java.lang.IllegalStateException("failure");
+    } catch (Throwable e1) {
+      this.e0 = e1;
+    }
+    return this.e0;
+  }
+}

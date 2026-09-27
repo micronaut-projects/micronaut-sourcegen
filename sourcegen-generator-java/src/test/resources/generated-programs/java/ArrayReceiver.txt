@@ -1,0 +1,16 @@
+package test;
+
+import java.lang.Object;
+import java.util.function.Supplier;
+
+public class ArrayReceiver<T> implements Supplier<T> {
+  private Object stored;
+
+  public ArrayReceiver(Object stored) {
+    this.stored = stored;
+  }
+
+  public T get() {
+    return (T) this.stored;
+  }
+}

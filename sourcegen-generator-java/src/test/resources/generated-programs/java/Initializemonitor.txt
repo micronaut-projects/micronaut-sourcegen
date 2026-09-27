@@ -1,0 +1,11 @@
+package test;
+
+public class Initializemonitor {
+  public static final int value;
+
+  static {
+    synchronized ("lock") {
+      value = 7;
+    }
+  }
+}

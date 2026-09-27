@@ -41,7 +41,7 @@ final class NewArrayInitializedExpressionWriter implements ExpressionWriter {
             componentType = componentType.array(arrayType.dimensions() - 1);
         }
 
-        Type type = TypeUtils.getType(componentType, context.objectDef());
+        Type type = TypeUtils.getScopedType(componentType, context);
         generatorAdapter.newArray(type);
 
         if (!expressions.isEmpty()) {

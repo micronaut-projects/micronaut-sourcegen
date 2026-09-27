@@ -96,7 +96,8 @@ public final class Util {
           case '\"' -> "\"";  /* \u0022: double quote (") */
           case '\'' -> "\\'"; /* \u0027: single quote (') */
           case '\\' -> "\\\\";  /* \u005c: backslash (\) */
-          default -> isISOControl(c) ? "\\u%04x".formatted((int) c) : Character.toString(c);
+          // A surrogate is escaped: unpaired, it has no encoding a source file can hold
+          default -> isISOControl(c) || Character.isSurrogate(c) ? "\\u%04x".formatted((int) c) : Character.toString(c);
       };
   }
 

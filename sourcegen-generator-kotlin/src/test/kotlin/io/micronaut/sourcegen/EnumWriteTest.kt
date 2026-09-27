@@ -68,7 +68,7 @@ class EnumWriteTest {
           public var intValue: Int
 
           private constructor(intValue: Int) {
-            this. intValue = intValue
+            this.intValue = intValue
           }
         }
         """.trimIndent()
@@ -105,8 +105,8 @@ class EnumWriteTest {
           public var boolValue: Boolean
 
           private constructor(intValue: Int, boolValue: Boolean) {
-            this. intValue = intValue
-            this. boolValue = boolValue
+            this.intValue = intValue
+            this.boolValue = boolValue
           }
         }
         """.trimIndent()
@@ -175,7 +175,7 @@ class EnumWriteTest {
           DELETED,
           ;
 
-          public var strValue: String
+          public var strValue: String? = null
 
           public fun getValue(): String {
             return "value"

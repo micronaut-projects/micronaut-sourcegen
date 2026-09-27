@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode;
 
+import io.micronaut.sourcegen.bytecode.core.SwitchKeys;
 import io.micronaut.sourcegen.bytecode.expression.ExpressionWriter;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -32,18 +33,20 @@ public class AbstractSwitchWriter {
                                                MethodContext context,
                                                ExpressionDef expression) {
         TypeDef switchExpressionType = expression.type();
-        ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, expression, switchExpressionType);
-        if (!switchExpressionType.equals(TypeDef.Primitive.INT)) {
+        if (!SwitchKeys.switchesOnInt(switchExpressionType)) {
             throw new UnsupportedOperationException("Not allowed switch expression type: " + switchExpressionType);
         }
+        // A char, a short or a byte is widened, and a wrapper unboxed, as javac switches on them
+        ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, expression, TypeDef.Primitive.INT);
     }
 
     protected static int toSwitchKey(ExpressionDef.Constant constant) {
         if (constant.value() instanceof String s) {
             return s.hashCode();
         }
-        if (constant.value() instanceof Integer i) {
-            return i;
+        Integer key = SwitchKeys.key(constant);
+        if (key != null) {
+            return key;
         }
         throw new UnsupportedOperationException("Unrecognized constant for a switch key: " + constant);
     }

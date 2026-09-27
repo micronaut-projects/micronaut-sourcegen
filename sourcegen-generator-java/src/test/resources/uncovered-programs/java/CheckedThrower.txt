@@ -1,0 +1,9 @@
+package test;
+
+import java.io.IOException;
+
+public class CheckedThrower {
+  public void call() throws IOException {
+    throw new java.io.IOException("checked");
+  }
+}

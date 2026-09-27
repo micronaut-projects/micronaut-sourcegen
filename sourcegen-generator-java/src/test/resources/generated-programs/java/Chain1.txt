@@ -1,0 +1,14 @@
+package test;
+
+import java.lang.CharSequence;
+import java.lang.Object;
+
+public class Chain1 {
+  public <T0 extends CharSequence> T0 identity(T0 value) {
+    return value;
+  }
+
+  public Object call(Object value) {
+    return this.identity((CharSequence) value);
+  }
+}

@@ -1,0 +1,11 @@
+package test;
+
+import io.micronaut.sourcegen.javapoet.write.CalleeBoundsRegressionTest;
+import java.lang.CharSequence;
+import java.lang.Object;
+
+public class RawReceiverX<X> {
+  public Object call(CalleeBoundsRegressionTest.Parent target, Object value) {
+    return target.identity((CharSequence) value);
+  }
+}

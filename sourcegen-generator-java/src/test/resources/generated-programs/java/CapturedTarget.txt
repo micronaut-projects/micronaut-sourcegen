@@ -1,0 +1,16 @@
+package test;
+
+import java.lang.String;
+import java.util.function.Function;
+
+public class CapturedTarget implements Function<String, String> {
+  private String label;
+
+  public CapturedTarget(String label) {
+    this.label = label;
+  }
+
+  public String apply(String value) {
+    return this.label;
+  }
+}

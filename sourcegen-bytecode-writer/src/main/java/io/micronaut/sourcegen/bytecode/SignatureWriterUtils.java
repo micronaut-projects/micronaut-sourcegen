@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.core.annotation.Internal;
+import io.micronaut.sourcegen.bytecode.core.EnclosingScope;
 import io.micronaut.sourcegen.bytecode.core.SignatureUtils;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.FieldDef;
@@ -39,24 +40,43 @@ final class SignatureWriterUtils {
 
     @Nullable
     static String getFieldSignature(@Nullable ObjectDef objectDef, FieldDef fieldDef) {
-        return SignatureUtils.getFieldSignature(objectDef, fieldDef);
+        return getFieldSignature(objectDef, fieldDef, EnclosingScope.NONE);
     }
 
     static String getClassSignature(ClassDef classDef) {
-        return SignatureUtils.getClassSignature(classDef);
-    }
-
-    static String getRecordSignature(RecordDef recordDef) {
-        return SignatureUtils.getRecordSignature(recordDef);
+        return getClassSignature(classDef, EnclosingScope.NONE);
     }
 
     @Nullable
     static String getInterfaceSignature(InterfaceDef interfaceDef) {
-        return SignatureUtils.getInterfaceSignature(interfaceDef);
+        return getInterfaceSignature(interfaceDef, EnclosingScope.NONE);
     }
 
     @Nullable
     static String getMethodSignature(@Nullable ObjectDef objectDef, MethodDef methodDef) {
-        return SignatureUtils.getMethodSignature(objectDef, methodDef);
+        return getMethodSignature(objectDef, methodDef, EnclosingScope.NONE);
+    }
+
+    @Nullable
+    static String getFieldSignature(@Nullable ObjectDef objectDef, FieldDef fieldDef, EnclosingScope enclosingScope) {
+        return SignatureUtils.getFieldSignature(objectDef, fieldDef, enclosingScope);
+    }
+
+    static String getClassSignature(ClassDef classDef, EnclosingScope enclosingScope) {
+        return SignatureUtils.getClassSignature(classDef, enclosingScope);
+    }
+
+    static String getRecordSignature(RecordDef recordDef, EnclosingScope enclosingScope) {
+        return SignatureUtils.getRecordSignature(recordDef, enclosingScope);
+    }
+
+    @Nullable
+    static String getInterfaceSignature(InterfaceDef interfaceDef, EnclosingScope enclosingScope) {
+        return SignatureUtils.getInterfaceSignature(interfaceDef, enclosingScope);
+    }
+
+    @Nullable
+    static String getMethodSignature(@Nullable ObjectDef objectDef, MethodDef methodDef, EnclosingScope enclosingScope) {
+        return SignatureUtils.getMethodSignature(objectDef, methodDef, enclosingScope);
     }
 }

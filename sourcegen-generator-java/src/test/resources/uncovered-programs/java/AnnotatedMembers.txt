@@ -1,0 +1,36 @@
+package test;
+
+import io.micronaut.sourcegen.javapoet.write.UncoveredShapeProgramTest;
+import java.lang.String;
+import java.lang.annotation.RetentionPolicy;
+
+@UncoveredShapeProgramTest.Members(
+    texts = {
+        "a",
+        "$b"
+    },
+    numbers = {
+        1,
+        2
+    },
+    none = {},
+    emptyList = {},
+    types = {
+        String.class,
+        int.class
+    },
+    policies = {
+        RetentionPolicy.RUNTIME,
+        RetentionPolicy.SOURCE
+    },
+    type = StringBuilder.class,
+    letter = '\'',
+    ratio = 1.5f,
+    nested = @UncoveredShapeProgramTest.Nested("inner"),
+    nestedArray = {
+        @UncoveredShapeProgramTest.Nested("inner"),
+        @UncoveredShapeProgramTest.Nested("inner")
+    }
+)
+public class AnnotatedMembers {
+}

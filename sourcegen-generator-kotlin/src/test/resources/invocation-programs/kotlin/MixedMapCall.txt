@@ -1,0 +1,13 @@
+package test
+
+import io.micronaut.sourcegen.InvocationProgramRegressionTest
+import kotlin.Any
+import kotlin.CharSequence
+import kotlin.String
+import kotlin.collections.Map
+
+public open class MixedMapCall {
+  public open fun call(target: InvocationProgramRegressionTest.MapTarget<String>, `value`: Any): Any {
+    return target.map(`value` as Map<String, CharSequence>)
+  }
+}

@@ -1,0 +1,12 @@
+package test;
+
+import java.lang.Object;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Supplier;
+
+public class ArraySupplierCaller {
+  public Supplier<List<Object>[]> reference(ArraySupplier target) {
+    return (Supplier<List<Object>[]>) Optional.of(target).<Supplier<List<Object>[]>>map(target1 -> () -> (List[]) target1.get()).get();
+  }
+}

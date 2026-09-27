@@ -1,0 +1,19 @@
+package test
+
+import java.util.function.Supplier
+import kotlin.Any
+import kotlin.Array
+import kotlin.String
+import kotlin.collections.List
+
+public open class ArraySupplier : Supplier<Array<List<String>>> {
+  private var values: Any
+
+  public constructor(values: Any) {
+    this.values = values
+  }
+
+  public override fun `get`(): Array<List<String>> {
+    return this.values as Array<List<String>>
+  }
+}

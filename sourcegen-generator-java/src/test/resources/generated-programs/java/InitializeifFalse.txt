@@ -1,0 +1,11 @@
+package test;
+
+public class InitializeifFalse {
+  public static int value;
+
+  static {
+    if (false) {
+      InitializeifFalse.value = 7;
+    }
+  }
+}

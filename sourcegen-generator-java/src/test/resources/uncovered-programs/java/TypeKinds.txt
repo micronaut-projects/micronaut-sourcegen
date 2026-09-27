@@ -1,0 +1,23 @@
+package test;
+
+import io.micronaut.sourcegen.javapoet.write.UncoveredShapeProgramTest;
+import java.lang.Integer;
+import java.lang.Number;
+import java.lang.String;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.function.Consumer;
+
+public class TypeKinds extends UncoveredShapeProgramTest.Holder {
+  public UncoveredShapeProgramTest.Holder feed(Consumer<? super String> consumer, @UncoveredShapeProgramTest.TypeMarker String value) {
+    consumer.accept(value);
+    return (UncoveredShapeProgramTest.Holder) this;
+  }
+
+  public List<Integer> sorted(ArrayList<Integer> values, Comparator<? super Number> order) {
+    values.sort(order);
+    return Collections.unmodifiableList(values);
+  }
+}

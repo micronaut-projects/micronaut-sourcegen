@@ -445,6 +445,146 @@ class BridgeResolverTest {
         assertEquals(List.of(), descriptors(otherPackage, method));
     }
 
+    @Test
+    void methodVariableShadowingTheClassVariableIsNotBridged() {
+        MethodDef echo = MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.STRING)
+            .returns(TypeDef.STRING)
+            .build((aThis, parameters) -> parameters.get(0).returning());
+        // `<T extends Number> T echo(T)` declares its own `T`: `echo(String)` is an unrelated overload
+        TypeDef.TypeVariable methodVariable = TypeDef.variable("T", TypeDef.of(Number.class));
+        ClassDef modelParent = ClassDef.builder("example.ShadowingParent")
+            .addTypeVariable(TypeDef.variable("T"))
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(methodVariable)
+                .addParameter("value", TypeDef.variable("T"))
+                .returns(TypeDef.variable("T"))
+                .build((aThis, parameters) -> parameters.get(0).returning()))
+            .build();
+        ClassDef modelChild = ClassDef.builder("example.ShadowingChild")
+            .superclass(TypeDef.parameterized(modelParent.asTypeDef(), TypeDef.STRING))
+            .addMethod(echo)
+            .build();
+        ClassDef reflectedChild = ClassDef.builder("example.ReflectedShadowingChild")
+            .superclass(TypeDef.parameterized(ShadowingEcho.class, String.class))
+            .addMethod(echo)
+            .build();
+
+        assertEquals(List.of(), descriptors(modelChild, echo));
+        assertEquals(List.of(), descriptors(reflectedChild, echo));
+    }
+
+    @Test
+    void methodVariableIsBridgedAsItsBound() {
+        TypeDef.TypeVariable classVariable = TypeDef.variable("T");
+        ClassDef parent = ClassDef.builder("example.BoundedEchoParent")
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(TypeDef.variable("U", TypeDef.of(Number.class)))
+                .addParameter("value", classVariable)
+                .addParameter("other", TypeDef.variable("U"))
+                .returns(classVariable)
+                .build((aThis, parameters) -> parameters.get(0).returning()))
+            .build();
+        MethodDef echo = MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.STRING)
+            .addParameter("other", TypeDef.of(Number.class))
+            .returns(TypeDef.STRING)
+            .build((aThis, parameters) -> parameters.get(0).returning());
+        ClassDef child = ClassDef.builder("example.BoundedEchoChild")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(echo)
+            .build();
+
+        assertEquals(List.of("(Ljava/lang/Object;Ljava/lang/Number;)Ljava/lang/Object;"), descriptors(child, echo));
+    }
+
+    @Test
+    void methodVariableBoundByAClassVariableIsBridgedAsTheTypeArgument() {
+        MethodDef echo = MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.STRING)
+            .returns(TypeDef.STRING)
+            .build((aThis, parameters) -> parameters.get(0).returning());
+        // `<T extends U> U echo(T)` erases to `CharSequence echo(CharSequence)`, and as a member of
+        // `Parent<String, String>` to `echo(String)`, which the child's method overrides
+        TypeDef.TypeVariable classU = TypeDef.variable("U", TypeDef.of(CharSequence.class));
+        ClassDef modelParent = ClassDef.builder("example.BoundByClassParent")
+            .addTypeVariable(TypeDef.variable("T"))
+            .addTypeVariable(classU)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(TypeDef.variable("T", TypeDef.variable("U")))
+                .addParameter("value", TypeDef.variable("T"))
+                .returns(TypeDef.variable("U"))
+                .build((aThis, parameters) -> ExpressionDef.nullValue().returning()))
+            .build();
+        ClassDef modelChild = ClassDef.builder("example.BoundByClassChild")
+            .superclass(TypeDef.parameterized(modelParent.asTypeDef(), TypeDef.STRING, TypeDef.STRING))
+            .addMethod(echo)
+            .build();
+        ClassDef reflectedChild = ClassDef.builder("example.ReflectedBoundByClassChild")
+            .superclass(TypeDef.parameterized(BoundByClassEcho.class, String.class, String.class))
+            .addMethod(echo)
+            .build();
+
+        String bridge = "(Ljava/lang/CharSequence;)Ljava/lang/CharSequence;";
+        assertEquals(List.of(bridge), descriptors(modelChild, echo));
+        assertEquals(List.of(bridge), descriptors(reflectedChild, echo));
+    }
+
+    @Test
+    void methodVariableBoundByAnotherMethodVariableIsBridgedAsItsBound() {
+        TypeDef.TypeVariable classVariable = TypeDef.variable("T");
+        // `<V extends Number, U extends V>`: `U` erases to `Number`
+        ClassDef parent = ClassDef.builder("example.TransitiveParent")
+            .addTypeVariable(classVariable)
+            .addMethod(MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(TypeDef.variable("V", TypeDef.of(Number.class)))
+                .addTypeVariable(TypeDef.variable("U", TypeDef.variable("V")))
+                .addParameter("value", classVariable)
+                .addParameter("other", TypeDef.variable("U"))
+                .returns(classVariable)
+                .build((aThis, parameters) -> parameters.get(0).returning()))
+            .build();
+        MethodDef echo = MethodDef.builder("echo").addModifiers(Modifier.PUBLIC)
+            .addParameter("value", TypeDef.STRING)
+            .addParameter("other", TypeDef.of(Number.class))
+            .returns(TypeDef.STRING)
+            .build((aThis, parameters) -> parameters.get(0).returning());
+        ClassDef child = ClassDef.builder("example.TransitiveChild")
+            .superclass(TypeDef.parameterized(parent.asTypeDef(), TypeDef.STRING))
+            .addMethod(echo)
+            .build();
+
+        assertEquals(List.of("(Ljava/lang/Object;Ljava/lang/Number;)Ljava/lang/Object;"), descriptors(child, echo));
+    }
+
+    /**
+     * A generic method whose own variable is bounded by a variable of the class.
+     *
+     * @param <T> Shadowed by the method's
+     * @param <U> The bound
+     */
+    public static class BoundByClassEcho<T, U extends CharSequence> {
+
+        @SuppressWarnings("TypeParameterHidesVisibleType")
+        public <T extends U> U echo(T value) {
+            return value;
+        }
+    }
+
+    /**
+     * A generic method whose own variable shadows the class's.
+     *
+     * @param <T> The class variable
+     */
+    public static class ShadowingEcho<T> {
+
+        @SuppressWarnings("TypeParameterHidesVisibleType")
+        public <T extends Number> T echo(T value) {
+            return value;
+        }
+    }
+
     /**
      * The bridge descriptors in a stable order, so the expectations read as JVM descriptors
      * rather than as model objects.

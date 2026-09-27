@@ -1,0 +1,18 @@
+package test;
+
+import io.micronaut.sourcegen.javapoet.write.ConversionProgramRegressionTest;
+import java.io.Serializable;
+import java.lang.Object;
+import java.lang.SuppressWarnings;
+import java.util.List;
+
+public class ArrayScopemethod {
+  public <R> Object call(ConversionProgramRegressionTest.IntersectionTarget<R> target, Object value) {
+    return target.arrays(new Object() {
+      @SuppressWarnings("unchecked")
+      <T extends List<R> & Serializable> T[] cast(Object value) {
+        return (T[]) value;
+      }
+    }.cast(value));
+  }
+}

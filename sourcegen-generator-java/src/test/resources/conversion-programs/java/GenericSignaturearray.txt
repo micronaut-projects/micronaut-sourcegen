@@ -1,0 +1,11 @@
+package test;
+
+import io.micronaut.sourcegen.javapoet.write.ConversionProgramRegressionTest;
+import java.lang.Object;
+import java.lang.String;
+
+public class GenericSignaturearray {
+  public Object call(ConversionProgramRegressionTest.ArrayChild target, Object value) {
+    return target.arrays((String[]) value);
+  }
+}

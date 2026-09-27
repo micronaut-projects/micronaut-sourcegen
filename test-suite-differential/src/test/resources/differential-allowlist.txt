@@ -1,0 +1,11 @@
+# Known disagreements of the differential test (DifferentialHarnessTest), one per line:
+#   <verdicts> :: <case id>
+# The verdict of a backend is ok, differs (from javac, or, when javac rejects the model, from the
+# ASM writer), declined (the JDK writer leaves the class to the ASM writer), or the stage that
+# failed: COMPILE, VERIFY, CRASH (the writer threw) or LOAD.
+# A disagreement that is not listed fails the test, and so does a listed case that now agrees or
+# disagrees in another way: remove or update its line. The build/differential-report.txt of a run
+# lists its disagreements in this format, followed by the sources and outcomes of each backend.
+# The cases are those of the default run: seed 1, about 1500 models sampled from the expression families (each
+# chosen by its description, so a model that stops being generated leaves the others in the sample) and the
+# random programs, and the whole statement family.

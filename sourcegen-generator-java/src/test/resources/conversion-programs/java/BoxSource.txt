@@ -1,0 +1,10 @@
+package test;
+
+import java.lang.String;
+import java.util.function.Supplier;
+
+public class BoxSource implements Supplier<Box<String>> {
+  public Box<String> get() {
+    return null;
+  }
+}

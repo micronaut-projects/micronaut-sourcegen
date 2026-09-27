@@ -1,0 +1,15 @@
+package test;
+
+import java.lang.Integer;
+import java.lang.Number;
+import java.lang.Object;
+
+public class Rank2 {
+  public <T extends Integer> T[][] identity(T[][] value) {
+    return value;
+  }
+
+  public Object call(Number[][] value) {
+    return this.identity((Integer[][]) value);
+  }
+}

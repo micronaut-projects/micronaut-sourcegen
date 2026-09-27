@@ -18,12 +18,14 @@ package io.micronaut.sourcegen.bytecode.expression;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
+import io.micronaut.sourcegen.bytecode.core.EnclosingScope;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
@@ -51,8 +53,27 @@ final class MethodReferenceExpressionWriter extends AbstractStatementAwareExpres
         ObjectDef objectDef = context.objectDef();
         // A bound reference captures its receiver, which is the sole argument of the call site
         ExpressionDef instance = methodReference.instance();
+        if (instance instanceof VariableDef.Super superInstance) {
+            // `super::name` is the method of the superclass, which a handle on it would dispatch past: javac writes a
+            // lambda that makes the special call, and so does this
+            ExpressionWriter.writeExpression(generatorAdapter, context, asSuperCall(methodReference, superInstance));
+            return;
+        }
+        ExpressionDef adapter = io.micronaut.sourcegen.bytecode.core.ReferenceAdapters.varargsAdapter(methodReference);
+        if (adapter != null) {
+            // The values of a variable arity call are packed into its array, which no handle does
+            ExpressionWriter.writeExpression(generatorAdapter, context, adapter);
+            return;
+        }
         if (instance != null) {
             ExpressionWriter.writeExpression(generatorAdapter, context, instance);
+            if (!(instance instanceof VariableDef.This)) {
+                // A bound reference checks its receiver where it is created, as `target::apply` does in source
+                generatorAdapter.dup();
+                generatorAdapter.invokeStatic(Type.getType(java.util.Objects.class),
+                    new org.objectweb.asm.commons.Method("requireNonNull", "(Ljava/lang/Object;)Ljava/lang/Object;"));
+                generatorAdapter.pop();
+            }
         }
 
         MethodDef referenced = methodReference.method();
@@ -62,21 +83,43 @@ final class MethodReferenceExpressionWriter extends AbstractStatementAwareExpres
         boolean ownerIsInterface = owner instanceof ClassTypeDef classTypeDef && classTypeDef.isInterface();
         var implMethodHandle = new Handle(
             handleTag(ownerIsInterface),
-            TypeUtils.getType(owner, objectDef).getInternalName(),
+            TypeUtils.getType(owner, objectDef, context.enclosingScope()).getInternalName(),
             referenced.getName(),
-            TypeUtils.getMethodDescriptor(objectDef, referenced),
+            // Erased in the scope of the class and the method declaring it
+            referencedDescriptor(owner, objectDef, referenced, context.enclosingScope()),
             ownerIsInterface
         );
 
         generatorAdapter.visitInvokeDynamicInsn(
             methodReference.instantiated().getName(),
-            callSiteDescriptor(instance, objectDef),
+            callSiteDescriptor(instance, objectDef, context.enclosingScope()),
             MetafactoryHandle.BOOTSTRAP,
-            Type.getType(TypeUtils.getMethodDescriptor(objectDef, methodReference.target())),
+            Type.getType(TypeUtils.getMethodDescriptor(objectDef, methodReference.target(), context.enclosingScope())),
             implMethodHandle,
-            Type.getType(TypeUtils.getMethodDescriptor(objectDef, methodReference.instantiated()))
+            // The instantiated signature names the enclosing method's variables
+            Type.getType(TypeUtils.getMethodDescriptor(objectDef, io.micronaut.sourcegen.bytecode.core.TypeUtils.withEnclosingVariables(methodReference.instantiated(), context.methodDef()), context.enclosingScope()))
         );
         popValueIfNeeded(generatorAdapter, methodReference.type());
+    }
+
+    /**
+     * @param reference     A reference through `super`
+     * @param superInstance Its receiver
+     * @return The lambda that calls the method on `super`
+     */
+    static ExpressionDef asSuperCall(MethodReferenceExpression reference, VariableDef.Super superInstance) {
+        return reference.type().getLambda().implement((aThis, parameters) -> {
+            ExpressionDef.InvokeInstanceMethod call = superInstance.invoke(reference.method(), parameters);
+            // The functional method decides: `Runnable r = super::name` discards the result `name()` returns
+            return TypeDef.VOID.equals(reference.method().getReturnType())
+                || TypeDef.VOID.equals(reference.instantiated().getReturnType()) ? call : call.returning();
+        });
+    }
+
+    private static String referencedDescriptor(TypeDef owner, @Nullable ObjectDef objectDef, MethodDef referenced, EnclosingScope enclosingScope) {
+        ObjectDef scope = io.micronaut.sourcegen.bytecode.core.TypeUtils.declaringScope(owner, objectDef, referenced, enclosingScope);
+        return TypeUtils.getMethodDescriptor(scope,
+            io.micronaut.sourcegen.bytecode.core.TypeUtils.inDeclaringScope(referenced, scope, objectDef), enclosingScope);
     }
 
     private int handleTag(boolean ownerIsInterface) {
@@ -89,13 +132,13 @@ final class MethodReferenceExpressionWriter extends AbstractStatementAwareExpres
         return ownerIsInterface ? Opcodes.H_INVOKEINTERFACE : Opcodes.H_INVOKEVIRTUAL;
     }
 
-    private String callSiteDescriptor(@Nullable ExpressionDef instance, @Nullable ObjectDef objectDef) {
+    private String callSiteDescriptor(@Nullable ExpressionDef instance, @Nullable ObjectDef objectDef, EnclosingScope enclosingScope) {
         StringBuilder descriptor = new StringBuilder("(");
         if (instance != null) {
-            descriptor.append(TypeUtils.getType(instance.type(), objectDef).getDescriptor());
+            descriptor.append(TypeUtils.getType(instance.type(), objectDef, enclosingScope).getDescriptor());
         }
         descriptor.append(")");
-        descriptor.append(TypeUtils.getType(methodReference.type(), objectDef).getDescriptor());
+        descriptor.append(TypeUtils.getType(methodReference.type(), objectDef, enclosingScope).getDescriptor());
         return descriptor.toString();
     }
 
