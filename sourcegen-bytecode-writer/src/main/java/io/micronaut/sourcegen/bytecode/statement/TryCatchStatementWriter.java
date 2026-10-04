@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.bytecode.statement;
 
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
+import io.micronaut.sourcegen.model.Completion;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.jspecify.annotations.Nullable;
@@ -69,7 +70,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
 
         generatorAdapter.visitLabel(tryEnd);
 
-        if (finallyStatement != null && canCompleteNormally(aTry.statement())) {
+        if (finallyStatement != null && Completion.BYTECODE.canCompleteNormally(aTry.statement())) {
             // The body fell through, the finally is outside of the protected range
             StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, finallyBlock);
         }
@@ -80,7 +81,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
             StatementDef.Try.Catch aCatch = catchBlock.aCatch;
             generatorAdapter.visitLabel(catchBlock.from);
 
-            Type exceptionType = TypeUtils.getType(aCatch.exception(), context.objectDef());
+            Type exceptionType = TypeUtils.getScopedType(aCatch.exception(), context);
             int local = generatorAdapter.newLocal(exceptionType);
             generatorAdapter.storeLocal(local);
             String varName = EXCEPTION_NAME;
@@ -105,7 +106,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
         if (finallyExceptionHandler != null) {
             generatorAdapter.visitLabel(finallyExceptionHandler);
 
-            Type exceptionType = TypeUtils.getType(TypeDef.of(Throwable.class), context.objectDef());
+            Type exceptionType = TypeUtils.getScopedType(TypeDef.of(Throwable.class), context);
             int local = generatorAdapter.newLocal(exceptionType);
             generatorAdapter.storeLocal(local);
 
@@ -149,7 +150,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
                 tryEnd,
                 tryGaps,
                 catchBlock.from,
-                TypeUtils.getType(catchBlock.aCatch.exception(), context.objectDef()).getInternalName()
+                TypeUtils.getScopedType(catchBlock.aCatch.exception(), context).getInternalName()
             );
         }
         if (finallyExceptionHandler != null) {
@@ -183,7 +184,7 @@ public final class TryCatchStatementWriter implements StatementWriter {
         return () -> {
             gaps.add(context.openGap(generatorAdapter));
             StatementWriter.of(finallyStatement).writeScoped(generatorAdapter, context, finallyBlock);
-            if (finallyBlock != null && canCompleteNormally(finallyStatement)) {
+            if (finallyBlock != null && Completion.BYTECODE.canCompleteNormally(finallyStatement)) {
                 finallyBlock.run();
             }
         };
@@ -212,28 +213,6 @@ public final class TryCatchStatementWriter implements StatementWriter {
             from = gap.end();
         }
         generatorAdapter.visitTryCatchBlock(from, end, handler, type);
-    }
-
-    /**
-     * Checks if the statement can complete normally, a statement that cannot would make the following
-     * bytecode unreachable.
-     *
-     * @param statement The statement
-     * @return true if the execution can continue after the statement
-     */
-    static boolean canCompleteNormally(StatementDef statement) {
-        List<StatementDef> statements = statement.flatten();
-        if (statements.isEmpty()) {
-            return true;
-        }
-        StatementDef last = statements.get(statements.size() - 1);
-        if (last instanceof StatementDef.IfElse ifElse) {
-            return canCompleteNormally(ifElse.statement()) || canCompleteNormally(ifElse.elseStatement());
-        }
-        if (last instanceof StatementDef.Synchronized aSynchronized) {
-            return canCompleteNormally(aSynchronized.statement());
-        }
-        return !(last instanceof StatementDef.Return || last instanceof StatementDef.Throw);
     }
 
     private static final class CatchBlock {

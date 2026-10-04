@@ -18,8 +18,16 @@ package io.micronaut.sourcegen.model;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Map;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static io.micronaut.sourcegen.model.ResolutionTypes.ARRAY_SUPERTYPES;
+import static io.micronaut.sourcegen.model.ResolutionTypes.WRAPPERS;
+import static io.micronaut.sourcegen.model.ResolutionTypes.descriptorName;
+import static io.micronaut.sourcegen.model.ResolutionTypes.sameErasure;
+import static io.micronaut.sourcegen.model.TypeOperations.erase;
 
 /**
  * Support for building an invocation from the signature the target actually declares, instead of from
@@ -34,17 +42,6 @@ import java.util.List;
  * @since 2.2
  */
 final class Invocations {
-
-    private static final Map<Class<?>, Class<?>> WRAPPERS = Map.of(
-        boolean.class, Boolean.class,
-        byte.class, Byte.class,
-        char.class, Character.class,
-        short.class, Short.class,
-        int.class, Integer.class,
-        long.class, Long.class,
-        float.class, Float.class,
-        double.class, Double.class
-    );
 
     private Invocations() {
     }
@@ -63,10 +60,45 @@ final class Invocations {
                             String name,
                             @Nullable TypeDef returningType,
                             List<? extends ExpressionDef> values) {
-        if (owner == null) {
+        return owner == null ? null : resolve(List.of(owner), name, returningType, values);
+    }
+
+    /**
+     * Resolves the method a call resolves to among the members of the owners - the bounds of a variable receiver, all
+     * of them together - and adapts the arguments to it. A call no method applies to, or an ambiguous one, is left
+     * unresolved: the bytecode writers reject an ambiguous one where it is written. Where the model cannot tell, the
+     * one method of the name and arity the arguments can be passed to is taken.
+     *
+     * @param owners        The types the method is invoked on
+     * @param name          The method name, or {@link MethodDef#CONSTRUCTOR}
+     * @param returningType The return type the caller expects, or {@code null} for a constructor
+     * @param values        The argument expressions
+     * @return The resolved call, or {@code null} when the declaration cannot be resolved
+     */
+    @Nullable
+    static Resolved resolve(List<ClassTypeDef> owners,
+                            String name,
+                            @Nullable TypeDef returningType,
+                            List<? extends ExpressionDef> values) {
+        if (owners.isEmpty()) {
             return null;
         }
-        List<MethodDef> candidates = owner.findDeclaredMethods(name, values.size());
+        OverloadResolution.Resolution resolution = OverloadResolution.resolve(owners, name, returningType, values, null, null);
+        if (resolution.outcome() == OverloadResolution.Outcome.RESOLVED) {
+            return resolution.resolved();
+        }
+        if (resolution.outcome() != OverloadResolution.Outcome.UNKNOWN) {
+            return null;
+        }
+        // The model cannot tell - an argument of a type that carries no hierarchy, a class only named, which a
+        // generated class often is, or methods it tells apart no further, `choose(T)` and `choose(Object)` of a raw
+        // `T extends Number` receiver: the one method of the arity the arguments are not provably not passed to.
+        // A method of one descriptor two bounds declare is one candidate
+        Map<String, MethodDef> byDescriptor = new java.util.LinkedHashMap<>();
+        owners.stream().flatMap(owner -> owner.findDeclaredMethods(name, values.size()).stream())
+            .forEach(method -> byDescriptor.putIfAbsent(method.getParameters().stream()
+                .map(parameter -> descriptorName(parameter.getType())).toList() + descriptorName(method.getReturnType()), method));
+        List<MethodDef> candidates = List.copyOf(byDescriptor.values());
         if (candidates.isEmpty()) {
             return null;
         }
@@ -84,8 +116,9 @@ final class Invocations {
 
     /**
      * Drops the candidates an argument provably cannot be passed to, so that overloads of the same arity -
-     * {@code ArrayList(int)} against {@code ArrayList(Collection)} - can still be told apart. A candidate is
-     * kept whenever compatibility cannot be decided from the model alone.
+     * {@code ArrayList(int)} against {@code ArrayList(Collection)} - can still be told apart, and a lone one the
+     * arguments do not fit is not taken. A candidate is kept whenever compatibility cannot be decided from the model
+     * alone.
      *
      * @param candidates The candidates
      * @param values     The argument expressions
@@ -93,13 +126,9 @@ final class Invocations {
      */
     private static List<MethodDef> narrowByArguments(List<MethodDef> candidates,
                                                      List<? extends ExpressionDef> values) {
-        if (candidates.size() < 2) {
-            return candidates;
-        }
-        List<MethodDef> possible = candidates.stream()
+        return candidates.stream()
             .filter(m -> canAccept(m.getParameters(), values))
             .toList();
-        return possible.isEmpty() ? candidates : possible;
     }
 
     private static boolean canAccept(List<ParameterDef> parameters, List<? extends ExpressionDef> values) {
@@ -143,7 +172,7 @@ final class Invocations {
                 return parameterArray.dimensions() == argumentArray.dimensions()
                     && maybeAssignable(parameterArray.componentType(), argumentArray.componentType());
             }
-            return parameter instanceof ClassTypeDef classTypeDef && isArraySuperTypeName(classTypeDef.getName());
+            return parameter instanceof ClassTypeDef classTypeDef && ARRAY_SUPERTYPES.contains(classTypeDef.getName());
         }
         if (parameter instanceof TypeDef.Array) {
             return false;
@@ -178,12 +207,6 @@ final class Invocations {
         return wrapper != null && wrapper.getName().equals(name);
     }
 
-    private static boolean isArraySuperTypeName(String name) {
-        return name.equals(Object.class.getName())
-            || name.equals(Cloneable.class.getName())
-            || name.equals(java.io.Serializable.class.getName());
-    }
-
     /**
      * @param type The type
      * @param name The binary name of a candidate supertype
@@ -209,50 +232,11 @@ final class Invocations {
         };
     }
 
-    /**
-     * Erases a type the way a descriptor does: a parameterized type to its raw type, a type variable to its
-     * first bound, and an annotated type to the type it annotates.
-     *
-     * @param typeDef The type
-     * @return The erasure
-     */
-    private static TypeDef erase(TypeDef typeDef) {
-        return switch (typeDef) {
-            case ClassTypeDef.Parameterized parameterized -> erase(parameterized.rawType());
-            case ClassTypeDef.AnnotatedClassTypeDef annotated -> erase(annotated.typeDef());
-            case TypeDef.AnnotatedTypeDef annotated -> erase(annotated.typeDef());
-            case TypeDef.TypeVariable variable -> variable.bounds().isEmpty()
-                ? ClassTypeDef.OBJECT
-                : erase(variable.bounds().get(0));
-            default -> typeDef;
-        };
-    }
-
-    /**
-     * Compares two types the way a descriptor does: by erasure, ignoring nullability.
-     *
-     * @param left  The left type
-     * @param right The right type
-     * @return True if the two erase to the same descriptor
-     */
-    private static boolean sameErasure(TypeDef left, TypeDef right) {
-        return descriptorName(left).equals(descriptorName(right));
-    }
-
-    private static String descriptorName(TypeDef typeDef) {
-        return switch (erase(typeDef)) {
-            case TypeDef.Array array -> descriptorName(array.componentType()) + "[]".repeat(array.dimensions());
-            case TypeDef.Primitive primitive -> primitive.name();
-            case ClassTypeDef classTypeDef -> classTypeDef.getName();
-            case TypeDef other -> other.toString();
-        };
-    }
-
     private static Resolved resolved(MethodDef method,
                                      @Nullable TypeDef returningType,
                                      List<? extends ExpressionDef> values) {
         List<TypeDef> parameterTypes = method.getParameters().stream().map(ParameterDef::getType).toList();
-        return new Resolved(parameterTypes, adaptToVarArgs(parameterTypes, returningType, values));
+        return new Resolved(parameterTypes, adaptToVarArgs(parameterTypes, returningType, values), false);
     }
 
     /**
@@ -286,6 +270,78 @@ final class Invocations {
     }
 
     /**
+     * Whether an argument names a variable alone, whose bounds the class and the method the call is written in
+     * declare - which the model does not know while the call is built.
+     *
+     * @param values The argument expressions
+     * @return true where it does
+     */
+    static boolean needsScope(List<? extends ExpressionDef> values) {
+        return values.stream().anyMatch(value -> namesUnboundedVariable(value.type()));
+    }
+
+    /**
+     * Whether a receiver is a variable named alone, whose members are those of the bounds where it is written.
+     *
+     * @param receiver The type of the receiver
+     * @return true where it is
+     */
+    static boolean receiverNeedsScope(TypeDef receiver) {
+        return TypeHierarchy.unwrap(receiver) instanceof TypeDef.TypeVariable variable && variable.bounds().isEmpty();
+    }
+
+    /**
+     * The classes the members of a receiver are looked up in: its class, or the bounds of a variable, following a
+     * bound that is another variable.
+     *
+     * @param receiver The type of the receiver
+     * @return The classes, in the order of the bounds
+     */
+    static List<ClassTypeDef> receiverClasses(TypeDef receiver) {
+        return receiverClasses(receiver, Map.of());
+    }
+
+    /**
+     * The classes the members of a receiver are looked up in: its class, or the bounds of a variable - of one named
+     * alone, those the scope gives it - following a bound that is another variable.
+     *
+     * @param receiver The type of the receiver
+     * @param scope    The variables in scope, with their bounds, by name
+     * @return The classes, in the order of the bounds
+     */
+    static List<ClassTypeDef> receiverClasses(TypeDef receiver, Map<String, TypeDef> scope) {
+        List<ClassTypeDef> result = new ArrayList<>();
+        receiverClasses(receiver, scope, result, new HashSet<>());
+        return result;
+    }
+
+    private static void receiverClasses(TypeDef receiver, Map<String, TypeDef> scope, List<ClassTypeDef> result, Set<String> visited) {
+        TypeDef unwrapped = TypeHierarchy.unwrap(receiver);
+        if (unwrapped instanceof ClassTypeDef classTypeDef) {
+            result.add(classTypeDef);
+        } else if (unwrapped instanceof TypeDef.Array) {
+            // An array has the members of Object (JLS 10.7)
+            result.add(TypeDef.OBJECT);
+        } else if (unwrapped instanceof TypeDef.TypeVariable variable && visited.add(variable.name())) {
+            List<TypeDef> bounds = variable.bounds();
+            if (bounds.isEmpty() && TypeHierarchy.unwrap(scope.getOrDefault(variable.name(), variable)) instanceof TypeDef.TypeVariable declared) {
+                bounds = declared.bounds();
+            }
+            bounds.forEach(bound -> receiverClasses(bound, scope, result, visited));
+        }
+    }
+
+    private static boolean namesUnboundedVariable(TypeDef type) {
+        TypeDef unwrapped = TypeHierarchy.unwrap(type);
+        return switch (unwrapped) {
+            case TypeDef.TypeVariable variable -> variable.bounds().isEmpty();
+            case TypeDef.Array array -> namesUnboundedVariable(array.componentType());
+            case ClassTypeDef.Parameterized parameterized -> parameterized.typeArguments().stream().anyMatch(Invocations::namesUnboundedVariable);
+            default -> false;
+        };
+    }
+
+    /**
      * The type of the array a variable arity tail is packed into.
      *
      * <p>A variable arity parameter declared with a type variable - {@code List.of(E...)} - erases to
@@ -305,11 +361,11 @@ final class Invocations {
     private static TypeDef.Array packedArrayType(TypeDef.Array declared,
                                                  @Nullable TypeDef returningType,
                                                  List<? extends ExpressionDef> packed) {
-        if (packed.isEmpty() || declared.dimensions() != 1 || !isObject(declared.componentType())) {
+        if (packed.isEmpty() || declared.dimensions() != 1 || !erasesToObject(declared.componentType())) {
             return declared;
         }
         TypeDef elementType = requestedElementType(returningType);
-        if (elementType == null || isObject(elementType)) {
+        if (elementType == null || erasesToObject(elementType)) {
             return declared;
         }
         for (ExpressionDef value : packed) {
@@ -342,7 +398,7 @@ final class Invocations {
             ? typeArgument : null;
     }
 
-    private static boolean isObject(TypeDef typeDef) {
+    private static boolean erasesToObject(TypeDef typeDef) {
         return erase(typeDef) instanceof ClassTypeDef classTypeDef
             && Object.class.getName().equals(classTypeDef.getName());
     }
@@ -352,8 +408,8 @@ final class Invocations {
      *
      * @param parameterTypes The declared parameter types
      * @param values         The arguments, with a variable arity tail packed into an array
+     * @param isStatic       Whether the method is static, which a call through a value invokes statically
      */
-    record Resolved(List<TypeDef> parameterTypes, List<? extends ExpressionDef> values) {
+    record Resolved(List<TypeDef> parameterTypes, List<? extends ExpressionDef> values, boolean isStatic) {
     }
-
 }

@@ -1,0 +1,11 @@
+package test;
+
+import java.lang.String;
+
+public interface Describer {
+  String describe(int value);
+
+  static int twice(int value) {
+    return value * 2;
+  }
+}

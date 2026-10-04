@@ -1,0 +1,9 @@
+package test;
+
+public class ConstantLoopprimitive {
+  public int call() {
+    while (true) {
+      return 1;
+    }
+  }
+}

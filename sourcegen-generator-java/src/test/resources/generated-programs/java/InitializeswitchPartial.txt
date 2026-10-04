@@ -1,0 +1,15 @@
+package test;
+
+public class InitializeswitchPartial {
+  public static int value;
+
+  static {
+    switch (0) {
+      case 1 -> {
+        InitializeswitchPartial.value = 7;
+      }
+      default -> {
+      }
+    }
+  }
+}

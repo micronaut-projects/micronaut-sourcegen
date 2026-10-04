@@ -263,7 +263,7 @@ import java.lang.String;
 
 public class MyClass {
   public String evaluate() {
-    return Owner::shout.apply(value);
+    return ((StringFunction) Owner::shout).apply(value);
   }
 }
             """, writeClass(classDef));

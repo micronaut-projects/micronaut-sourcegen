@@ -35,9 +35,9 @@ final class PutStaticStatementWriter implements StatementWriter {
         VariableDef.StaticField field = putStaticField.field();
         ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, putStaticField.expression(), field.type());
         generatorAdapter.putStatic(
-            TypeUtils.getType(field.ownerType(), context.objectDef()),
+            TypeUtils.getScopedType(field.ownerType(), context),
             field.name(),
-            TypeUtils.getType(field.type(), context.objectDef())
+            TypeUtils.getType(field.type(), io.micronaut.sourcegen.bytecode.core.TypeUtils.fieldScope(field.ownerType(), context.objectDef(), field.name()), context.enclosingScope())
         );
     }
 }

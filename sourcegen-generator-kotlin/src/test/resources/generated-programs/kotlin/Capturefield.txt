@@ -1,0 +1,29 @@
+package test
+
+import java.util.function.Function
+import kotlin.Any
+import kotlin.Int
+import kotlin.String
+
+public open class Capturefield {
+  private var `receiver`: CapturedTarget = CapturedTarget("first")
+
+  private var count: Int = 0
+
+  public open fun next(): CapturedTarget {
+    this.count = this.count + 1
+    return this.`receiver`
+  }
+
+  public open fun reads(): Int {
+    return this.count
+  }
+
+  public open fun replace() {
+    this.`receiver` = CapturedTarget("second")
+  }
+
+  public open fun capture(): Function<Any, Any> {
+    return this.`receiver`.let { target -> Function<Any, Any> { arg0 -> target.apply(arg0 as String) } }
+  }
+}

@@ -65,14 +65,14 @@ class ByteCodeGeneratorSpec extends Specification {
     private static ClassDef broken(String name) {
         ClassDef.builder(name)
                 .addModifiers(Modifier.PUBLIC)
-                // A char selector is not lowered directly, so this goes to the source fallback
+                // A string constant held in a StringBuilder is not lowered directly, so this goes to the source fallback
                 .addMethod(MethodDef.builder("describe")
                         .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                         .addParameter("index", TypeDef.Primitive.CHAR)
                         .returns(TypeDef.STRING)
                         .build({ aThis, parameters ->
                             parameters.get(0).asStatementSwitch(TypeDef.STRING,
-                                    [(ExpressionDef.constant(1)): ExpressionDef.constant("one").returning()],
+                                    [(ExpressionDef.constant(1)): new ExpressionDef.Constant(TypeDef.STRING, new StringBuilder('"one"')).returning()],
                                     ExpressionDef.constant("other").returning())
                         }))
                 // ... where it names a type that exists nowhere, so the compilation fails

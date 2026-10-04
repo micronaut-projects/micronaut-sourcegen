@@ -31,6 +31,7 @@ import org.objectweb.asm.commons.TableSwitchGenerator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -73,33 +74,38 @@ final class SwitchStatementWriter extends AbstractSwitchWriter implements Statem
             Method.getMethod(ReflectionUtils.getRequiredMethod(String.class, "hashCode"))
         );
 
-        Map<Integer, Map.Entry<ExpressionDef.Constant, StatementDef>> map = aSwitch.cases().entrySet().stream()
-            .map(e -> Map.entry(toSwitchKey(e.getKey()), Map.entry(e.getKey(), e.getValue())))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        // Strings of the same hash code share a case of the table, which tells them apart by equals, one after another
+        Map<Integer, List<Map.Entry<ExpressionDef.Constant, StatementDef>>> map = new LinkedHashMap<>();
+        aSwitch.cases().forEach((constant, statement) -> map.computeIfAbsent(toSwitchKey(constant), ignore -> new ArrayList<>())
+            .add(Map.entry(constant, statement)));
         int[] keys = map.keySet().stream().mapToInt(x -> x).sorted().toArray();
         Label defaultEnd = new Label();
         Label finalEnd = new Label();
         generatorAdapter.tableSwitch(keys, new TableSwitchGenerator() {
             @Override
             public void generateCase(int key, Label end) {
-                Map.Entry<ExpressionDef.Constant, StatementDef> entry = map.get(key);
-                if (entry == null) {
+                List<Map.Entry<ExpressionDef.Constant, StatementDef>> entries = map.get(key);
+                if (entries == null) {
                     generatorAdapter.goTo(defaultEnd);
                     return;
                 }
-                ExpressionDef.Constant constant = entry.getKey();
-                if (!(constant.value() instanceof String stringValue)) {
-                    throw new IllegalStateException("Expected a string value got: " + constant);
+                for (Map.Entry<ExpressionDef.Constant, StatementDef> entry : entries) {
+                    ExpressionDef.Constant constant = entry.getKey();
+                    if (!(constant.value() instanceof String stringValue)) {
+                        throw new IllegalStateException("Expected a string value got: " + constant);
+                    }
+                    Label next = new Label();
+                    generatorAdapter.loadLocal(switchValueLocal, stringType);
+                    generatorAdapter.push(stringValue);
+                    generatorAdapter.invokeVirtual(stringType, Method.getMethod(ReflectionUtils.getRequiredMethod(String.class, "equals", Object.class)));
+                    generatorAdapter.push(true);
+                    generatorAdapter.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, next);
+                    StatementWriter.of(Objects.requireNonNull(entry.getValue(), "Switch case statement cannot be null"))
+                        .writeScoped(generatorAdapter, context, finallyBlock);
+                    generatorAdapter.goTo(finalEnd);
+                    generatorAdapter.visitLabel(next);
                 }
-
-                generatorAdapter.loadLocal(switchValueLocal, stringType);
-                generatorAdapter.push(stringValue);
-                generatorAdapter.invokeVirtual(stringType, Method.getMethod(ReflectionUtils.getRequiredMethod(String.class, "equals", Object.class)));
-                generatorAdapter.push(true);
-                generatorAdapter.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, defaultEnd);
-                StatementWriter.of(Objects.requireNonNull(entry.getValue(), "Switch case statement cannot be null"))
-                    .writeScoped(generatorAdapter, context, finallyBlock);
-                generatorAdapter.goTo(finalEnd);
+                generatorAdapter.goTo(defaultEnd);
             }
 
             @Override

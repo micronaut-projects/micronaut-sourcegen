@@ -1,0 +1,16 @@
+package test
+
+import java.util.function.Function
+import kotlin.String
+
+public open class CapturedTarget : Function<String, String> {
+  private var label: String
+
+  public constructor(label: String) {
+    this.label = label
+  }
+
+  public override fun apply(`value`: String): String {
+    return this.label
+  }
+}

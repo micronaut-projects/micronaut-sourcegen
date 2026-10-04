@@ -1,0 +1,12 @@
+package test;
+
+public class Shadowif {
+  public static int value;
+
+  static {
+    if (true) {
+      int value = 1;
+    }
+    Shadowif.value = 9;
+  }
+}

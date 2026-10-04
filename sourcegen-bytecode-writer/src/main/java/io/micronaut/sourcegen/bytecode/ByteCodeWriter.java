@@ -15,10 +15,14 @@
  */
 package io.micronaut.sourcegen.bytecode;
 
+import io.micronaut.sourcegen.bytecode.core.EnclosingScope;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.core.naming.NameUtils;
 import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.sourcegen.bytecode.core.AnnotationTargetUtils;
+import io.micronaut.sourcegen.bytecode.core.BridgeResolver;
+import io.micronaut.sourcegen.bytecode.core.ConstructorBody;
+import io.micronaut.sourcegen.bytecode.core.ModifierUtils;
 import io.micronaut.sourcegen.bytecode.statement.StatementWriter;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.AnnotationObjectDef;
@@ -36,6 +40,7 @@ import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.TypeHierarchy;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassVisitor;
@@ -71,18 +76,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.objectweb.asm.Opcodes.ACC_ABSTRACT;
-import static org.objectweb.asm.Opcodes.ACC_ANNOTATION;
-import static org.objectweb.asm.Opcodes.ACC_BRIDGE;
-import static org.objectweb.asm.Opcodes.ACC_ENUM;
-import static org.objectweb.asm.Opcodes.ACC_FINAL;
-import static org.objectweb.asm.Opcodes.ACC_INTERFACE;
-import static org.objectweb.asm.Opcodes.ACC_PRIVATE;
-import static org.objectweb.asm.Opcodes.ACC_PROTECTED;
-import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
 import static org.objectweb.asm.Opcodes.ACC_RECORD;
-import static org.objectweb.asm.Opcodes.ACC_STATIC;
-import static org.objectweb.asm.Opcodes.ACC_SYNTHETIC;
 import static org.objectweb.asm.Opcodes.V17;
 
 /**
@@ -105,14 +99,24 @@ public final class ByteCodeWriter {
 
     private final boolean checkClass;
     private final boolean visitMaxs;
+    /**
+     * The variables of the enclosing class in scope of the class this writer writes: {@link EnclosingScope#NONE} but
+     * for the writer {@link #write(ObjectDef, ClassTypeDef)} creates for an inner class.
+     */
+    private final EnclosingScope enclosingScope;
 
     public ByteCodeWriter() {
         this(false, true);
     }
 
     public ByteCodeWriter(boolean checkClass, boolean visitMaxs) {
+        this(checkClass, visitMaxs, EnclosingScope.NONE);
+    }
+
+    private ByteCodeWriter(boolean checkClass, boolean visitMaxs, EnclosingScope enclosingScope) {
         this.checkClass = checkClass;
         this.visitMaxs = visitMaxs;
+        this.enclosingScope = enclosingScope;
     }
 
     private ClassWriter createClassWriterAndWriteObject(ObjectDef objectDef, @Nullable ClassTypeDef outerType) {
@@ -121,7 +125,9 @@ public final class ByteCodeWriter {
         if (checkClass) {
             classVisitor = new CheckClassAdapter(classVisitor);
         }
-        writeObject(classVisitor, objectDef, outerType);
+        // An inner class has the variables of its enclosing class in scope
+        new ByteCodeWriter(checkClass, visitMaxs, EnclosingScope.of(objectDef, outerType))
+            .writeObject(classVisitor, objectDef, outerType);
         classVisitor.visitEnd();
         return classWriter;
     }
@@ -168,6 +174,33 @@ public final class ByteCodeWriter {
      * @param typeRef  The reference of the type within the member, from {@link TypeReference}
      * @param member   The member the annotations are written on
      */
+    /**
+     * Writes the annotations of the bounds of type parameters - {@code T extends @Marker Number} - against the
+     * parameter and the bound they annotate.
+     */
+    private void writeBoundAnnotations(List<TypeDef.TypeVariable> variables, int sort, TypeAnnotatable member) {
+        for (int i = 0; i < variables.size(); i++) {
+            List<TypeDef> bounds = variables.get(i).bounds();
+            for (int j = 0; j < bounds.size(); j++) {
+                writeTypeAnnotations(bounds.get(j), TypeReference.newTypeParameterBoundReference(sort, i,
+                    io.micronaut.sourcegen.bytecode.core.SignatureUtils.boundIndex(bounds, j)).getValue(), member);
+            }
+        }
+    }
+
+    /**
+     * Writes the annotations of the supertypes - {@code implements @Marker Supplier<@Marker T>} - the superclass as
+     * supertype -1, the interfaces by their index.
+     */
+    private void writeSupertypeAnnotations(@Nullable TypeDef superclass, List<? extends TypeDef> superinterfaces, TypeAnnotatable member) {
+        if (superclass != null) {
+            writeTypeAnnotations(superclass, TypeReference.newSuperTypeReference(-1).getValue(), member);
+        }
+        for (int i = 0; i < superinterfaces.size(); i++) {
+            writeTypeAnnotations(superinterfaces.get(i), TypeReference.newSuperTypeReference(i).getValue(), member);
+        }
+    }
+
     private void writeTypeAnnotations(TypeDef typeDef, int typeRef, TypeAnnotatable member) {
         writeTypeAnnotations(typeDef, typeRef, "", member);
     }
@@ -184,19 +217,25 @@ public final class ByteCodeWriter {
      * @param member   The member the annotations are written on
      */
     private void writeTypeAnnotations(TypeDef typeDef, int typeRef, String typePath, TypeAnnotatable member) {
+        // A member of an enclosing type, `Outer<A>.Inner<B>`, is reached through a nested type step per level
+        String nested = ".".repeat(io.micronaut.sourcegen.bytecode.core.TypeUtils.memberDepth(typeDef));
         if (typeDef instanceof TypeDef.AnnotatedTypeDef annotated) {
-            writeTypeAnnotations(annotated.annotations(), typeRef, typePath, member);
+            writeTypeAnnotations(annotated.annotations(), typeRef, typePath + nested, member);
             writeTypeAnnotations(annotated.typeDef(), typeRef, typePath, member);
         } else if (typeDef instanceof ClassTypeDef.AnnotatedClassTypeDef annotated) {
-            writeTypeAnnotations(annotated.annotations(), typeRef, typePath, member);
+            writeTypeAnnotations(annotated.annotations(), typeRef, typePath + nested, member);
             writeTypeAnnotations(annotated.typeDef(), typeRef, typePath, member);
         } else if (typeDef instanceof TypeDef.Array array) {
             writeTypeAnnotations(array.componentType(), typeRef, typePath + "[".repeat(array.dimensions()), member);
         } else if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
             List<TypeDef> typeArguments = parameterized.typeArguments();
             for (int i = 0; i < typeArguments.size(); i++) {
-                writeTypeAnnotations(typeArguments.get(i), typeRef, typePath + i + ";", member);
+                writeTypeAnnotations(typeArguments.get(i), typeRef, typePath + nested + i + ";", member);
             }
+            writeTypeAnnotations(parameterized.rawType(), typeRef, typePath, member);
+        } else if (typeDef instanceof ClassTypeDef classType && TypeHierarchy.enclosingOf(classType) instanceof ClassTypeDef enclosing) {
+            // The enclosing type and its arguments are reached from where the member is
+            writeTypeAnnotations(enclosing, typeRef, typePath, member);
         } else if (typeDef instanceof TypeDef.Wildcard wildcard) {
             for (TypeDef bound : CollectionUtils.concat(wildcard.upperBounds(), wildcard.lowerBounds())) {
                 writeTypeAnnotations(bound, typeRef, typePath + "*", member);
@@ -213,7 +252,7 @@ public final class ByteCodeWriter {
             visitAnnotation(annotation, member.visitTypeAnnotation(
                 typeRef,
                 TypePath.fromString(typePath),
-                TypeUtils.getType(annotation.getType(), null).getDescriptor(),
+                TypeUtils.getType(annotation.getType(), null, EnclosingScope.NONE).getDescriptor(),
                 retention == RetentionPolicy.RUNTIME
             ));
         }
@@ -235,18 +274,12 @@ public final class ByteCodeWriter {
      * @param fieldDef     The field definition
      */
     public void writeField(ClassVisitor classVisitor, ObjectDef objectDef, FieldDef fieldDef) {
-        int modifiersFlag = getModifiersFlag(fieldDef.getModifiers());
-        if (fieldDef.isSynthetic()) {
-            modifiersFlag |= ACC_SYNTHETIC;
-        }
-        if (EnumGenUtils.isEnumField(objectDef, fieldDef)) {
-            modifiersFlag |= ACC_ENUM;
-        }
+        int modifiersFlag = ModifierUtils.fieldFlags(objectDef, fieldDef);
         FieldVisitor fieldVisitor = classVisitor.visitField(
             modifiersFlag,
             fieldDef.getName(),
-            TypeUtils.getType(fieldDef.getType(), objectDef).getDescriptor(),
-            SignatureWriterUtils.getFieldSignature(objectDef, fieldDef),
+            TypeUtils.getType(fieldDef.getType(), objectDef, enclosingScope).getDescriptor(),
+            SignatureWriterUtils.getFieldSignature(objectDef, fieldDef, enclosingScope),
             null
         );
         for (AnnotationDef annotation : declarationAnnotations(fieldDef.getAnnotations(), ElementType.FIELD)) {
@@ -269,21 +302,20 @@ public final class ByteCodeWriter {
      */
     public void writeInterface(ClassVisitor classVisitor, InterfaceDef interfaceDef, @Nullable ClassTypeDef outerType) {
         Set<String> emittedBridges = new HashSet<>();
-        int modifiersFlag = ACC_INTERFACE | ACC_ABSTRACT | getClassModifiersFlag(interfaceDef.getModifiers(), outerType);
-        if (interfaceDef.isSynthetic()) {
-            modifiersFlag |= ACC_SYNTHETIC;
-        }
+        int modifiersFlag = ModifierUtils.classFileFlags(interfaceDef, outerType);
         classVisitor.visit(V17,
             modifiersFlag,
             TypeUtils.getType(interfaceDef.asTypeDef()).getInternalName(),
-            SignatureWriterUtils.getInterfaceSignature(interfaceDef),
+            SignatureWriterUtils.getInterfaceSignature(interfaceDef, enclosingScope),
             TypeUtils.OBJECT_TYPE.getInternalName(),
-            interfaceDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, interfaceDef)).map(Type::getInternalName).toArray(String[]::new)
+            interfaceDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, interfaceDef, enclosingScope)).map(Type::getInternalName).toArray(String[]::new)
         );
         writeOuterInner(classVisitor, interfaceDef.asTypeDef(), interfaceDef, outerType);
         for (AnnotationDef annotation : interfaceDef.getAnnotations()) {
             writeAnnotation(annotation, classVisitor::visitAnnotation);
         }
+        writeBoundAnnotations(interfaceDef.getTypeVariables(), TypeReference.CLASS_TYPE_PARAMETER_BOUND, classVisitor::visitTypeAnnotation);
+        writeSupertypeAnnotations(null, interfaceDef.getSuperinterfaces(), classVisitor::visitTypeAnnotation);
         for (MethodDef method : interfaceDef.getMethods()) {
             writeMethod(classVisitor, interfaceDef, method, emittedBridges);
         }
@@ -304,11 +336,7 @@ public final class ByteCodeWriter {
      * @param outerType     The outer type
      */
     public void writeAnnotationObject(ClassVisitor classVisitor, AnnotationObjectDef annotationDef, @Nullable ClassTypeDef outerType) {
-        int modifiersFlag = ACC_ANNOTATION | ACC_INTERFACE | ACC_ABSTRACT
-            | getClassModifiersFlag(annotationDef.getModifiers(), outerType);
-        if (annotationDef.isSynthetic()) {
-            modifiersFlag |= ACC_SYNTHETIC;
-        }
+        int modifiersFlag = ModifierUtils.classFileFlags(annotationDef, outerType);
         ClassTypeDef typeDef = annotationDef.asTypeDef();
         classVisitor.visit(V17,
             modifiersFlag,
@@ -352,9 +380,9 @@ public final class ByteCodeWriter {
             classVisitor,
             annotationDef,
             accessor,
-            ACC_PUBLIC | ACC_ABSTRACT,
+            ModifierUtils.ACC_PUBLIC | ModifierUtils.ACC_ABSTRACT,
             accessor.getName(),
-            TypeUtils.getMethodDescriptor(annotationDef, accessor)
+            TypeUtils.getMethodDescriptor(annotationDef, accessor, enclosingScope)
         );
         for (AnnotationDef annotation : member.getAnnotations()) {
             writeAnnotation(annotation, methodVisitor::visitAnnotation);
@@ -407,24 +435,23 @@ public final class ByteCodeWriter {
      */
     public void writeRecord(ClassVisitor classVisitor, RecordDef recordDef, @Nullable ClassTypeDef outerType) {
         Set<String> emittedBridges = new HashSet<>();
-        // A record is always final
-        int modifiersFlag = ACC_RECORD | ACC_FINAL | getClassModifiersFlag(recordDef.getModifiers(), outerType);
-        if (recordDef.isSynthetic()) {
-            modifiersFlag |= ACC_SYNTHETIC;
-        }
+        // A record is always final; ACC_RECORD is ASM's own flag, which it writes as the Record attribute
+        int modifiersFlag = ACC_RECORD | ModifierUtils.classFileFlags(recordDef, outerType);
         classVisitor.visit(
             V17,
             modifiersFlag,
             TypeUtils.getType(recordDef.asTypeDef()).getInternalName(),
-            SignatureWriterUtils.getRecordSignature(recordDef),
+            SignatureWriterUtils.getRecordSignature(recordDef, enclosingScope),
             Type.getType(Record.class).getInternalName(),
-            recordDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, recordDef)).map(Type::getInternalName).toArray(String[]::new)
+            recordDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, recordDef, enclosingScope)).map(Type::getInternalName).toArray(String[]::new)
         );
         writeOuterInner(classVisitor, recordDef.asTypeDef(), recordDef, outerType);
 
         for (AnnotationDef annotation : recordDef.getAnnotations()) {
             writeAnnotation(annotation, classVisitor::visitAnnotation);
         }
+        writeBoundAnnotations(recordDef.getTypeVariables(), TypeReference.CLASS_TYPE_PARAMETER_BOUND, classVisitor::visitTypeAnnotation);
+        writeSupertypeAnnotations(null, recordDef.getSuperinterfaces(), classVisitor::visitTypeAnnotation);
 
         List<PropertyDef> components = recordDef.getProperties();
         List<FieldDef> componentFields = components.stream().map(ByteCodeWriter::toComponentField).toList();
@@ -436,13 +463,13 @@ public final class ByteCodeWriter {
             writeField(classVisitor, recordDef, componentField);
         }
         List<TypeDef> componentTypes = components.stream().map(PropertyDef::getType).toList();
-        if (!isDeclared(recordDef, MethodDef.CONSTRUCTOR, componentTypes)) {
+        if (!io.micronaut.sourcegen.bytecode.core.TypeUtils.declaresMethod(recordDef, MethodDef.CONSTRUCTOR, componentTypes, enclosingScope)) {
             writeMethod(classVisitor, recordDef, canonicalConstructor(recordDef, components, componentFields), emittedBridges);
         }
         writeObjectMethods(classVisitor, recordDef, componentFields);
         for (int i = 0; i < components.size(); i++) {
             PropertyDef component = components.get(i);
-            if (isDeclared(recordDef, component.getName(), List.of())) {
+            if (io.micronaut.sourcegen.bytecode.core.TypeUtils.declaresMethod(recordDef, component.getName(), List.of(), enclosingScope)) {
                 continue;
             }
             FieldDef componentField = componentFields.get(i);
@@ -537,8 +564,8 @@ public final class ByteCodeWriter {
     private void writeRecordComponent(ClassVisitor classVisitor, RecordDef recordDef, PropertyDef component, FieldDef componentField) {
         RecordComponentVisitor recordComponentVisitor = classVisitor.visitRecordComponent(
             component.getName(),
-            TypeUtils.getType(component.getType(), recordDef).getDescriptor(),
-            SignatureWriterUtils.getFieldSignature(recordDef, componentField)
+            TypeUtils.getType(component.getType(), recordDef, enclosingScope).getDescriptor(),
+            SignatureWriterUtils.getFieldSignature(recordDef, componentField, enclosingScope)
         );
         for (AnnotationDef annotation : componentAnnotations(component)) {
             writeAnnotation(annotation, recordComponentVisitor::visitAnnotation);
@@ -596,7 +623,7 @@ public final class ByteCodeWriter {
                 Opcodes.H_GETFIELD,
                 internalName,
                 componentField.getName(),
-                TypeUtils.getType(componentField.getType(), recordDef).getDescriptor(),
+                TypeUtils.getType(componentField.getType(), recordDef, enclosingScope).getDescriptor(),
                 false
             );
         }
@@ -614,10 +641,10 @@ public final class ByteCodeWriter {
                                    String descriptor,
                                    String callSiteDescriptor,
                                    Object[] bootstrapArguments) {
-        if (isDeclared(recordDef, name, Type.getArgumentTypes(descriptor))) {
+        if (io.micronaut.sourcegen.bytecode.core.TypeUtils.declaresMethod(recordDef, name, name.equals("equals") ? List.of(TypeDef.OBJECT) : List.of(), enclosingScope)) {
             return;
         }
-        int modifiersFlag = ACC_PUBLIC | ACC_FINAL;
+        int modifiersFlag = ModifierUtils.ACC_PUBLIC | ModifierUtils.ACC_FINAL;
         MethodVisitor methodVisitor = classVisitor.visitMethod(modifiersFlag, name, descriptor, null, null);
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodVisitor, modifiersFlag, name, descriptor);
         generatorAdapter.visitCode();
@@ -629,17 +656,6 @@ public final class ByteCodeWriter {
             generatorAdapter.visitMaxs(20, 20);
         }
         generatorAdapter.visitEnd();
-    }
-
-    private boolean isDeclared(RecordDef recordDef, String name, List<TypeDef> parameterTypes) {
-        return isDeclared(recordDef, name, parameterTypes.stream().map(t -> TypeUtils.getType(t, recordDef)).toArray(Type[]::new));
-    }
-
-    private boolean isDeclared(RecordDef recordDef, String name, Type[] parameterTypes) {
-        return recordDef.getMethods().stream().anyMatch(methodDef -> methodDef.getName().equals(name)
-            && Arrays.equals(
-                methodDef.getParameters().stream().map(p -> TypeUtils.getType(p.getType(), recordDef)).toArray(Type[]::new),
-                parameterTypes));
     }
 
     /**
@@ -665,27 +681,22 @@ public final class ByteCodeWriter {
         Set<String> emittedBridges = new HashSet<>();
         ClassTypeDef typeDef = classDef.asTypeDef();
 
-        int modifiersFlag = getClassModifiersFlag(classDef.getModifiers(), outerType);
-
-        if (classDef.isSynthetic()) {
-            modifiersFlag |= ACC_SYNTHETIC;
-        }
-        if (EnumGenUtils.isEnum(classDef)) {
-            modifiersFlag |= ACC_ENUM;
-        }
+        int modifiersFlag = ModifierUtils.classFileFlags(classDef, outerType);
         classVisitor.visit(
             V17,
             modifiersFlag,
             TypeUtils.getType(classDef.asTypeDef()).getInternalName(),
-            SignatureWriterUtils.getClassSignature(classDef),
-            TypeUtils.getType(Objects.requireNonNullElse(classDef.getSuperclass(), TypeDef.OBJECT), null).getInternalName(),
-            classDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, classDef)).map(Type::getInternalName).toArray(String[]::new)
+            SignatureWriterUtils.getClassSignature(classDef, enclosingScope),
+            TypeUtils.getType(Objects.requireNonNullElse(classDef.getSuperclass(), TypeDef.OBJECT), null, EnclosingScope.NONE).getInternalName(),
+            classDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, classDef, enclosingScope)).map(Type::getInternalName).toArray(String[]::new)
         );
         writeOuterInner(classVisitor, classDef.asTypeDef(), classDef, outerType);
 
         for (AnnotationDef annotation : classDef.getAnnotations()) {
             writeAnnotation(annotation, classVisitor::visitAnnotation);
         }
+        writeBoundAnnotations(classDef.getTypeVariables(), TypeReference.CLASS_TYPE_PARAMETER_BOUND, classVisitor::visitTypeAnnotation);
+        writeSupertypeAnnotations(classDef.getSuperclass(), classDef.getSuperinterfaces(), classVisitor::visitTypeAnnotation);
 
         List<StatementDef> staticInitStatements = new ArrayList<>();
         for (FieldDef field : classDef.getFields()) {
@@ -721,6 +732,14 @@ public final class ByteCodeWriter {
         for (MethodDef method : classDef.getMethods()) {
             writeMethod(classVisitor, classDef, method, emittedBridges);
         }
+        // An implementation inherited from a superclass satisfies an added interface through a bridge of this class
+        for (BridgeResolver.Bridge bridge : BridgeResolver.inheritedBridgesOf(classDef, enclosingScope)) {
+            writeBridge(classVisitor, classDef, bridge, emittedBridges);
+        }
+        // A public method inherited from a superclass that is not public is declared again, as javac does
+        for (BridgeResolver.Bridge bridge : BridgeResolver.visibilityBridgesOf(classDef, enclosingScope)) {
+            writeBridge(classVisitor, classDef, bridge, emittedBridges);
+        }
     }
 
     private void writeOuterInner(ClassVisitor classVisitor, ClassTypeDef thisType, ObjectDef thisDef, @Nullable ClassTypeDef outerType) {
@@ -731,7 +750,7 @@ public final class ByteCodeWriter {
                 TypeUtils.getType(thisType).getInternalName(),
                 outerInternalName,
                 thisType.getSimpleName(),
-                getInnerClassModifiersFlag(thisDef, outerType.isInterface())
+                ModifierUtils.innerClassFlags(thisDef, outerType.isInterface())
             );
         }
         writeInnerTypes(classVisitor, thisType, thisDef, outerType == null);
@@ -763,7 +782,7 @@ public final class ByteCodeWriter {
                 innerClassInternalName,
                 outerClassInternalName,
                 interType.getSimpleName(),
-                getInnerClassModifiersFlag(innerDef, outerDef instanceof InterfaceDef)
+                ModifierUtils.innerClassFlags(innerDef, outerDef instanceof InterfaceDef)
             );
             if (nestHost) {
                 outerClassVisitor.visitNestMember(innerClassInternalName);
@@ -780,51 +799,13 @@ public final class ByteCodeWriter {
         return TypeUtils.getType(hostName).getInternalName();
     }
 
-    /**
-     * The access flags of the {@code InnerClasses} entry of a member type. This is where its declared access
-     * lives - the class file itself cannot carry private or protected - and a member type is always static
-     * here, without which it reads back as an inner class needing an enclosing instance. The outer type and
-     * the member itself both write this entry, and the two have to agree.
-     *
-     * <p>A member of an interface that declares no access is written public, being implicitly so (JLS 9.5).
-     * A member of a class is not: it keeps the package private access it was declared with.
-     *
-     * @param objectDef          The member type
-     * @param declaredInterface  Whether the type enclosing it is an interface
-     * @return The access flags of its inner class entry
-     */
-    private int getInnerClassModifiersFlag(ObjectDef objectDef, boolean declaredInterface) {
-        int access = getModifiersFlag(objectDef) | ACC_STATIC;
-        if (declaredInterface && (access & (ACC_PUBLIC | ACC_PROTECTED | ACC_PRIVATE)) == 0) {
-            access |= ACC_PUBLIC;
-        }
-        return access;
-    }
-
-    private int getModifiersFlag(ObjectDef objectDef) {
-        if (objectDef instanceof EnumDef enumDef) {
-            return ACC_ENUM | getModifiersFlag(EnumGenUtils.toClassDef(enumDef));
-        }
-        if (objectDef instanceof InterfaceDef interfaceDef) {
-            return ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(interfaceDef.getModifiers());
-        }
-        if (objectDef instanceof RecordDef recordDef) {
-            // A record is always final; ACC_RECORD is not among the flags an inner class entry may carry
-            return ACC_FINAL | getModifiersFlag(recordDef.getModifiers());
-        }
-        if (objectDef instanceof AnnotationObjectDef annotationObjectDef) {
-            return ACC_ANNOTATION | ACC_INTERFACE | ACC_ABSTRACT | getModifiersFlag(annotationObjectDef.getModifiers());
-        }
-        return getModifiersFlag(objectDef.getModifiers());
-    }
-
     private void writeAnnotation(AnnotationDef annotation, Annotatable member) {
         RetentionPolicy retention = retentionOf(annotation);
         if (retention == RetentionPolicy.SOURCE) {
             return;
         }
         visitAnnotation(annotation, member.visitAnnotation(
-            TypeUtils.getType(annotation.getType(), null).getDescriptor(),
+            TypeUtils.getType(annotation.getType(), null, EnclosingScope.NONE).getDescriptor(),
             retention == RetentionPolicy.RUNTIME
         ));
     }
@@ -851,13 +832,13 @@ public final class ByteCodeWriter {
         if (value instanceof VariableDef.StaticField staticField) {
             visitStaticField(annotationVisitor, name, staticField);
         } else if (value instanceof ClassTypeDef classTypeDef) {
-            annotationVisitor.visit(name, TypeUtils.getType(classTypeDef, null));
+            annotationVisitor.visit(name, TypeUtils.getType(classTypeDef, null, EnclosingScope.NONE));
         } else if (value instanceof Class<?> type) {
             annotationVisitor.visit(name, Type.getType(type));
         } else if (value instanceof AnnotationDef nestedAnnotation) {
             visitAnnotation(
                 nestedAnnotation,
-                annotationVisitor.visitAnnotation(name, TypeUtils.getType(nestedAnnotation.getType(), null).getDescriptor())
+                annotationVisitor.visitAnnotation(name, TypeUtils.getType(nestedAnnotation.getType(), null, EnclosingScope.NONE).getDescriptor())
             );
         } else if (value instanceof AnnotationDef[] annotations) {
             visitAnnotationArray(annotationVisitor, name, Arrays.asList(annotations));
@@ -878,11 +859,11 @@ public final class ByteCodeWriter {
      */
     private static void visitStaticField(AnnotationVisitor annotationVisitor, @Nullable String name, VariableDef.StaticField staticField) {
         if (staticField.name().equals("class") && staticField.type().equals(TypeDef.CLASS)) {
-            annotationVisitor.visit(name, TypeUtils.getType(staticField.ownerType(), null));
+            annotationVisitor.visit(name, TypeUtils.getType(staticField.ownerType(), null, EnclosingScope.NONE));
         } else {
             annotationVisitor.visitEnum(
                 name,
-                TypeUtils.getType(staticField.ownerType(), null).getDescriptor(),
+                TypeUtils.getType(staticField.ownerType(), null, EnclosingScope.NONE).getDescriptor(),
                 staticField.name()
             );
         }
@@ -968,11 +949,8 @@ public final class ByteCodeWriter {
                              int extraModifiersFlag,
                              Set<String> emittedBridges) {
         String name = methodDef.getName();
-        String methodDescriptor = TypeUtils.getMethodDescriptor(objectDef, methodDef);
-        int modifiersFlag = getModifiersFlag(methodDef.getModifiers()) | extraModifiersFlag;
-        if (methodDef.isSynthetic()) {
-            modifiersFlag |= ACC_SYNTHETIC;
-        }
+        String methodDescriptor = TypeUtils.getMethodDescriptor(objectDef, methodDef, enclosingScope);
+        int modifiersFlag = ModifierUtils.methodFlags(methodDef) | extraModifiersFlag;
         MethodVisitor methodVisitor = visitMethodHeader(classVisitor, objectDef, methodDef, modifiersFlag, name, methodDescriptor);
         // The method is buffered: a try registers its exception handlers after those of the statements
         // nested in it, once their labels are visited, and the buffer replays them ahead of the code as a
@@ -981,17 +959,21 @@ public final class ByteCodeWriter {
         GeneratorAdapter generatorAdapter = new GeneratorAdapter(methodNode, modifiersFlag, name, methodDescriptor);
         writeMethodAnnotations(generatorAdapter, methodDef);
 
-        MethodContext context = new MethodContext(objectDef, methodDef, isLambda);
+        MethodContext context = new MethodContext(objectDef, methodDef, isLambda, enclosingScope);
         Label startMethod = writeParameters(generatorAdapter, objectDef, methodDef, context);
 
         List<StatementDef> statements = methodDef.getStatements();
         if (methodDef.isConstructor()) {
-            statements = adjustConstructorStatements(objectDef, statements);
+            // The constructor call first, then the field initializers - run again after a delegation to this(...)
+            statements = ConstructorBody.of(objectDef, statements, ConstructorBody.InitializersAfterThis.RERUN).asStatements();
         }
         if (!statements.isEmpty()) {
             writeStatements(generatorAdapter, objectDef, methodDef, context, statements, startMethod);
         }
-        writeLocalVariableTable(methodNode, generatorAdapter, context);
+        if (!statements.isEmpty()) {
+            // An abstract method has no code for its parameters to be locals of
+            writeLocalVariableTable(methodNode, generatorAdapter, context);
+        }
         if (visitMaxs && !statements.isEmpty()) {
             generatorAdapter.visitMaxs(20, 20);
         }
@@ -1005,7 +987,7 @@ public final class ByteCodeWriter {
             writeMethod(classVisitor, objectDef, lambdaDef, true, 0, emittedBridges);
         }
 
-        if (!isLambda && (extraModifiersFlag & ACC_BRIDGE) == 0) {
+        if (!isLambda && (extraModifiersFlag & ModifierUtils.ACC_BRIDGE) == 0) {
             writeBridgeMethods(classVisitor, objectDef, methodDef, emittedBridges);
         }
     }
@@ -1032,21 +1014,22 @@ public final class ByteCodeWriter {
      * @param methodDescriptor The method descriptor
      * @return The visitor of the declared method
      */
-    private static MethodVisitor visitMethodHeader(ClassVisitor classVisitor,
+    private MethodVisitor visitMethodHeader(ClassVisitor classVisitor,
                                                    @Nullable ObjectDef objectDef,
                                                    MethodDef methodDef,
                                                    int modifiersFlag,
                                                    String name,
                                                    String methodDescriptor) {
         String[] exceptions = methodDef.getThrowTypes().isEmpty() ? null : methodDef.getThrowTypes().stream()
-            .map(t -> TypeUtils.getType(t, objectDef).getClassName().replace(".", "/"))
+            // A thrown variable of the method erases to its bound
+            .map(t -> Type.getType(io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(t, objectDef, methodDef, enclosingScope)).getInternalName())
             .toArray(String[]::new);
         MethodVisitor methodVisitor = classVisitor.visitMethod(
             modifiersFlag,
             name,
             methodDescriptor,
             // A bridge carries an erased signature, it never gets a Signature attribute
-            (modifiersFlag & ACC_BRIDGE) == 0 ? SignatureWriterUtils.getMethodSignature(objectDef, methodDef) : null,
+            (modifiersFlag & ModifierUtils.ACC_BRIDGE) == 0 ? SignatureWriterUtils.getMethodSignature(objectDef, methodDef, enclosingScope) : null,
             exceptions
         );
         if (objectDef instanceof RecordDef recordDef && isCanonicalRecordConstructor(recordDef, methodDef)) {
@@ -1069,6 +1052,12 @@ public final class ByteCodeWriter {
             TypeReference.newTypeReference(TypeReference.METHOD_RETURN).getValue(),
             generatorAdapter::visitTypeAnnotation
         );
+        writeBoundAnnotations(methodDef.getTypeVariables(), TypeReference.METHOD_TYPE_PARAMETER_BOUND, generatorAdapter::visitTypeAnnotation);
+        // `throws @Marker E`: an annotation of a thrown type
+        for (int i = 0; i < methodDef.getThrowTypes().size(); i++) {
+            writeTypeAnnotations(methodDef.getThrowTypes().get(i), TypeReference.newExceptionReference(i).getValue(),
+                generatorAdapter::visitTypeAnnotation);
+        }
         if (methodDef.getParameters().stream()
             .anyMatch(p -> !declarationAnnotations(p.getAnnotations(), ElementType.PARAMETER).isEmpty())) {
             generatorAdapter.visitAnnotableParameterCount(methodDef.getParameters().size(), true);
@@ -1084,15 +1073,11 @@ public final class ByteCodeWriter {
      */
     private static void writeCanonicalRecordParameters(MethodVisitor methodVisitor, MethodDef methodDef) {
         for (ParameterDef parameter : methodDef.getParameters()) {
-            int parameterModifiers = parameter.getModifiers().contains(Modifier.FINAL) ? ACC_FINAL : 0;
-            if (parameter.isSynthetic()) {
-                parameterModifiers |= ACC_SYNTHETIC;
-            }
-            methodVisitor.visitParameter(parameter.getName(), parameterModifiers);
+            methodVisitor.visitParameter(parameter.getName(), ModifierUtils.parameterFlags(parameter));
         }
     }
 
-    private static boolean isCanonicalRecordConstructor(RecordDef recordDef, MethodDef methodDef) {
+    private boolean isCanonicalRecordConstructor(RecordDef recordDef, MethodDef methodDef) {
         if (!methodDef.isConstructor() || methodDef.getParameters().size() != recordDef.getProperties().size()) {
             return false;
         }
@@ -1100,7 +1085,7 @@ public final class ByteCodeWriter {
             ParameterDef parameter = methodDef.getParameters().get(i);
             PropertyDef property = recordDef.getProperties().get(i);
             if (!parameter.getName().equals(property.getName())
-                || !TypeUtils.getType(parameter.getType(), recordDef).equals(TypeUtils.getType(property.getType(), recordDef))) {
+                || !TypeUtils.getType(parameter.getType(), recordDef, enclosingScope).equals(TypeUtils.getType(property.getType(), recordDef, enclosingScope))) {
                 return false;
             }
         }
@@ -1138,7 +1123,8 @@ public final class ByteCodeWriter {
                 TypeReference.newFormalParameterReference(parameterIndex).getValue(),
                 generatorAdapter::visitTypeAnnotation
             );
-            Type parameterType = TypeUtils.getType(parameter.getType(), objectDef);
+            // A variable of the method erases to its bound
+            Type parameterType = Type.getType(io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(parameter.getType(), objectDef, methodDef, enclosingScope));
             MethodContext.LocalData prevParam = context.locals().put(parameter.getName(), new MethodContext.LocalData(
                 parameter.getName(),
                 parameterType,
@@ -1177,7 +1163,7 @@ public final class ByteCodeWriter {
         for (StatementDef statement : statements) {
             StatementWriter.of(statement).write(generatorAdapter, context, null);
         }
-        if (hasReturnStatement(statements.getLast())) {
+        if (!io.micronaut.sourcegen.model.Completion.BYTECODE.canCompleteNormally(statements.getLast())) {
             return;
         }
         if (!methodDef.getReturnType().equals(TypeDef.VOID)) {
@@ -1211,13 +1197,7 @@ public final class ByteCodeWriter {
     }
 
     /**
-     * Write the bridge methods a method requires.
-     *
-     * <p>The bridges are resolved from the declared supertypes: one per inherited method that this
-     * method overrides with a different erasure. A bridge delegates to the method, casting any
-     * parameter whose type was erased. Bridges of an abstract method are abstract too, and the declared
-     * exceptions and the annotations of the delegate are repeated on the bridge, matching what the Java
-     * compiler emits.
+     * Write the bridge methods a method requires, as {@link BridgeResolver#bridgesOf} finishes them.
      *
      * @param classVisitor The class visitor
      * @param objectDef    The object definition
@@ -1227,156 +1207,21 @@ public final class ByteCodeWriter {
                                     @Nullable ObjectDef objectDef,
                                     MethodDef methodDef,
                                     Set<String> emittedBridges) {
-        List<BridgeResolver.BridgeMethod> resolved = BridgeResolver.resolve(objectDef, methodDef);
-        if (resolved.isEmpty()) {
-            return;
-        }
-        // An interface bridge is always a concrete default method delegating through the interface,
-        // even when the method it bridges is abstract; that is what the Java compiler emits, because
-        // interface dispatch reaches the implementation either way
-        boolean isInterface = objectDef instanceof InterfaceDef;
-        boolean isAbstract = !isInterface && methodDef.getModifiers().contains(Modifier.ABSTRACT);
-        List<ParameterDef> parameters = methodDef.getParameters();
-        for (BridgeResolver.BridgeMethod bridge : resolved) {
-            MethodDef.MethodDefBuilder builder = MethodDef.builder(methodDef.getName())
-                .addModifiers(bridgeModifiers(methodDef, isAbstract))
-                .returns(bridge.returnType())
-                .addAnnotations(methodDef.getAnnotations())
-                .addThrows(methodDef.getThrowTypes());
-            for (int i = 0; i < parameters.size(); i++) {
-                ParameterDef parameter = parameters.get(i);
-                builder.addParameter(ParameterDef.builder(parameter.getName(), bridge.parameterTypes().get(i))
-                    .addAnnotations(parameter.getAnnotations())
-                    .build());
-            }
-            if (!isAbstract) {
-                builder.addStatement((aThis, bridgeParameters) -> {
-                    // The invocation casts every parameter to the type of the delegate
-                    ExpressionDef.InvokeInstanceMethod invocation = aThis.invoke(methodDef, bridgeParameters);
-                    return bridge.returnType().equals(TypeDef.VOID) ? invocation : invocation.returning();
-                });
-            }
-            MethodDef bridgeDef = builder.build();
-            // Same-name overloads of the class can each resolve the same bridge; two methods with
-            // different names never collide, so the name is part of the key
-            if (emittedBridges.add(bridgeDef.getName() + TypeUtils.getMethodDescriptor(objectDef, bridgeDef))) {
-                writeMethod(classVisitor, objectDef, bridgeDef, false, ACC_BRIDGE | ACC_SYNTHETIC, emittedBridges);
-            }
+        for (BridgeResolver.Bridge bridge : BridgeResolver.bridgesOf(objectDef, methodDef, enclosingScope)) {
+            writeBridge(classVisitor, objectDef, bridge, emittedBridges);
         }
     }
 
-    private static Collection<Modifier> bridgeModifiers(MethodDef methodDef, boolean isAbstract) {
-        return methodDef.getModifiers().stream()
-            .filter(m -> m == Modifier.PUBLIC || m == Modifier.PROTECTED || m == Modifier.PRIVATE || (isAbstract && m == Modifier.ABSTRACT))
-            .toList();
-    }
-
-    private List<StatementDef> adjustConstructorStatements(@Nullable ObjectDef objectDef, List<StatementDef> statements) {
-        if (!(objectDef instanceof ClassDef || objectDef instanceof RecordDef)) {
-            return statements;
+    private void writeBridge(ClassVisitor classVisitor,
+                             @Nullable ObjectDef objectDef,
+                             BridgeResolver.Bridge bridge,
+                             Set<String> emittedBridges) {
+        MethodDef bridgeDef = bridge.method();
+        // Same-name overloads of the class can each resolve the same bridge; two methods with
+        // different names never collide, so the name is part of the key
+        if (emittedBridges.add(bridgeDef.getName() + TypeUtils.getMethodDescriptor(objectDef, bridgeDef, enclosingScope))) {
+            writeMethod(classVisitor, objectDef, bridgeDef, false, bridge.flags(), emittedBridges);
         }
-        // A record has no fields of its own, only the ones backing its components, which the canonical constructor assigns
-        List<StatementDef> fieldInitializers = objectDef instanceof ClassDef classDef
-            ? classDef.getFields().stream().filter(fieldDef -> !fieldDef.getModifiers().contains(Modifier.STATIC))
-            .flatMap(fieldDef -> fieldDef.getInitializer().<StatementDef>map(initializer -> new VariableDef.This().field(fieldDef).assign(initializer)).stream())
-            .toList()
-            : List.of();
-        Optional<StatementDef> constructorInvocation = statements.stream().filter(this::isConstructorInvocation).findFirst();
-        if (constructorInvocation.isEmpty() || !fieldInitializers.isEmpty()) {
-            // Add the constructor or reshuffle the statements to have the field initializers right after the constructor call
-            List<StatementDef> newStatements = new ArrayList<>();
-            // Constructor call
-            newStatements.add(constructorInvocation.orElseGet(this::superConstructorInvocation));
-            // Fields initializer
-            newStatements.addAll(fieldInitializers);
-            // Statements
-            if (constructorInvocation.isPresent()) {
-                // Remove constructor moved to the front
-                List<StatementDef> statementsWithoutConstructor = new ArrayList<>(statements);
-                statementsWithoutConstructor.remove(constructorInvocation.get());
-                newStatements.addAll(statementsWithoutConstructor);
-            } else {
-                newStatements.addAll(statements);
-            }
-            statements = newStatements;
-        }
-        return statements;
-    }
-
-    private boolean hasReturnStatement(StatementDef statement) {
-        List<StatementDef> statements = statement.flatten();
-        if (statements.isEmpty()) {
-            return false;
-        }
-        StatementDef statementDef = statements.get(statements.size() - 1);
-        if (statementDef instanceof StatementDef.IfElse ifElse) {
-            return hasReturnStatement(ifElse.statement()) && hasReturnStatement(ifElse.elseStatement());
-        }
-        if (statementDef instanceof StatementDef.Try aTry) {
-            return hasReturnStatement(aTry.statement());
-        }
-        if (statementDef instanceof StatementDef.Synchronized aSynchronized) {
-            return hasReturnStatement(aSynchronized.statement());
-        }
-        if (statementDef instanceof StatementDef.Switch switchStatement) {
-            if (switchStatement.defaultCase() == null) {
-                return false;
-            }
-            return switchStatement.cases().values().stream().allMatch(this::hasReturnStatement);
-        }
-        return statementDef instanceof StatementDef.Return || statementDef instanceof StatementDef.Throw;
-    }
-
-    private StatementDef superConstructorInvocation() {
-        return new VariableDef.This().superRef().invokeSuperConstructor();
-    }
-
-    private boolean isConstructorInvocation(StatementDef statement) {
-        boolean deprecatedCall = statement instanceof ExpressionDef.InvokeInstanceMethod call && call.method().isConstructor();
-        return deprecatedCall || statement instanceof StatementDef.InvokeSuperConstructor;
-    }
-
-    /**
-     * The access flags of a class file. Unlike a member, a class cannot be declared private, protected or
-     * static there - those belong to the {@code InnerClasses} entry of a member type. A member type declared
-     * protected is reachable from a subclass in another package, so its class file is public, the way a
-     * compiler writes it.
-     *
-     * @param modifiers The declared modifiers
-     * @return The access flags of the class file
-     */
-    private int getClassModifiersFlag(Set<Modifier> modifiers, @Nullable ClassTypeDef outerType) {
-        int access = getModifiersFlag(modifiers) & ~(ACC_PRIVATE | ACC_PROTECTED | ACC_STATIC);
-        boolean implicitlyPublic = outerType != null
-            && outerType.isInterface()
-            && (access & (ACC_PUBLIC | ACC_PROTECTED | ACC_PRIVATE)) == 0;
-        if (modifiers.contains(Modifier.PROTECTED) || implicitlyPublic) {
-            access |= ACC_PUBLIC;
-        }
-        return access;
-    }
-
-    private int getModifiersFlag(Set<Modifier> modifiers) {
-        int access = 0;
-        if (modifiers.contains(Modifier.PUBLIC)) {
-            access |= ACC_PUBLIC;
-        }
-        if (modifiers.contains(Modifier.PRIVATE)) {
-            access |= ACC_PRIVATE;
-        }
-        if (modifiers.contains(Modifier.PROTECTED)) {
-            access |= ACC_PROTECTED;
-        }
-        if (modifiers.contains(Modifier.FINAL)) {
-            access |= ACC_FINAL;
-        }
-        if (modifiers.contains(Modifier.ABSTRACT)) {
-            access |= ACC_ABSTRACT;
-        }
-        if (modifiers.contains(Modifier.STATIC)) {
-            access |= ACC_STATIC;
-        }
-        return access;
     }
 
     /**

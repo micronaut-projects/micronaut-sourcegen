@@ -1,5 +1,6 @@
 package io.micronaut.sourcegen
 
+import io.micronaut.sourcegen.KotlinCompileAssertions.render
 import io.micronaut.sourcegen.model.ClassDef
 import io.micronaut.sourcegen.model.ClassTypeDef
 import io.micronaut.sourcegen.model.ExpressionDef
@@ -7,7 +8,9 @@ import io.micronaut.sourcegen.model.InterfaceDef
 import io.micronaut.sourcegen.model.MethodDef
 import io.micronaut.sourcegen.model.MethodReferenceExpression
 import io.micronaut.sourcegen.model.TypeDef
+import java.util.function.Function
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.StringWriter
 import javax.lang.model.element.Modifier
@@ -41,7 +44,7 @@ class MethodReferenceWriteTest {
         .returns(TypeDef.STRING)
         .build()
 
-    private fun render(reference: MethodReferenceExpression): String {
+    private fun renderReference(reference: MethodReferenceExpression): String {
         val classDef = ClassDef.builder("test.MyClass")
             .addModifiers(Modifier.PUBLIC)
             .addMethod(
@@ -70,13 +73,13 @@ class MethodReferenceWriteTest {
             """
             package test
 
-            public class MyClass {
-              public fun evaluate(): StringFunction {
+            public open class MyClass {
+              public open fun evaluate(): StringFunction {
                 return StringFunction(Owner::shout)
               }
             }
             """.trimIndent(),
-            render(stringFunction().staticMethodReference(owner, shout))
+            renderReference(stringFunction().staticMethodReference(owner, shout))
         )
     }
 
@@ -86,13 +89,13 @@ class MethodReferenceWriteTest {
             """
             package test
 
-            public class MyClass {
-              public fun evaluate(): StringFunction {
+            public open class MyClass {
+              public open fun evaluate(): StringFunction {
                 return StringFunction("prefix_"::trim)
               }
             }
             """.trimIndent(),
-            render(
+            renderReference(
                 stringFunction()
                     .methodReference(ExpressionDef.constant("prefix_"), trimTaking(1))
             )
@@ -112,13 +115,13 @@ class MethodReferenceWriteTest {
             """
             package test
 
-            public class MyClass {
-              public fun evaluate(): StringFunction {
+            public open class MyClass {
+              public open fun evaluate(): StringFunction {
                 return StringFunction("prefix_"::plus)
               }
             }
             """.trimIndent(),
-            render(stringFunction().methodReference(ExpressionDef.constant("prefix_"), plus))
+            renderReference(stringFunction().methodReference(ExpressionDef.constant("prefix_"), plus))
         )
     }
 
@@ -133,13 +136,33 @@ class MethodReferenceWriteTest {
             """
             package test
 
-            public class MyClass {
-              public fun evaluate(): StringFunction {
+            public open class MyClass {
+              public open fun evaluate(): StringFunction {
                 return StringFunction(::Owner)
               }
             }
             """.trimIndent(),
-            render(stringFunction().constructorReference(owner, constructor))
+            renderReference(stringFunction().constructorReference(owner, constructor))
         )
+    }
+
+    @Test
+    fun adaptedReferencePreservesNullableArgument() {
+        val apply = MethodDef.builder("apply").addModifiers(Modifier.PUBLIC).overrides()
+            .addParameter("value", TypeDef.OBJECT.makeNullable()).returns(Any::class.java)
+            .build { _, _ -> ExpressionDef.constant("accepted").returning() }
+        val function = TypeDef.parameterized(ClassTypeDef.of(Function::class.java),
+            TypeDef.OBJECT.makeNullable(), TypeDef.OBJECT.makeNullable())
+        val def = ClassDef.builder("test.NullableAdaptedReference").addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(Function::class.java, String::class.java, String::class.java))
+            .addMethod(apply)
+            .addMethod(MethodDef.builder("reference").addModifiers(Modifier.PUBLIC).returns(function)
+                .build { self, _ -> function.methodReference(self, apply).returning() }).build()
+        KotlinCompileAssertions.compileAndLoad(render(def)).use { loader ->
+            val cls = loader.loadClass(def.name)
+            @Suppress("UNCHECKED_CAST")
+            val function = cls.getMethod("reference").invoke(cls.getConstructor().newInstance()) as Function<Any?, Any?>
+            assertEquals("accepted", function.apply(null))
+        }
     }
 }

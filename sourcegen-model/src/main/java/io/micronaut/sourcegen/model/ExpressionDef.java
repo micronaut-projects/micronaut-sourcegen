@@ -27,6 +27,7 @@ import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.PropertyElement;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
 
+import javax.lang.model.element.Modifier;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -34,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -259,6 +261,7 @@ public sealed interface ExpressionDef
      * @since 1.5
      */
     default ExpressionDef.ConditionExpressionDef isTrue() {
+        ModelChecks.requireCondition("Is true", this);
         return new ExpressionDef.IsTrue(this.cast(TypeDef.Primitive.BOOLEAN));
     }
 
@@ -302,6 +305,7 @@ public sealed interface ExpressionDef
      * @since 1.5
      */
     default ExpressionDef.ConditionExpressionDef isFalse() {
+        ModelChecks.requireCondition("Is false", this);
         return new ExpressionDef.IsFalse(this.cast(TypeDef.Primitive.BOOLEAN));
     }
 
@@ -548,7 +552,7 @@ public sealed interface ExpressionDef
      */
     @Deprecated(since = "2.0", forRemoval = true)
     default InvokeInstanceMethod invokeConstructor(List<? extends ExpressionDef> values) {
-        ClassTypeDef owner = type() instanceof ClassTypeDef classTypeDef ? classTypeDef : null;
+        ClassTypeDef owner = TypeOperations.unwrap(type()) instanceof ClassTypeDef classTypeDef ? classTypeDef : null;
         Invocations.Resolved resolved = Invocations.resolve(owner, MethodDef.CONSTRUCTOR, null, values);
         if (resolved != null) {
             return invokeConstructor(resolved.parameterTypes(), resolved.values());
@@ -729,17 +733,17 @@ public sealed interface ExpressionDef
      * @since 1.2
      */
     default InvokeInstanceMethod invoke(String name, TypeDef returning, List<? extends ExpressionDef> values) {
-        ClassTypeDef owner = type() instanceof ClassTypeDef classTypeDef ? classTypeDef : null;
-        Invocations.Resolved resolved = Invocations.resolve(owner, name, returning, values);
-        if (resolved != null) {
-            return invoke(name, resolved.parameterTypes(), returning, resolved.values());
+        // A variable receiver has the members of all its bounds, `T extends First & Second` those of both, and an
+        // array those of Object
+        Invocations.Resolved resolved = Invocations.resolve(Invocations.receiverClasses(type()), name, returning, values);
+        List<TypeDef> parameterTypes = resolved != null ? resolved.parameterTypes() : values.stream().map(ExpressionDef::type).toList();
+        List<? extends ExpressionDef> arguments = resolved != null ? resolved.values() : values;
+        MethodDef.MethodDefBuilder method = MethodDef.builder(name).addParameters(parameterTypes).returns(returning);
+        if (resolved != null && resolved.isStatic()) {
+            // A static method called through a value, which is evaluated and discarded
+            method.addModifiers(Modifier.STATIC);
         }
-        return invoke(
-            name,
-            values.stream().map(ExpressionDef::type).toList(),
-            returning,
-            values
-        );
+        return new InvokeInstanceMethod(this, method.build(), arguments);
     }
 
     /**
@@ -884,7 +888,7 @@ public sealed interface ExpressionDef
                 ConversionService.SHARED.convert(value, t)
             ).map(o -> (ExpressionDef) new Constant(typeDef, o)).orElseGet(ExpressionDef::nullValue);
         } else if (ClassUtils.isJavaLangType(type.getName())) {
-            return ClassUtils.forName(type.getName(), ExpressionDef.class.getClassLoader())
+            return Optional.<Class<?>>ofNullable(TypeLookup.reflective().loadClass(type.getName()))
                 .flatMap(t -> ConversionService.SHARED.convert(value, t))
                 .map(o -> (ExpressionDef) new Constant(typeDef, o)).orElseGet(ExpressionDef::nullValue);
         } else if (type.isEnum()) {
@@ -1032,6 +1036,8 @@ public sealed interface ExpressionDef
             if (parameterTypes.size() != values.size()) {
                 throw new IllegalStateException("Cannot create a new instance of " + type.getName() + " parameters: " + parameterTypes.size() + " doesn't match values provided: " + values.size());
             }
+            ModelChecks.requireInstantiable(type);
+            ModelChecks.requireValues("New instance of " + type.getName(), "argument", values);
         }
 
         @Override
@@ -1051,6 +1057,11 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record Cast(TypeDef type, ExpressionDef expressionDef) implements ExpressionDef {
+
+        public Cast {
+            ModelChecks.requireCastable(type, expressionDef);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(expressionDef);
@@ -1069,6 +1080,11 @@ public sealed interface ExpressionDef
     record Constant(TypeDef type,
                     @Nullable
                     Object value) implements ExpressionDef {
+
+        public Constant {
+            ModelChecks.requireConstant(type, value);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.empty();
@@ -1099,6 +1115,8 @@ public sealed interface ExpressionDef
             if (method.getParameters().size() != values.size()) {
                 throw new IllegalStateException("Method " + method.getName() + " parameters: " + method.getParameters().size() + " doesn't match values provided: " + values.size());
             }
+            ModelChecks.requireValue("Invoke " + method.getName(), "instance", instance);
+            ModelChecks.requireValues("Invoke " + method.getName(), "argument", values);
         }
 
         @Override
@@ -1130,6 +1148,7 @@ public sealed interface ExpressionDef
             if (method.getParameters().size() != values.size()) {
                 throw new IllegalStateException("Method " + classDef.getName() + "#" + method.getName() + " parameters: " + method.getParameters().size() + " doesn't match values provided: " + values.size());
             }
+            ModelChecks.requireValues("Invoke " + classDef.getName() + "#" + method.getName(), "argument", values);
         }
 
         @Override
@@ -1157,6 +1176,8 @@ public sealed interface ExpressionDef
                                ExpressionDef right) implements ConditionExpressionDef {
 
         public ComparisonOperation(OpType opType, ExpressionDef left, ExpressionDef right) {
+            ModelChecks.requireValue("Comparison " + opType, "left", left);
+            ModelChecks.requireValue("Comparison " + opType, "right", right);
             if (opType != OpType.EQUAL_TO && opType != OpType.NOT_EQUAL_TO) {
                 left = toPrimitiveNumber(opType, left, "left");
                 right = toPrimitiveNumber(opType, right, "right");
@@ -1218,11 +1239,12 @@ public sealed interface ExpressionDef
 
         public MathBinaryOperation(OpType opType, ExpressionDef left, ExpressionDef right) {
             if (!(left.type() instanceof TypeDef.Primitive leftPrimitive) || !leftPrimitive.isNumber()) {
-                throw new IllegalStateException("Math left type should be a primitive number");
+                throw new IllegalStateException("Math left type should be a primitive number. " + ModelChecks.mathOperandsMessage(opType, left, right));
             }
             if (!(right.type() instanceof TypeDef.Primitive rightPrimitive) || !rightPrimitive.isNumber()) {
-                throw new IllegalStateException("Math right type should be a primitive number");
+                throw new IllegalStateException("Math right type should be a primitive number. " + ModelChecks.mathOperandsMessage(opType, left, right));
             }
+            ModelChecks.requireMathOperands(opType, left, right);
             this.opType = opType;
             this.left = left;
             this.right = right.cast(left.type());
@@ -1268,6 +1290,11 @@ public sealed interface ExpressionDef
     @Experimental
     record StringConcatenation(ExpressionDef left, ExpressionDef right) implements ExpressionDef {
 
+        public StringConcatenation {
+            ModelChecks.requireValue("String concatenation", "left", left);
+            ModelChecks.requireValue("String concatenation", "right", right);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(left, right);
@@ -1289,6 +1316,11 @@ public sealed interface ExpressionDef
     @Experimental
     record MathUnaryOperation(OpType opType,
                               ExpressionDef expression) implements ExpressionDef {
+
+        public MathUnaryOperation {
+            ModelChecks.requireNegatable(opType, expression);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(expression);
@@ -1317,6 +1349,7 @@ public sealed interface ExpressionDef
     record IsNull(ExpressionDef expression) implements ConditionExpressionDef {
 
         public IsNull(ExpressionDef expression) {
+            ModelChecks.requireValue("Is null", "operand", expression);
             this.expression = expression.cast(TypeDef.OBJECT);
         }
 
@@ -1336,6 +1369,7 @@ public sealed interface ExpressionDef
     record IsNotNull(ExpressionDef expression) implements ConditionExpressionDef {
 
         public IsNotNull(ExpressionDef expression) {
+            ModelChecks.requireValue("Is not null", "operand", expression);
             this.expression = expression.cast(TypeDef.OBJECT);
         }
 
@@ -1353,6 +1387,11 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record IsTrue(ExpressionDef expression) implements ConditionExpressionDef {
+
+        public IsTrue {
+            ModelChecks.requireCondition("Is true", expression);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(expression);
@@ -1367,6 +1406,11 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record IsFalse(ExpressionDef expression) implements ConditionExpressionDef {
+
+        public IsFalse {
+            ModelChecks.requireCondition("Is false", expression);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(expression);
@@ -1419,6 +1463,10 @@ public sealed interface ExpressionDef
                   ExpressionDef elseExpression,
                   TypeDef type) implements ExpressionDef {
 
+        public IfElse {
+            ModelChecks.requireCondition("If-else expression", condition);
+        }
+
         public IfElse(ExpressionDef condition, ExpressionDef ifExpression, ExpressionDef elseExpression) {
             this(
                 condition,
@@ -1451,6 +1499,7 @@ public sealed interface ExpressionDef
                   @Nullable
                   ExpressionDef defaultCase) implements ExpressionDef {
         public Switch {
+            ModelChecks.requireValue("Switch expression", "selector", expression);
             cases = new LinkedHashMap<>(cases);
         }
 
@@ -1475,6 +1524,11 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record SwitchYieldCase(TypeDef type, StatementDef statement) implements ExpressionDef {
+
+        public SwitchYieldCase {
+            ModelChecks.requireYield(type, statement);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.empty();
@@ -1491,6 +1545,11 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record NewArrayOfSize(TypeDef.Array type, int size) implements ExpressionDef {
+
+        public NewArrayOfSize {
+            ModelChecks.requireArraySize(type, size);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.empty();
@@ -1508,6 +1567,11 @@ public sealed interface ExpressionDef
     @Experimental
     record NewArrayInitialized(TypeDef.Array type,
                                List<? extends ExpressionDef> expressions) implements ExpressionDef {
+
+        public NewArrayInitialized {
+            ModelChecks.requireArrayElements(type, expressions);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return expressions.stream();
@@ -1525,6 +1589,10 @@ public sealed interface ExpressionDef
     @Experimental
     record GetPropertyValue(ExpressionDef instance,
                             PropertyElement propertyElement) implements ExpressionDef {
+
+        public GetPropertyValue {
+            ModelChecks.requireValue("Get property " + propertyElement.getName(), "instance", instance);
+        }
 
         @Override
         public TypeDef type() {
@@ -1547,6 +1615,10 @@ public sealed interface ExpressionDef
     @Experimental
     record InvokeGetClassMethod(ExpressionDef instance) implements ExpressionDef {
 
+        public InvokeGetClassMethod {
+            ModelChecks.requireValue("Invoke getClass", "instance", instance);
+        }
+
         @Override
         public TypeDef type() {
             return TypeDef.of(Class.class);
@@ -1567,6 +1639,10 @@ public sealed interface ExpressionDef
      */
     @Experimental
     record InvokeHashCodeMethod(ExpressionDef instance) implements ExpressionDef {
+
+        public InvokeHashCodeMethod {
+            ModelChecks.requireValue("Invoke hashCode", "instance", instance);
+        }
 
         @Override
         public TypeDef type() {
@@ -1590,6 +1666,13 @@ public sealed interface ExpressionDef
     @Experimental
     record EqualsStructurally(ExpressionDef instance,
                               ExpressionDef other) implements ConditionExpressionDef {
+
+        public EqualsStructurally {
+            ModelChecks.requireValue("Equals structurally", "instance", instance);
+            ModelChecks.requireValue("Equals structurally", "other", other);
+            ModelChecks.requireComparable("Equals structurally", instance, other, false);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(instance, other);
@@ -1607,6 +1690,13 @@ public sealed interface ExpressionDef
     @Experimental
     record NotEqualsStructurally(ExpressionDef instance,
                                  ExpressionDef other) implements ConditionExpressionDef {
+
+        public NotEqualsStructurally {
+            ModelChecks.requireValue("Not equals structurally", "instance", instance);
+            ModelChecks.requireValue("Not equals structurally", "other", other);
+            ModelChecks.requireComparable("Not equals structurally", instance, other, false);
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(instance, other);
@@ -1626,6 +1716,9 @@ public sealed interface ExpressionDef
                                ExpressionDef other) implements ConditionExpressionDef {
 
         public EqualsReferentially(ExpressionDef instance, ExpressionDef other) {
+            ModelChecks.requireValue("Equals referentially", "instance", instance);
+            ModelChecks.requireValue("Equals referentially", "other", other);
+            ModelChecks.requireComparable("Equals referentially", instance, other, true);
             this.instance = instance.cast(TypeDef.OBJECT);
             this.other = other.cast(TypeDef.OBJECT);
         }
@@ -1647,6 +1740,17 @@ public sealed interface ExpressionDef
     @Experimental
     record NotEqualsReferentially(ExpressionDef instance,
                                  ExpressionDef other) implements ConditionExpressionDef {
+
+        public NotEqualsReferentially(ExpressionDef instance, ExpressionDef other) {
+            ModelChecks.requireValue("Not equals referentially", "instance", instance);
+            ModelChecks.requireValue("Not equals referentially", "other", other);
+            ModelChecks.requireComparable("Not equals referentially", instance, other, true);
+            // A primitive compared with a reference is boxed, as EqualsReferentially boxes its operands
+            boolean mixed = instance.type().isPrimitive() != other.type().isPrimitive();
+            this.instance = mixed && instance.type().isPrimitive() ? instance.cast(TypeDef.OBJECT) : instance;
+            this.other = mixed && other.type().isPrimitive() ? other.cast(TypeDef.OBJECT) : other;
+        }
+
         @Override
         public Stream<? extends ExpressionDef> nestedExpressionsStream() {
             return Stream.of(instance, other);
@@ -1666,6 +1770,7 @@ public sealed interface ExpressionDef
                       ClassTypeDef instanceType) implements ConditionExpressionDef, ExpressionDef {
 
         public InstanceOf(ExpressionDef expression, ClassTypeDef instanceType) {
+            ModelChecks.requireValue("Instance of " + instanceType.getName(), "operand", expression);
             this.expression = expression.type().isPrimitive() ? expression.cast(TypeDef.OBJECT) : expression;
             this.instanceType = instanceType;
         }
@@ -1690,6 +1795,10 @@ public sealed interface ExpressionDef
                         TypeDef type,
                         ExpressionDef indexExpression) implements ExpressionDef {
 
+        public ArrayElement {
+            ModelChecks.requireArrayAccess(expression, indexExpression);
+        }
+
         public ArrayElement(ExpressionDef expression,
                             TypeDef type,
                             int index) {
@@ -1708,7 +1817,8 @@ public sealed interface ExpressionDef
 
         private static TypeDef findComponentType(TypeDef arrayType) {
             if (arrayType instanceof TypeDef.Array array) {
-                return array.componentType();
+                // The array counts every dimension at once: an element of an `int[][]` is an `int[]`
+                return array.dimensions() > 1 ? TypeDef.array(array.componentType(), array.dimensions() - 1) : array.componentType();
             }
             throw new IllegalArgumentException(arrayType + " is not an array");
         }

@@ -1,0 +1,16 @@
+package test;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class FinallyPaths {
+  public int call(AtomicInteger counter, boolean fail) {
+    try {
+      if (fail) {
+        throw new java.lang.IllegalStateException();
+      }
+      return 7;
+    } finally {
+      counter.incrementAndGet();
+    }
+  }
+}

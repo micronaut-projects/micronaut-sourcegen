@@ -6,6 +6,7 @@ import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.bytecode.tck.GeneratedClassLoader;
 import io.micronaut.sourcegen.custom.visitor.GenerateLambdaVisitor;
 import io.micronaut.sourcegen.custom.visitor.innerTypes.GenerateInnerTypeInEnumVisitor;
 import io.micronaut.sourcegen.model.AnnotationDef;
@@ -42,7 +43,6 @@ import java.io.StringWriter;
 import java.lang.reflect.AnnotatedArrayType;
 import java.lang.reflect.AnnotatedParameterizedType;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Type;
 import java.lang.reflect.Method;
 import java.util.AbstractList;
 import java.util.Arrays;
@@ -3903,16 +3903,7 @@ public class example/Outer {
 
         // Both have to load through one loader for the outer class to resolve the type it names
         Map<String, byte[]> generated = Map.of("example.Outer", bytes, "example.Outer$Inner", innerBytes);
-        ClassLoader classLoader = new ClassLoader(getClass().getClassLoader()) {
-            @Override
-            protected Class<?> findClass(String name) throws ClassNotFoundException {
-                byte[] classBytes = generated.get(name);
-                if (classBytes == null) {
-                    return super.findClass(name);
-                }
-                return defineClass(name, classBytes, 0, classBytes.length);
-            }
-        };
+        ClassLoader classLoader = new GeneratedClassLoader(generated);
         Class<?> outerClass = classLoader.loadClass("example.Outer");
         assertEquals(classLoader.loadClass("example.Outer$Inner"),
             outerClass.getDeclaredMethod("make").getReturnType());
@@ -6690,11 +6681,7 @@ public final class example/MyRecord extends java/lang/Record {
     }
 
     private Class<?> defineClass(String name, byte[] bytes) {
-        return new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(name, bytes, 0, bytes.length);
-            }
-        }.define();
+        return GeneratedClassLoader.defineDirectly(name, bytes);
     }
 
     @Retention(RetentionPolicy.RUNTIME)

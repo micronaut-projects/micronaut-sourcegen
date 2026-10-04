@@ -1,0 +1,10 @@
+package test;
+
+import java.lang.CharSequence;
+import java.lang.Object;
+
+public class ArrayReceiverCaller {
+  public Object call(ArrayReceiver<CharSequence[]> target) {
+    return target.get();
+  }
+}

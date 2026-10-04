@@ -70,16 +70,17 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
             Opcodes.H_INVOKESTATIC,
             descriptor,
             implementationMethodDef.getName(),
-            TypeUtils.getMethodDescriptor(objectDef, implementationMethodDef),
+            TypeUtils.getMethodDescriptor(objectDef, implementationMethodDef, context.enclosingScope()),
             false
         );
         generatorAdapter.visitInvokeDynamicInsn(
             lambda.implementation().getName(),
             createDynamicInvocationDescriptor(capturedVariables, context),
             MetafactoryHandle.BOOTSTRAP,
-            Type.getType(TypeUtils.getMethodDescriptor(objectDef, lambda.target())),
+            Type.getType(TypeUtils.getMethodDescriptor(objectDef, lambda.target(), context.enclosingScope())),
             lambdaMethodHandle,
-            Type.getType(TypeUtils.getMethodDescriptor(objectDef, lambda.implementation()))
+            // The instantiated signature names the enclosing method's variables
+            Type.getType(TypeUtils.getMethodDescriptor(objectDef, io.micronaut.sourcegen.bytecode.core.TypeUtils.withEnclosingVariables(lambda.implementation(), context.methodDef()), context.enclosingScope()))
         );
         popValueIfNeeded(generatorAdapter, lambda.type());
     }
@@ -88,10 +89,11 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
         var objectDef = Objects.requireNonNull(context.objectDef(), "Object definition is required for lambda generation");
         StringBuilder dynamicDescriptor = new StringBuilder("(");
         for (VariableDef variable : capturedVariables) {
-            dynamicDescriptor.append(TypeUtils.getType(variable.type(), objectDef));
+            // `super` is the receiver: the special call made on it is only verified for a value of the class making it
+            dynamicDescriptor.append(TypeUtils.getScopedType(variable instanceof VariableDef.Super ? objectDef.asTypeDef() : variable.type(), context));
         }
         dynamicDescriptor.append(")");
-        dynamicDescriptor.append(TypeUtils.getType(lambda.type(), objectDef).getDescriptor());
+        dynamicDescriptor.append(TypeUtils.getType(lambda.type(), objectDef, context.enclosingScope()).getDescriptor());
         return dynamicDescriptor.toString();
     }
 
@@ -109,21 +111,26 @@ final class LambdaExpressionWriter extends AbstractStatementAwareExpressionWrite
                 parameters.add(ParameterDef.builder(field.name(), field.type()).build());
             } else if (variable instanceof VariableDef.This thisVar) {
                 parameters.add(ParameterDef.builder(THIS_VAR_NAME, thisVar.type()).build());
-            } else if (variable instanceof VariableDef.Super superVar) {
-                parameters.add(ParameterDef.builder(SUPER_VAR_NAME, superVar.type()).build());
+            } else if (variable instanceof VariableDef.Super) {
+                parameters.add(ParameterDef.builder(SUPER_VAR_NAME, Objects.requireNonNull(context.objectDef()).asTypeDef()).build());
             } else if (variable instanceof VariableDef.ExceptionVar exception) {
                 parameters.add(ParameterDef.builder(EXCEPTION_VAR_NAME, exception.type()).build());
             }
         }
 
         parameters.addAll(original.getParameters());
-        return MethodDef.builder("lambda$" + context.methodDef().getName() + "$" +
+        MethodDef.MethodDefBuilder builder = MethodDef.builder("lambda$" + context.methodDef().getName() + "$" +
                 context.lambdaMethods().size())
             .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
             .addParameters(parameters)
             .returns(original.getReturnType())
-            .addStatements(original.getStatements())
-            .build();
+            .addStatements(original.getStatements());
+        // The body is in the scope of the enclosing method: a captured value of its variable erases to the bound
+        original.getTypeVariables().forEach(builder::addTypeVariable);
+        context.methodDef().getTypeVariables().stream()
+            .filter(variable -> original.getTypeVariables().stream().noneMatch(own -> own.name().equals(variable.name())))
+            .forEach(builder::addTypeVariable);
+        return builder.build();
     }
 
     private List<VariableDef> captureVariables(MethodDef method) {
