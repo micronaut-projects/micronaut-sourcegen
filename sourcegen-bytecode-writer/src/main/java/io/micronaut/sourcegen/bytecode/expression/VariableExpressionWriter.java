@@ -87,7 +87,9 @@ final class VariableExpressionWriter implements ExpressionWriter {
         ExpressionWriter.writeExpression(generatorAdapter, context, field.instance());
         TypeDef fieldType = field.type();
         TypeDef declaringType = field.declaringType();
-        generatorAdapter.getField(TypeUtils.getType(declaringType, context.objectDef()), field.name(), TypeUtils.getType(fieldType, context.objectDef()));
+        // The field is erased in the scope of the class declaring it
+        generatorAdapter.getField(TypeUtils.getScopedType(declaringType, context), field.name(),
+            TypeUtils.getType(fieldType, io.micronaut.sourcegen.bytecode.core.TypeUtils.fieldScope(declaringType, context.objectDef(), field.name()), context.enclosingScope()));
     }
 
     private void writeParameterVariable(GeneratorAdapter generatorAdapter, MethodContext context, String name) {
@@ -103,7 +105,8 @@ final class VariableExpressionWriter implements ExpressionWriter {
         TypeDef owner = field.ownerType();
         TypeDef fieldType = field.type();
 
-        generatorAdapter.getStatic(TypeUtils.getType(owner, context.objectDef()), field.name(), TypeUtils.getType(fieldType, context.objectDef()));
+        generatorAdapter.getStatic(TypeUtils.getScopedType(owner, context), field.name(),
+            TypeUtils.getType(fieldType, io.micronaut.sourcegen.bytecode.core.TypeUtils.fieldScope(owner, context.objectDef(), field.name()), context.enclosingScope()));
     }
 
     public void writeLambdaVariable(GeneratorAdapter generatorAdapter, MethodContext context) {

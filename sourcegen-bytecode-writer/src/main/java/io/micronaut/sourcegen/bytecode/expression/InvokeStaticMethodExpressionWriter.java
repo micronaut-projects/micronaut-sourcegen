@@ -16,17 +16,9 @@
 package io.micronaut.sourcegen.bytecode.expression;
 
 import io.micronaut.sourcegen.bytecode.MethodContext;
-import io.micronaut.sourcegen.bytecode.TypeUtils;
+import io.micronaut.sourcegen.bytecode.core.InvocationPlan;
 import io.micronaut.sourcegen.model.ExpressionDef;
-import io.micronaut.sourcegen.model.MethodDef;
-import io.micronaut.sourcegen.model.ParameterDef;
-import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
-import org.objectweb.asm.commons.Method;
-
-import java.util.Iterator;
-
-import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 
 final class InvokeStaticMethodExpressionWriter extends AbstractStatementAwareExpressionWriter implements ExpressionWriter {
 
@@ -38,22 +30,9 @@ final class InvokeStaticMethodExpressionWriter extends AbstractStatementAwareExp
 
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
-        Iterator<ParameterDef> iterator = invokeStaticMethod.method().getParameters().iterator();
-        for (ExpressionDef value : invokeStaticMethod.values()) {
-            ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, value, iterator.next().getType());
-        }
-        boolean isDeclaringTypeInterface = invokeStaticMethod.classDef().isInterface();
-        MethodDef methodDef = invokeStaticMethod.method();
-        Method method = new Method(methodDef.getName(), TypeUtils.getMethodDescriptor(context.objectDef(), methodDef));
-        Type type = TypeUtils.getType(invokeStaticMethod.classDef(), context.objectDef());
-
-        String owner = type.getSort() == Type.ARRAY ? type.getDescriptor() : type.getInternalName();
-        generatorAdapter.visitMethodInsn(
-            INVOKESTATIC,
-            owner,
-            method.getName(),
-            method.getDescriptor(),
-            isDeclaringTypeInterface);
-        popValueIfNeeded(generatorAdapter, methodDef.getReturnType());
+        InvocationPlan plan = InvocationPlan.ofStatic(invokeStaticMethod.classDef(), invokeStaticMethod.method(),
+            invokeStaticMethod.values(), context.objectDef(), context.methodDef(), context.enclosingScope());
+        ExpressionWriter.writeInvocation(generatorAdapter, context, plan);
+        popValueIfNeeded(generatorAdapter, plan.method().getReturnType());
     }
 }

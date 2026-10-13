@@ -785,8 +785,16 @@ public final class MethodDef extends AbstractElement {
         }
 
         public MethodDef build() {
+            // A parameter naming a variable of the method alone reads with the bounds the method declares it with
+            Map<String, TypeDef> declared = new java.util.HashMap<>();
+            for (TypeDef.TypeVariable variable : typeVariables) {
+                if (!variable.bounds().isEmpty()) {
+                    declared.put(variable.name(), variable);
+                }
+            }
             List<VariableDef.MethodParameter> variables = parameters.stream()
-                .map(ParameterDef::asVariable)
+                .map(parameter -> declared.isEmpty() ? parameter.asVariable()
+                    : new VariableDef.MethodParameter(parameter.getName(), TypeOperations.substitute(parameter.getType(), declared)))
                 .toList();
             for (MethodBodyBuilder bodyBuilder : bodyBuilders) {
                 StatementDef statement = bodyBuilder.apply(new VariableDef.This(), variables);
@@ -803,7 +811,9 @@ public final class MethodDef extends AbstractElement {
             if (returnType == null && !name.equals(CONSTRUCTOR)) {
                 returnType = TypeDef.VOID;
             }
-            return new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc, typeVariables, overrides, synthetic, throwTypes);
+            MethodDef method = new MethodDef(name, modifiers, returnType, parameters, statements, annotations, javadoc, typeVariables, overrides, synthetic, throwTypes);
+            ModelChecks.requireReturns(method);
+            return method;
         }
 
         @Nullable

@@ -1,0 +1,11 @@
+package test;
+
+import io.micronaut.sourcegen.javapoet.write.ConversionProgramRegressionTest;
+import java.lang.Object;
+import java.lang.String;
+
+public class GenericSignatureoverload {
+  public Object call(ConversionProgramRegressionTest.GenericOverloadedChild target, Object value) {
+    return target.identity((String) value);
+  }
+}

@@ -1,0 +1,14 @@
+package test
+
+import io.micronaut.sourcegen.ConversionProgramRegressionTest
+import java.io.Serializable
+import kotlin.Any
+import kotlin.Array
+import kotlin.CharSequence
+
+public open class SuccessiveCastsarray {
+  public open fun call(`value`: Any): Any {
+    ConversionProgramRegressionTest.Calls.serializable(`value` as Serializable)
+    return ConversionProgramRegressionTest.Calls.arrays(object { @Suppress("UNCHECKED_CAST") fun <T> cast(value: Any?): Array<T> where T : CharSequence, T : Serializable = value as Array<T> }.cast(`value`))
+  }
+}

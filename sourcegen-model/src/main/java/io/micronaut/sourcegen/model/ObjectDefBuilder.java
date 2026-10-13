@@ -106,7 +106,11 @@ public sealed class ObjectDefBuilder<ThisType>
      */
     public final ThisType addInnerType(ObjectDef innerDef) {
         ClassTypeDef innerType = innerDef.asTypeDef();
-        String newName = ClassTypeDef.of(name).getCanonicalName() + "$" + innerType.getSimpleName();
+        // A definition named with its binary name, `Outer$Member`, is a member of that name: not `Outer$Outer$Member`
+        String memberPrefix = name + "$";
+        String memberName = innerType.getName().startsWith(memberPrefix)
+            ? innerType.getName().substring(memberPrefix.length()) : innerType.getSimpleName();
+        String newName = ClassTypeDef.of(name).getCanonicalName() + "$" + memberName;
         innerTypes.add(innerDef.withClassName(new ClassTypeDef.ClassName(newName, true)));
         return thisInstance;
     }

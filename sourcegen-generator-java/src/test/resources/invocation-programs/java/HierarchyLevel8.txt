@@ -1,0 +1,4 @@
+package test;
+
+public class HierarchyLevel8 extends HierarchyLevel7 {
+}

@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode.jdk;
 
+import io.micronaut.sourcegen.bytecode.core.SwitchKeys;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -35,9 +36,6 @@ final class JdkMethodSupport {
     static boolean supported(MethodDef method) {
         if (method.getStatements().isEmpty()) {
             return method.getReturnType().equals(io.micronaut.sourcegen.model.TypeDef.VOID);
-        }
-        if (method.isConstructor() && method.getTypeVariables().size() > 0) {
-            return false;
         }
         for (StatementDef statement : method.getStatements()) {
             if (!supported(statement)) {
@@ -77,19 +75,19 @@ final class JdkMethodSupport {
 
     private static boolean supportedSwitch(StatementDef.Switch aSwitch) {
         if (!supported(aSwitch.expression())
-            || (!aSwitch.expression().type().equals(TypeDef.Primitive.INT)
+            || (!SwitchKeys.switchesOnInt(aSwitch.expression().type())
             && !aSwitch.expression().type().equals(TypeDef.STRING))) {
             return false;
         }
         // Distinctness is of the case values themselves; two strings that share a hash code are
         // still two cases, and the writer separates them with an equality test
-        // A case value has to match the kind of the selector: the writer switches on an int
-        // directly and on a string by its hash, and cannot mix the two
+        // A case value has to match the kind of the selector: the writer switches on an int, which
+        // a char, a short, a byte or a wrapper widens or unboxes to, and on a string by its hash
         boolean strings = aSwitch.expression().type().equals(TypeDef.STRING);
         java.util.Set<Object> keys = new java.util.HashSet<>();
         for (var entry : aSwitch.cases().entrySet()) {
-            Object value = entry.getKey().value();
-            if (strings ? !(value instanceof String) : !(value instanceof Integer)) {
+            Object value = strings ? entry.getKey().value() : SwitchKeys.key(entry.getKey());
+            if (strings ? !(value instanceof String) : value == null) {
                 return false;
             }
             if (!keys.add(value) || !supported(entry.getValue())) {
@@ -149,19 +147,19 @@ final class JdkMethodSupport {
 
     private static boolean supportedSwitch(ExpressionDef.Switch aSwitch) {
         if (!supported(aSwitch.expression())
-            || (!aSwitch.expression().type().equals(TypeDef.Primitive.INT)
+            || (!SwitchKeys.switchesOnInt(aSwitch.expression().type())
             && !aSwitch.expression().type().equals(TypeDef.STRING))) {
             return false;
         }
         // Distinctness is of the case values themselves; two strings that share a hash code are
         // still two cases, and the writer separates them with an equality test
-        // A case value has to match the kind of the selector: the writer switches on an int
-        // directly and on a string by its hash, and cannot mix the two
+        // A case value has to match the kind of the selector: the writer switches on an int, which
+        // a char, a short, a byte or a wrapper widens or unboxes to, and on a string by its hash
         boolean strings = aSwitch.expression().type().equals(TypeDef.STRING);
         java.util.Set<Object> keys = new java.util.HashSet<>();
         for (var entry : aSwitch.cases().entrySet()) {
-            Object value = entry.getKey().value();
-            if (strings ? !(value instanceof String) : !(value instanceof Integer)) {
+            Object value = strings ? entry.getKey().value() : SwitchKeys.key(entry.getKey());
+            if (strings ? !(value instanceof String) : value == null) {
                 return false;
             }
             if (!keys.add(value) || !supported(entry.getValue())) {

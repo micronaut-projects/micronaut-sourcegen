@@ -1,0 +1,14 @@
+package test
+
+import kotlin.Int
+import kotlin.String
+
+public fun interface Describer {
+  public fun describe(`value`: Int): String
+
+  public companion object {
+    public fun twice(`value`: Int): Int {
+      return `value` * 2
+    }
+  }
+}

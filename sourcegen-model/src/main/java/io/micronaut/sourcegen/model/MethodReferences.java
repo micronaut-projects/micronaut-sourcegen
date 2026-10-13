@@ -45,7 +45,12 @@ final class MethodReferences {
      * @return The single matching method
      */
     static MethodDef resolve(ClassTypeDef owner, String name, int argumentCount) {
-        List<MethodDef> candidates = owner.findDeclaredMethods(name, argumentCount);
+        // The members of the type: not the bridge of a method - `compareTo(Object)` of an Integer - and the methods of
+        // Object for an interface - `runnable::toString`
+        List<MethodDef> candidates = OverloadResolution.members(owner, name, argumentCount);
+        if (candidates == null) {
+            candidates = owner.findDeclaredMethods(name, argumentCount);
+        }
         if (candidates.isEmpty()) {
             throw new IllegalArgumentException("No method " + owner.getName() + "#" + name
                 + " accepting " + argumentCount + " argument(s) found");

@@ -40,8 +40,8 @@ class SwitchWriteTest {
 
             import kotlin.Int
 
-            public class MyClass {
-              public fun test(`value`: Int): Int {
+            public open class MyClass {
+              public open fun test(`value`: Int): Int {
                 var result:Int = -1
                 when (`value`) {
                   1-> {

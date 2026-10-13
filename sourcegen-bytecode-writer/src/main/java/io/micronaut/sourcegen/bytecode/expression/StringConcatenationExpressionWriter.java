@@ -112,7 +112,7 @@ final class StringConcatenationExpressionWriter extends AbstractStatementAwareEx
         StringBuilder dynamicDescriptor = new StringBuilder("(");
         for (ExpressionDef part : concatParts) {
             if (!isCompileTimeConstant(part)) {
-                dynamicDescriptor.append(TypeUtils.getType(part.type(), context.objectDef()));
+                dynamicDescriptor.append(TypeUtils.getScopedType(part.type(), context));
             }
         }
         dynamicDescriptor.append(")");

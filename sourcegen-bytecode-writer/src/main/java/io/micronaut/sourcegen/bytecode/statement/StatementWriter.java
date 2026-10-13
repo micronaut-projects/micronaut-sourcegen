@@ -111,8 +111,10 @@ public sealed interface StatementWriter permits AssignVariableStatementWriter, D
                              @Nullable Runnable finallyBlock) {
         Map<String, MethodContext.LocalData> oldLocals = context.locals();
         Map<String, MethodContext.LocalData> newLocals = new LinkedHashMap<>(oldLocals);
-        // Only the locals are scoped: a lambda written in the scope still belongs to the method
-        MethodContext newContext = new MethodContext(context.objectDef(), context.methodDef(), newLocals, context.lambdaMethods(), context.isLambda(), context.yieldTargets(), context.openGaps());
+        // Only the locals are scoped: a lambda written in the scope is a method of the class all the same, and a lambda
+        // body stays one
+        MethodContext newContext = new MethodContext(context.objectDef(), context.methodDef(), newLocals, context.lambdaMethods(),
+            context.isLambda(), context.yieldTargets(), context.openGaps(), context.enclosingScope());
         write(generatorAdapter, newContext, finallyBlock);
         oldLocals.keySet().forEach(newLocals::remove); // Remove locals not created in the scope
         Label endMethod = new Label();

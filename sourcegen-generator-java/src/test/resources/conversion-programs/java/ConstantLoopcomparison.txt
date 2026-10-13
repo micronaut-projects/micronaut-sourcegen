@@ -1,0 +1,9 @@
+package test;
+
+public class ConstantLoopcomparison {
+  public int call() {
+    while (1 == 1) {
+      return 1;
+    }
+  }
+}

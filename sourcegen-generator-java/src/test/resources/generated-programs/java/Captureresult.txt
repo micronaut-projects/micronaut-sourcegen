@@ -1,0 +1,29 @@
+package test;
+
+import java.lang.Object;
+import java.lang.String;
+import java.util.Optional;
+import java.util.function.Function;
+
+public class Captureresult {
+  private CapturedTarget receiver = new test.CapturedTarget("first");
+
+  private int count = 0;
+
+  public CapturedTarget next() {
+    this.count = this.count + 1;
+    return this.receiver;
+  }
+
+  public int reads() {
+    return this.count;
+  }
+
+  public void replace() {
+    this.receiver = new test.CapturedTarget("second");
+  }
+
+  public Function<Object, Object> capture() {
+    return Optional.of(this.next()).<Function<Object, Object>>map(target -> (arg) -> target.apply((String) arg)).get();
+  }
+}

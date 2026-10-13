@@ -1,0 +1,11 @@
+package test;
+
+public class InitializeifTrue {
+  public static int value;
+
+  static {
+    if (true) {
+      InitializeifTrue.value = 7;
+    }
+  }
+}

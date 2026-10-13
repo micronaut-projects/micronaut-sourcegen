@@ -44,7 +44,7 @@ final class SynchronizedStatementWriter implements StatementWriter {
 
         ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aSynchronized.monitor(), aSynchronized.monitor().type());
         generatorAdapter.dup();
-        Type monitorType = TypeUtils.getType(aSynchronized.monitor().type(), context.objectDef());
+        Type monitorType = TypeUtils.getScopedType(aSynchronized.monitor().type(), context);
         int monitorLocal = generatorAdapter.newLocal(monitorType);
         generatorAdapter.storeLocal(monitorLocal);
         generatorAdapter.monitorEnter();

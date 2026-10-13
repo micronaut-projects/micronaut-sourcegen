@@ -1,0 +1,9 @@
+package test;
+
+public class ConstantLoopnegated {
+  public int call() {
+    while (!false) {
+      return 1;
+    }
+  }
+}

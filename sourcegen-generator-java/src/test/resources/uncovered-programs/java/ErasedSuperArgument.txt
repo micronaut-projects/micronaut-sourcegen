@@ -1,0 +1,19 @@
+package test;
+
+import io.micronaut.sourcegen.javapoet.write.UncoveredShapeProgramTest;
+import java.lang.Object;
+import java.lang.String;
+
+public class ErasedSuperArgument extends UncoveredShapeProgramTest.Labelled {
+  public ErasedSuperArgument(Object label) {
+    super((String) label);
+  }
+
+  public String typeName() {
+    return this.getClass().getSimpleName();
+  }
+
+  public boolean stableHash() {
+    return (this == null ? 0 : this.hashCode()) == (this == null ? 0 : this.hashCode());
+  }
+}

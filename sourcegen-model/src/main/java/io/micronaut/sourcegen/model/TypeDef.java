@@ -377,20 +377,6 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
      * Creates a new type.
      *
      * @param typedElement The typed element
-     * @param resolvedTypeVariables The resolved type variables
-     * @return a new type definition
-     * @deprecated replaced with {@link #of(TypedElement, Function)}
-     */
-    @Deprecated(since = "2.0", forRemoval = true)
-    @SuppressWarnings("java:S1133")
-    private static TypeDef of(TypedElement typedElement, Map<String, TypeDef> resolvedTypeVariables) {
-        return of(typedElement, resolvedTypeVariables::get, false);
-    }
-
-    /**
-     * Creates a new type.
-     *
-     * @param typedElement The typed element
      * @param resolvedVariableFn The resolve variable function
      * @return a new type definition
      * @since 2.0
@@ -583,8 +569,15 @@ public sealed interface TypeDef permits ClassTypeDef, TypeDef.Annotated, TypeDef
          * @return ExpressionDef.constant with the default value for primitives.
          */
         public static ExpressionDef.Constant defaultValue(String name) {
+            // Each of its own type: an int zero where a char is expected is an Integer the value converts from
             return switch (name) {
-                case "byte", "int", "short", "double", "float", "long", "char" -> ExpressionDef.constant(0);
+                case "byte" -> new ExpressionDef.Constant(BYTE, (byte) 0);
+                case "short" -> new ExpressionDef.Constant(SHORT, (short) 0);
+                case "char" -> ExpressionDef.constant((char) 0);
+                case "int" -> ExpressionDef.constant(0);
+                case "long" -> ExpressionDef.constant(0L);
+                case "float" -> ExpressionDef.constant(0f);
+                case "double" -> ExpressionDef.constant(0d);
                 case "boolean" -> FALSE;
                 default -> ExpressionDef.constant(null);
             };

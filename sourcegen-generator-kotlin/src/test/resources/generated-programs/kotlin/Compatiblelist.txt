@@ -1,0 +1,12 @@
+package test
+
+import io.micronaut.sourcegen.GeneratedProgramTest
+import kotlin.Any
+import kotlin.String
+import kotlin.collections.List
+
+public open class Compatiblelist {
+  public open fun call(`value`: List<String>): Any {
+    return GeneratedProgramTest.Calls.list(`value`)
+  }
+}

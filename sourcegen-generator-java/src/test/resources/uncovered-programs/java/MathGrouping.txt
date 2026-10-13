@@ -1,0 +1,7 @@
+package test;
+
+public class MathGrouping {
+  public int[] call(int a, int b, int c) {
+    return new int[]{(a + b) * c,a - (b - c),a - b - c,a / (b * c),(a | b) & c,a << (b + c),a ^ (b | c),-(a + b),a % (b % c)};
+  }
+}

@@ -1,16 +1,19 @@
 package io.micronaut.sourcegen
 
-import io.micronaut.sourcegen.model.ClassDef
+import io.micronaut.sourcegen.KotlinCompileAssertions.runMethod
+import io.micronaut.sourcegen.KotlinCompileAssertions.writeBody
 import io.micronaut.sourcegen.model.ClassTypeDef
 import io.micronaut.sourcegen.model.ExpressionDef
 import io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpType
-import io.micronaut.sourcegen.model.MethodDef
-import io.micronaut.sourcegen.model.StatementDef
 import io.micronaut.sourcegen.model.TypeDef
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Named.named
 import org.junit.jupiter.api.Test
-import java.io.StringWriter
-import javax.lang.model.element.Modifier
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.Arguments.arguments
+import org.junit.jupiter.params.provider.MethodSource
 
 /**
  * The expressions whose Kotlin form differs from the Java one - an array of a primitive has a type
@@ -212,7 +215,7 @@ class ExpressionWriteTest {
         val fnType = ClassTypeDef.of(java.util.function.Supplier::class.java)
         Assertions.assertEquals(
             """
-            return Supplier {() -> `value`}
+            return Supplier { `value`}
             """.trimIndent(),
             writeBody(fnType, TypeDef.STRING) { _, params ->
                 fnType.getLambda().implement { _, _ -> params[0].returning() }.returning()
@@ -220,27 +223,26 @@ class ExpressionWriteTest {
         )
     }
 
-    private fun writeBody(
-        returns: TypeDef,
-        vararg parameters: TypeDef,
-        body: (ExpressionDef, List<ExpressionDef>) -> StatementDef
-    ): String {
-        val method = MethodDef.builder("run")
-            .addModifiers(Modifier.PUBLIC)
-            .returns(returns)
-        parameters.forEach { method.addParameter("value", it) }
-        val classDef = ClassDef.builder("test.MyClass")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(method.build(body))
-            .build()
-        StringWriter().use { writer ->
-            KotlinPoetSourceGenerator().write(classDef, writer)
-            // Only the body of the single method is of interest here
-            return writer.toString().lines()
-                .dropWhile { !it.contains("fun run") }
-                .drop(1)
-                .takeWhile { !it.trim().startsWith("}") }
-                .joinToString("\n") { it.trim() }
-        }
+    /**
+     * A check of a type unrelated to the value's, which Kotlin rejects as always false: Java checks the value as an
+     * `Object`.
+     */
+    @ParameterizedTest(name = "{0} is false")
+    @MethodSource("unrelatedInstanceChecks")
+    fun instanceCheckOfAnUnrelatedType(type: TypeDef, value: Any, checked: Class<*>) {
+        assertEquals(false, runMethod("test.UnrelatedInstanceOf", TypeDef.Primitive.BOOLEAN, listOf(type), value) { _, p ->
+            p[0].instanceOf(ClassTypeDef.of(checked)).returning()
+        })
+    }
+
+    companion object {
+        @JvmStatic
+        fun unrelatedInstanceChecks(): List<Arguments> = listOf(
+            arguments(named("a Double checked as a String", TypeDef.of(java.lang.Double::class.java)), 2.0, String::class.java),
+            arguments(named("a String checked as a Number", TypeDef.STRING), "a", Number::class.java),
+            arguments(named("a Number checked as a String", TypeDef.of(Number::class.java)), 1, String::class.java),
+            arguments(named("an int checked as a String", TypeDef.Primitive.INT), 5, String::class.java),
+            arguments(named("a String checked as an Integer", TypeDef.STRING), "a", Integer::class.java)
+        )
     }
 }

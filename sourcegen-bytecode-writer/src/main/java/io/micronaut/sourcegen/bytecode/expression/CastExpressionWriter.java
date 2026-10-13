@@ -15,18 +15,14 @@
  */
 package io.micronaut.sourcegen.bytecode.expression;
 
-import io.micronaut.inject.ast.ClassElement;
-import org.jspecify.annotations.Nullable;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
-import io.micronaut.sourcegen.model.ClassDef;
-import io.micronaut.sourcegen.model.ClassTypeDef;
-import io.micronaut.sourcegen.model.EnumDef;
+import io.micronaut.sourcegen.bytecode.core.Conversions;
 import io.micronaut.sourcegen.model.ExpressionDef;
-import io.micronaut.sourcegen.model.ObjectDef;
-import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.Method;
 
 final class CastExpressionWriter implements ExpressionWriter {
 
@@ -38,116 +34,40 @@ final class CastExpressionWriter implements ExpressionWriter {
 
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
-        ExpressionDef exp = castExpressionDef.expressionDef();
-        while (exp instanceof ExpressionDef.Cast cast) {
-            if (cast.type().isPrimitive()) {
-                TypeDef previousCastType = cast.expressionDef().type();
-                if (!previousCastType.equals(TypeDef.OBJECT)) {
-                    break;
-                }
-            }
-            // Only keep the last cast
-            exp = cast.expressionDef();
-        }
+        // Only the last cast of a chain is written, unless an inner one converts or checks what it does not
+        ExpressionDef exp = Conversions.castOperand(castExpressionDef, context.objectDef(), context.methodDef(), context.enclosingScope());
         ExpressionWriter.writeExpression(generatorAdapter, context, exp);
         if (exp instanceof ExpressionDef.Constant constant && constant.value() == null) {
-            // Avoid casting null to anything
+            // null needs no cast to a reference; to a primitive it is unboxed, which throws, as javac unboxes it
+            if (castExpressionDef.type() instanceof TypeDef.Primitive primitive && !primitive.equals(TypeDef.VOID)) {
+                cast(generatorAdapter, context, primitive.wrapperType(), primitive);
+            }
             return;
         }
         cast(generatorAdapter, context, exp.type(), castExpressionDef.type());
     }
 
-    private static void cast(GeneratorAdapter generatorAdapter, MethodContext context, TypeDef from, TypeDef to) {
-        from = ObjectDef.getContextualType(context.objectDef(), from);
-        to = ObjectDef.getContextualType(context.objectDef(), to);
-        if ((from instanceof TypeDef.Primitive fromP && to instanceof TypeDef.Primitive toP) && !from.equals(to)) {
-            generatorAdapter.cast(TypeUtils.getType(fromP), TypeUtils.getType(toP));
-            return;
-        }
-        if ((from.isPrimitive() || to.isPrimitive()) && !from.equals(to)) {
-            if (from instanceof TypeDef.Primitive primitive && !to.isPrimitive()) {
-                box(generatorAdapter, context, from);
-                checkCast(generatorAdapter, context, primitive.wrapperType(), to);
-            }
-            if (!from.isPrimitive() && to.isPrimitive()) {
-                unbox(generatorAdapter, context, to);
-            }
-        } else if (needsCast(from, to)) {
-            checkCast(generatorAdapter, context, from, to);
-        }
-    }
-
-    private static boolean needsCast(TypeDef from, TypeDef to) {
-        if (from.makeNullable().equals(to.makeNullable())) {
-            return false;
-        }
-        if (from instanceof ClassTypeDef.Parameterized parameterized) {
-            return needsCast(parameterized.rawType(), to);
-        }
-        if (to instanceof ClassTypeDef.Parameterized parameterized) {
-            return needsCast(from, parameterized.rawType());
-        }
-        if (from instanceof ClassTypeDef.ClassElementType fromElement) {
-            return needsCast(fromElement.classElement(), to);
-        }
-        if (from instanceof ClassTypeDef.JavaClass fromClass) {
-            if (to instanceof ClassTypeDef.JavaClass toClass) {
-                return !toClass.type().isAssignableFrom(fromClass.type());
+    /**
+     * Emits the conversion {@link Conversions#plan} plans, leaving out the checkcasts the model knows redundant.
+     *
+     * @param generatorAdapter The adapter
+     * @param context          The method being written
+     * @param from             The type of the value on the stack
+     * @param to               The type to convert it to
+     */
+    static void cast(GeneratorAdapter generatorAdapter, MethodContext context, TypeDef from, TypeDef to) {
+        for (Conversions.Step step : Conversions.plan(from, to, context.objectDef(), context.methodDef(), Conversions.Checkcasts.MODEL, context.enclosingScope())) {
+            switch (step) {
+                case Conversions.CheckCast checkCast -> generatorAdapter.checkCast(Type.getType(checkCast.descriptor()));
+                case Conversions.Unboxing unboxing -> {
+                    Type owner = Type.getObjectType(unboxing.owner());
+                    generatorAdapter.checkCast(owner);
+                    generatorAdapter.invokeVirtual(owner, new Method(unboxing.method(), unboxing.methodDescriptor()));
+                }
+                case Conversions.PrimitiveConversion conversion ->
+                    generatorAdapter.cast(TypeUtils.getType(conversion.from()), TypeUtils.getType(conversion.to()));
+                case Conversions.Box box -> generatorAdapter.valueOf(TypeUtils.getType(box.primitive()));
             }
         }
-        if (from instanceof ClassTypeDef.ClassDefType fromClassDef) {
-            ClassTypeDef fromSuperclass = getSuperclass(fromClassDef.objectDef());
-            if (fromSuperclass != null) {
-                return needsCast(fromSuperclass, to);
-            }
-        }
-        return true;
-    }
-
-    private static boolean needsCast(ClassElement from, TypeDef to) {
-        if (to instanceof ClassTypeDef.ClassElementType toElement) {
-            return !from.isAssignable(toElement.classElement());
-        }
-        if (to instanceof ClassTypeDef.JavaClass toClass) {
-            return !from.isAssignable(toClass.type());
-        }
-        if (to instanceof ClassTypeDef.ClassName toClassName) {
-            return !from.isAssignable(toClassName.name());
-        }
-        if (to instanceof ClassTypeDef.ClassDefType toClassDefType) {
-            if (from.isAssignable(toClassDefType.getName())) {
-                return false;
-            }
-            return !from.isAssignable(toClassDefType.getName());
-        }
-        return true;
-    }
-
-    private static @Nullable ClassTypeDef getSuperclass(ObjectDef objectDef) {
-        if (objectDef instanceof ClassDef classDef) {
-            return classDef.getSuperclass();
-        }
-        if (objectDef instanceof EnumDef) {
-            return ClassTypeDef.of(Enum.class);
-        }
-        if (objectDef instanceof RecordDef) {
-            return ClassTypeDef.of(Record.class);
-        }
-        return null;
-    }
-
-    private static void checkCast(GeneratorAdapter generatorAdapter, MethodContext context, TypeDef from, TypeDef to) {
-        TypeDef toType = ObjectDef.getContextualType(context.objectDef(), to);
-        if (!toType.makeNullable().equals(from.makeNullable())) {
-            generatorAdapter.checkCast(TypeUtils.getType(toType, context.objectDef()));
-        }
-    }
-
-    private static void unbox(GeneratorAdapter generatorAdapter, MethodContext context, TypeDef to) {
-        generatorAdapter.unbox(TypeUtils.getType(to, context.objectDef()));
-    }
-
-    private static void box(GeneratorAdapter generatorAdapter, MethodContext context, TypeDef from) {
-        generatorAdapter.valueOf(TypeUtils.getType(from, context.objectDef()));
     }
 }

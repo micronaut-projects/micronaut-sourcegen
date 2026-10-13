@@ -1,0 +1,12 @@
+package test;
+
+import java.lang.String;
+
+public class TerminalfinallyReturn {
+  public String call() {
+    try {
+    } finally {
+      return "reached";
+    }
+  }
+}

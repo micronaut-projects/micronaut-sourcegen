@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode.jdk;
 
+import io.micronaut.sourcegen.bytecode.tck.GeneratedClassLoader;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
@@ -27,7 +28,6 @@ import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.Modifier;
 import java.lang.classfile.ClassFile;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -37,7 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The Java source fallback, used for definitions the direct writer declines. Every definition here
- * switches on a char, a selector the writer does not lower, and so goes down that path.
+ * returns a constant held in a {@link StringBuilder}, a value the writer has no constant for, which the
+ * Java source writes as its text, and so goes down that path.
  */
 class JdkSourceFallbackTest {
 
@@ -47,8 +48,16 @@ class JdkSourceFallbackTest {
             .addParameter("index", TypeDef.Primitive.CHAR)
             .returns(TypeDef.STRING)
             .build((ignored, parameters) -> parameters.get(0).asStatementSwitch(TypeDef.STRING,
-                Map.of(ExpressionDef.constant(1), ExpressionDef.constant("one").returning()),
+                Map.of(ExpressionDef.constant(1), declinedConstant("one").returning()),
                 ExpressionDef.constant("other").returning()));
+    }
+
+    /**
+     * A string constant held in a {@link StringBuilder}: the direct writer declines it, the Java source writes it as
+     * the literal it holds.
+     */
+    static ExpressionDef.Constant declinedConstant(String value) {
+        return new ExpressionDef.Constant(TypeDef.STRING, new StringBuilder("\"" + value + "\""));
     }
 
     @Test
@@ -111,7 +120,7 @@ class JdkSourceFallbackTest {
             .build();
 
         Map<String, byte[]> produced = new ByteCodeWriter().writeAll(definition);
-        Class<?> generated = new MapClassLoader(produced).loadClass(definition.getName());
+        Class<?> generated = new GeneratedClassLoader(produced).loadClass(definition.getName());
 
         assertEquals("one", generated.getMethod("describe", char.class).invoke(null, (char) 1));
         assertEquals("other", generated.getMethod("describe", char.class).invoke(null, (char) 9));
@@ -190,23 +199,5 @@ class JdkSourceFallbackTest {
         IllegalStateException e = org.junit.jupiter.api.Assertions.assertThrows(
             IllegalStateException.class, () -> new ByteCodeWriter().writeAll(definition));
         assertTrue(e.getMessage().contains("JDK compilation of generated source failed"), e.getMessage());
-    }
-
-    private static final class MapClassLoader extends ClassLoader {
-        private final Map<String, byte[]> classes;
-
-        private MapClassLoader(Map<String, byte[]> classes) {
-            super(JdkSourceFallbackTest.class.getClassLoader());
-            this.classes = new LinkedHashMap<>(classes);
-        }
-
-        @Override
-        protected Class<?> findClass(String name) throws ClassNotFoundException {
-            byte[] bytes = classes.get(name);
-            if (bytes == null) {
-                return super.findClass(name);
-            }
-            return defineClass(name, bytes, 0, bytes.length);
-        }
     }
 }
