@@ -13,6 +13,9 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
@@ -22,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.EQUAL_TO;
 import static io.micronaut.sourcegen.model.ExpressionDef.ComparisonOperation.OpType.GREATER_THAN;
@@ -42,6 +46,8 @@ import static io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpT
 import static io.micronaut.sourcegen.model.ExpressionDef.MathBinaryOperation.OpType.SUBTRACTION;
 import static io.micronaut.sourcegen.model.ExpressionDef.MathUnaryOperation.OpType.NEGATE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Named.named;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 public class ExpressionWriteTest extends AbstractWriteTest {
 
@@ -122,6 +128,7 @@ class MyList extends AbstractList<String> {
         assertEquals("""
 package test;
 
+import java.lang.Number;
 import java.lang.Object;
 import java.util.function.Predicate;
 
@@ -130,7 +137,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() == null) {
       return 0;
     }
-    return (int) this.getIntegerValue();
+    return ((Number) this.getIntegerValue()).intValue();
   }
 }
             """, data);
@@ -163,6 +170,7 @@ class MyClass implements Predicate {
         assertEquals("""
 package test;
 
+import java.lang.Number;
 import java.lang.Object;
 import java.util.function.Predicate;
 
@@ -171,7 +179,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() == null) {
       return 0;
     }
-    return (int) this.getIntegerValue();
+    return ((Number) this.getIntegerValue()).intValue();
   }
 }
             """, data);
@@ -204,6 +212,7 @@ class MyClass implements Predicate {
         assertEquals("""
 package test;
 
+import java.lang.Number;
 import java.lang.Object;
 import java.util.function.Predicate;
 
@@ -212,7 +221,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() != null) {
       return 0;
     }
-    return (int) this.getIntegerValue();
+    return ((Number) this.getIntegerValue()).intValue();
   }
 }
             """, data);
@@ -245,6 +254,7 @@ class MyClass implements Predicate {
         assertEquals("""
 package test;
 
+import java.lang.Number;
 import java.lang.Object;
 import java.util.function.Predicate;
 
@@ -253,7 +263,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() instanceof java.lang.String) {
       return 0;
     }
-    return (int) this.getIntegerValue();
+    return ((Number) this.getIntegerValue()).intValue();
   }
 }
             """, data);
@@ -287,6 +297,7 @@ class MyClass implements Predicate {
         Assertions.assertEquals("""
 package test;
 
+import java.lang.Number;
 import java.lang.Object;
 import java.util.function.Predicate;
 
@@ -295,7 +306,7 @@ class MyClass implements Predicate {
     if (this.getIntegerValue() == "Hello") {
       return 0;
     }
-    return (int) this.getIntegerValue();
+    return ((Number) this.getIntegerValue()).intValue();
   }
 }
             """, data);
@@ -548,23 +559,23 @@ public class Example {
   }
 
   void myMethod2() {
-    return this.myMethod1(example.Example.class);
+    this.myMethod1(example.Example.class);
   }
 
   void myMethod3() {
-    return this.myMethod1(java.lang.String.class);
+    this.myMethod1(java.lang.String.class);
   }
 
   void myMethod4() {
-    return this.myMethod1(int.class);
+    this.myMethod1(int.class);
   }
 
   void myMethod4() {
-    return this.myMethod1(int[].class);
+    this.myMethod1(int[].class);
   }
 
   void myMethod4() {
-    return this.myMethod1(java.lang.String[].class);
+    this.myMethod1(java.lang.String[].class);
   }
 }
 """, data);
@@ -942,10 +953,10 @@ class MyClass {
 
         String data = writeClass(classDef);
 
+        // The body calls nothing that could throw an IOException, which javac rejects a catch of
         assertEquals("""
 package test;
 
-import java.io.IOException;
 import java.lang.RuntimeException;
 
 class MyClass {
@@ -955,8 +966,6 @@ class MyClass {
       result = 1;
     } catch (RuntimeException e0) {
       result = 2;
-    } catch (IOException e1) {
-      result = 3;
     } finally {
       result = 4;
     }
@@ -986,10 +995,10 @@ class MyClass {
 
         String data = writeClass(classDef);
 
+        // The body calls nothing that could throw an IOException, which javac rejects a catch of
         assertEquals("""
 package test;
 
-import java.io.IOException;
 import java.lang.RuntimeException;
 
 class MyClass {
@@ -998,8 +1007,6 @@ class MyClass {
       return 1;
     } catch (RuntimeException e0) {
       return 2;
-    } catch (IOException e1) {
-      return 3;
     } finally {
       return 4;
     }
@@ -1082,256 +1089,153 @@ public class Example {
 """, data);
     }
 
-    @Test
-    public void equalsExpressions() throws IOException {
-        ExpressionDef exp1 = ExpressionDef.constant(
-            ClassElement.of(String.class), STRING, "hello"
+    /**
+     * An expression returned from a method is written as the Java expression it models.
+     */
+    @ParameterizedTest(name = "{0} is written {1}")
+    @MethodSource("expressionsWrittenAsJava")
+    void expressionIsWrittenAsJava(ExpressionDef expression, String expected) throws IOException {
+        assertEquals(expected, writeMethodWithExpression(expression));
+    }
+
+    static Stream<Arguments> expressionsWrittenAsJava() {
+        ExpressionDef hello = ExpressionDef.constant(ClassElement.of(String.class), STRING, "hello");
+        ExpressionDef world = ExpressionDef.constant(ClassElement.of(String.class), STRING, "world");
+        ExpressionDef field = new VariableDef.Local("field", TypeDef.Primitive.BOOLEAN);
+        ExpressionDef helloOne = ExpressionDef.constant("Hello ").stringConcat(ExpressionDef.constant(1));
+        return Stream.of(
+            arguments(named("a referential equality", hello.equalsReferentially(world)), "\"hello\" == \"world\""),
+            arguments(named("a referential inequality", hello.notEqualsReferentially(world)), "\"hello\" != \"world\""),
+            arguments(named("a structural equality", hello.equalsStructurally(world)), "Objects.equals(\"hello\", \"world\")"),
+            arguments(named("a structural inequality", hello.notEqualsStructurally(world)),
+                "(!Objects.equals(\"hello\", \"world\"))"),
+            arguments(named("a String constant", hello), "\"hello\""),
+            arguments(named("a static call", STRING.invokeStatic("valueOf", STRING,
+                ExpressionDef.constant(ClassElement.of(int.class), TypeDef.Primitive.INT, "2"))), "String.valueOf(2)"),
+            arguments(named("a call on this", new VariableDef.This().invoke("equals", TypeDef.Primitive.BOOLEAN, hello)),
+                "this.equals(\"hello\")"),
+            arguments(named("a String[] constant", new ExpressionDef.Constant(TypeDef.array(ClassTypeDef.of(String.class)),
+                new String[] {"hello", "world"})), "new String[] {\"hello\", \"world\"}"),
+            arguments(named("an Integer[] constant", new ExpressionDef.Constant(TypeDef.array(ClassTypeDef.of(Integer.class)),
+                new Integer[] {1, 2})), "new Integer[] {1, 2}"),
+            arguments(named("an int[] constant", new ExpressionDef.Constant(TypeDef.array(TypeDef.primitive(Integer.TYPE)),
+                new int[] {1, 2})), "new int[] {1, 2}"),
+            arguments(named("a double constant cast to float", ExpressionDef
+                .constant(ClassElement.of(Double.TYPE), TypeDef.Primitive.DOUBLE, 10.5).cast(TypeDef.Primitive.FLOAT)),
+                "(float) 10.5d"),
+            arguments(named("a String constant cast to Object", new Cast(TypeDef.of(Object.class),
+                ExpressionDef.constant(ClassElement.of(String.class), TypeDef.of(String.class), "hello"))), "(Object) \"hello\""),
+            arguments(named("a variable cast to Integer", new Cast(TypeDef.of(Integer.class),
+                new VariableDef.Local("field", TypeDef.of(Object.class)))), "(Integer) field"),
+            arguments(named("a conjunction", new ExpressionDef.And(ExpressionDef.trueValue().isTrue(), field.isTrue())),
+                "true && field"),
+            arguments(named("an instanceof check", new ExpressionDef.InstanceOf(ExpressionDef.constant("test"),
+                ClassTypeDef.ClassDefType.STRING)), "\"test\" instanceof java.lang.String"),
+            arguments(named("a conjunction with a negated operand", new ExpressionDef.And(ExpressionDef.trueValue().isTrue(),
+                field.isFalse())), "true && !field"),
+            arguments(named("a disjunction", new ExpressionDef.Or(ExpressionDef.trueValue().isTrue(), field.isTrue())),
+                "true || field"),
+            arguments(named("an int constant", ExpressionDef.constant(0)), "0"),
+            arguments(named("a constant of the int primitive", TypeDef.Primitive.INT.constant(0)), "0"),
+            arguments(named("a String concatenation", helloOne), "\"Hello \" + 1"),
+            arguments(named("a String concatenation extended by another operand",
+                helloOne.stringConcat(ExpressionDef.constant("Welcome!"))), "\"Hello \" + 1 + \"Welcome!\"")
         );
-        ExpressionDef exp2 = ExpressionDef.constant(
-            ClassElement.of(String.class), STRING, "world"
+    }
+
+    /**
+     * An operand is parenthesized where the precedence of Java would otherwise group it differently - as the operand
+     * of a cast, a conditional, a binary operation or the target of a call - and only there.
+     */
+    @ParameterizedTest(name = "{0} is written {1}")
+    @MethodSource("expressionsNeedingParentheses")
+    void expressionIsWrittenWithTheParenthesesItNeeds(ExpressionDef expression, String expected) throws IOException {
+        assertEquals(expected, writeMethodWithExpression(expression));
+    }
+
+    @ParameterizedTest(name = "{0} is written {1}")
+    @MethodSource("numericConversionsWrittenAsJava")
+    void numericConversionIsWrittenExplicitly(ExpressionDef expression, String expected) throws IOException {
+        assertEquals(expected, writeMethodWithExpression(expression));
+    }
+
+    static Stream<Arguments> numericConversionsWrittenAsJava() {
+        ClassTypeDef integer = ClassTypeDef.of(Integer.class);
+        ClassTypeDef character = ClassTypeDef.of(Character.class);
+        return Stream.of(
+            arguments(named("a long cast to Float", new VariableDef.Local("l", TypeDef.Primitive.LONG).cast(ClassTypeDef.of(Float.class))),
+                "Float.valueOf((float) l)"),
+            arguments(named("an int cast to Character", new VariableDef.Local("n", TypeDef.Primitive.INT).cast(character)),
+                "Character.valueOf((char) n)"),
+            arguments(named("a Byte cast to Long", new VariableDef.Local("b", ClassTypeDef.of(Byte.class)).cast(ClassTypeDef.of(Long.class))),
+                "Long.valueOf(b.longValue())"),
+            arguments(named("a Character cast to Integer", new VariableDef.Local("c", character).cast(integer)),
+                "Integer.valueOf((int) c.charValue())"),
+            arguments(named("an Integer cast to char", new VariableDef.Local("i", integer).cast(TypeDef.Primitive.CHAR)),
+                "(char) i.intValue()"),
+            arguments(named("an Integer constant cast to char", ExpressionDef.constant((Object) 1000).cast(TypeDef.Primitive.CHAR)),
+                "(char) 1000"),
+            arguments(named("a negated Character", new VariableDef.Local("c", character).math(NEGATE)),
+                "(char) (-c)"),
+            arguments(named("a String cast to Integer", new VariableDef.Local("s", TypeDef.STRING).cast(integer)),
+                "(Integer) (Object) s")
         );
-        String equalsReferentially = writeMethodWithExpression(exp1.equalsReferentially(exp2));
-
-        assertEquals("\"hello\" == \"world\"", equalsReferentially);
-
-        String notEqualsReferentially = writeMethodWithExpression(exp1.notEqualsReferentially(exp2));
-
-        assertEquals("\"hello\" != \"world\"", notEqualsReferentially);
-
-        String equalsStructurally = writeMethodWithExpression(exp1.equalsStructurally(exp2));
-
-        assertEquals("Objects.equals(\"hello\", \"world\")", equalsStructurally);
-
-        String notEqualsStructurally = writeMethodWithExpression(exp1.notEqualsStructurally(exp2));
-
-        assertEquals("(!Objects.equals(\"hello\", \"world\"))", notEqualsStructurally);
     }
 
-    @Test
-    public void returnConstantExpression() throws IOException {
-        ExpressionDef helloString = ExpressionDef.constant(
-            ClassElement.of(String.class), STRING, "hello"
+    static Stream<Arguments> expressionsNeedingParentheses() {
+        return Stream.of(
+            arguments(named("a comparison cast to Object", ExpressionDef.constant(1)
+                .compare(LESS_THAN, ExpressionDef.constant(2)).cast(TypeDef.OBJECT)), "(Object) (1 < 2)"),
+            arguments(named("a conditional cast to Object", ExpressionDef.trueValue()
+                .ifTrue(ExpressionDef.constant("yes"), ExpressionDef.constant("no")).cast(TypeDef.OBJECT)),
+                "(Object) (true ? \"yes\" : \"no\")"),
+            arguments(named("a conditional whose condition is a conditional", new ExpressionDef.IfElse(
+                new ExpressionDef.IfElse(ExpressionDef.constant(true), ExpressionDef.constant(false), ExpressionDef.constant(false)),
+                ExpressionDef.constant("yes"), ExpressionDef.constant("no"))), "(true ? false : false) ? \"yes\" : \"no\""),
+            arguments(named("a conditional whose else branch is a conditional", new ExpressionDef.IfElse(
+                ExpressionDef.constant(true), ExpressionDef.constant("a"),
+                new ExpressionDef.IfElse(ExpressionDef.constant(false), ExpressionDef.constant("b"), ExpressionDef.constant("c")))),
+                "true ? \"a\" : false ? \"b\" : \"c\""),
+            arguments(named("a negative constant cast to Object", ExpressionDef.constant(-1L).cast(TypeDef.OBJECT)),
+                "(Object) (-1l)"),
+            arguments(named("a negated value cast to Object", ExpressionDef.constant(1L).math(NEGATE).cast(TypeDef.OBJECT)),
+                "(Object) (-1l)"),
+            arguments(named("a negative constant cast to long", ExpressionDef.constant(-1).cast(TypeDef.Primitive.LONG)),
+                "(long) (-1)"),
+            arguments(named("a sum cast to long", ExpressionDef.constant(1).math(ADDITION, ExpressionDef.constant(2))
+                .cast(TypeDef.Primitive.LONG)), "(long) (1 + 2)"),
+            arguments(named("a product of a sum", ExpressionDef.constant(1).math(MULTIPLICATION, ExpressionDef.constant(2)
+                .math(ADDITION, ExpressionDef.constant(3)))), "1 * (2 + 3)"),
+            arguments(named("a subtraction of a subtraction", ExpressionDef.constant(1).math(SUBTRACTION, ExpressionDef.constant(2)
+                .math(SUBTRACTION, ExpressionDef.constant(3)))), "1 - (2 - 3)"),
+            arguments(named("a comparison of sums", ExpressionDef.constant(1).math(ADDITION, ExpressionDef.constant(2))
+                .compare(LESS_THAN, ExpressionDef.constant(3).math(SUBTRACTION, ExpressionDef.constant(4)))), "(1 + 2) < (3 - 4)"),
+            arguments(named("a product of a sum cast to long", ExpressionDef.constant(1).math(MULTIPLICATION,
+                ExpressionDef.constant(2).math(ADDITION, ExpressionDef.constant(3))).cast(TypeDef.Primitive.LONG)),
+                "(long) (1 * (2 + 3))"),
+            arguments(named("a String concatenation cast to Object", ExpressionDef.constant("value: ")
+                .stringConcat(ExpressionDef.constant(1)).cast(TypeDef.OBJECT)), "(Object) (\"value: \" + 1)"),
+            arguments(named("a call on a conditional", ExpressionDef.trueValue()
+                .ifTrue(ExpressionDef.constant(" yes "), ExpressionDef.constant(" no ")).invoke("trim", TypeDef.STRING)),
+                "(true ? \" yes \" : \" no \").trim()"),
+            arguments(named("a call on a String concatenation", ExpressionDef.constant("value: ")
+                .stringConcat(ExpressionDef.constant(1)).invoke("trim", TypeDef.STRING)), "(\"value: \" + 1).trim()"),
+            arguments(named("a conjunction of disjunctions", new ExpressionDef.And(
+                ExpressionDef.trueValue().isTrue().or(ExpressionDef.falseValue().isTrue()),
+                ExpressionDef.trueValue().isTrue().or(ExpressionDef.falseValue().isTrue()))), "(true || false) && (true || false)"),
+            arguments(named("a disjunction of a conjunction and a disjunction", new ExpressionDef.Or(
+                ExpressionDef.trueValue().isTrue().and(ExpressionDef.falseValue().isTrue()),
+                ExpressionDef.trueValue().isTrue().or(ExpressionDef.falseValue().isTrue()))), "true && false || true || false"),
+            arguments(named("a call on a division", ExpressionDef.constant(100)
+                .math(DIVISION, new VariableDef.Local("divisor", TypeDef.Primitive.INT)).invoke("toString", TypeDef.STRING)),
+                "(100 / divisor).toString()"),
+            arguments(named("a call on a negated value", new VariableDef.Local("value", TypeDef.Primitive.INT)
+                .math(NEGATE).invoke("toString", TypeDef.STRING)), "(-value).toString()"),
+            arguments(named("a call on a comparison", ExpressionDef.constant(1).compare(LESS_THAN, ExpressionDef.constant(2))
+                .invoke("toString", TypeDef.STRING)), "(1 < 2).toString()"),
+            arguments(named("a call on an instanceof check", new VariableDef.Local("value", TypeDef.OBJECT)
+                .instanceOf(ClassTypeDef.STRING).invoke("toString", TypeDef.STRING)), "(value instanceof java.lang.String).toString()")
         );
-        String result = writeMethodWithExpression(helloString);
-
-        assertEquals("\"hello\"", result);
-    }
-
-    @Test
-    public void returnStaticInvoke() throws IOException {
-        ExpressionDef two = ExpressionDef.constant(
-            ClassElement.of(int.class), TypeDef.Primitive.INT, "2"
-        );
-        ExpressionDef valueOfTwo = STRING.invokeStatic(
-            "valueOf", STRING, two
-        );
-        String result = writeMethodWithExpression(valueOfTwo);
-
-        assertEquals("String.valueOf(2)", result);
-    }
-
-    @Test
-    public void returnInvoke() throws IOException {
-        ExpressionDef helloString = ExpressionDef.constant(
-            ClassElement.of(String.class), STRING, "hello"
-        );
-        ExpressionDef equals = new VariableDef.This().invoke("equals", TypeDef.Primitive.BOOLEAN, helloString);
-        String result = writeMethodWithExpression(equals);
-
-        assertEquals("this.equals(\"hello\")", result);
-    }
-
-    @Test
-    public void returnConstantStringArray() throws IOException {
-        ExpressionDef stringArray = new ExpressionDef.Constant(TypeDef.array(ClassTypeDef.of(String.class)),
-            new String[] {"hello", "world"});
-        String result = writeMethodWithExpression(stringArray);
-
-        assertEquals("new String[] {\"hello\", \"world\"}", result);
-    }
-
-    @Test
-    public void returnConstantIntegerArray() throws IOException {
-        ExpressionDef integerArray = new ExpressionDef.Constant(TypeDef.array(ClassTypeDef.of(Integer.class)),
-            new Integer[] {1, 2});
-        String result = writeMethodWithExpression(integerArray);
-
-        assertEquals("new Integer[] {1, 2}", result);
-    }
-
-    @Test
-    public void returnConstantIntArray() throws IOException {
-        ExpressionDef integerArray = new ExpressionDef.Constant(TypeDef.array(TypeDef.primitive(Integer.TYPE)),
-            new int[] {1, 2});
-        String result = writeMethodWithExpression(integerArray);
-
-        assertEquals("new int[] {1, 2}", result);
-    }
-
-    @Test
-    public void returnCastedValue() throws IOException {
-        ExpressionDef castedExpression = ExpressionDef
-            .constant(ClassElement.of(Double.TYPE), TypeDef.Primitive.DOUBLE, 10.5)
-            .cast(TypeDef.Primitive.FLOAT);
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(float) 10.5d", result);
-    }
-
-    @Test
-    public void returnCastedValue2() throws IOException {
-        ExpressionDef castedExpression = new Cast(
-            TypeDef.of(Object.class),
-            ExpressionDef.constant(ClassElement.of(String.class), TypeDef.of(String.class), "hello")
-        );
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(Object) \"hello\"", result);
-    }
-
-    @Test
-    public void returnCastedVariable() throws IOException {
-        ExpressionDef castedExpression = new Cast(
-            TypeDef.of(Integer.class),
-            new VariableDef.Local("field", TypeDef.of(Object.class))
-        );
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(Integer) field", result);
-    }
-
-    @Test
-    void returnCastedConditionWithParentheses() throws IOException {
-        ExpressionDef castedExpression = ExpressionDef.constant(1)
-            .compare(LESS_THAN, ExpressionDef.constant(2))
-            .cast(TypeDef.OBJECT);
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(Object) (1 < 2)", result);
-    }
-
-    @Test
-    void returnCastedIfElseWithParentheses() throws IOException {
-        ExpressionDef castedExpression = ExpressionDef.trueValue()
-            .ifTrue(ExpressionDef.constant("yes"), ExpressionDef.constant("no"))
-            .cast(TypeDef.OBJECT);
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(Object) (true ? \"yes\" : \"no\")", result);
-    }
-
-    @Test
-    void returnIfElseWithIfElseConditionParentheses() throws IOException {
-        ExpressionDef expression = new ExpressionDef.IfElse(
-            new ExpressionDef.IfElse(ExpressionDef.constant(true), ExpressionDef.constant(false), ExpressionDef.constant(false)),
-            ExpressionDef.constant("yes"),
-            ExpressionDef.constant("no")
-        );
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("(true ? false : false) ? \"yes\" : \"no\"", result);
-    }
-
-    @Test
-    void returnIfElseWithIfElseElseBranchWithoutParentheses() throws IOException {
-        ExpressionDef expression = new ExpressionDef.IfElse(
-            ExpressionDef.constant(true),
-            ExpressionDef.constant("a"),
-            new ExpressionDef.IfElse(ExpressionDef.constant(false), ExpressionDef.constant("b"), ExpressionDef.constant("c"))
-        );
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("true ? \"a\" : false ? \"b\" : \"c\"", result);
-    }
-
-    @Test
-    void returnCastedNegativeConstantWithParentheses() throws IOException {
-        ExpressionDef castedExpression = ExpressionDef.constant(-1L)
-            .cast(TypeDef.OBJECT);
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(Object) (-1l)", result);
-    }
-
-    @Test
-    void returnCastedNegatedValueWithParentheses() throws IOException {
-        ExpressionDef castedExpression = ExpressionDef.constant(1L)
-            .math(NEGATE)
-            .cast(TypeDef.OBJECT);
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(Object) (-1l)", result);
-    }
-
-    @Test
-    void returnPrimitiveCastedNegativeConstantWithParentheses() throws IOException {
-        ExpressionDef castedExpression = ExpressionDef.constant(-1)
-            .cast(TypeDef.Primitive.LONG);
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(long) (-1)", result);
-    }
-
-    @Test
-    void returnCastedMathOperationWithParentheses() throws IOException {
-        ExpressionDef castedExpression = ExpressionDef.constant(1)
-            .math(ADDITION, ExpressionDef.constant(2))
-            .cast(TypeDef.Primitive.LONG);
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(long) (1 + 2)", result);
-    }
-
-    @Test
-    void returnNestedMathOperationWithParentheses() throws IOException {
-        ExpressionDef expression = ExpressionDef.constant(1)
-            .math(MULTIPLICATION, ExpressionDef.constant(2)
-                .math(ADDITION, ExpressionDef.constant(3)));
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("1 * (2 + 3)", result);
-    }
-
-    @Test
-    void returnRightNestedMathOperationWithSamePrecedenceParentheses() throws IOException {
-        ExpressionDef expression = ExpressionDef.constant(1)
-            .math(SUBTRACTION, ExpressionDef.constant(2)
-                .math(SUBTRACTION, ExpressionDef.constant(3)));
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("1 - (2 - 3)", result);
-    }
-
-    @Test
-    void returnBinaryComparisonWithMathOperandsParentheses() throws IOException {
-        ExpressionDef expression = ExpressionDef.constant(1)
-            .math(ADDITION, ExpressionDef.constant(2))
-            .compare(LESS_THAN, ExpressionDef.constant(3)
-                .math(SUBTRACTION, ExpressionDef.constant(4)));
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("(1 + 2) < (3 - 4)", result);
-    }
-
-    @Test
-    void returnCastedNestedMathOperationWithParentheses() throws IOException {
-        ExpressionDef castedExpression = ExpressionDef.constant(1)
-            .math(MULTIPLICATION, ExpressionDef.constant(2)
-                .math(ADDITION, ExpressionDef.constant(3)))
-            .cast(TypeDef.Primitive.LONG);
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(long) (1 * (2 + 3))", result);
-    }
-
-    @Test
-    void returnCastedStringConcatenationWithParentheses() throws IOException {
-        ExpressionDef castedExpression = ExpressionDef.constant("value: ")
-            .stringConcat(ExpressionDef.constant(1))
-            .cast(TypeDef.OBJECT);
-        String result = writeMethodWithExpression(castedExpression);
-
-        assertEquals("(Object) (\"value: \" + 1)", result);
     }
 
     @Test
@@ -1434,26 +1338,6 @@ class MyClass {
     }
 
     @Test
-    void invokeMethodOnIfElseExpressionWithParentheses() throws IOException {
-        ExpressionDef expression = ExpressionDef.trueValue()
-            .ifTrue(ExpressionDef.constant(" yes "), ExpressionDef.constant(" no "))
-            .invoke("trim", TypeDef.STRING);
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("(true ? \" yes \" : \" no \").trim()", result);
-    }
-
-    @Test
-    void invokeMethodOnStringConcatenationWithParentheses() throws IOException {
-        ExpressionDef expression = ExpressionDef.constant("value: ")
-            .stringConcat(ExpressionDef.constant(1))
-            .invoke("trim", TypeDef.STRING);
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("(\"value: \" + 1).trim()", result);
-    }
-
-    @Test
     void invokeMethodOnSwitchExpressionWithParentheses() throws IOException {
         Map<ExpressionDef.Constant, ExpressionDef> cases = new LinkedHashMap<>();
         cases.put(ExpressionDef.constant(1), ExpressionDef.constant("one"));
@@ -1487,102 +1371,6 @@ class MyClass {
   }
 }
 """, data);
-    }
-
-    @Test
-    public void returnAndCondition() throws IOException {
-        ExpressionDef andExpression = new ExpressionDef.And(
-            ExpressionDef.trueValue().isTrue(),
-            new VariableDef.Local("field", TypeDef.Primitive.BOOLEAN).isTrue()
-        );
-        String result = writeMethodWithExpression(andExpression);
-
-        assertEquals("true && field", result);
-    }
-
-    @Test
-    public void returnInstanceOfCondition() throws IOException {
-        ExpressionDef andExpression = new ExpressionDef.InstanceOf(
-            ExpressionDef.constant("test"),
-            ClassTypeDef.ClassDefType.STRING
-        );
-        String result = writeMethodWithExpression(andExpression);
-
-        assertEquals("\"test\" instanceof java.lang.String", result);
-    }
-
-    @Test
-    public void returnAndConditionFalse() throws IOException {
-        ExpressionDef andExpression = new ExpressionDef.And(
-            ExpressionDef.trueValue().isTrue(),
-            new VariableDef.Local("field", TypeDef.Primitive.BOOLEAN).isFalse()
-        );
-        String result = writeMethodWithExpression(andExpression);
-
-        assertEquals("true && !field", result);
-    }
-
-    @Test
-    public void returnAndConditionWithParentheses() throws IOException {
-        ExpressionDef andExpression = new ExpressionDef.And(
-            ExpressionDef.trueValue().isTrue().or(ExpressionDef.falseValue().isTrue()),
-            ExpressionDef.trueValue().isTrue().or(ExpressionDef.falseValue().isTrue())
-        );
-        String result = writeMethodWithExpression(andExpression);
-
-        assertEquals("(true || false) && (true || false)", result);
-    }
-
-    @Test
-    public void returnOrCondition() throws IOException {
-        ExpressionDef orExpression = new ExpressionDef.Or(
-            ExpressionDef.trueValue().isTrue(),
-            new VariableDef.Local("field", TypeDef.Primitive.BOOLEAN).isTrue()
-        );
-        String result = writeMethodWithExpression(orExpression);
-
-        assertEquals("true || field", result);
-    }
-
-    @Test
-    public void returnOrConditionWithParentheses() throws IOException {
-        ExpressionDef orExpression = new ExpressionDef.Or(
-            ExpressionDef.trueValue().isTrue().and(ExpressionDef.falseValue().isTrue()),
-            ExpressionDef.trueValue().isTrue().or(ExpressionDef.falseValue().isTrue())
-        );
-        String result = writeMethodWithExpression(orExpression);
-
-        assertEquals("true && false || true || false", result);
-    }
-
-    @Test
-    public void returnPrimitiveInitialization() throws IOException {
-        ExpressionDef intExpression = ExpressionDef.constant(0);
-        String result = writeMethodWithExpression(intExpression);
-
-        assertEquals("0", result);
-    }
-
-    @Test
-    public void returnPrimitiveInitialization2() throws IOException {
-        ExpressionDef intExpression = TypeDef.Primitive.INT.constant(0);
-        String result = writeMethodWithExpression(intExpression);
-
-        assertEquals("0", result);
-    }
-
-    @Test
-    public void stringConcatenation() throws IOException {
-        ExpressionDef concat = ExpressionDef.constant("Hello ")
-            .stringConcat(ExpressionDef.constant(1));
-        String result = writeMethodWithExpression(concat);
-
-        assertEquals("\"Hello \" + 1", result);
-
-        concat = concat.stringConcat(ExpressionDef.constant("Welcome!"));
-        result = writeMethodWithExpression(concat);
-
-        assertEquals("\"Hello \" + 1 + \"Welcome!\"", result);
     }
 
     @Test
@@ -1773,46 +1561,6 @@ public class MyClass {
         assertEquals("Lambda method apply has 1 parameter(s) but 2 name(s) were provided", e.getMessage());
     }
 
-    @Test
-    void returnMathOperationMethodCallTargetWithParentheses() throws IOException {
-        ExpressionDef expression = ExpressionDef.constant(100)
-            .math(DIVISION, new VariableDef.Local("divisor", TypeDef.Primitive.INT))
-            .invoke("toString", TypeDef.STRING);
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("(100 / divisor).toString()", result);
-    }
-
-    @Test
-    void returnNegatedValueMethodCallTargetWithParentheses() throws IOException {
-        ExpressionDef expression = new VariableDef.Local("value", TypeDef.Primitive.INT)
-            .math(NEGATE)
-            .invoke("toString", TypeDef.STRING);
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("(-value).toString()", result);
-    }
-
-    @Test
-    void returnComparisonMethodCallTargetWithParentheses() throws IOException {
-        ExpressionDef expression = ExpressionDef.constant(1)
-            .compare(LESS_THAN, ExpressionDef.constant(2))
-            .invoke("toString", TypeDef.STRING);
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("(1 < 2).toString()", result);
-    }
-
-    @Test
-    void returnInstanceOfMethodCallTargetWithParentheses() throws IOException {
-        ExpressionDef expression = new VariableDef.Local("value", TypeDef.OBJECT)
-            .instanceOf(ClassTypeDef.STRING)
-            .invoke("toString", TypeDef.STRING);
-        String result = writeMethodWithExpression(expression);
-
-        assertEquals("(value instanceof java.lang.String).toString()", result);
-    }
-
     private static ExpressionDef.SwitchYieldCase yieldWithConditionalBranch(TypeDef.Primitive intType,
                                                                             ExpressionDef conditionValue,
                                                                             int expectedValue,
@@ -1827,5 +1575,4 @@ public class MyClass {
             )
         );
     }
-
 }

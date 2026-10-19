@@ -42,6 +42,8 @@ class JdkMethodSupportTest {
         new VariableDef.MethodParameter("text", TypeDef.STRING);
     private static final VariableDef.MethodParameter NUMBER =
         new VariableDef.MethodParameter("number", TypeDef.Primitive.INT);
+    private static final VariableDef.MethodParameter FLAG =
+        new VariableDef.MethodParameter("flag", TypeDef.Primitive.BOOLEAN_WRAPPER);
     private static final MethodDef TO_STRING = MethodDef.builder("toString")
         .addModifiers(Modifier.PUBLIC).returns(TypeDef.STRING).build();
 
@@ -76,8 +78,8 @@ class JdkMethodSupportTest {
         assertTrue(JdkMethodSupport.supported(new ExpressionDef.StringConcatenation(TEXT, TEXT)));
         assertTrue(JdkMethodSupport.supported(TEXT.isNull()));
         assertTrue(JdkMethodSupport.supported(TEXT.isNonNull()));
-        assertTrue(JdkMethodSupport.supported(NUMBER.cast(TypeDef.Primitive.BOOLEAN).isTrue()));
-        assertTrue(JdkMethodSupport.supported(NUMBER.cast(TypeDef.Primitive.BOOLEAN).isFalse()));
+        assertTrue(JdkMethodSupport.supported(FLAG.cast(TypeDef.Primitive.BOOLEAN).isTrue()));
+        assertTrue(JdkMethodSupport.supported(FLAG.cast(TypeDef.Primitive.BOOLEAN).isFalse()));
         assertTrue(JdkMethodSupport.supported(TEXT.isNull().and(TEXT.isNonNull())));
         assertTrue(JdkMethodSupport.supported(TEXT.isNull().or(TEXT.isNonNull())));
         assertTrue(JdkMethodSupport.supported(TEXT.isNull().doIfElse(TEXT, TEXT)));
@@ -95,7 +97,7 @@ class JdkMethodSupportTest {
     void supportsEveryStatementItCanLower() {
         assertTrue(JdkMethodSupport.supported(StatementDef.multi(TEXT.returning())));
         assertTrue(JdkMethodSupport.supported(new StatementDef.Return(null)));
-        assertTrue(JdkMethodSupport.supported(TypeDef.STRING.instantiate().doThrow()));
+        assertTrue(JdkMethodSupport.supported(ClassTypeDef.of(RuntimeException.class).instantiate().doThrow()));
         assertTrue(JdkMethodSupport.supported(TEXT.newLocal("copy")));
         assertTrue(JdkMethodSupport.supported(
             new VariableDef.Local("copy", TypeDef.STRING).assign(TEXT)));
@@ -116,13 +118,13 @@ class JdkMethodSupportTest {
 
     @Test
     void declinesConstructsTheWriterCannotLowerYet() {
-        // A switch is only lowered over int and String
+        // A switch is only lowered over an int, which a char, a short, a byte or a wrapper converts to, and a String
         assertFalse(JdkMethodSupport.supported(TEXT.cast(TypeDef.Primitive.LONG)
             .asStatementSwitch(TypeDef.STRING,
                 Map.of(ExpressionDef.constant(1), TEXT.returning()), TEXT.returning())));
-        // A case key that is neither an int nor a String has no switch key
+        // A case key that is neither an int, a char, a short, a byte nor a String has no switch key
         assertFalse(JdkMethodSupport.supported(NUMBER.asStatementSwitch(TypeDef.STRING,
-            Map.of(ExpressionDef.constant('a'), TEXT.returning()), TEXT.returning())));
+            Map.of(ExpressionDef.constant(1L), TEXT.returning()), TEXT.returning())));
     }
 
     @Test
@@ -165,8 +167,8 @@ class JdkMethodSupportTest {
             .addModifiers(Modifier.PUBLIC).returns(TypeDef.VOID).build()));
         assertFalse(JdkMethodSupport.supported(MethodDef.builder("value")
             .addModifiers(Modifier.PUBLIC).returns(TypeDef.STRING).build()));
-        // A generic constructor has no direct lowering
-        assertFalse(JdkMethodSupport.supported(MethodDef.constructor()
+        // A generic constructor is lowered directly, its variables erased to their bounds
+        assertTrue(JdkMethodSupport.supported(MethodDef.constructor()
             .addModifiers(Modifier.PUBLIC)
             .addTypeVariable(TypeDef.variable("T"))
             .addStatement(new StatementDef.Return(null))

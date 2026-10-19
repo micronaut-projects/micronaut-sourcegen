@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode;
 
+import io.micronaut.sourcegen.bytecode.tck.GeneratedClassLoader;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
@@ -146,10 +147,6 @@ class ConditionalAndConstantWriterTest {
 
     private static Class<?> define(ClassDef classDef) {
         byte[] bytes = new ByteCodeWriter().write(classDef);
-        return new ClassLoader(ConditionalAndConstantWriterTest.class.getClassLoader()) {
-            Class<?> define() {
-                return defineClass(classDef.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        return GeneratedClassLoader.defineDirectly(classDef.getName(), bytes);
     }
 }

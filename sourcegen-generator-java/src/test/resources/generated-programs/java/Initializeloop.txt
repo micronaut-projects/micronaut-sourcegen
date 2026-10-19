@@ -1,0 +1,13 @@
+package test;
+
+public class Initializeloop {
+  public static int value;
+
+  static {
+    int index = 0;
+    while (index < 2) {
+      Initializeloop.value = index;
+      index = index + 1;
+    }
+  }
+}

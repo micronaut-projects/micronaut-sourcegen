@@ -383,6 +383,10 @@ final class CodeWriter {
       nameResolved = resolved != null;
 
       if (resolved != null && Objects.equals(resolved.canonicalName, c.canonicalName)) {
+        if (alwaysQualify.contains(c.simpleName())) {
+          // A variable of the name obscures the type (JLS 6.4.2)
+          return className.canonicalName;
+        }
         int suffixOffset = c.simpleNames().size() - 1;
         return join(".", className.simpleNames().subList(
             suffixOffset, className.simpleNames().size()));
@@ -394,8 +398,8 @@ final class CodeWriter {
       return className.canonicalName;
     }
 
-    // If the class is in the same package, we're done.
-    if (Objects.equals(packageName, className.packageName())) {
+    // If the class is in the same package, we're done - unless a variable of the name obscures it.
+    if (Objects.equals(packageName, className.packageName()) && !alwaysQualify.contains(topLevelSimpleName)) {
       referencedNames.add(topLevelSimpleName);
       return join(".", className.simpleNames());
     }

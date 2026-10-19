@@ -1,0 +1,11 @@
+package test;
+
+import io.micronaut.sourcegen.javapoet.write.UncoveredShapeProgramTest;
+import java.lang.Object;
+import java.lang.String;
+
+public class ForeignField {
+  public String label(Object other) {
+    return ((UncoveredShapeProgramTest.Holder) other).label;
+  }
+}

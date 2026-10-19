@@ -1,0 +1,6 @@
+package test;
+
+import java.lang.String;
+
+public class HierarchyLevel0 extends HierarchyRoot<String> {
+}

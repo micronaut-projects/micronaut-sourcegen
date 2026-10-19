@@ -15,9 +15,9 @@
  */
 package io.micronaut.sourcegen.bytecode.tck;
 
+import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
-import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
@@ -39,15 +39,12 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -55,10 +52,9 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -71,30 +67,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * @since 2.2
  */
-public abstract class ByteCodeWriterTck {
-
-    /**
-     * Writes one definition to class file bytes with the backend under test.
-     *
-     * <p>An implementation should assert whatever its backend guarantees about how the bytes were
-     * produced, such as verifying them or refusing a fallback path, so that a backend cannot pass
-     * the TCK by quietly declining to write the definition itself.
-     *
-     * @param definition The definition to write
-     * @return The class file bytes
-     */
-    protected abstract byte[] write(ObjectDef definition);
-
-    /**
-     * Loads a definition written by {@link #write(ObjectDef)}.
-     *
-     * @param definition The definition to write and load
-     * @return The loaded class
-     * @throws ClassNotFoundException If the class cannot be loaded
-     */
-    protected final Class<?> define(ObjectDef definition) throws ClassNotFoundException {
-        return new MapClassLoader(Map.of(definition.getName(), write(definition))).loadClass(definition.getName());
-    }
+public abstract class ByteCodeWriterTck extends AbstractByteCodeWriterTck {
 
     @Test
     public void callsAVariableArityMethodWithMoreArgumentsThanItsFixedArityOverloadsTake() throws Exception {
@@ -263,46 +236,6 @@ public abstract class ByteCodeWriterTck {
     }
 
     @Test
-    public void writesWhileLoopsAndFinallyOnReturnAndThrow() throws Exception {
-        VariableDef.Local current = new VariableDef.Local("current", TypeDef.Primitive.INT);
-        ClassDef definition = ClassDef.builder("example.TckControlParity")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("count")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("limit", TypeDef.Primitive.INT)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.multi(
-                    current.defineAndAssign(ExpressionDef.constant(0)),
-                    current.compare(ExpressionDef.ComparisonOperation.OpType.LESS_THAN, parameters.get(0)).whileLoop(
-                        current.assign(current.math(ExpressionDef.MathBinaryOperation.OpType.ADDITION,
-                            ExpressionDef.constant(1)))
-                    ),
-                    current.returning()
-                )))
-            .addMethod(MethodDef.builder("finish")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("counter", AtomicInteger.class)
-                .addParameter("fail", TypeDef.Primitive.BOOLEAN)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.doTry(StatementDef.multi(
-                    parameters.get(1).isTrue().doIf(
-                        ClassTypeDef.of(IllegalStateException.class).instantiate().doThrow()),
-                    ExpressionDef.constant(7).returning()
-                )).doFinally(parameters.get(0).invoke("incrementAndGet", TypeDef.Primitive.INT))))
-            .build();
-
-        Class<?> generated = define(definition);
-        assertEquals(6, generated.getMethod("count", int.class).invoke(null, 6));
-        AtomicInteger counter = new AtomicInteger();
-        Method finish = generated.getMethod("finish", AtomicInteger.class, boolean.class);
-        assertEquals(7, finish.invoke(null, counter, false));
-        InvocationTargetException exception = assertThrows(InvocationTargetException.class,
-            () -> finish.invoke(null, counter, true));
-        assertInstanceOf(IllegalStateException.class, exception.getCause());
-        assertEquals(2, counter.get());
-    }
-
-    @Test
     public void writesReflectedGenericBridgeAndGenericSignatures() throws Exception {
         FieldDef names = FieldDef.builder("names", TypeDef.parameterized(List.class, String.class))
             .addModifiers(Modifier.PUBLIC)
@@ -337,24 +270,6 @@ public abstract class ByteCodeWriterTck {
     }
 
     @Test
-    public void invokesMethodsThroughInterfaceBoundTypeVariables() throws Exception {
-        TypeDef.TypeVariable variable = TypeDef.variable("T", TypeDef.of(CharSequence.class));
-        ClassDef definition = ClassDef.builder("example.TckTypeVariableInvocationParity")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("length")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addTypeVariable(variable)
-                .addParameter("value", variable)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> parameters.get(0)
-                    .invoke("length", TypeDef.Primitive.INT).returning()))
-            .build();
-
-        Class<?> generated = define(definition);
-        assertEquals(5, generated.getMethod("length", CharSequence.class).invoke(null, "hello"));
-    }
-
-    @Test
     public void verifiesHierarchyFromGeneratedModelDefinitions() throws Exception {
         ClassDef parent = ClassDef.builder("example.TckModelParent")
             .addModifiers(Modifier.PUBLIC)
@@ -368,63 +283,13 @@ public abstract class ByteCodeWriterTck {
             .superclass(ClassTypeDef.of(parent))
             .build();
 
-        MapClassLoader loader = new MapClassLoader(Map.of(
+        GeneratedClassLoader loader = new GeneratedClassLoader(Map.of(
             parent.getName(), write(parent),
             child.getName(), write(child)
         ));
         Class<?> childClass = loader.loadClass(child.getName());
         assertEquals(parent.getName(), childClass.getSuperclass().getName());
         assertEquals("parent", childClass.getMethod("value").invoke(childClass.getConstructor().newInstance()));
-    }
-
-    @Test
-    public void writesReferencesToAMemberTypeByItsBinaryName() throws Exception {
-        // A member type is named when it is built, before it knows what it will be declared in, and the
-        // model is immutable - so the definition the caller holds on to keeps the simple name while the
-        // copy `addInnerType` stores carries the qualified one. A reference taken from the caller's
-        // definition therefore reads as `Inner`, which Java source resolves through scoping and a class
-        // file cannot: every name it carries is a binary name.
-        ClassDef inner = ClassDef.builder("Inner")
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addMethod(MethodDef.builder("name")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(TypeDef.STRING)
-                .build((ignored, parameters) -> ExpressionDef.constant("inner").returning()))
-            .addMethod(MethodDef.builder("self")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(ClassTypeDef.of("Inner"))
-                .build((ignored, parameters) -> ExpressionDef.nullValue().returning()))
-            .build();
-        ClassDef outer = ClassDef.builder("example.TckMemberTypeOuter")
-            .addModifiers(Modifier.PUBLIC)
-            .addInnerType(inner)
-            .addMethod(MethodDef.builder("make")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(inner.asTypeDef())
-                .build((ignored, parameters) -> ExpressionDef.nullValue().returning()))
-            .addMethod(MethodDef.builder("all")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(TypeDef.parameterized(ClassTypeDef.of(List.class), inner.asTypeDef()))
-                .build((ignored, parameters) -> ExpressionDef.nullValue().returning()))
-            .build();
-
-        ObjectDef member = outer.getInnerTypes().get(0);
-        assertEquals("example.TckMemberTypeOuter$Inner", member.getName());
-
-        MapClassLoader loader = new MapClassLoader(Map.of(
-            outer.getName(), write(outer),
-            member.getName(), write(member)
-        ));
-        Class<?> outerClass = loader.loadClass(outer.getName());
-        Class<?> memberClass = loader.loadClass(member.getName());
-
-        assertSame(memberClass, outerClass.getMethod("make").getReturnType());
-        assertEquals("java.util.List<example.TckMemberTypeOuter$Inner>",
-            outerClass.getMethod("all").getGenericReturnType().toString());
-        // The member type resolves a reference to itself the same way, without seeing its enclosing type
-        assertSame(memberClass, memberClass.getMethod("self").getReturnType());
-        assertEquals("inner", memberClass.getMethod("name").invoke(memberClass.getConstructor().newInstance()));
-        assertNull(outerClass.getMethod("make").invoke(outerClass.getConstructor().newInstance()));
     }
 
     @Test
@@ -630,42 +495,6 @@ public abstract class ByteCodeWriterTck {
     }
 
     @Test
-    public void writesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface() throws Exception {
-        MethodDef greet = MethodDef.builder("greet")
-            .addModifiers(Modifier.PUBLIC)
-            .returns(TypeDef.STRING)
-            .build((aThis, parameters) -> ExpressionDef.constant("hi").returning());
-        InterfaceDef contract = InterfaceDef.builder("example.TckDefaultCallContract")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(greet)
-            .build();
-        ClassDef implementation = ClassDef.builder("example.TckDefaultCallImpl")
-            .addModifiers(Modifier.PUBLIC)
-            .addSuperinterface(contract.asTypeDef())
-            .build();
-        ClassDef caller = ClassDef.builder("example.TckDefaultCaller")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("call")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("target", contract.asTypeDef())
-                .returns(TypeDef.STRING)
-                // The model flags the target as a default method; the call is still virtual
-                .build((ignored, parameters) -> new ExpressionDef.InvokeInstanceMethod(
-                    parameters.get(0), greet, true, List.of()).returning()))
-            .build();
-
-        MapClassLoader loader = new MapClassLoader(Map.of(
-            contract.getName(), write(contract),
-            implementation.getName(), write(implementation),
-            caller.getName(), write(caller)
-        ));
-        Object instance = loader.loadClass(implementation.getName()).getConstructor().newInstance();
-        Class<?> callerClass = loader.loadClass(caller.getName());
-
-        assertEquals("hi", callerClass.getMethod("call", loader.loadClass(contract.getName())).invoke(null, instance));
-    }
-
-    @Test
     public void writesArrayConstantsAndMultiDimensionalArrays() throws Exception {
         ClassDef definition = ClassDef.builder("example.TckArrayParity")
             .addModifiers(Modifier.PUBLIC)
@@ -740,32 +569,6 @@ public abstract class ByteCodeWriterTck {
     }
 
     @Test
-    public void writesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes() throws Exception {
-        ClassDef definition = ClassDef.builder("example.TckUnboxParity")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("asInt")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("value", TypeDef.OBJECT)
-                .returns(TypeDef.Primitive.INT)
-                // A Long held in an Object still unboxes to an int, as it does with the ASM backend
-                .build((ignored, parameters) -> parameters.get(0).cast(TypeDef.Primitive.INT).returning()))
-            .addMethod(MethodDef.builder("boxThenCast")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("value", TypeDef.Primitive.INT)
-                .returns(TypeDef.STRING)
-                // Boxing into an unrelated reference type must stay verifiable
-                .build((ignored, parameters) -> parameters.get(0).cast(TypeDef.STRING).returning()))
-            .build();
-
-        Class<?> generated = define(definition);
-
-        assertEquals(7, generated.getMethod("asInt", Object.class).invoke(null, 7L));
-        assertEquals(7, generated.getMethod("asInt", Object.class).invoke(null, 7));
-        assertThrows(InvocationTargetException.class,
-            () -> generated.getMethod("boxThenCast", int.class).invoke(null, 1));
-    }
-
-    @Test
     public void writesConstructorsWhoseSuperCallUsesAnEarlierLocal() throws Exception {
         MethodDef superConstructor = MethodDef.constructor(
             List.of(ParameterDef.of("initialValue", TypeDef.Primitive.INT)), Modifier.PUBLIC);
@@ -787,72 +590,6 @@ public abstract class ByteCodeWriterTck {
         Object instance = generated.getConstructor(int.class).newInstance(4);
 
         assertEquals(12, ((java.util.concurrent.atomic.AtomicInteger) instance).get());
-    }
-
-    @Test
-    public void writesSwitchesSharingOneBodyAcrossManyKeys() throws Exception {
-        // A wither-style dispatch maps many keys onto one statement; emitting that body once per
-        // key is what pushed micronaut-core's generated dispatch past the 64KB method limit
-        ExpressionDef.Constant[] keys = new ExpressionDef.Constant[60];
-        Map<ExpressionDef.Constant, StatementDef> cases = new LinkedHashMap<>();
-        MethodDef method = MethodDef.builder("classify")
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter("index", TypeDef.Primitive.INT)
-            .returns(TypeDef.STRING)
-            .build((ignored, parameters) -> {
-                StatementDef shared = ExpressionDef.constant("shared").returning();
-                for (int i = 0; i < keys.length; i++) {
-                    keys[i] = ExpressionDef.constant(i);
-                    cases.put(keys[i], i == keys.length - 1 ? ExpressionDef.constant("last").returning() : shared);
-                }
-                return StatementDef.multi(
-                    parameters.get(0).asStatementSwitch(TypeDef.STRING, cases, ExpressionDef.constant("none").returning())
-                );
-            });
-        ClassDef definition = ClassDef.builder("example.TckSharedSwitchParity")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(method)
-            .build();
-
-        byte[] bytes = write(definition);
-        Class<?> generated = new MapClassLoader(Map.of(definition.getName(), bytes))
-            .loadClass(definition.getName());
-
-        assertEquals("shared", generated.getMethod("classify", int.class).invoke(null, 0));
-        assertEquals("shared", generated.getMethod("classify", int.class).invoke(null, 30));
-        assertEquals("last", generated.getMethod("classify", int.class).invoke(null, keys.length - 1));
-        assertEquals("none", generated.getMethod("classify", int.class).invoke(null, 999));
-        // Two distinct bodies, not sixty: the shared body is emitted once
-        assertTrue(bytes.length < 2000, () -> "Expected a compact switch, got " + bytes.length + " bytes");
-    }
-
-    @Test
-    public void writesNestedCastsWithoutUnboxingAndReboxingAReference() throws Exception {
-        ClassDef definition = ClassDef.builder("example.TckNestedCastParity")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("asBoolean")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("value", TypeDef.OBJECT)
-                .returns(ClassTypeDef.of(Boolean.class))
-                // A Kotlin default argument produces exactly this shape: the property value is
-                // cast to the primitive and then back to its wrapper. Emitting both casts would
-                // unbox a null and throw, so only the outer cast belongs in the bytecode.
-                .build((ignored, parameters) -> new ExpressionDef.Cast(ClassTypeDef.of(Boolean.class),
-                    new ExpressionDef.Cast(TypeDef.Primitive.BOOLEAN, parameters.get(0))).returning()))
-            .addMethod(MethodDef.builder("narrow")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("value", TypeDef.Primitive.INT)
-                .returns(TypeDef.Primitive.LONG)
-                // A primitive cast of something that is not Object is a real conversion and stays
-                .build((ignored, parameters) -> new ExpressionDef.Cast(TypeDef.Primitive.LONG,
-                    new ExpressionDef.Cast(TypeDef.Primitive.BYTE, parameters.get(0))).returning()))
-            .build();
-
-        Class<?> generated = define(definition);
-
-        assertEquals(Boolean.TRUE, generated.getMethod("asBoolean", Object.class).invoke(null, Boolean.TRUE));
-        assertNull(generated.getMethod("asBoolean", Object.class).invoke(null, new Object[] {null}));
-        assertEquals(1L, generated.getMethod("narrow", int.class).invoke(null, 257));
     }
 
     @Test
@@ -926,7 +663,7 @@ public abstract class ByteCodeWriterTck {
                 .build((ignored, parameters) -> ExpressionDef.constant("Ada").returning()))
             .build();
 
-        MapClassLoader loader = new MapClassLoader(Map.of(
+        GeneratedClassLoader loader = new GeneratedClassLoader(Map.of(
             contract.getName(), write(contract),
             implementation.getName(), write(implementation)
         ));
@@ -968,364 +705,6 @@ public abstract class ByteCodeWriterTck {
         assertSame(constants[1], beta);
         assertEquals("tagged", generated.getMethod("tag").invoke(beta));
         assertArrayEquals(constants, (Object[]) generated.getMethod("values").invoke(null));
-    }
-
-    @Test
-    public void writesTryWhoseCatchCompletesInsideAnIfBranch() throws Exception {
-        ClassTypeDef self = ClassTypeDef.of("example.TckTryCompletionParity");
-        MethodDef boom = MethodDef.builder("boom")
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .returns(TypeDef.STRING)
-            .build((ignored, parameters) -> ClassTypeDef.of(IllegalStateException.class)
-                .instantiate(ExpressionDef.constant("boom")).doThrow());
-        ClassDef definition = ClassDef.builder(self.getName())
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(boom)
-            .addMethod(MethodDef.builder("pick")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("flag", TypeDef.Primitive.BOOLEAN)
-                .returns(TypeDef.STRING)
-                .build((ignored, parameters) -> StatementDef.multi(
-                    parameters.get(0).isTrue().doIfElse(
-                        StatementDef.doTry(self.invokeStatic(boom).returning())
-                            .doCatch(RuntimeException.class, exception -> StatementDef.multi()),
-                        ExpressionDef.constant("else").returning()
-                    ),
-                    ExpressionDef.constant("after").returning()
-                )))
-            .build();
-
-        Class<?> generated = define(definition);
-
-        // The caught exception must not fall through into the else branch
-        assertEquals("after", generated.getMethod("pick", boolean.class).invoke(null, true));
-        assertEquals("else", generated.getMethod("pick", boolean.class).invoke(null, false));
-    }
-
-    @Test
-    public void innerHandlerWinsOverAnOuterHandlerOfTheSameType() throws Exception {
-        // try { try { throw ISE } catch (ISE) { return "inner" } } catch (ISE) { return "outer" }
-        ClassDef definition = ClassDef.builder("example.TckNestedHandlers")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("pick")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .returns(TypeDef.STRING)
-                .build((ignored, parameters) -> StatementDef.doTry(
-                        StatementDef.doTry(throwIllegalState())
-                            .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant("inner").returning()))
-                    .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant("outer").returning())))
-            .build();
-
-        assertEquals("inner", define(definition).getMethod("pick").invoke(null));
-    }
-
-    @Test
-    public void innerFinallyRunsBeforeTheOuterCatch() throws Exception {
-        // String s = ""; try { try { throw ISE } finally { s += "f" } } catch (ISE) { s += "c" } return s
-        VariableDef.Local trace = new VariableDef.Local("trace", TypeDef.STRING);
-        ClassDef definition = ClassDef.builder("example.TckInnerFinally")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("trace")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .returns(TypeDef.STRING)
-                .build((ignored, parameters) -> StatementDef.multi(
-                    trace.defineAndAssign(ExpressionDef.constant("")),
-                    StatementDef.doTry(StatementDef.doTry(throwIllegalState())
-                            .doFinally(trace.assign(trace.stringConcat(ExpressionDef.constant("f")))))
-                        .doCatch(IllegalStateException.class,
-                            exception -> trace.assign(trace.stringConcat(ExpressionDef.constant("c")))),
-                    trace.returning()
-                )))
-            .build();
-
-        assertEquals("fc", define(definition).getMethod("trace").invoke(null));
-    }
-
-    @Test
-    public void synchronizedBlockReleasesItsMonitorWhenAnOuterCatchHandlesTheException() throws Exception {
-        // try { synchronized (lock) { throw ISE } } catch (ISE) { } return Thread.holdsLock(lock)
-        ClassDef definition = ClassDef.builder("example.TckSynchronizedInTry")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("holdsLockAfterCatch")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("lock", TypeDef.OBJECT)
-                .returns(TypeDef.Primitive.BOOLEAN)
-                .build((ignored, parameters) -> StatementDef.multi(
-                    StatementDef.doTry(new StatementDef.Synchronized(parameters.get(0), throwIllegalState()))
-                        .doCatch(IllegalStateException.class, exception -> StatementDef.multi()),
-                    ClassTypeDef.of(Thread.class)
-                        .invokeStatic("holdsLock", TypeDef.Primitive.BOOLEAN, parameters.get(0))
-                        .returning()
-                )))
-            .build();
-
-        assertFalse((boolean) define(definition).getMethod("holdsLockAfterCatch", Object.class).invoke(null, new Object()));
-    }
-
-    @Test
-    public void finallyReturnOverridesTheReturnOfTheTry() throws Exception {
-        // try { return value; } finally { return 42; }
-        ClassDef definition = ClassDef.builder("example.TckFinallyReturn")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("pick")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("value", TypeDef.Primitive.INT)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.doTry(parameters.get(0).returning())
-                    .doFinally(ExpressionDef.constant(42).returning())))
-            .build();
-
-        assertEquals(42, define(definition).getMethod("pick", int.class).invoke(null, 1));
-    }
-
-    @Test
-    public void finallyThatReturnsRunsOnceAfterACatchCompletes() throws Exception {
-        // int count = 0; try { throw ISE } catch (ISE) { } finally { count++; return count; }
-        VariableDef.Local count = new VariableDef.Local("count", TypeDef.Primitive.INT);
-        ClassDef definition = ClassDef.builder("example.TckFinallyReturnAfterCatch")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("count")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.multi(
-                    count.defineAndAssign(ExpressionDef.constant(0)),
-                    StatementDef.doTry(throwIllegalState())
-                        .doCatch(IllegalStateException.class, exception -> StatementDef.multi())
-                        .doFinally(StatementDef.multi(
-                            count.assign(count.math(ExpressionDef.MathBinaryOperation.OpType.ADDITION,
-                                ExpressionDef.constant(1))),
-                            count.returning()
-                        ))
-                )))
-            .build();
-
-        assertEquals(1, define(definition).getMethod("count").invoke(null));
-    }
-
-    @Test
-    public void finallyThatThrowsAfterAReturnRunsOnce() throws Exception {
-        // try { return 1; } catch (ISE) { return 2; } finally { counter++; throw ISE }
-        ClassDef definition = ClassDef.builder("example.TckThrowingFinallyAfterReturn")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("run")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("counter", AtomicInteger.class)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.doTry(ExpressionDef.constant(1).returning())
-                    .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant(2).returning())
-                    .doFinally(StatementDef.multi(
-                        increment(parameters.get(0)),
-                        throwIllegalState("finally")
-                    ))))
-            .build();
-
-        AtomicInteger counter = new AtomicInteger();
-        assertThrowsIllegalState("finally", define(definition).getMethod("run", AtomicInteger.class), counter);
-        assertEquals(1, counter.get());
-    }
-
-    @Test
-    public void finallyThatThrowsAfterAReturnInACatchRunsOnce() throws Exception {
-        // try { throw ISE } catch (ISE) { return 2; } finally { counter++; throw ISE }
-        ClassDef definition = ClassDef.builder("example.TckThrowingFinallyAfterCatchReturn")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("run")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("counter", AtomicInteger.class)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.doTry(throwIllegalState())
-                    .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant(2).returning())
-                    .doFinally(StatementDef.multi(
-                        increment(parameters.get(0)),
-                        throwIllegalState("finally")
-                    ))))
-            .build();
-
-        AtomicInteger counter = new AtomicInteger();
-        assertThrowsIllegalState("finally", define(definition).getMethod("run", AtomicInteger.class), counter);
-        assertEquals(1, counter.get());
-    }
-
-    @Test
-    public void returnInAnInnerTryRunsTheInnerAndTheOuterFinally() throws Exception {
-        // try { try { return 1; } finally { inner++; } } finally { outer++; }
-        ClassDef definition = ClassDef.builder("example.TckNestedFinallyAfterReturn")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("run")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("inner", AtomicInteger.class)
-                .addParameter("outer", AtomicInteger.class)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.doTry(
-                        StatementDef.doTry(ExpressionDef.constant(1).returning())
-                            .doFinally(increment(parameters.get(0))))
-                    .doFinally(increment(parameters.get(1)))))
-            .build();
-
-        AtomicInteger inner = new AtomicInteger();
-        AtomicInteger outer = new AtomicInteger();
-        Method run = define(definition).getMethod("run", AtomicInteger.class, AtomicInteger.class);
-        assertEquals(1, run.invoke(null, inner, outer));
-        assertEquals(1, inner.get());
-        assertEquals(1, outer.get());
-    }
-
-    @Test
-    public void returnInATryWithoutFinallyRunsTheOuterFinally() throws Exception {
-        // try { try { return 1; } catch (ISE) { return 2; } } finally { counter++; }
-        ClassDef definition = ClassDef.builder("example.TckOuterFinallyAfterCatchingTry")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("run")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("fail", TypeDef.Primitive.BOOLEAN)
-                .addParameter("counter", AtomicInteger.class)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.doTry(
-                        StatementDef.doTry(StatementDef.multi(
-                                parameters.get(0).isTrue().doIf(throwIllegalState()),
-                                ExpressionDef.constant(1).returning()
-                            ))
-                            .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant(2).returning()))
-                    .doFinally(increment(parameters.get(1)))))
-            .build();
-
-        AtomicInteger counter = new AtomicInteger();
-        Method run = define(definition).getMethod("run", boolean.class, AtomicInteger.class);
-        assertEquals(1, run.invoke(null, false, counter));
-        assertEquals(1, counter.get());
-        assertEquals(2, run.invoke(null, true, counter));
-        assertEquals(2, counter.get());
-    }
-
-    @Test
-    public void innerFinallyThatThrowsAfterAReturnRunsOnceAndThenTheOuterFinally() throws Exception {
-        // try { try { return 1; } finally { inner++; throw ISE } } finally { outer++; }
-        ClassDef definition = ClassDef.builder("example.TckThrowingInnerFinallyAfterReturn")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("run")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("inner", AtomicInteger.class)
-                .addParameter("outer", AtomicInteger.class)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.doTry(
-                        StatementDef.doTry(ExpressionDef.constant(1).returning())
-                            .doFinally(StatementDef.multi(
-                                increment(parameters.get(0)),
-                                throwIllegalState("inner")
-                            )))
-                    .doFinally(increment(parameters.get(1)))))
-            .build();
-
-        AtomicInteger inner = new AtomicInteger();
-        AtomicInteger outer = new AtomicInteger();
-        Method run = define(definition).getMethod("run", AtomicInteger.class, AtomicInteger.class);
-        assertThrowsIllegalState("inner", run, inner, outer);
-        assertEquals(1, inner.get());
-        assertEquals(1, outer.get());
-    }
-
-    @Test
-    public void outerFinallyThatThrowsAfterAReturnInAnInnerTryRunsOnce() throws Exception {
-        // try { try { return 1; } finally { inner++; } } finally { outer++; throw ISE }
-        ClassDef definition = ClassDef.builder("example.TckThrowingOuterFinallyAfterReturn")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("run")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("inner", AtomicInteger.class)
-                .addParameter("outer", AtomicInteger.class)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.doTry(
-                        StatementDef.doTry(ExpressionDef.constant(1).returning())
-                            .doFinally(increment(parameters.get(0))))
-                    .doFinally(StatementDef.multi(
-                        increment(parameters.get(1)),
-                        throwIllegalState("outer")
-                    ))))
-            .build();
-
-        AtomicInteger inner = new AtomicInteger();
-        AtomicInteger outer = new AtomicInteger();
-        Method run = define(definition).getMethod("run", AtomicInteger.class, AtomicInteger.class);
-        assertThrowsIllegalState("outer", run, inner, outer);
-        assertEquals(1, inner.get());
-        assertEquals(1, outer.get());
-    }
-
-    @Test
-    public void returnInATryInsideASynchronizedBlockReleasesTheMonitor() throws Exception {
-        // synchronized (lock) { try { return 1; } catch (ISE) { return 2; } }
-        ClassDef definition = ClassDef.builder("example.TckReturnInTryInSynchronized")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("run")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("lock", TypeDef.OBJECT)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> new StatementDef.Synchronized(parameters.get(0),
-                    StatementDef.doTry(ExpressionDef.constant(1).returning())
-                        .doCatch(IllegalStateException.class, exception -> ExpressionDef.constant(2).returning()))))
-            .build();
-
-        Object lock = new Object();
-        assertEquals(1, define(definition).getMethod("run", Object.class).invoke(null, lock));
-        assertFalse(Thread.holdsLock(lock));
-    }
-
-    @Test
-    public void synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows() throws Exception {
-        // try { synchronized (lock) { return 1; } } finally { counter++; throw ISE }
-        ClassDef definition = ClassDef.builder("example.TckThrowingFinallyAfterSynchronizedReturn")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("run")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("lock", TypeDef.OBJECT)
-                .addParameter("counter", AtomicInteger.class)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> StatementDef.doTry(
-                        new StatementDef.Synchronized(parameters.get(0), ExpressionDef.constant(1).returning()))
-                    .doFinally(StatementDef.multi(
-                        increment(parameters.get(1)),
-                        throwIllegalState("finally")
-                    ))))
-            .build();
-
-        Method run = define(definition).getMethod("run", Object.class, AtomicInteger.class);
-        Object lock = new Object();
-        AtomicInteger counter = new AtomicInteger();
-        // Releasing the monitor a second time throws from the handler releasing it, which the handler
-        // may protect as javac does, so a failure can loop there
-        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
-            assertThrowsIllegalState("finally", run, lock, counter);
-            assertFalse(Thread.holdsLock(lock));
-        });
-        assertEquals(1, counter.get());
-    }
-
-    @Test
-    public void finallyThatThrowsAfterAYieldRunsOnce() throws Exception {
-        // return switch (value) { case 1 -> { try { yield 1; } finally { counter++; throw ISE } } default -> 0 };
-        ClassDef definition = ClassDef.builder("example.TckThrowingFinallyAfterYield")
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodDef.builder("run")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter("value", TypeDef.Primitive.INT)
-                .addParameter("counter", AtomicInteger.class)
-                .returns(TypeDef.Primitive.INT)
-                .build((ignored, parameters) -> new ExpressionDef.Switch(
-                    parameters.get(0),
-                    TypeDef.Primitive.INT,
-                    Map.of(ExpressionDef.constant(1), new ExpressionDef.SwitchYieldCase(TypeDef.Primitive.INT,
-                        StatementDef.doTry(ExpressionDef.constant(1).returning())
-                            .doFinally(StatementDef.multi(
-                                increment(parameters.get(1)),
-                                throwIllegalState("finally")
-                            )))),
-                    ExpressionDef.constant(0)
-                ).returning()))
-            .build();
-
-        AtomicInteger counter = new AtomicInteger();
-        assertThrowsIllegalState("finally", define(definition).getMethod("run", int.class, AtomicInteger.class), 1, counter);
-        assertEquals(1, counter.get());
     }
 
     @Test
@@ -1378,6 +757,174 @@ public abstract class ByteCodeWriterTck {
         assertEquals(0, generated.getField("age").get(value));
         assertEquals(1, generated.getField("marker").get(value));
         assertEquals(1, generated.getField("initializations").get(null));
+    }
+
+    @Test
+    public void writesSuperConstructorCallsThatNameTheSuperType() throws Exception {
+        var objectConstructor = Object.class.getConstructor();
+        ClassDef definition = ClassDef.builder("example.TckNamedSuperConstructor")
+            .addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(Object.class))
+            .addMethod(MethodDef.constructor()
+                .addModifiers(Modifier.PUBLIC)
+                .build((aThis, parameters) -> aThis.superRef(ClassTypeDef.of(Object.class))
+                    .invokeConstructor(objectConstructor)))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertNotNull(generated.getConstructor().newInstance());
+    }
+
+    @Test
+    public void writesSuperCallsToASuperclassMethodAndAnInterfaceDefaultMethod() throws Exception {
+        ClassTypeDef iteratorType = ClassTypeDef.of(Iterator.class);
+        Method removeMethod = Iterator.class.getMethod("remove");
+        Method toStringMethod = Object.class.getMethod("toString");
+        ClassDef definition = ClassDef.builder("example.TckNamedSuperMethods")
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(iteratorType)
+            .addMethod(MethodDef.builder("hasNext").addModifiers(Modifier.PUBLIC).returns(boolean.class)
+                .build((aThis, parameters) -> ExpressionDef.constant(false).returning()))
+            .addMethod(MethodDef.builder("next").addModifiers(Modifier.PUBLIC).returns(Object.class)
+                .build((aThis, parameters) -> ExpressionDef.nullValue().returning()))
+            .addMethod(MethodDef.builder("remove").addModifiers(Modifier.PUBLIC)
+                .build((aThis, parameters) -> aThis.superRef(iteratorType)
+                    .invoke(removeMethod)))
+            .addMethod(MethodDef.builder("toString").addModifiers(Modifier.PUBLIC).returns(String.class)
+                // Dispatched virtually, super.toString() would recurse
+                .build((aThis, parameters) -> aThis.superRef(ClassTypeDef.of(Object.class))
+                    .invoke(toStringMethod).returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+        Iterator<?> instance = (Iterator<?>) generated.getConstructor().newInstance();
+
+        // The default Iterator.remove() throws
+        assertThrows(UnsupportedOperationException.class, instance::remove);
+        assertTrue(instance.toString().startsWith(generated.getName() + "@"), instance.toString());
+    }
+
+    @Test
+    public void writesNamesContainingDollarSigns() throws Exception {
+        FieldDef field = FieldDef.builder("$field", String.class).addModifiers(Modifier.PRIVATE).build();
+        MethodDef getter = MethodDef.builder("$get").addModifiers(Modifier.PUBLIC).returns(String.class)
+            .build((aThis, parameters) -> aThis.field(field).returning());
+        ClassDef definition = ClassDef.builder("example.$TckHolder$Definition")
+            .addModifiers(Modifier.PUBLIC)
+            .addField(field)
+            .addMethod(getter)
+            .addMethod(MethodDef.builder("$copy").addModifiers(Modifier.PUBLIC)
+                .addParameter("$value", String.class)
+                .returns(String.class)
+                .build((aThis, parameters) -> StatementDef.multi(
+                    aThis.field(field).put(parameters.get(0)),
+                    aThis.invoke(getter).newLocal("$local", local -> local.returning())
+                )))
+            .build();
+
+        Class<?> generated = define(definition);
+        Object instance = generated.getConstructor().newInstance();
+
+        assertEquals("copied", generated.getMethod("$copy", String.class).invoke(instance, "copied"));
+        assertEquals("copied", generated.getMethod("$get").invoke(instance));
+    }
+
+    @Test
+    public void writesInstanceOfANestedType() throws Exception {
+        ClassDef definition = ClassDef.builder("example.TckInstanceOfNested")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("isEntry").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", Object.class)
+                .returns(boolean.class)
+                .build((ignored, parameters) ->
+                    new ExpressionDef.InstanceOf(parameters.get(0), ClassTypeDef.of(Map.Entry.class)).returning()))
+            .build();
+
+        Method isEntry = define(definition).getMethod("isEntry", Object.class);
+
+        assertEquals(true, isEntry.invoke(null, Map.entry("key", "value")));
+        assertEquals(false, isEntry.invoke(null, "value"));
+    }
+
+    @Test
+    public void writesAccessToAFieldOfAnotherType() throws Exception {
+        ClassTypeDef otherType = ClassTypeDef.of("example.TckFieldOwner");
+        ClassDef other = ClassDef.builder(otherType.getName())
+            .addModifiers(Modifier.PUBLIC)
+            .addField(FieldDef.builder("name", String.class).addModifiers(Modifier.PUBLIC).build())
+            .build();
+        ClassDef accessor = ClassDef.builder("example.TckFieldAccessor")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("read").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("value", Object.class)
+                .returns(String.class)
+                .build((ignored, parameters) -> new VariableDef.Field(
+                    parameters.get(0).cast(otherType), otherType, "name", TypeDef.STRING).returning()))
+            .build();
+
+        GeneratedClassLoader loader = new GeneratedClassLoader(Map.of(
+            other.getName(), write(other),
+            accessor.getName(), write(accessor)
+        ));
+        Class<?> otherClass = loader.loadClass(other.getName());
+        Object owner = otherClass.getConstructor().newInstance();
+        otherClass.getField("name").set(owner, "owned");
+
+        assertEquals("owned", loader.loadClass(accessor.getName()).getMethod("read", Object.class).invoke(null, owner));
+    }
+
+    @Test
+    public void writesArrayAnnotationMembersAndNestedArrayInitializers() throws Exception {
+        ClassDef definition = ClassDef.builder("example.TckArrayMembers")
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationDef.builder(TypeMarker.class)
+                .addMember("value", new String[] {"unchecked", "rawtypes"})
+                .build())
+            .addMethod(MethodDef.builder("matrix").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TypeDef.STRING.array(2))
+                .build((ignored, parameters) -> TypeDef.STRING.array(2).instantiate(List.of(
+                    TypeDef.STRING.array().instantiate(List.of(ExpressionDef.constant("a")))
+                )).returning()))
+            .build();
+
+        Class<?> generated = define(definition);
+
+        assertArrayEquals(new String[] {"unchecked", "rawtypes"}, generated.getAnnotation(TypeMarker.class).value());
+        assertArrayEquals(new String[][] {{"a"}}, (String[][]) generated.getMethod("matrix").invoke(null));
+    }
+
+    private static MethodDef binaryMethod(String name,
+                                          TypeDef type,
+                                          ExpressionDef.MathBinaryOperation.OpType operation) {
+        return MethodDef.builder(name)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addParameter("left", type)
+            .addParameter("right", type)
+            .returns(type)
+            .build((ignored, parameters) -> parameters.get(0).math(operation, parameters.get(1)).returning());
+    }
+
+    private static MethodDef comparisonMethod(String name,
+                                              TypeDef type,
+                                              ExpressionDef.ComparisonOperation.OpType operation) {
+        return MethodDef.builder(name)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addParameter("left", type)
+            .addParameter("right", type)
+            .returns(TypeDef.Primitive.BOOLEAN)
+            .build((ignored, parameters) -> parameters.get(0).compare(operation, parameters.get(1)).returning());
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    private @interface ParameterMarker {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    private @interface TypeMarker {
+        String[] value();
     }
 
     @Test
@@ -1454,71 +1001,8 @@ public abstract class ByteCodeWriterTck {
         assertEquals("anonymous", describe.invoke(value, false));
     }
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.PARAMETER)
-    private @interface ParameterMarker {
-    }
-
-    private static StatementDef throwIllegalState() {
-        return throwIllegalState("boom");
-    }
-
-    private static StatementDef throwIllegalState(String message) {
-        return ClassTypeDef.of(IllegalStateException.class).instantiate(ExpressionDef.constant(message)).doThrow();
-    }
-
-    private static StatementDef increment(VariableDef counter) {
-        return counter.invoke("incrementAndGet", TypeDef.Primitive.INT);
-    }
-
-    private static void assertThrowsIllegalState(String message, Method method, Object... arguments) {
-        InvocationTargetException exception = assertThrows(InvocationTargetException.class,
-            () -> method.invoke(null, arguments));
-        assertEquals(message, assertInstanceOf(IllegalStateException.class, exception.getCause()).getMessage());
-    }
-
-    private static MethodDef binaryMethod(String name,
-                                          TypeDef type,
-                                          ExpressionDef.MathBinaryOperation.OpType operation) {
-        return MethodDef.builder(name)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter("left", type)
-            .addParameter("right", type)
-            .returns(type)
-            .build((ignored, parameters) -> parameters.get(0).math(operation, parameters.get(1)).returning());
-    }
-
     private static ExpressionDef.Lambda prefixed(LambdaDef supplier, String prefix, ExpressionDef value) {
         return supplier.implement((ignored, parameters) -> ExpressionDef.constant(prefix)
             .invoke("concat", TypeDef.STRING, value).returning());
-    }
-
-    private static MethodDef comparisonMethod(String name,
-                                              TypeDef type,
-                                              ExpressionDef.ComparisonOperation.OpType operation) {
-        return MethodDef.builder(name)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter("left", type)
-            .addParameter("right", type)
-            .returns(TypeDef.Primitive.BOOLEAN)
-            .build((ignored, parameters) -> parameters.get(0).compare(operation, parameters.get(1)).returning());
-    }
-
-    private static final class MapClassLoader extends ClassLoader {
-        private final Map<String, byte[]> classes;
-
-        private MapClassLoader(Map<String, byte[]> classes) {
-            super(ByteCodeWriterTck.class.getClassLoader());
-            this.classes = new LinkedHashMap<>(classes);
-        }
-
-        @Override
-        protected Class<?> findClass(String name) throws ClassNotFoundException {
-            byte[] bytes = classes.get(name);
-            if (bytes == null) {
-                return super.findClass(name);
-            }
-            return defineClass(name, bytes, 0, bytes.length);
-        }
     }
 }

@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.bytecode.expression;
 import io.micronaut.sourcegen.bytecode.MethodContext;
 import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.model.ExpressionDef;
+import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 final class MathUnaryExpressionWriter implements ExpressionWriter {
@@ -30,8 +31,17 @@ final class MathUnaryExpressionWriter implements ExpressionWriter {
 
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
-        ExpressionWriter.writeExpression(generatorAdapter, context, math.expression());
-        generatorAdapter.math(getMathOp(math.opType()), TypeUtils.getType(math.expression().type(), context.objectDef()));
+        // A wrapper is unboxed, negated as the primitive it holds and boxed again: the model types the negation as its
+        // operand
+        TypeDef type = math.type();
+        TypeDef operand = TypeDef.Primitive.unboxIfPossible(type);
+        ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, math.expression(), operand);
+        org.objectweb.asm.Type operandType = TypeUtils.getScopedType(operand, context);
+        generatorAdapter.math(getMathOp(math.opType()), operandType);
+        MathBinaryExpressionWriter.narrow(generatorAdapter, operandType);
+        if (!operand.equals(type)) {
+            CastExpressionWriter.cast(generatorAdapter, context, operand, type);
+        }
     }
 
     private static int getMathOp(ExpressionDef.MathUnaryOperation.OpType opType) {

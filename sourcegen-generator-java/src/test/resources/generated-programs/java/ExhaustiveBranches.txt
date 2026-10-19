@@ -1,0 +1,13 @@
+package test;
+
+import java.lang.String;
+
+public class ExhaustiveBranches {
+  public String call(boolean flag) {
+    if (flag) {
+      return "yes";
+    } else {
+      return "no";
+    }
+  }
+}

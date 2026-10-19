@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.core.annotation.Internal;
+import io.micronaut.sourcegen.bytecode.core.EnclosingScope;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -35,11 +36,20 @@ final class BridgeResolver {
     }
 
     static List<BridgeMethod> resolve(@Nullable ObjectDef objectDef, MethodDef methodDef) {
-        return io.micronaut.sourcegen.bytecode.core.BridgeResolver.resolve(objectDef, methodDef).stream()
-            .map(bridge -> new BridgeMethod(bridge.parameterTypes(), bridge.returnType()))
+        return resolve(objectDef, methodDef, EnclosingScope.NONE);
+    }
+
+    static List<BridgeMethod> resolve(@Nullable ObjectDef objectDef, MethodDef methodDef, EnclosingScope enclosingScope) {
+        return io.micronaut.sourcegen.bytecode.core.BridgeResolver.resolve(objectDef, methodDef, enclosingScope).stream()
+            .map(bridge -> new BridgeMethod(bridge.parameterTypes(), bridge.returnType(), bridge.throwTypes()))
             .toList();
     }
 
-    record BridgeMethod(List<TypeDef> parameterTypes, TypeDef returnType) {
+    /**
+     * @param parameterTypes The erased parameter types
+     * @param returnType     The erased return type
+     * @param throwTypes     The exceptions the bridge declares, or {@code null} for those of the method it delegates to
+     */
+    record BridgeMethod(List<TypeDef> parameterTypes, TypeDef returnType, @Nullable List<TypeDef> throwTypes) {
     }
 }

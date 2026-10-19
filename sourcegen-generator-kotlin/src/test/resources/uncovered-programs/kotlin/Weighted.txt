@@ -1,0 +1,25 @@
+package test
+
+import kotlin.Int
+
+public enum class Weighted {
+  LIGHT(1),
+  HEAVY(10),
+  ;
+
+  private final val weight: Int
+
+  private constructor(weight: Int) {
+    this.weight = weight
+  }
+
+  public fun weight(): Int {
+    return this.weight
+  }
+
+  public companion object {
+    public fun heavier(left: Weighted, right: Weighted): Weighted {
+      return if (left.weight() > right.weight()) left else right
+    }
+  }
+}

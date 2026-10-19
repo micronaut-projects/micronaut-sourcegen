@@ -1,8 +1,19 @@
 package io.micronaut.sourcegen
 
 import io.micronaut.core.annotation.Introspected
+import io.micronaut.sourcegen.KotlinCompileAssertions.compile
 import io.micronaut.sourcegen.model.*
+import io.micronaut.sourcegen.model.ClassDef
+import io.micronaut.sourcegen.model.ClassTypeDef
+import io.micronaut.sourcegen.model.ExpressionDef
+import io.micronaut.sourcegen.model.FieldDef
+import io.micronaut.sourcegen.model.MethodDef
+import io.micronaut.sourcegen.model.StatementDef
+import io.micronaut.sourcegen.model.TypeDef
+import javax.lang.model.element.Modifier
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertArrayEquals
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.IOException
 import java.io.StringWriter
@@ -20,7 +31,7 @@ class AnnotationTest {
 
         val expected = """
         @Introspected
-        public class SimpleClass
+        public open class SimpleClass
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())
     }
@@ -39,9 +50,9 @@ class AnnotationTest {
 
         val expected = """
         @Introspected
-        public class SimpleClass {
+        public open class SimpleClass {
           @Pattern(regex = "hii")
-          public var str: String
+          public var str: String? = null
         }
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())
@@ -60,7 +71,7 @@ class AnnotationTest {
         @Simple(value = [1,
         2,
         3])
-        public class SimpleClass
+        public open class SimpleClass
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())
     }
@@ -78,9 +89,40 @@ class AnnotationTest {
         @JsonSubTypes(value = [com.fasterxml.jackson.`annotation`.JsonSubTypes.Type(value = String::class, name = "Cat"),
         com.fasterxml.jackson.`annotation`.JsonSubTypes.Type(value = String::class, name = "Dog"),
         com.fasterxml.jackson.`annotation`.JsonSubTypes.Type(value = String::class, name = "Fish")])
-        public class SimpleClass
+        public open class SimpleClass
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())
+    }
+
+    @Test
+    fun staticFinalConstantIsAnAnnotationArgument() {
+        val nameField = FieldDef.builder("NAME", String::class.java).addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .initializer(ExpressionDef.constant("configured")).build()
+        val names = ClassDef.builder("test.Names").addModifiers(Modifier.PUBLIC).addField(nameField).build()
+        val def = ClassDef.builder("test.AnnotatedWithConstant").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).returns(TypeDef.VOID)
+                .addAnnotation(io.micronaut.sourcegen.model.AnnotationDef.builder(io.micronaut.context.annotation.Value::class.java)
+                    .addMember("value", names.asTypeDef().getStaticField(nameField)).build())
+                .build { _, _ -> StatementDef.multi() })
+            .build()
+        compile(names, def).use { loader ->
+            val method = loader.loadClass(def.name).getMethod("call")
+            assertEquals("configured", method.getAnnotation(io.micronaut.context.annotation.Value::class.java).value)
+        }
+    }
+
+    @Test
+    fun arrayAnnotationMemberKeepsAnotherMemberWhoseValueNamesIt() {
+        val requires = io.micronaut.sourcegen.model.AnnotationDef.builder(io.micronaut.context.annotation.Requires::class.java)
+            .addMember("property", "env")
+            .addMember("env", listOf<Any>("a", "b"))
+            .build()
+        val def = ClassDef.builder("test.RequiresBoth").addModifiers(Modifier.PUBLIC).addAnnotation(requires).build()
+        compile(def).use { loader ->
+            val annotation = loader.loadClass(def.name).getAnnotation(io.micronaut.context.annotation.Requires::class.java)
+            assertEquals("env", annotation.property)
+            assertArrayEquals(arrayOf("a", "b"), annotation.env)
+        }
     }
 
     private fun getSimpleAnn(): AnnotationDef {

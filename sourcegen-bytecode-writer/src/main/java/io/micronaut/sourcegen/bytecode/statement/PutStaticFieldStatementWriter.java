@@ -39,9 +39,9 @@ final class PutStaticFieldStatementWriter implements StatementWriter {
         TypeDef declaringType = field.declaringType();
         ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, putField.expression(), fieldType);
         generatorAdapter.putField(
-            TypeUtils.getType(declaringType, context.objectDef()),
+            TypeUtils.getScopedType(declaringType, context),
             field.name(),
-            TypeUtils.getType(fieldType, context.objectDef())
+            TypeUtils.getType(fieldType, io.micronaut.sourcegen.bytecode.core.TypeUtils.fieldScope(declaringType, context.objectDef(), field.name()), context.enclosingScope())
         );
     }
 }

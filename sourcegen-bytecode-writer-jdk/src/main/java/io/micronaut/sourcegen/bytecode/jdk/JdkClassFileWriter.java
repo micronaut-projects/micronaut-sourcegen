@@ -18,6 +18,9 @@ package io.micronaut.sourcegen.bytecode.jdk;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.sourcegen.bytecode.core.AnnotationTargetUtils;
 import io.micronaut.sourcegen.bytecode.core.BridgeResolver;
+import io.micronaut.sourcegen.bytecode.core.EnclosingScope;
+import io.micronaut.sourcegen.model.Completion;
+import io.micronaut.sourcegen.bytecode.core.ConstructorBody;
 import io.micronaut.sourcegen.bytecode.core.EnumGenUtils;
 import io.micronaut.sourcegen.bytecode.core.ModifierUtils;
 import io.micronaut.sourcegen.bytecode.core.SignatureUtils;
@@ -27,7 +30,6 @@ import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
-import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
@@ -37,7 +39,7 @@ import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
-import io.micronaut.sourcegen.model.VariableDef;
+import io.micronaut.sourcegen.model.TypeHierarchy;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.classfile.Annotation;
@@ -91,6 +93,11 @@ final class JdkClassFileWriter {
     @Nullable
     private final CompilationTypes compilationTypes;
     private final List<MethodDef> syntheticMethods = new ArrayList<>();
+    /**
+     * The variables of the enclosing class in scope of the class written: {@link EnclosingScope#NONE} but for the
+     * writer {@link #write(ObjectDef, ClassTypeDef)} creates for an inner class.
+     */
+    private final EnclosingScope enclosingScope;
 
     JdkClassFileWriter(boolean verify) {
         this(verify, null);
@@ -98,6 +105,13 @@ final class JdkClassFileWriter {
 
     JdkClassFileWriter(boolean verify,
                        @Nullable CompilationTypes compilationTypes) {
+        this(verify, compilationTypes, EnclosingScope.NONE);
+    }
+
+    private JdkClassFileWriter(boolean verify,
+                               @Nullable CompilationTypes compilationTypes,
+                               EnclosingScope enclosingScope) {
+        this.enclosingScope = enclosingScope;
         this.verify = verify;
         this.compilationTypes = compilationTypes;
     }
@@ -108,6 +122,12 @@ final class JdkClassFileWriter {
         if (!supported(objectDef)) {
             return Optional.empty();
         }
+        // An inner class has the variables of its enclosing class in scope
+        return new JdkClassFileWriter(verify, compilationTypes, EnclosingScope.of(objectDef, outerType))
+            .writeSupported(objectDef, outerType);
+    }
+
+    private Optional<byte[]> writeSupported(ObjectDef objectDef, @Nullable ClassTypeDef outerType) {
         ClassDesc owner = classDesc(objectDef.asTypeDef(), objectDef);
         ClassFile classFile = ClassFile.of(
             ClassFile.StackMapsOption.GENERATE_STACK_MAPS,
@@ -153,11 +173,7 @@ final class JdkClassFileWriter {
      */
     private void writeAnnotationObject(ClassBuilder builder, AnnotationObjectDef annotationDef, ClassDesc owner,
                                        @Nullable ClassTypeDef outerType) {
-        int flags = ModifierUtils.ACC_ANNOTATION | ModifierUtils.ACC_INTERFACE | ModifierUtils.ACC_ABSTRACT
-            | ModifierUtils.classFlags(annotationDef.getModifiers(), outerType);
-        if (annotationDef.isSynthetic()) {
-            flags |= ModifierUtils.ACC_SYNTHETIC;
-        }
+        int flags = ModifierUtils.classFileFlags(annotationDef, outerType);
         builder.withVersion(ClassFile.JAVA_17_VERSION, 0)
             .withFlags(flags)
             .withSuperclass(ConstantDescs.CD_Object)
@@ -197,7 +213,7 @@ final class JdkClassFileWriter {
             ? member.getAnnotationDefaultValue()
             : member.getDefaultValue();
         builder.withMethod(accessor.getName(),
-            MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(annotationDef, accessor)),
+            MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(annotationDef, accessor, enclosingScope)),
             ModifierUtils.ACC_PUBLIC | ModifierUtils.ACC_ABSTRACT,
             methodBuilder -> {
                 addMethodMetadata(methodBuilder, annotationDef, accessor);
@@ -215,8 +231,8 @@ final class JdkClassFileWriter {
      * The outer and the member both write the entry describing the member, and the two agree by
      * sharing {@link ModifierUtils#innerClassFlags}.
      */
-    private static void writeOuterInner(ClassBuilder builder, ObjectDef objectDef, ClassDesc owner,
-                                        @Nullable ClassTypeDef outerType) {
+    private void writeOuterInner(ClassBuilder builder, ObjectDef objectDef, ClassDesc owner,
+                                 @Nullable ClassTypeDef outerType) {
         List<InnerClassInfo> entries = new ArrayList<>();
         if (outerType != null) {
             ClassDesc outer = classDesc(outerType, objectDef);
@@ -241,11 +257,7 @@ final class JdkClassFileWriter {
 
     private void writeInterface(ClassBuilder builder, InterfaceDef interfaceDef, ClassDesc owner,
                                 @Nullable ClassTypeDef outerType) {
-        int flags = ModifierUtils.ACC_INTERFACE | ModifierUtils.ACC_ABSTRACT
-            | ModifierUtils.classFlags(interfaceDef.getModifiers(), outerType);
-        if (interfaceDef.isSynthetic()) {
-            flags |= ModifierUtils.ACC_SYNTHETIC;
-        }
+        int flags = ModifierUtils.classFileFlags(interfaceDef, outerType);
         builder.withVersion(ClassFile.JAVA_17_VERSION, 0)
             .withFlags(flags)
             .withSuperclass(ConstantDescs.CD_Object)
@@ -253,7 +265,8 @@ final class JdkClassFileWriter {
                 .map(type -> classDesc(type, interfaceDef)).toList());
         writeOuterInner(builder, interfaceDef, owner, outerType);
         addAnnotations(builder, interfaceDef.getAnnotations());
-        addSignature(builder, SignatureUtils.getInterfaceSignature(interfaceDef));
+        addSignature(builder, SignatureUtils.getInterfaceSignature(interfaceDef, enclosingScope));
+        addBoundAnnotations(builder, interfaceDef.getTypeVariables(), null, interfaceDef.getSuperinterfaces());
         for (MethodDef method : interfaceDef.getMethods()) {
             if (isAbstract(interfaceDef, method)) {
                 writeAbstractMethod(builder, interfaceDef, method);
@@ -302,10 +315,7 @@ final class JdkClassFileWriter {
     }
 
     private void writeRecord(ClassBuilder builder, RecordDef recordDef, ClassDesc owner, @Nullable ClassTypeDef outerType) {
-        int flags = ModifierUtils.ACC_FINAL | ModifierUtils.classFlags(recordDef.getModifiers(), outerType);
-        if (recordDef.isSynthetic()) {
-            flags |= ModifierUtils.ACC_SYNTHETIC;
-        }
+        int flags = ModifierUtils.classFileFlags(recordDef, outerType);
         builder.withVersion(ClassFile.JAVA_17_VERSION, 0)
             .withFlags(flags)
             .withSuperclass(ClassDesc.of("java.lang.Record"))
@@ -313,7 +323,8 @@ final class JdkClassFileWriter {
                 .map(type -> classDesc(type, recordDef)).toList());
         writeOuterInner(builder, recordDef, owner, outerType);
         addAnnotations(builder, recordDef.getAnnotations());
-        addSignature(builder, SignatureUtils.getRecordSignature(recordDef));
+        addSignature(builder, SignatureUtils.getRecordSignature(recordDef, enclosingScope));
+        addBoundAnnotations(builder, recordDef.getTypeVariables(), null, recordDef.getSuperinterfaces());
 
         List<RecordComponentInfo> components = new ArrayList<>();
         for (PropertyDef property : recordDef.getProperties()) {
@@ -333,7 +344,7 @@ final class JdkClassFileWriter {
             if (!invisibleComponent.isEmpty()) {
                 attributes.add(RuntimeInvisibleAnnotationsAttribute.of(invisibleComponent));
             }
-            String signature = SignatureUtils.getFieldSignature(recordDef, field);
+            String signature = SignatureUtils.getFieldSignature(recordDef, field, enclosingScope);
             if (signature != null) {
                 attributes.add(SignatureAttribute.of(builder.constantPool().utf8Entry(signature)));
             }
@@ -353,7 +364,7 @@ final class JdkClassFileWriter {
         builder.with(RecordAttribute.of(components));
 
         List<TypeDef> componentTypes = recordDef.getProperties().stream().map(PropertyDef::getType).toList();
-        if (!hasDeclared(recordDef, MethodDef.CONSTRUCTOR, componentTypes)) {
+        if (!TypeUtils.declaresMethod(recordDef, MethodDef.CONSTRUCTOR, componentTypes, enclosingScope)) {
             writeRecordConstructor(builder, recordDef, owner);
         }
         for (MethodDef method : recordDef.getMethods()) {
@@ -362,7 +373,7 @@ final class JdkClassFileWriter {
             }
         }
         for (PropertyDef property : recordDef.getProperties()) {
-            if (!hasDeclared(recordDef, property.getName(), List.of())) {
+            if (!TypeUtils.declaresMethod(recordDef, property.getName(), List.of(), enclosingScope)) {
                 FieldDef field = FieldDef.builder(property.getName(), property.getType())
                     .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
                     .build();
@@ -396,7 +407,7 @@ final class JdkClassFileWriter {
             properties.stream().map(property -> classDesc(property.getType(), recordDef)).toList()
         );
         builder.withMethod(MethodDef.CONSTRUCTOR, type,
-            constructorFlags(recordDef), methodBuilder -> {
+            ModifierUtils.accessFlags(recordDef.getModifiers()), methodBuilder -> {
                 MethodDef.MethodDefBuilder canonicalBuilder = MethodDef.constructor();
                 properties.forEach(property -> canonicalBuilder.addParameter(ParameterDef.builder(
                     property.getName(), property.getType()
@@ -411,7 +422,7 @@ final class JdkClassFileWriter {
                         FieldDef field = FieldDef.builder(property.getName(), property.getType())
                             .addModifiers(Modifier.PRIVATE, Modifier.FINAL).build();
                         code.aload(0).loadLocal(
-                            TypeKind.fromDescriptor(TypeUtils.getDescriptor(property.getType(), recordDef)).asLoadable(),
+                            TypeKind.fromDescriptor(TypeUtils.getDescriptor(property.getType(), recordDef, enclosingScope)).asLoadable(),
                             code.parameterSlot(i)
                         ).putfield(owner, field.getName(), classDesc(field.getType(), recordDef));
                     }
@@ -438,7 +449,7 @@ final class JdkClassFileWriter {
             MethodTypeDesc.of(ConstantDescs.CD_String, owner), bootstrap, names, fieldHandles);
         writeRecordObjectMethod(builder, recordDef, owner, "hashCode", MethodTypeDesc.of(ConstantDescs.CD_int),
             MethodTypeDesc.of(ConstantDescs.CD_int, owner), bootstrap, names, fieldHandles);
-        if (!hasDeclared(recordDef, "equals", List.of(TypeDef.OBJECT))) {
+        if (!TypeUtils.declaresMethod(recordDef, "equals", List.of(TypeDef.OBJECT), enclosingScope)) {
             writeRecordObjectMethod(builder, recordDef, owner, "equals",
                 MethodTypeDesc.of(ConstantDescs.CD_boolean, ConstantDescs.CD_Object),
                 MethodTypeDesc.of(ConstantDescs.CD_boolean, owner, ConstantDescs.CD_Object),
@@ -450,7 +461,7 @@ final class JdkClassFileWriter {
                                          MethodTypeDesc methodType, MethodTypeDesc callSiteType,
                                          DirectMethodHandleDesc bootstrap, String names,
                                          List<? extends MethodHandleDesc> fieldHandles) {
-        if (hasDeclared(recordDef, name, name.equals("equals") ? List.of(TypeDef.OBJECT) : List.of())) {
+        if (TypeUtils.declaresMethod(recordDef, name, name.equals("equals") ? List.of(TypeDef.OBJECT) : List.of(), enclosingScope)) {
             return;
         }
         List<java.lang.constant.ConstantDesc> arguments = new ArrayList<>();
@@ -470,13 +481,7 @@ final class JdkClassFileWriter {
     }
 
     private void writeClass(ClassBuilder builder, ClassDef classDef, ClassDesc owner, @Nullable ClassTypeDef outerType) {
-        int flags = ModifierUtils.classFlags(classDef.getModifiers(), outerType);
-        if (classDef.isSynthetic()) {
-            flags |= ModifierUtils.ACC_SYNTHETIC;
-        }
-        if (EnumGenUtils.isEnum(classDef)) {
-            flags |= ModifierUtils.ACC_ENUM;
-        }
+        int flags = ModifierUtils.classFileFlags(classDef, outerType);
         builder.withVersion(ClassFile.JAVA_17_VERSION, 0)
             .withFlags(flags);
         ClassTypeDef superclass = classDef.getSuperclass();
@@ -486,6 +491,7 @@ final class JdkClassFileWriter {
         writeOuterInner(builder, classDef, owner, outerType);
         addAnnotations(builder, classDef.getAnnotations());
         addSignature(builder, classSignature(classDef));
+        addBoundAnnotations(builder, classDef.getTypeVariables(), classDef.getSuperclass(), classDef.getSuperinterfaces());
         for (FieldDef field : classDef.getFields()) {
             writeField(builder, classDef, field);
         }
@@ -528,6 +534,14 @@ final class JdkClassFileWriter {
                 writeBridgeMethods(builder, classDef, method, owner);
             }
         }
+        // An implementation inherited from a superclass satisfies an added interface through a bridge of this class
+        for (BridgeResolver.Bridge bridge : BridgeResolver.inheritedBridgesOf(classDef, enclosingScope)) {
+            writeMethod(builder, classDef, bridge.method(), owner, bridge.flags());
+        }
+        // A public method inherited from a superclass that is not public is declared again, as javac does
+        for (BridgeResolver.Bridge bridge : BridgeResolver.visibilityBridgesOf(classDef, enclosingScope)) {
+            writeMethod(builder, classDef, bridge.method(), owner, bridge.flags());
+        }
         // Lambda expressions are represented by invokedynamic call sites which point at
         // private static implementation methods.  Emit them after the user methods so that
         // lambdas created while writing a method can enqueue further nested lambdas.
@@ -541,10 +555,12 @@ final class JdkClassFileWriter {
         int flags = classDef.getModifiers().contains(javax.lang.model.element.Modifier.PUBLIC)
             ? ModifierUtils.ACC_PUBLIC : 0;
         builder.withMethod(MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void, flags, methodBuilder ->
-            JdkMethodWriter.withCode(methodBuilder, classDef, MethodDef.constructor().build(), owner, (code, writer) -> {
+            JdkMethodWriter.withCode(methodBuilder, classDef, MethodDef.constructor().build(), owner, enclosingScope, (code, writer) -> {
                 code.aload(0).invokespecial(superclass == null ? ConstantDescs.CD_Object : classDesc(superclass, classDef),
                     MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void);
-                writeInstanceInitializers(writer, classDef);
+                for (FieldDef field : ConstructorBody.initializedFields(classDef)) {
+                    writer.writeInstanceInitializer(classDef, field, field.getInitializer().orElseThrow());
+                }
                 syntheticMethods.addAll(writer.lambdaMethods());
                 writer.writeLocalVariables();
                 code.return_();
@@ -553,41 +569,26 @@ final class JdkClassFileWriter {
 
     private void writeConstructor(ClassBuilder builder, ObjectDef objectDef, MethodDef method, ClassDesc owner,
                                   ClassDesc superclass) {
-        MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(objectDef, method));
-        builder.withMethod(method.getName(), type, methodFlags(method), methodBuilder -> {
+        MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(objectDef, method, enclosingScope));
+        builder.withMethod(method.getName(), type, ModifierUtils.methodFlags(method), methodBuilder -> {
             addMethodMetadata(methodBuilder, objectDef, method);
             addTypeAnnotations(methodBuilder, method);
-            JdkMethodWriter.withCode(methodBuilder, objectDef, method, owner, (code, writer) -> {
-                // Mirror the ASM writer. Field initializers run straight after the constructor
-                // call, so the call is hoisted to the front only when there are any; otherwise the
-                // statements stay as they are, because the call may use locals defined before it.
-                // A constructor delegating to this(...) gets no initializers: they would run twice.
-                List<StatementDef> statements = method.getStatements();
-                Optional<StatementDef> constructorCall = statements.stream()
-                    .filter(JdkClassFileWriter::isConstructorInvocation)
-                    .findFirst();
-                // Only a call on `this` delegates; the deprecated form of a super call is an
-                // instance invocation too, and its constructor still runs the field initializers
-                boolean delegatesToThis = constructorCall
-                    .map(statement -> statement instanceof ExpressionDef.InvokeInstanceMethod call
-                        && !(call.instance() instanceof VariableDef.Super))
-                    .orElse(false);
-                ClassDef classDef = !delegatesToThis && objectDef instanceof ClassDef declaring ? declaring : null;
-                boolean initializers = classDef != null && hasInstanceInitializers(classDef);
-                List<StatementDef> body = statements;
-                if (constructorCall.isEmpty()) {
+            JdkMethodWriter.withCode(methodBuilder, objectDef, method, owner, enclosingScope, (code, writer) -> {
+                // The constructor call first, then the field initializers - which a delegation to this(...) has run
+                ConstructorBody constructorBody = ConstructorBody.of(objectDef, method.getStatements(),
+                    ConstructorBody.InitializersAfterThis.SKIP);
+                if (constructorBody.implicitSuper()) {
                     code.aload(0).invokespecial(superclass, MethodDef.CONSTRUCTOR, ConstantDescs.MTD_void);
-                } else if (initializers) {
-                    writer.writeStatements(List.of(constructorCall.get()));
-                    body = new ArrayList<>(statements);
-                    body.remove(constructorCall.get());
+                } else if (constructorBody.hoistedCall() != null) {
+                    writer.writeStatements(List.of(constructorBody.hoistedCall()));
                 }
-                if (classDef != null) {
-                    writeInstanceInitializers(writer, classDef);
+                for (FieldDef field : constructorBody.initializedFields()) {
+                    writer.writeInstanceInitializer((ClassDef) objectDef, field, field.getInitializer().orElseThrow());
                 }
+                List<StatementDef> body = constructorBody.statements();
                 writer.writeStatements(body);
                 syntheticMethods.addAll(writer.lambdaMethods());
-                if (JdkMethodWriter.canCompleteNormally(StatementDef.multi(body))) {
+                if (Completion.BYTECODE.canCompleteNormally(StatementDef.multi(body))) {
                     code.return_();
                 }
                 writer.writeLocalVariables();
@@ -601,18 +602,18 @@ final class JdkClassFileWriter {
 
     private void writeMethod(ClassBuilder builder, ObjectDef objectDef, MethodDef method, ClassDesc owner,
                              int extraFlags) {
-        MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(objectDef, method));
-        int flags = methodFlags(method) | extraFlags;
+        MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(objectDef, method, enclosingScope));
+        int flags = ModifierUtils.methodFlags(method) | extraFlags;
         builder.withMethod(method.getName(), type, flags, methodBuilder -> {
             addMethodMetadata(methodBuilder, objectDef, method, (extraFlags & ModifierUtils.ACC_BRIDGE) == 0);
             addTypeAnnotations(methodBuilder, method);
-            JdkMethodWriter.withCode(methodBuilder, objectDef, method, owner, (code, writer) -> {
+            JdkMethodWriter.withCode(methodBuilder, objectDef, method, owner, enclosingScope, (code, writer) -> {
                 if (method.getStatements().isEmpty()) {
                     code.return_();
                 } else {
                     writer.writeStatements(method.getStatements());
                     syntheticMethods.addAll(writer.lambdaMethods());
-                    if (JdkMethodWriter.canCompleteNormally(StatementDef.multi(method.getStatements()))) {
+                    if (Completion.BYTECODE.canCompleteNormally(StatementDef.multi(method.getStatements()))) {
                         code.return_();
                     }
                     writer.writeLocalVariables();
@@ -626,8 +627,8 @@ final class JdkClassFileWriter {
     }
 
     private void writeAbstractMethod(ClassBuilder builder, ObjectDef objectDef, MethodDef method, int extraFlags) {
-        MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(objectDef, method));
-        int flags = methodFlags(method) | extraFlags;
+        MethodTypeDesc type = MethodTypeDesc.ofDescriptor(TypeUtils.getMethodDescriptor(objectDef, method, enclosingScope));
+        int flags = ModifierUtils.methodFlags(method) | extraFlags;
         if (!method.getModifiers().contains(Modifier.NATIVE)) {
             // An interface method without a body is abstract whether or not the model says so
             flags |= ModifierUtils.ACC_ABSTRACT;
@@ -638,39 +639,12 @@ final class JdkClassFileWriter {
         });
     }
 
-    private static int methodFlags(MethodDef method) {
-        int flags = ModifierUtils.memberFlags(method.getModifiers());
-        if (method.isSynthetic()) {
-            flags |= ModifierUtils.ACC_SYNTHETIC;
-        }
-        return flags;
-    }
-
-    private static int constructorFlags(RecordDef recordDef) {
-        int flags = 0;
-        if (recordDef.getModifiers().contains(Modifier.PUBLIC)) {
-            flags |= ModifierUtils.ACC_PUBLIC;
-        } else if (recordDef.getModifiers().contains(Modifier.PROTECTED)) {
-            flags |= ModifierUtils.ACC_PROTECTED;
-        } else if (recordDef.getModifiers().contains(Modifier.PRIVATE)) {
-            flags |= ModifierUtils.ACC_PRIVATE;
-        }
-        return flags;
-    }
-
     private void writeField(ClassBuilder builder, ObjectDef objectDef, FieldDef field) {
         builder.withField(field.getName(), classDesc(field.getType(), objectDef), fieldBuilder -> {
-            int flags = ModifierUtils.memberFlags(field.getModifiers());
-            if (field.isSynthetic()) {
-                flags |= ModifierUtils.ACC_SYNTHETIC;
-            }
-            if (EnumGenUtils.isEnumField(objectDef, field)) {
-                flags |= ModifierUtils.ACC_ENUM;
-            }
-            fieldBuilder.withFlags(flags);
+            fieldBuilder.withFlags(ModifierUtils.fieldFlags(objectDef, field));
             addAnnotations(fieldBuilder, declarationAnnotations(field.getAnnotations(), ElementType.FIELD));
             addTypeAnnotations(fieldBuilder, annotatedType(field.getType(), field.getAnnotations()));
-            addSignature(fieldBuilder, SignatureUtils.getFieldSignature(objectDef, field));
+            addSignature(fieldBuilder, SignatureUtils.getFieldSignature(objectDef, field, enclosingScope));
         });
     }
 
@@ -699,35 +673,22 @@ final class JdkClassFileWriter {
         writeMethod(builder, classDef, setter, owner);
     }
 
-    private static boolean hasInstanceInitializers(ClassDef classDef) {
-        return classDef.getFields().stream()
-            .anyMatch(field -> !field.getModifiers().contains(Modifier.STATIC) && field.getInitializer().isPresent());
-    }
-
-    private static void writeInstanceInitializers(JdkMethodWriter writer, ClassDef classDef) {
-        for (FieldDef field : classDef.getFields()) {
-            if (!field.getModifiers().contains(Modifier.STATIC)) {
-                field.getInitializer().ifPresent(initializer -> writer.writeInstanceInitializer(classDef, field, initializer));
-            }
-        }
-    }
-
     @Nullable
-    private static String classSignature(ClassDef classDef) {
+    private String classSignature(ClassDef classDef) {
         if (!classDef.getTypeVariables().isEmpty()
             || classDef.getSuperclass() instanceof ClassTypeDef.Parameterized
             || classDef.getSuperinterfaces().stream().anyMatch(type -> type instanceof ClassTypeDef.Parameterized)) {
-            return SignatureUtils.getClassSignature(classDef);
+            return SignatureUtils.getClassSignature(classDef, enclosingScope);
         }
         return null;
     }
 
-    private static void addMethodMetadata(MethodBuilder builder, ObjectDef objectDef, MethodDef method) {
+    private void addMethodMetadata(MethodBuilder builder, ObjectDef objectDef, MethodDef method) {
         addMethodMetadata(builder, objectDef, method, true);
     }
 
-    private static void addMethodMetadata(MethodBuilder builder, ObjectDef objectDef, MethodDef method,
-                                          boolean addGenericSignature) {
+    private void addMethodMetadata(MethodBuilder builder, ObjectDef objectDef, MethodDef method,
+                                   boolean addGenericSignature) {
         addAnnotations(builder, declarationAnnotations(method.getAnnotations(),
             method.isConstructor() ? ElementType.CONSTRUCTOR : ElementType.METHOD));
         if (!method.getParameters().isEmpty()) {
@@ -738,10 +699,10 @@ final class JdkClassFileWriter {
         addParameterAnnotations(builder, method, RetentionPolicy.RUNTIME);
         addParameterAnnotations(builder, method, RetentionPolicy.CLASS);
         if (!method.getThrowTypes().isEmpty()) {
-            addExceptions(builder, method.getThrowTypes(), objectDef);
+            addExceptions(builder, method, objectDef);
         }
         if (addGenericSignature) {
-            addSignature(builder, SignatureUtils.getMethodSignature(objectDef, method));
+            addSignature(builder, SignatureUtils.getMethodSignature(objectDef, method, enclosingScope));
         }
     }
 
@@ -765,8 +726,10 @@ final class JdkClassFileWriter {
         }
     }
 
-    private static void addExceptions(MethodBuilder builder, List<TypeDef> types, ObjectDef objectDef) {
-        builder.with(ExceptionsAttribute.ofSymbols(types.stream().map(type -> classDesc(type, objectDef)).toList()));
+    private void addExceptions(MethodBuilder builder, MethodDef method, ObjectDef objectDef) {
+        // A thrown variable of the method erases to its bound
+        builder.with(ExceptionsAttribute.ofSymbols(method.getThrowTypes().stream()
+            .map(type -> ClassDesc.ofDescriptor(TypeUtils.getDescriptor(type, objectDef, method, enclosingScope))).toList()));
     }
 
     private static void addTypeAnnotations(MethodBuilder builder, MethodDef method) {
@@ -810,7 +773,49 @@ final class JdkClassFileWriter {
                 retention
             ));
         }
+        // `throws @Marker E`: an annotation of a thrown type
+        for (int i = 0; i < method.getThrowTypes().size(); i++) {
+            annotations.addAll(typeAnnotations(method.getThrowTypes().get(i), TypeAnnotation.TargetInfo.ofThrows(i), retention));
+        }
+        // `<T extends @Marker Number>`: an annotation of a bound of a type parameter
+        List<TypeDef.TypeVariable> variables = method.getTypeVariables();
+        for (int i = 0; i < variables.size(); i++) {
+            List<TypeDef> bounds = variables.get(i).bounds();
+            for (int j = 0; j < bounds.size(); j++) {
+                annotations.addAll(typeAnnotations(bounds.get(j),
+                    TypeAnnotation.TargetInfo.ofMethodTypeParameterBound(i, SignatureUtils.boundIndex(bounds, j)), retention));
+            }
+        }
         return annotations;
+    }
+
+    /**
+     * Writes the annotations of the bounds of a class's type parameters - {@code T extends @Marker Number} - and of
+     * its supertypes - {@code implements @Marker Supplier<@Marker T>}.
+     */
+    private static void addBoundAnnotations(ClassBuilder builder, List<TypeDef.TypeVariable> variables,
+                                            @Nullable TypeDef superclass, List<TypeDef> superinterfaces) {
+        for (RetentionPolicy retention : List.of(RetentionPolicy.RUNTIME, RetentionPolicy.CLASS)) {
+            List<TypeAnnotation> annotations = new ArrayList<>();
+            if (superclass != null) {
+                // The superclass is supertype 65535, the interfaces are indexed by their order
+                annotations.addAll(typeAnnotations(superclass, TypeAnnotation.TargetInfo.ofClassExtends(65535), retention));
+            }
+            for (int i = 0; i < superinterfaces.size(); i++) {
+                annotations.addAll(typeAnnotations(superinterfaces.get(i), TypeAnnotation.TargetInfo.ofClassExtends(i), retention));
+            }
+            for (int i = 0; i < variables.size(); i++) {
+                List<TypeDef> bounds = variables.get(i).bounds();
+                for (int j = 0; j < bounds.size(); j++) {
+                    annotations.addAll(typeAnnotations(bounds.get(j),
+                        TypeAnnotation.TargetInfo.ofClassTypeParameterBound(i, SignatureUtils.boundIndex(bounds, j)), retention));
+                }
+            }
+            if (!annotations.isEmpty()) {
+                builder.with(retention == RetentionPolicy.RUNTIME ? RuntimeVisibleTypeAnnotationsAttribute.of(annotations)
+                    : RuntimeInvisibleTypeAnnotationsAttribute.of(annotations));
+            }
+        }
     }
 
     private static List<TypeAnnotation> typeAnnotations(TypeDef type, TypeAnnotation.TargetInfo targetInfo,
@@ -830,13 +835,15 @@ final class JdkClassFileWriter {
                                                List<TypeAnnotation.TypePathComponent> path,
                                                List<TypeAnnotation> result,
                                                RetentionPolicy retention) {
+        // A member of an enclosing type, `Outer<A>.Inner<B>`, is reached through a nested type step per level
+        List<TypeAnnotation.TypePathComponent> nested = appendPath(path, TypeAnnotation.TypePathComponent.INNER_TYPE, TypeUtils.memberDepth(type));
         switch (type) {
             case TypeDef.AnnotatedTypeDef annotated -> {
-                addTypeAnnotations(annotated.annotations(), targetInfo, path, result, retention);
+                addTypeAnnotations(annotated.annotations(), targetInfo, nested, result, retention);
                 collectTypeAnnotations(annotated.typeDef(), targetInfo, path, result, retention);
             }
             case ClassTypeDef.AnnotatedClassTypeDef annotated -> {
-                addTypeAnnotations(annotated.annotations(), targetInfo, path, result, retention);
+                addTypeAnnotations(annotated.annotations(), targetInfo, nested, result, retention);
                 collectTypeAnnotations(annotated.typeDef(), targetInfo, path, result, retention);
             }
             case TypeDef.Array array -> collectTypeAnnotations(array.componentType(), targetInfo,
@@ -845,12 +852,21 @@ final class JdkClassFileWriter {
                 collectTypeAnnotations(parameterized.rawType(), targetInfo, path, result, retention);
                 for (int i = 0; i < parameterized.typeArguments().size(); i++) {
                     collectTypeAnnotations(parameterized.typeArguments().get(i), targetInfo,
-                        appendPath(path, TypeAnnotation.TypePathComponent.of(
+                        appendPath(nested, TypeAnnotation.TypePathComponent.of(
                             TypeAnnotation.TypePathComponent.Kind.TYPE_ARGUMENT, i
                         ), 1), result, retention);
                 }
             }
-            case ClassTypeDef _, TypeDef.Primitive _, TypeDef.TypeVariable _, TypeDef.Wildcard _ -> {
+            // The enclosing type and its arguments are reached from where the member is
+            case ClassTypeDef memberType when TypeHierarchy.enclosingOf(memberType) instanceof ClassTypeDef enclosing ->
+                collectTypeAnnotations(enclosing, targetInfo, path, result, retention);
+            case TypeDef.Wildcard wildcard -> {
+                // `? extends @Marker T`: an annotation of a bound is reached through the wildcard
+                List<TypeAnnotation.TypePathComponent> bound = appendPath(path, TypeAnnotation.TypePathComponent.WILDCARD, 1);
+                wildcard.upperBounds().forEach(upper -> collectTypeAnnotations(upper, targetInfo, bound, result, retention));
+                wildcard.lowerBounds().forEach(lower -> collectTypeAnnotations(lower, targetInfo, bound, result, retention));
+            }
+            case ClassTypeDef _, TypeDef.Primitive _, TypeDef.TypeVariable _ -> {
             }
         }
     }
@@ -921,11 +937,6 @@ final class JdkClassFileWriter {
 
     private static TypeDef annotatedType(TypeDef type, List<AnnotationDef> annotations) {
         return AnnotationTargetUtils.annotatedType(type, annotations, JdkClassFileWriter.class.getClassLoader());
-    }
-
-    private static boolean isConstructorInvocation(StatementDef statement) {
-        return statement instanceof StatementDef.InvokeSuperConstructor
-            || (statement instanceof ExpressionDef.InvokeInstanceMethod call && call.method().isConstructor());
     }
 
     private static void addAnnotations(ClassBuilder builder, List<AnnotationDef> annotations) {
@@ -1034,55 +1045,13 @@ final class JdkClassFileWriter {
         return true;
     }
 
-    private static boolean hasDeclared(ObjectDef objectDef, String name, List<TypeDef> parameterTypes) {
-        List<String> descriptors = parameterTypes.stream()
-            .map(type -> TypeUtils.getDescriptor(type, objectDef)).toList();
-        return objectDef.getMethods().stream()
-            .filter(method -> method.getName().equals(name))
-            .anyMatch(method -> method.getParameters().stream()
-                .map(parameter -> TypeUtils.getDescriptor(parameter.getType(), objectDef))
-                .toList().equals(descriptors));
-    }
-
     private void writeBridgeMethods(ClassBuilder builder, ObjectDef objectDef, MethodDef method, ClassDesc owner) {
-        List<BridgeResolver.BridgeMethod> bridges = BridgeResolver.resolve(objectDef, method);
-        for (BridgeResolver.BridgeMethod bridge : bridges) {
-            MethodDef.MethodDefBuilder bridgeBuilder = MethodDef.builder(method.getName())
-                .addModifiers(bridgeModifiers(method))
-                .returns(bridge.returnType())
-                .addAnnotations(method.getAnnotations())
-                .addThrows(method.getThrowTypes());
-            for (int i = 0; i < method.getParameters().size(); i++) {
-                var parameter = method.getParameters().get(i);
-                bridgeBuilder.addParameter(io.micronaut.sourcegen.model.ParameterDef.builder(
-                    parameter.getName(), bridge.parameterTypes().get(i))
-                    .addAnnotations(parameter.getAnnotations())
-                    .build());
-            }
-            if (!method.getModifiers().contains(Modifier.ABSTRACT)) {
-                bridgeBuilder.addStatement((aThis, parameters) -> {
-                    ExpressionDef.InvokeInstanceMethod invocation = aThis.invoke(method, parameters);
-                    return bridge.returnType().equals(TypeDef.VOID) ? invocation : invocation.returning();
-                });
-            }
-            MethodDef bridgeMethod = bridgeBuilder.build();
-            int flags = ModifierUtils.ACC_BRIDGE | ModifierUtils.ACC_SYNTHETIC;
-            if (method.getModifiers().contains(Modifier.ABSTRACT)) {
-                writeAbstractMethod(builder, objectDef, bridgeMethod, flags);
-            } else {
-                writeMethod(builder, objectDef, bridgeMethod, owner, flags);
-            }
+        for (BridgeResolver.Bridge bridge : BridgeResolver.bridgesOf(objectDef, method, enclosingScope)) {
+            writeMethod(builder, objectDef, bridge.method(), owner, bridge.flags());
         }
     }
 
-    private static List<Modifier> bridgeModifiers(MethodDef method) {
-        return method.getModifiers().stream()
-            .filter(modifier -> modifier == Modifier.PUBLIC || modifier == Modifier.PROTECTED
-                || modifier == Modifier.PRIVATE || modifier == Modifier.ABSTRACT)
-            .toList();
-    }
-
-    private static ClassDesc classDesc(TypeDef type, ObjectDef objectDef) {
-        return ClassDesc.ofDescriptor(TypeUtils.getDescriptor(type, objectDef));
+    private ClassDesc classDesc(TypeDef type, ObjectDef objectDef) {
+        return ClassDesc.ofDescriptor(TypeUtils.getDescriptor(type, objectDef, enclosingScope));
     }
 }

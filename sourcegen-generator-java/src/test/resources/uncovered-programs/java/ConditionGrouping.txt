@@ -1,0 +1,10 @@
+package test;
+
+import java.lang.Object;
+import java.util.Objects;
+
+public class ConditionGrouping {
+  public boolean[] call(boolean a, boolean b, boolean c, int x, Object text) {
+    return new boolean[]{(a || b) && c,a && (b || c),a || b && c,!(a || b),!(a && b) || c,!(x == 1),(!Objects.equals(text, "text")),!(text == null) && text instanceof java.lang.String,(a ? b : c) || a};
+  }
+}

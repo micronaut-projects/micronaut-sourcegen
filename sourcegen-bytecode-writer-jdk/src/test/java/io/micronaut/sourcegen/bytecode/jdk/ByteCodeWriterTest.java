@@ -15,6 +15,7 @@
  */
 package io.micronaut.sourcegen.bytecode.jdk;
 
+import io.micronaut.sourcegen.bytecode.tck.GeneratedClassLoader;
 import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
@@ -67,11 +68,7 @@ class ByteCodeWriterTest {
         assertEquals(ClassFile.JAVA_17_VERSION, ((bytes[6] & 0xff) << 8) | (bytes[7] & 0xff));
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
 
-        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        Class<?> generated = GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
         Method answer = generated.getMethod("answer");
         assertEquals(42, answer.invoke(null));
     }
@@ -114,11 +111,7 @@ class ByteCodeWriterTest {
 
         byte[] bytes = writeDirect(definition);
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
-        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        Class<?> generated = GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
         assertEquals(7, generated.getMethod("sum", int.class, int.class).invoke(null, 3, 4));
         assertEquals(8, generated.getMethod("positiveOrZero", int.class).invoke(null, 8));
         assertEquals(0, generated.getMethod("positiveOrZero", int.class).invoke(null, -1));
@@ -140,11 +133,7 @@ class ByteCodeWriterTest {
 
         byte[] bytes = writeDirect(definition);
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
-        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        Class<?> generated = GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
         Object instance = generated.getConstructor(int.class).newInstance(11);
         assertEquals(11, generated.getMethod("value").invoke(instance));
     }
@@ -161,11 +150,7 @@ class ByteCodeWriterTest {
 
         assertEquals(ClassFile.JAVA_17_VERSION, ((bytes[6] & 0xff) << 8) | (bytes[7] & 0xff));
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
-        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        Class<?> generated = GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
         Object first = generated.getConstructor(String.class, int.class).newInstance("Ada", 37);
         Object second = generated.getConstructor(String.class, int.class).newInstance("Ada", 37);
         assertTrue(generated.isRecord());
@@ -188,11 +173,7 @@ class ByteCodeWriterTest {
 
         byte[] bytes = writeDirect(definition);
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
-        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        Class<?> generated = GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
 
         Field field = generated.getDeclaredField("name");
         assertTrue(field.isAnnotationPresent(FieldOnly.class));
@@ -230,11 +211,7 @@ class ByteCodeWriterTest {
 
         byte[] bytes = writeDirect(definition);
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
-        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        Class<?> generated = GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
 
         Field field = generated.getDeclaredField("name");
         Method method = generated.getMethod("name");
@@ -292,11 +269,7 @@ class ByteCodeWriterTest {
 
         byte[] bytes = writeDirect(definition);
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
-        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        Class<?> generated = GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
         assertEquals("prefix_Hello|Hello!", generated.getMethod("apply", String.class).invoke(null, "Hello"));
     }
 
@@ -352,11 +325,7 @@ class ByteCodeWriterTest {
 
         byte[] bytes = writeDirect(definition);
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
-        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        Class<?> generated = GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
         assertTrue(generated.isAnnotationPresent(Deprecated.class));
         assertEquals(5, generated.getField("staticValue").get(null));
         Object instance = generated.getConstructor().newInstance();
@@ -404,11 +373,7 @@ class ByteCodeWriterTest {
 
         byte[] bytes = writeDirect(definition);
         assertTrue(ClassFile.of().verify(bytes).isEmpty());
-        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        Class<?> generated = GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
         assertEquals(10, generated.getMethod("switchInt", int.class).invoke(null, 1));
         assertEquals(0, generated.getMethod("switchInt", int.class).invoke(null, 9));
         assertEquals(2, generated.getMethod("switchString", String.class).invoke(null, "two"));
@@ -442,11 +407,7 @@ class ByteCodeWriterTest {
         assertTrue(ClassFile.of().parse(bytes).methods().stream()
             .anyMatch(method -> method.methodName().stringValue().startsWith("lambda$")),
             "Expected the field initializer lambda body to be emitted");
-        Class<?> generated = new ClassLoader(getClass().getClassLoader()) {
-            Class<?> define() {
-                return defineClass(definition.getName(), bytes, 0, bytes.length);
-            }
-        }.define();
+        Class<?> generated = GeneratedClassLoader.defineDirectly(definition.getName(), bytes);
         Object instance = generated.getConstructor().newInstance();
         assertEquals("Hello!", generated.getMethod("apply", String.class).invoke(instance, "Hello"));
     }

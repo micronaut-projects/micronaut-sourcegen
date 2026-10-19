@@ -1,0 +1,13 @@
+package test
+
+import java.util.function.Supplier
+import kotlin.String
+
+public enum class SuppliedEnum : Supplier<String> {
+  ONE,
+  ;
+
+  public override fun `get`(): String {
+    return "one"
+  }
+}

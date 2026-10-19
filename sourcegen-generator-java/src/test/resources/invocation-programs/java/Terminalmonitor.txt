@@ -1,0 +1,11 @@
+package test;
+
+import java.lang.String;
+
+public class Terminalmonitor {
+  public String call() {
+    synchronized ("lock") {
+      return "reached";
+    }
+  }
+}

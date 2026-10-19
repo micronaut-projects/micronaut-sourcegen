@@ -1,0 +1,12 @@
+package test;
+
+import java.lang.Object;
+import java.lang.String;
+import java.util.Optional;
+import java.util.function.Function;
+
+public class NullReferenceCall {
+  public Function<Object, Object> reference(ReferenceTarget target) {
+    return Optional.of(target).<Function<Object, Object>>map(target1 -> (arg) -> target1.apply((String) arg)).get();
+  }
+}

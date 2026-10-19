@@ -16,11 +16,13 @@
 package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.core.annotation.Internal;
+import io.micronaut.sourcegen.bytecode.core.ReferenceComparisons;
 import io.micronaut.sourcegen.bytecode.expression.ExpressionWriter;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.objectweb.asm.Label;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
@@ -92,6 +94,17 @@ public abstract class AbstractConditionalWriter {
                                                 ExpressionDef right,
                                                 Label label,
                                                 int op) {
+        ReferenceComparisons.PrimitiveComparison primitive = ReferenceComparisons.primitiveComparison(left, right);
+        if (primitive != null) {
+            // Two primitives are compared as values, promoted to a common type as javac promotes them
+            Type type = TypeUtils.getType(primitive.type());
+            ExpressionWriter.writeExpression(generatorAdapter, context, primitive.left());
+            generatorAdapter.cast(TypeUtils.getType((TypeDef.Primitive) primitive.left().type()), type);
+            ExpressionWriter.writeExpression(generatorAdapter, context, primitive.right());
+            generatorAdapter.cast(TypeUtils.getType((TypeDef.Primitive) primitive.right().type()), type);
+            compareAndJump(generatorAdapter, type, ExpressionDef.ComparisonOperation.OpType.EQUAL_TO, op, label);
+            return;
+        }
         TypeDef leftType = left.type();
         ExpressionWriter.writeExpression(generatorAdapter, context, left);
         TypeDef rightType = right.type();
@@ -101,6 +114,37 @@ public abstract class AbstractConditionalWriter {
         } else {
             generatorAdapter.ifCmp(TypeUtils.OBJECT_TYPE, op, label);
         }
+    }
+
+    /**
+     * Compares the two values on the stack and jumps when the comparison answers the mode. A float or a double is
+     * compared as javac compares it, whichever way the jump goes: with fcmpl or dcmpl for {@code >} and {@code >=},
+     * with fcmpg or dcmpg otherwise, so that an operand that is NaN makes the operation false.
+     *
+     * @param generatorAdapter The adapter
+     * @param type             The type of the values
+     * @param operation        The comparison of the model
+     * @param mode             The mode of the jump, the operation's or its inverse
+     * @param label            Where to jump
+     */
+    private static void compareAndJump(GeneratorAdapter generatorAdapter,
+                                       Type type,
+                                       ExpressionDef.ComparisonOperation.OpType operation,
+                                       int mode,
+                                       Label label) {
+        int sort = type.getSort();
+        if (sort != Type.FLOAT && sort != Type.DOUBLE) {
+            generatorAdapter.ifCmp(type, mode, label);
+            return;
+        }
+        boolean greater = operation == ExpressionDef.ComparisonOperation.OpType.GREATER_THAN
+            || operation == ExpressionDef.ComparisonOperation.OpType.GREATER_THAN_OR_EQUAL;
+        if (sort == Type.FLOAT) {
+            generatorAdapter.visitInsn(greater ? Opcodes.FCMPL : Opcodes.FCMPG);
+        } else {
+            generatorAdapter.visitInsn(greater ? Opcodes.DCMPL : Opcodes.DCMPG);
+        }
+        generatorAdapter.visitJumpInsn(mode, label);
     }
 
     private static int getInvertConditionOp(ExpressionDef.ComparisonOperation.OpType op) {
@@ -125,7 +169,6 @@ public abstract class AbstractConditionalWriter {
         };
     }
 
-
     private static void pushElseCondition(GeneratorAdapter generatorAdapter,
                                           MethodContext context,
                                           ExpressionDef.ConditionExpressionDef conditionExpressionDef,
@@ -133,7 +176,7 @@ public abstract class AbstractConditionalWriter {
         switch (conditionExpressionDef) {
             case ExpressionDef.InstanceOf instanceOf -> {
                 ExpressionWriter.writeExpression(generatorAdapter, context, instanceOf.expression());
-                generatorAdapter.instanceOf(TypeUtils.getType(instanceOf.instanceType(), context.objectDef()));
+                generatorAdapter.instanceOf(TypeUtils.getScopedType(instanceOf.instanceType(), context));
                 generatorAdapter.push(true);
                 generatorAdapter.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, elseLabel);
             }
@@ -151,8 +194,9 @@ public abstract class AbstractConditionalWriter {
             case ExpressionDef.ComparisonOperation comparisonOperation -> {
                 ExpressionWriter.writeExpression(generatorAdapter, context, comparisonOperation.left());
                 ExpressionWriter.writeExpression(generatorAdapter, context, comparisonOperation.right());
-                Type conditionType = TypeUtils.getType(comparisonOperation.left().type(), context.objectDef());
-                generatorAdapter.ifCmp(conditionType, getInvertConditionOp(comparisonOperation.opType()), elseLabel);
+                Type conditionType = TypeUtils.getScopedType(comparisonOperation.left().type(), context);
+                compareAndJump(generatorAdapter, conditionType, comparisonOperation.opType(),
+                    getInvertConditionOp(comparisonOperation.opType()), elseLabel);
             }
             case ExpressionDef.IsNull isNull -> {
                 ExpressionWriter.writeExpression(generatorAdapter, context, isNull.expression());
@@ -195,7 +239,7 @@ public abstract class AbstractConditionalWriter {
         switch (conditionExpressionDef) {
             case ExpressionDef.InstanceOf instanceOf -> {
                 ExpressionWriter.writeExpression(generatorAdapter, context, instanceOf.expression());
-                generatorAdapter.instanceOf(TypeUtils.getType(instanceOf.instanceType(), context.objectDef()));
+                generatorAdapter.instanceOf(TypeUtils.getScopedType(instanceOf.instanceType(), context));
                 generatorAdapter.push(true);
                 generatorAdapter.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.EQ, ifLabel);
             }
@@ -213,8 +257,9 @@ public abstract class AbstractConditionalWriter {
             case ExpressionDef.ComparisonOperation comparisonOperation -> {
                 ExpressionWriter.writeExpression(generatorAdapter, context, comparisonOperation.left());
                 ExpressionWriter.writeExpression(generatorAdapter, context, comparisonOperation.right());
-                Type conditionType = TypeUtils.getType(comparisonOperation.left().type(), context.objectDef());
-                generatorAdapter.ifCmp(conditionType, getConditionOp(comparisonOperation.opType()), ifLabel);
+                Type conditionType = TypeUtils.getScopedType(comparisonOperation.left().type(), context);
+                compareAndJump(generatorAdapter, conditionType, comparisonOperation.opType(),
+                    getConditionOp(comparisonOperation.opType()), ifLabel);
             }
             case ExpressionDef.IsNull isNull -> {
                 ExpressionWriter.writeExpression(generatorAdapter, context, isNull.expression());

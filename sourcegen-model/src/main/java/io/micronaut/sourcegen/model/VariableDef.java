@@ -217,7 +217,7 @@ public sealed interface VariableDef extends ExpressionDef permits VariableDef.Ex
          * @since 1.5
          */
         public StatementDef.InvokeSuperConstructor invokeSuperConstructor(List<? extends ExpressionDef> values) {
-            ClassTypeDef owner = type() instanceof ClassTypeDef classTypeDef ? classTypeDef : null;
+            ClassTypeDef owner = TypeOperations.unwrap(type()) instanceof ClassTypeDef classTypeDef ? classTypeDef : null;
             Invocations.Resolved resolved = Invocations.resolve(owner, MethodDef.CONSTRUCTOR, null, values);
             if (resolved != null) {
                 return invokeSuperConstructor(resolved.parameterTypes(), resolved.values());

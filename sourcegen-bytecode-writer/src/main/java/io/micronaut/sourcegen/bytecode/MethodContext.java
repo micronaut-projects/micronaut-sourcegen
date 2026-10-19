@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.core.annotation.Internal;
 import org.jspecify.annotations.Nullable;
+import io.micronaut.sourcegen.bytecode.core.EnclosingScope;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -42,6 +43,7 @@ import java.util.Objects;
  * @param isLambda  Whether this method is a lambda
  * @param yieldTargets  The switch yield cases being written, innermost last
  * @param openGaps  The gaps opened by the returns and yields being written, innermost last
+ * @param enclosingScope The enclosing scope of the class being written
  * @since 1.5
  */
 @Internal
@@ -51,19 +53,21 @@ public record MethodContext(@Nullable ObjectDef objectDef,
                             List<MethodDef> lambdaMethods,
                             boolean isLambda,
                             Deque<YieldTarget> yieldTargets,
-                            List<Gap> openGaps) {
+                            List<Gap> openGaps,
+                            EnclosingScope enclosingScope) {
 
     public MethodContext(@Nullable ObjectDef objectDef,
                          MethodDef methodDef,
                          Map<String, LocalData> locals,
                          List<MethodDef> lambdaMethods,
-                         boolean isLambda) {
-        this(objectDef, methodDef, locals, lambdaMethods, isLambda, new ArrayDeque<>(), new ArrayList<>());
+                         boolean isLambda,
+                         EnclosingScope enclosingScope) {
+        this(objectDef, methodDef, locals, lambdaMethods, isLambda, new ArrayDeque<>(), new ArrayList<>(), enclosingScope);
     }
 
     public MethodContext(@Nullable ObjectDef objectDef,
-                         MethodDef methodDef, boolean isLambda) {
-        this(objectDef, methodDef, new LinkedHashMap<>(), new ArrayList<>(), isLambda);
+                         MethodDef methodDef, boolean isLambda, EnclosingScope enclosingScope) {
+        this(objectDef, methodDef, new LinkedHashMap<>(), new ArrayList<>(), isLambda, enclosingScope);
     }
 
     /**

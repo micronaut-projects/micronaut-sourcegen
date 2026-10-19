@@ -19,6 +19,7 @@ import io.micronaut.core.annotation.Experimental;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.sourcegen.JavaPoetSourceGenerator;
 import io.micronaut.sourcegen.bytecode.core.AnnotationTargetUtils;
+import io.micronaut.sourcegen.bytecode.core.EnclosingScope;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.EnumDef;
@@ -27,6 +28,7 @@ import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.TypeHierarchy;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 
@@ -359,6 +361,10 @@ public final class ByteCodeWriter {
                                     Set<String> embedded) {
         switch (type) {
             case ClassTypeDef.ClassDefType classDefType -> collectDefinition(classDefType.objectDef(), definitions, embedded);
+            case ClassTypeDef memberType when TypeHierarchy.carriedEnclosingOf(memberType) instanceof ClassTypeDef enclosing -> {
+                collectType(enclosing, definitions, embedded);
+                collectType(TypeHierarchy.memberClass(memberType), definitions, embedded);
+            }
             case ClassTypeDef.Parameterized parameterized -> {
                 collectType(parameterized.rawType(), definitions, embedded);
                 parameterized.typeArguments().forEach(argument -> collectType(argument, definitions, embedded));
@@ -524,7 +530,8 @@ public final class ByteCodeWriter {
     }
 
     private static String descriptor(ObjectDef objectDef, MethodDef method) {
-        return io.micronaut.sourcegen.bytecode.core.TypeUtils.getMethodDescriptor(objectDef, method);
+        // The fallback compiles the definition: no enclosing scope of a written class
+        return io.micronaut.sourcegen.bytecode.core.TypeUtils.getMethodDescriptor(objectDef, method, EnclosingScope.NONE);
     }
 
     static Annotation toAnnotation(io.micronaut.sourcegen.model.AnnotationDef annotation) {
@@ -584,7 +591,7 @@ public final class ByteCodeWriter {
             if (field.name().equals("class") && field.type().equals(TypeDef.CLASS)) {
                 // A class-valued member is modelled as `SomeType.class`, not as an enum constant
                 return AnnotationValue.ofClass(ClassDesc.ofDescriptor(
-                    io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(field.ownerType(), null)
+                    io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(field.ownerType(), null, EnclosingScope.NONE)
                 ));
             }
             return AnnotationValue.ofEnum(ClassDesc.of(field.ownerType().getName()), field.name());
@@ -594,12 +601,12 @@ public final class ByteCodeWriter {
         }
         if (value instanceof ClassTypeDef type) {
             return AnnotationValue.ofClass(ClassDesc.ofDescriptor(
-                io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(type, null)
+                io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(type, null, EnclosingScope.NONE)
             ));
         }
         if (value instanceof TypeDef type) {
             return AnnotationValue.ofClass(ClassDesc.ofDescriptor(
-                io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(type, null)
+                io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(type, null, EnclosingScope.NONE)
             ));
         }
         if (value instanceof Class<?> type) {

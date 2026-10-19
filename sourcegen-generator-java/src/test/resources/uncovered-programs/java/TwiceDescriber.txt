@@ -1,0 +1,9 @@
+package test;
+
+import java.lang.String;
+
+public class TwiceDescriber implements Describer {
+  public String describe(int value) {
+    return "twice " + Describer.twice(value);
+  }
+}

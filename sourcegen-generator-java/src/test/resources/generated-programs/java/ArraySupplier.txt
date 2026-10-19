@@ -1,0 +1,18 @@
+package test;
+
+import java.lang.Object;
+import java.lang.String;
+import java.util.List;
+import java.util.function.Supplier;
+
+public class ArraySupplier implements Supplier<List<String>[]> {
+  private Object values;
+
+  public ArraySupplier(Object values) {
+    this.values = values;
+  }
+
+  public List<String>[] get() {
+    return (List<String>[]) this.values;
+  }
+}
