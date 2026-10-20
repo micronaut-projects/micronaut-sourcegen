@@ -259,8 +259,10 @@ public class MethodReferenceApiTest extends AbstractWriteTest {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 public class MyClass {
   public String evaluate() {
     return Owner::shout.apply(value);

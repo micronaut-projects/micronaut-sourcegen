@@ -22,12 +22,14 @@ class EnumWriteTest {
         val expected = """
         package test
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource
+
+        @GeneratedSource
         public enum class Status {
           ACTIVE,
           IN_PROGRESS,
           DELETED,
         }
-
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())
     }
@@ -57,8 +59,10 @@ class EnumWriteTest {
         val expected = """
         package test
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource
         import kotlin.Int
 
+        @GeneratedSource
         public enum class Status {
           ACTIVE(2),
           IN_PROGRESS(1),
@@ -70,8 +74,7 @@ class EnumWriteTest {
           private constructor(intValue: Int) {
             this. intValue = intValue
           }
-        }
-        """.trimIndent()
+        }""".trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())
     }
 
@@ -91,9 +94,11 @@ class EnumWriteTest {
         val expected = """
         package test
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource
         import kotlin.Boolean
         import kotlin.Int
 
+        @GeneratedSource
         public enum class Status {
           ACTIVE(2, true),
           IN_PROGRESS(1, true),
@@ -108,8 +113,7 @@ class EnumWriteTest {
             this. intValue = intValue
             this. boolValue = boolValue
           }
-        }
-        """.trimIndent()
+        }""".trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())
     }
 
@@ -132,8 +136,10 @@ class EnumWriteTest {
         val expected = """
         package test
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource
         import kotlin.String
 
+        @GeneratedSource
         public enum class Status public constructor(
           public var strValue: String,
         ) {
@@ -167,8 +173,10 @@ class EnumWriteTest {
         val expected = """
         package test
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource
         import kotlin.String
 
+        @GeneratedSource
         public enum class Status {
           ACTIVE,
           IN_PROGRESS,

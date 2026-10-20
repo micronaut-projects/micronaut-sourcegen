@@ -82,11 +82,15 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public enum class StatusEnum {
               HI,
               HELLO,
               ;
 
+              @GeneratedSource
               public enum class Status {
                 SINGLE,
                 MARRIED,
@@ -108,13 +112,16 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
             import kotlin.Int
 
+            @GeneratedSource
             public enum class ExampleRecordEnum {
               HI,
               HELLO,
               ;
 
+              @GeneratedSource
               public data class ExampleRecord public constructor(
                 public final val id: Int,
               )
@@ -135,11 +142,15 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public enum class InnerEnum {
               HI,
               HELLO,
               ;
 
+              @GeneratedSource
               public class Inner
             }
             """.trimIndent()
@@ -156,11 +167,15 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public enum class InterfaceEnum {
               HI,
               HELLO,
               ;
 
+              @GeneratedSource
               public interface Interface
             }
             """.trimIndent()
@@ -181,7 +196,11 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public class StatusClass {
+              @GeneratedSource
               public enum class Status {
                 SINGLE,
                 MARRIED,
@@ -202,14 +221,16 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
             import kotlin.Int
 
+            @GeneratedSource
             public class ExampleRecordClass {
+              @GeneratedSource
               public data class ExampleRecord public constructor(
                 public final val id: Int,
               )
-            }
-            """.trimIndent()
+            }            """.trimIndent()
         val recordBuilder = RecordDef.builder("ExampleRecord")
         val propertyBuilder = PropertyDef.builder("id").ofType(TypeDef.Primitive.INT)
         recordBuilder.addProperty(propertyBuilder.build())
@@ -225,7 +246,11 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public class InnerClass {
+              @GeneratedSource
               public class Inner
             }
             """.trimIndent()
@@ -242,9 +267,12 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
             import kotlin.String
 
+            @GeneratedSource
             public class InnerClass {
+              @GeneratedSource
               private class Inner {
                 public var name: String
 
@@ -273,7 +301,11 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public class InterfaceClass {
+              @GeneratedSource
               public interface Interface
             }
             """.trimIndent()
@@ -294,7 +326,11 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public data class StatusRecord {
+              @GeneratedSource
               public enum class Status {
                 SINGLE,
                 MARRIED,
@@ -316,9 +352,12 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
             import kotlin.Int
 
+            @GeneratedSource
             public data class ExampleRecord {
+              @GeneratedSource
               public data class Example public constructor(
                 public final val id: Int,
               )
@@ -339,7 +378,11 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public data class InnerRecord {
+              @GeneratedSource
               public class Inner
             }
             """.trimIndent()
@@ -356,7 +399,11 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public data class InterfaceRecord {
+              @GeneratedSource
               public interface Interface
             }
             """.trimIndent()
@@ -377,7 +424,11 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public interface StatusInterface {
+              @GeneratedSource
               public enum class Status {
                 SINGLE,
                 MARRIED,
@@ -399,9 +450,12 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
             import kotlin.Int
 
+            @GeneratedSource
             public interface RecordInterface {
+              @GeneratedSource
               public data class Record public constructor(
                 public final val id: Int,
               )
@@ -422,7 +476,11 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public interface InnerInterface {
+              @GeneratedSource
               public class Inner
             }
             """.trimIndent()
@@ -439,7 +497,11 @@ class InnerTypesWriteTest {
         val expectedString = """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public interface InnerInterface {
+              @GeneratedSource
               public interface Inner
             }
             """.trimIndent()

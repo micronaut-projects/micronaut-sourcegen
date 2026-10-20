@@ -70,6 +70,9 @@ class MethodReferenceWriteTest {
             """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public class MyClass {
               public fun evaluate(): StringFunction {
                 return StringFunction(Owner::shout)
@@ -86,6 +89,9 @@ class MethodReferenceWriteTest {
             """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public class MyClass {
               public fun evaluate(): StringFunction {
                 return StringFunction("prefix_"::trim)
@@ -112,6 +118,9 @@ class MethodReferenceWriteTest {
             """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public class MyClass {
               public fun evaluate(): StringFunction {
                 return StringFunction("prefix_"::plus)
@@ -133,6 +142,9 @@ class MethodReferenceWriteTest {
             """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
+
+            @GeneratedSource
             public class MyClass {
               public fun evaluate(): StringFunction {
                 return StringFunction(::Owner)

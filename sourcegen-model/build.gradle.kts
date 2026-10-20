@@ -3,6 +3,8 @@ plugins {
 }
 
 dependencies {
+    implementation(projects.sourcegenAnnotations)
+
     compileOnly(mn.micronaut.core.processor) {
         exclude("io.micronaut.sourcegen")
     }

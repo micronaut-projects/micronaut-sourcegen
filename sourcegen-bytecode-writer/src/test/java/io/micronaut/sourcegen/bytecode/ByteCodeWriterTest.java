@@ -103,6 +103,8 @@ class ByteCodeWriterTest {
 class test/MyList extends java/util/AbstractList {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -114,8 +116,10 @@ class test/MyList extends java/util/AbstractList {
         Assertions.assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.AbstractList;
 
+@GeneratedSource
 class MyList extends AbstractList {
 }
             """, decompileToJava(bytes));
@@ -141,6 +145,8 @@ class MyList extends AbstractList {
 class test/MyClass extends io/micronaut/sourcegen/bytecode/ByteCodeWriterTest$MyAbstractClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -153,8 +159,10 @@ class test/MyClass extends io/micronaut/sourcegen/bytecode/ByteCodeWriterTest$My
         Assertions.assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import io.micronaut.sourcegen.bytecode.ByteCodeWriterTest;
 
+@GeneratedSource
 class MyClass extends ByteCodeWriterTest.MyAbstractClass {
    MyClass() {
       super("HelloWorld");
@@ -185,6 +193,8 @@ class MyClass extends ByteCodeWriterTest.MyAbstractClass {
 class test/MyClass extends io/micronaut/sourcegen/bytecode/ByteCodeWriterTest$MyAbstractClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -197,8 +207,10 @@ class test/MyClass extends io/micronaut/sourcegen/bytecode/ByteCodeWriterTest$My
         Assertions.assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import io.micronaut.sourcegen.bytecode.ByteCodeWriterTest;
 
+@GeneratedSource
 class MyClass extends ByteCodeWriterTest.MyAbstractClass {
    MyClass() {
       super("HelloWorld");
@@ -242,6 +254,8 @@ class MyClass extends ByteCodeWriterTest.MyAbstractClass {
             class test/IfPredicateGeneric implements java/util/function/Predicate {
 
 
+              @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
               // access flags 0x0
               <init>()V
                 ALOAD 0
@@ -270,8 +284,10 @@ class MyClass extends ByteCodeWriterTest.MyAbstractClass {
         Assertions.assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class IfPredicateGeneric implements Predicate {
    int test(Object arg1) {
       return this.getIntegerValue() == null ? 0 : ((Number)this.getIntegerValue()).intValue();
@@ -315,6 +331,8 @@ class IfPredicateGeneric implements Predicate {
             class test/IfPredicateGeneric implements java/util/function/Predicate {
 
 
+              @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
               // access flags 0x0
               <init>()V
                 ALOAD 0
@@ -343,8 +361,10 @@ class IfPredicateGeneric implements Predicate {
         Assertions.assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class IfPredicateGeneric implements Predicate {
    int test(Object arg1) {
       return this.getIntegerValue() == null ? 0 : ((Number)this.getIntegerValue()).intValue();
@@ -388,6 +408,8 @@ class IfPredicateGeneric implements Predicate {
 class test/IfPredicateGeneric implements java/util/function/Predicate {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -416,8 +438,10 @@ class test/IfPredicateGeneric implements java/util/function/Predicate {
         Assertions.assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class IfPredicateGeneric implements Predicate {
    int test(Object arg1) {
       return this.getIntegerValue() != null ? 0 : ((Number)this.getIntegerValue()).intValue();
@@ -461,6 +485,8 @@ class IfPredicateGeneric implements Predicate {
 class test/IfPredicateGeneric implements java/util/function/Predicate {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -491,8 +517,10 @@ class test/IfPredicateGeneric implements java/util/function/Predicate {
         Assertions.assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class IfPredicateGeneric implements Predicate {
    int test(Object arg1) {
       return this.getIntegerValue() instanceof String ? 0 : ((Number)this.getIntegerValue()).intValue();
@@ -536,6 +564,8 @@ class IfPredicateGeneric implements Predicate {
 class test/IfPredicateGeneric implements java/util/function/Predicate {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -565,8 +595,10 @@ class test/IfPredicateGeneric implements java/util/function/Predicate {
         Assertions.assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class IfPredicateGeneric implements Predicate {
    int test(Object arg1) {
       return this.getIntegerValue() == "Hello" ? 0 : ((Number)this.getIntegerValue()).intValue();
@@ -599,6 +631,8 @@ class IfPredicateGeneric implements Predicate {
 class test/IfPredicateGeneric implements java/util/function/Predicate {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -630,9 +664,11 @@ class test/IfPredicateGeneric implements java/util/function/Predicate {
         Assertions.assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class IfPredicateGeneric implements Predicate {
    boolean test(Object arg1) {
       return Objects.equals(arg1, 1);
@@ -656,6 +692,8 @@ class IfPredicateGeneric implements Predicate {
 // declaration: example/MyClassWithLambda
 public class example/MyClassWithLambda {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x0
   Ljava/lang/String; name
@@ -933,8 +971,10 @@ public class example/MyClassWithLambda {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.function.Function;
 
+@GeneratedSource
 public class MyClassWithLambda {
    String name;
 
@@ -1047,6 +1087,8 @@ public class MyClassWithLambda {
 public class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -1080,7 +1122,9 @@ public class example/Example {
 package example;
 
 import io.micronaut.core.annotation.AnnotationClassValue;
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 
+@GeneratedSource
 public class Example {
    private static final AnnotationClassValue loadClass() {
       try {
@@ -1122,6 +1166,8 @@ public class Example {
 public class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -1151,6 +1197,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    Object myMethod(boolean arg1, int arg2, String arg3) {
       return arg1 ? arg2 : arg3;
@@ -1190,6 +1239,8 @@ public class Example {
 // declaration: example/Example
 public class example/Example {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -1290,6 +1341,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    Object[] myMethod(int arg1, double arg2) {
       return new Object[]{arg1 == (int)arg2, arg1 != (int)arg2, arg1 > (int)arg2, arg1 < (int)arg2, arg1 >= (int)arg2, arg1 <= (int)arg2};
@@ -1328,6 +1382,8 @@ public class Example {
 // declaration: example/Example
 public class example/Example {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -1422,6 +1478,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    Object[] myMethod(int arg1, int arg2) {
       return new Object[]{arg1 == arg2, arg1 != arg2, arg1 > arg2, arg1 < arg2, arg1 >= arg2, arg1 <= arg2};
@@ -1464,6 +1523,8 @@ public class Example {
 // declaration: example/Example
 public class example/Example {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -1574,6 +1635,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    Object[] myMethod(int arg1, float arg2) {
       return new Object[]{arg1 + (int)arg2, arg1 - (int)arg2, arg1 * (int)arg2, arg1 / (int)arg2, arg1 % (int)arg2, arg1 & (int)arg2, arg1 | (int)arg2, arg1 ^ (int)arg2, arg1 << (int)arg2, arg1 >> (int)arg2, arg1 >>> (int)arg2};
@@ -1611,6 +1675,8 @@ public class Example {
 public class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -1635,6 +1701,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    Object myMethod(double arg1, double arg2) {
       return (long)Math.pow(arg1, arg2);
@@ -1678,6 +1747,8 @@ public class Example {
 // declaration: example/Example
 public class example/Example {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -1777,6 +1848,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    Object[] myMethod(int arg1, int arg2) {
       return new Object[]{arg1 + arg2, arg1 - arg2, arg1 * arg2, arg1 / arg2, arg1 % arg2, arg1 & arg2, arg1 | arg2, arg1 ^ arg2, arg1 << arg2, arg1 >> arg2, arg1 >>> arg2};
@@ -1810,6 +1884,8 @@ public class Example {
 public class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -1836,6 +1912,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    Object[] myMethod(int arg1) {
       return new Object[]{-arg1};
@@ -1871,6 +1950,8 @@ public class Example {
 // declaration: example/Example
 public class example/Example {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -1945,8 +2026,10 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.Objects;
 
+@GeneratedSource
 public class Example {
    Object[] myMethod(Object arg1, Object arg2) {
       return new Object[]{Objects.equals(arg1, arg2), !Objects.equals(arg1, arg2), arg1 == arg2, arg1 != arg2};
@@ -1985,6 +2068,8 @@ public class Example {
 // declaration: example/Example
 public class example/Example {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -2032,6 +2117,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    Object[] myMethod(int arg1, int arg2, float arg3, float arg4, double arg5, double arg6) {
       return new Object[]{arg1 + arg2, arg3 + arg4, arg5 + arg6};
@@ -2062,6 +2150,8 @@ public class Example {
 // declaration: example/Example
 public class example/Example {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -2094,8 +2184,10 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.Arrays;
 
+@GeneratedSource
 public class Example {
    String myMethod(String arg1, Object arg2, String[] arg3) {
       return arg1 + arg2 + Arrays.toString((Object[])arg3);
@@ -2125,6 +2217,8 @@ public class Example {
 public class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -2145,6 +2239,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    String myMethod(Object arg1) {
       return String.valueOf(arg1);
@@ -2174,6 +2271,8 @@ public class Example {
 public class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -2194,6 +2293,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    boolean myMethod(Object arg1) {
       return arg1 instanceof String;
@@ -2223,6 +2325,8 @@ public class Example {
 public class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -2244,6 +2348,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    boolean myMethod(int arg1) {
       return arg1 instanceof String;
@@ -2273,6 +2380,8 @@ public class Example {
 public class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -2294,6 +2403,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    String myMethod(String[] arg1) {
       return arg1[1];
@@ -2323,6 +2435,8 @@ public class Example {
 public class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -2345,6 +2459,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
    String myMethod(String[] arg1, int arg2) {
       return arg1[arg2];
@@ -2375,6 +2492,8 @@ public class Example {
 public synthetic class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1000
   synthetic Ljava/lang/String; myField
 
@@ -2394,7 +2513,10 @@ public synthetic class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
 // $FF: synthetic class
+@GeneratedSource
 public class Example {
    // $FF: synthetic field
    String myField;
@@ -2425,6 +2547,8 @@ public class Example {
 public class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -2436,6 +2560,9 @@ public class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
 }
 """, decompileToJava(bytes));
@@ -2458,6 +2585,8 @@ public class Example {
 class example/Example {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -2469,6 +2598,9 @@ class example/Example {
         Assertions.assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class Example {
 }
 """, decompileToJava(bytes));
@@ -2499,6 +2631,8 @@ class Example {
 class example/IfPredicate {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -2523,6 +2657,9 @@ class example/IfPredicate {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class IfPredicate {
    public boolean test(Object param) {
       return param == null;
@@ -2554,6 +2691,8 @@ class IfPredicate {
 class example/IfPredicate {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -2575,6 +2714,9 @@ class example/IfPredicate {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class IfPredicate {
    public int test(Integer param) {
       return ((Number)param).intValue();
@@ -2606,6 +2748,8 @@ class IfPredicate {
 class example/IfPredicate {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -2627,6 +2771,9 @@ class example/IfPredicate {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class IfPredicate {
    public Integer test(int param) {
       return param;
@@ -2647,6 +2794,8 @@ class IfPredicate {
 // declaration: MyEnum extends java.lang.Enum<MyEnum>
 final enum MyEnum extends java/lang/Enum {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x4019
   public final static enum LMyEnum; A
@@ -2785,6 +2934,8 @@ final enum MyEnum extends java/lang/Enum {
 class test/MyClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x2
   private Lio/micronaut/context/BeanResolutionContext; $beanResolutionContext
 
@@ -2850,7 +3001,9 @@ class test/MyClass {
 package test;
 
 import io.micronaut.context.BeanResolutionContext;
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 
+@GeneratedSource
 class MyClass {
    private BeanResolutionContext $beanResolutionContext;
    private SomeTarget target;
@@ -2912,6 +3065,8 @@ class MyClass {
 // declaration: test/MyClass
 class test/MyClass {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x2
   private Ljava/lang/Integer; myField
@@ -2983,6 +3138,9 @@ class test/MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
    private Integer myField;
 
@@ -3050,6 +3208,8 @@ class MyClass {
 class test/MyClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x12
   private final Ljava/lang/Object; target
 
@@ -3104,6 +3264,9 @@ class test/MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
    private final Object target;
 
@@ -3153,6 +3316,8 @@ class MyClass {
 class test/MyClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -3187,6 +3352,9 @@ class test/MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
    public void run() {
       try {
@@ -3229,6 +3397,8 @@ class MyClass {
 class test/MyClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -3261,6 +3431,9 @@ class test/MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
    public void run() {
       try {
@@ -3335,6 +3508,8 @@ class MyClass {
 // declaration: test/MyClass
 class test/MyClass {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x0
   <init>()V
@@ -3464,6 +3639,9 @@ class test/MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
    public String bothReturn(boolean flag) {
       String var2;
@@ -3539,6 +3717,8 @@ class MyClass {
 class test/MyClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -3595,6 +3775,9 @@ class test/MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
    public void run(Object monitor) {
       try {
@@ -3648,6 +3831,8 @@ class MyClass {
 class test/MyClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -3687,6 +3872,9 @@ class test/MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
    public int swap(int arg1) {
       switch (arg1) {
@@ -3745,6 +3933,8 @@ class MyClass {
 class test/MyClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -3784,6 +3974,9 @@ class test/MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
    public int swap(int arg1) {
       switch (arg1) {
@@ -3832,6 +4025,8 @@ class test/MyClass {
   static INNERCLASS test/MyClass$Inner test/MyClass Inner
   NESTMEMBER test/MyClass$Inner
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -3848,6 +4043,9 @@ class test/MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
    String hello() {
       return "world";
@@ -3884,6 +4082,8 @@ public class example/Outer {
   // access flags 0x9
   public static INNERCLASS example/Outer$Inner example/Outer Inner
   NESTMEMBER example/Outer$Inner
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -3945,6 +4145,8 @@ public final enum example/MyEnumWithInnerTypes extends java/lang/Enum {
   // access flags 0x609
   public static abstract INNERCLASS example/MyEnumWithInnerTypes$InnerInterface example/MyEnumWithInnerTypes InnerInterface
   NESTMEMBER example/MyEnumWithInnerTypes$InnerInterface
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x4019
   public final static enum Lexample/MyEnumWithInnerTypes; A
@@ -4041,6 +4243,9 @@ public final enum example/MyEnumWithInnerTypes extends java/lang/Enum {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public enum MyEnumWithInnerTypes {
    A,
    B,
@@ -4084,6 +4289,8 @@ public enum MyEnumWithInnerTypes {
 class example/Test {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -4116,6 +4323,9 @@ class example/Test {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class Test {
    int test(String myIn) {
       int hc = myIn == null ? 0 : myIn.hashCode();
@@ -4146,6 +4356,8 @@ class Test {
 class example/Test {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -4166,6 +4378,9 @@ class example/Test {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class Test {
    Integer test(Object myIn) {
       return (Integer)myIn;
@@ -4195,6 +4410,8 @@ class Test {
 class example/Test {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -4214,6 +4431,9 @@ class example/Test {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class Test {
    Integer test(Object myIn) {
       return null;
@@ -4246,6 +4466,8 @@ class Test {
 // declaration: example/Test
 class example/Test {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x0
   <init>()V
@@ -4283,6 +4505,9 @@ class example/Test {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class Test {
    boolean test() {
       return true && false || true || false;
@@ -4315,6 +4540,8 @@ class Test {
 // declaration: example/Test
 class example/Test {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x0
   <init>()V
@@ -4352,6 +4579,9 @@ class example/Test {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class Test {
    boolean test() {
       return (true || false) && (true || false);
@@ -4420,6 +4650,9 @@ class Test {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class Test {
    long testLong() {
       return 123445L;
@@ -4486,6 +4719,8 @@ class Test {
 class example/Test {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -4512,6 +4747,9 @@ class example/Test {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class Test {
    Object acceptValue(Integer arg1) {
       return arg1;
@@ -4552,6 +4790,8 @@ class Test {
 class example/Test {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -4570,8 +4810,10 @@ class example/Test {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.List;
 
+@GeneratedSource
 class Test {
    List load() {
       return new MyList();
@@ -4604,6 +4846,8 @@ class Test {
 class example/Test extends java/util/AbstractList {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -4622,9 +4866,11 @@ class example/Test extends java/util/AbstractList {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.AbstractList;
 import java.util.List;
 
+@GeneratedSource
 class Test extends AbstractList {
    List load() {
       return new Test();
@@ -4663,6 +4909,8 @@ class Test extends AbstractList {
 class example/Test {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -4679,6 +4927,9 @@ class example/Test {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class Test {
    Enum load() {
       return MyEnum.A;
@@ -4730,6 +4981,8 @@ class Test {
 public class example/MyClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x19
   public final static Ljava/lang/String; MY_NAME
 
@@ -4774,6 +5027,9 @@ public class example/MyClass {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class MyClass {
    public static final String MY_NAME = "Andriy Dmytruk";
    public static final String GREETING;
@@ -4822,9 +5078,11 @@ public class MyClass {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.Objects;
 import java.util.stream.Stream;
 
+@GeneratedSource
 public class MyClass {
    public Stream evaluate(Object context, Stream items) {
       return items.filter(MyClass::lambda$evaluate$0);
@@ -4870,8 +5128,10 @@ public class MyClass {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.List;
 
+@GeneratedSource
 public class MyClass {
    public void printAll(List items) {
       items.forEach(MyClass::lambda$printAll$0);
@@ -4916,6 +5176,8 @@ public class MyClass {
 public class example/MyClass {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -4942,6 +5204,9 @@ public class example/MyClass {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class MyClass {
    public String describe(int count, double price) {
       return "Count: " + count + ", price: " + price;
@@ -4996,6 +5261,8 @@ public class MyClass {
 class example/Test {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -5014,8 +5281,10 @@ class example/Test {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.io.IOException;
 
+@GeneratedSource
 class Test {
    void test() throws IOException {
       throw new IOException();
@@ -5053,6 +5322,8 @@ class Test {
 class example/Test implements java/util/function/Function {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x0
   <init>()V
     ALOAD 0
@@ -5072,8 +5343,10 @@ class example/Test implements java/util/function/Function {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.function.Function;
 
+@GeneratedSource
 class Test implements Function {
    Object apply(Object arg1) {
       return arg1;
@@ -5101,6 +5374,8 @@ class Test implements Function {
 // declaration: example/MyRecord extends java.lang.Record
 public final class example/MyRecord extends java/lang/Record {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
   RECORDCOMPONENT   Ljava/lang/String; name
   RECORDCOMPONENT   I age
 
@@ -5194,6 +5469,9 @@ public final class example/MyRecord extends java/lang/Record {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public record MyRecord(String name, int age) {
 }
 """, decompileToJava(bytes));
@@ -5235,6 +5513,8 @@ public record MyRecord(String name, int age) {
 // declaration: example/MyRecord<T> extends java.lang.Record implements java.util.function.Supplier<T>
 public final class example/MyRecord extends java/lang/Record implements java/util/function/Supplier {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
   RECORDCOMPONENT   // signature TT;
   // declaration: value extends T
   Ljava/lang/Object; value
@@ -5352,6 +5632,8 @@ public final class example/MyRecord extends java/lang/Record implements java/uti
 // declaration: example/MyRecord<T> extends java.lang.Record
 public final class example/MyRecord extends java/lang/Record {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
   RECORDCOMPONENT   // signature TT;
   // declaration: value extends T
   Ljava/lang/Object; value
@@ -5464,6 +5746,8 @@ public final class example/MyRecord extends java/lang/Record {
 // declaration: example/MyRecord<T extends java.lang.Number> extends java.lang.Record
 public final class example/MyRecord extends java/lang/Record {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
   RECORDCOMPONENT   // signature TT;
   // declaration: value extends T
   Ljava/lang/Number; value
@@ -5577,6 +5861,8 @@ public final class example/MyRecord extends java/lang/Record {
 // declaration: example/MyRecord extends java.lang.Record
 public final class example/MyRecord extends java/lang/Record {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
   RECORDCOMPONENT   Ljava/lang/String; name
   RECORDCOMPONENT   I age
 
@@ -5726,6 +6012,8 @@ public final class example/MyRecord extends java/lang/Record {
 public final class example/MyRecord extends java/lang/Record {
 
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -5801,6 +6089,8 @@ public final class example/MyRecord extends java/lang/Record {
 // declaration: example/MyRecord extends java.lang.Record
 public final class example/MyRecord extends java/lang/Record {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
   RECORDCOMPONENT   J id
   RECORDCOMPONENT   D weight
   RECORDCOMPONENT   [Ljava/lang/String; tags
@@ -5945,6 +6235,8 @@ public final class example/MyRecord extends java/lang/Record {
 // declaration: example/MyRecord extends java.lang.Record
 public final class example/MyRecord extends java/lang/Record {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
   RECORDCOMPONENT   Ljava/lang/String; name
 
   // access flags 0x12
@@ -6050,6 +6342,8 @@ public final class example/MyRecord extends java/lang/Record {
 // declaration: example/MyRecord extends java.lang.Record implements java.util.function.Supplier<java.lang.String>
 public final class example/MyRecord extends java/lang/Record implements java/util/function/Supplier {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
   RECORDCOMPONENT   Ljava/lang/String; get
 
   // access flags 0x12
@@ -6156,6 +6450,8 @@ public class example/Outer {
   public final static INNERCLASS example/Outer$Inner example/Outer Inner
   NESTMEMBER example/Outer$Inner
 
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
+
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -6178,6 +6474,8 @@ public final class example/Outer$Inner extends java/lang/Record {
   NESTHOST example/Outer
   // access flags 0x19
   public final static INNERCLASS example/Outer$Inner example/Outer Inner
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
   RECORDCOMPONENT   I id
 
   // access flags 0x12
@@ -6613,6 +6911,8 @@ public final class example/Outer$Inner extends java/lang/Record {
 // declaration: example/MyRecord extends java.lang.Record
 public final class example/MyRecord extends java/lang/Record {
 
+
+  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
   RECORDCOMPONENT   Ljava/lang/String; name
 
   // access flags 0x12

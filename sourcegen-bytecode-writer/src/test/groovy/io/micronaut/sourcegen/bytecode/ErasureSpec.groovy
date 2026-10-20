@@ -61,9 +61,11 @@ interface Repository {
         then:
         DecompilerUtils.decompileToJava(classWriter.toByteArray()) == '''package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.List;
 import java.util.Optional;
 
+@GeneratedSource
 public class Erasures {
    public static Class[] ofPick() {
       return new Class[]{Number.class, Object.class, List.class, Number.class, List.class, Object.class, Number[].class, Optional.class, Number.class, Number.class};

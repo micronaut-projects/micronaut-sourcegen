@@ -47,6 +47,7 @@ import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.JavaIdioms;
+import io.micronaut.sourcegen.model.GeneratedAnnotationUtils;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
@@ -115,7 +116,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         interfaceDef.getSuperinterfaces().stream().map(typeDef -> asType(typeDef, interfaceDef)).forEach(interfaceBuilder::addSuperinterface);
         interfaceDef.getJavadoc().forEach(interfaceBuilder::addJavadoc);
 
-        for (AnnotationDef annotation : interfaceDef.getAnnotations()) {
+        for (AnnotationDef annotation : GeneratedAnnotationUtils.getAnnotations(interfaceDef)) {
             interfaceBuilder.addAnnotation(asAnnotationSpec(annotation));
         }
         for (PropertyDef property : interfaceDef.getProperties()) {
@@ -169,7 +170,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         enumDef.getSuperinterfaces().stream().map(typeDef -> asType(typeDef, enumDef)).forEach(enumBuilder::addSuperinterface);
         enumDef.getJavadoc().forEach(enumBuilder::addJavadoc);
 
-        for (AnnotationDef annotation : enumDef.getAnnotations()) {
+        for (AnnotationDef annotation : GeneratedAnnotationUtils.getAnnotations(enumDef)) {
             enumBuilder.addAnnotation(asAnnotationSpec(annotation));
         }
 
@@ -213,7 +214,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         TypeSpec.Builder builder = TypeSpec.annotationBuilder(def.getSimpleName());
         builder.addModifiers(def.getModifiersArray());
         def.getJavadoc().forEach(builder::addJavadoc);
-        for (AnnotationDef annotation : def.getAnnotations()) {
+        for (AnnotationDef annotation : GeneratedAnnotationUtils.getAnnotations(def)) {
             builder.addAnnotation(asAnnotationSpec(annotation));
         }
         buildFields(def, def.getFields(), builder);
@@ -270,7 +271,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
             classBuilder.superclass(asType(classDef.getSuperclass(), classDef));
         }
 
-        for (AnnotationDef annotation : classDef.getAnnotations()) {
+        for (AnnotationDef annotation : GeneratedAnnotationUtils.getAnnotations(classDef)) {
             classBuilder.addAnnotation(asAnnotationSpec(annotation));
         }
 
@@ -307,7 +308,7 @@ public sealed class JavaPoetSourceGenerator implements SourceGenerator permits G
         recordDef.getSuperinterfaces().stream().map(typeDef -> asType(typeDef, recordDef)).forEach(classBuilder::addSuperinterface);
         recordDef.getJavadoc().forEach(classBuilder::addJavadoc);
 
-        for (AnnotationDef annotation : recordDef.getAnnotations()) {
+        for (AnnotationDef annotation : GeneratedAnnotationUtils.getAnnotations(recordDef)) {
             classBuilder.addAnnotation(asAnnotationSpec(annotation));
         }
         for (PropertyDef property : recordDef.getProperties()) {

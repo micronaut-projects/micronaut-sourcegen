@@ -24,6 +24,7 @@ class AnnotationClassWriteTest {
             """
             package test
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource
             import java.lang.`annotation`.ElementType
             import java.lang.`annotation`.Retention
             import java.lang.`annotation`.RetentionPolicy
@@ -38,6 +39,7 @@ class AnnotationClassWriteTest {
              */
             @Retention(value = RetentionPolicy.RUNTIME)
             @Target(value = [java.lang.`annotation`.ElementType.TYPE])
+            @GeneratedSource
             public annotation class TestAnnotation(
               /**
                * This is a string value

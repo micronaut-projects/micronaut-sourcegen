@@ -27,6 +27,7 @@ public class AnnotationClassWriteTest {
          */
         @Retention(RetentionPolicy.RUNTIME)
         @Target(ElementType.TYPE)
+        @GeneratedSource
         public @interface TestAnnotation {
           /**
            * This is a string value

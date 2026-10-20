@@ -20,6 +20,7 @@ class AnnotationTest {
 
         val expected = """
         @Introspected
+        @GeneratedSource
         public class SimpleClass
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())
@@ -39,6 +40,7 @@ class AnnotationTest {
 
         val expected = """
         @Introspected
+        @GeneratedSource
         public class SimpleClass {
           @Pattern(regex = "hii")
           public var str: String
@@ -60,6 +62,7 @@ class AnnotationTest {
         @Simple(value = [1,
         2,
         3])
+        @GeneratedSource
         public class SimpleClass
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())
@@ -78,6 +81,7 @@ class AnnotationTest {
         @JsonSubTypes(value = [com.fasterxml.jackson.`annotation`.JsonSubTypes.Type(value = String::class, name = "Cat"),
         com.fasterxml.jackson.`annotation`.JsonSubTypes.Type(value = String::class, name = "Dog"),
         com.fasterxml.jackson.`annotation`.JsonSubTypes.Type(value = String::class, name = "Fish")])
+        @GeneratedSource
         public class SimpleClass
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), result.trim())

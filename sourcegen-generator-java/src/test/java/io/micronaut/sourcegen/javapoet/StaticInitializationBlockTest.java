@@ -26,6 +26,9 @@ public class StaticInitializationBlockTest extends AbstractWriteTest {
         String data = writeClass(classDef);
 
         assertEquals("""
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class StaticInitializationBlockTest {
   static {
     io.micronaut.sourcegen.javapoet.StaticInitializationBlockTest.Context var0 = new io.micronaut.sourcegen.javapoet.StaticInitializationBlockTest.Context();

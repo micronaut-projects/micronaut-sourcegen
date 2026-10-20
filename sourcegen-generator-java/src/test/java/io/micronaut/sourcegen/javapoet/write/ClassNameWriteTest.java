@@ -39,8 +39,10 @@ public class ClassNameWriteTest extends AbstractWriteTest {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 public class $Book$ELResolver {
   public String name() {
     return "book";
@@ -65,6 +67,9 @@ public class $Book$ELResolver {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
   public $Book$ELResolver resolver;
 }
@@ -88,6 +93,9 @@ public class Example {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
   public $Book$ELResolver instance() {
     return $Book$ELResolver.INSTANCE;
@@ -108,7 +116,10 @@ public class Example {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
 @$Generated$Marker
+@GeneratedSource
 public class Example {
 }
             """, data);
@@ -133,8 +144,10 @@ public class Example {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Class;
 
+@GeneratedSource
 public class Example {
   public Class type() {
     return test.$Book$ELResolver.class;
@@ -157,8 +170,10 @@ public class Example {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.util.Map;
 
+@GeneratedSource
 public class Example {
   public Map.Entry entry;
 }
@@ -179,6 +194,9 @@ public class Example {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
   public $Outer.Inner inner;
 }
@@ -202,6 +220,9 @@ public class Example {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class Example {
   public Foo value;
 

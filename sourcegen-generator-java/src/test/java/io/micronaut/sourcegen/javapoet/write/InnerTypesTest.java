@@ -25,11 +25,15 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public enum StatusEnum {
 
               HI,
               HELLO;
 
+              @GeneratedSource
               enum Status {
 
                 SINGLE,
@@ -50,11 +54,15 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public enum ExampleRecordEnum {
 
               HI,
               HELLO;
 
+              @GeneratedSource
               record ExampleRecord(
                   int id
               ) {
@@ -74,11 +82,15 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public enum InnerEnum {
 
               HI,
               HELLO;
 
+              @GeneratedSource
               class Inner {
               }
             }""";
@@ -94,11 +106,15 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public enum InterfaceEnum {
 
               HI,
               HELLO;
 
+              @GeneratedSource
               interface Interface {
               }
             }""";
@@ -118,7 +134,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public class StatusClass {
+              @GeneratedSource
               enum Status {
 
                 SINGLE,
@@ -139,7 +159,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public class ExampleRecordClass {
+              @GeneratedSource
               record ExampleRecord(
                   int id
               ) {
@@ -159,7 +183,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public class InnerClass {
+              @GeneratedSource
               class Inner {
               }
             }""";
@@ -175,9 +203,12 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
             import java.lang.String;
 
+            @GeneratedSource
             public class InnerClass {
+              @GeneratedSource
               private class Inner {
                 String name;
 
@@ -205,7 +236,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public class InterfaceClass {
+              @GeneratedSource
               interface Interface {
               }
             }""";
@@ -225,7 +260,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public record StatusRecord() {
+              @GeneratedSource
               enum Status {
 
                 SINGLE,
@@ -246,7 +285,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public record ExampleRecord() {
+              @GeneratedSource
               record Example(
                   int id
               ) {
@@ -266,7 +309,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public record InnerRecord() {
+              @GeneratedSource
               class Inner {
               }
             }""";
@@ -282,7 +329,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public record InnerRecord() {
+              @GeneratedSource
               private static class Inner {
               }
             }""";
@@ -299,7 +350,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public record InterfaceRecord() {
+              @GeneratedSource
               interface Interface {
               }
             }""";
@@ -320,7 +375,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public interface StatusInterface {
+              @GeneratedSource
               enum Status {
 
                 SINGLE,
@@ -341,7 +400,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public interface RecordInterface {
+              @GeneratedSource
               record Record(
                   int id
               ) {
@@ -361,7 +424,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public interface InnerInterface {
+              @GeneratedSource
               class Inner {
               }
             }""";
@@ -377,7 +444,11 @@ public class InnerTypesTest extends AbstractWriteTest {
         String expectedString = """
             package test;
 
+            import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+            @GeneratedSource
             public interface InnerInterface {
+              @GeneratedSource
               interface Inner {
               }
             }""";

@@ -59,9 +59,11 @@ public class ExpressionWriteTest extends AbstractWriteTest {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 import java.util.AbstractList;
 
+@GeneratedSource
 class MyList extends AbstractList<String> {
   MyList() {
     super();
@@ -84,9 +86,11 @@ class MyList extends AbstractList<String> {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 import java.util.AbstractList;
 
+@GeneratedSource
 class MyList extends AbstractList<String> {
   MyList() {
     super();
@@ -122,9 +126,11 @@ class MyList extends AbstractList<String> {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class MyClass implements Predicate {
   int test(Object arg1) {
     if (this.getIntegerValue() == null) {
@@ -163,9 +169,11 @@ class MyClass implements Predicate {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class MyClass implements Predicate {
   int test(Object arg1) {
     if (this.getIntegerValue() == null) {
@@ -204,9 +212,11 @@ class MyClass implements Predicate {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class MyClass implements Predicate {
   int test(Object arg1) {
     if (this.getIntegerValue() != null) {
@@ -245,9 +255,11 @@ class MyClass implements Predicate {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class MyClass implements Predicate {
   int test(Object arg1) {
     if (this.getIntegerValue() instanceof java.lang.String) {
@@ -287,9 +299,11 @@ class MyClass implements Predicate {
         Assertions.assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 import java.util.function.Predicate;
 
+@GeneratedSource
 class MyClass implements Predicate {
   int test(Object arg1) {
     if (this.getIntegerValue() == "Hello") {
@@ -324,8 +338,10 @@ class MyClass implements Predicate {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 class MyClass {
   boolean test(String value, String other) {
     return value == other && value != null && value != "ignored";
@@ -355,8 +371,10 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 
+@GeneratedSource
 class MyClass {
   boolean test(int value) {
     return value == 1 && (Object) value != null && (Object) value instanceof java.lang.Integer;
@@ -384,9 +402,11 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 import java.util.List;
 
+@GeneratedSource
 class MyClass {
   void test() {
     String propertyValue0 = null;
@@ -413,8 +433,10 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 class MyClass {
   void acceptValue(String value) {
   }
@@ -445,9 +467,11 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 import java.util.List;
 
+@GeneratedSource
 class MyClass {
   void test() {
     String propertyValue0 = null;
@@ -474,8 +498,10 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 class MyClass {
   void acceptValue(String value) {
   }
@@ -541,8 +567,10 @@ class MyClass {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Class;
 
+@GeneratedSource
 public class Example {
   void myMethod1(Class arg1) {
   }
@@ -599,8 +627,10 @@ public class Example {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 class MyClass {
   int test(String param) {
     int result = 0;
@@ -648,6 +678,9 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
   int test(int value) {
     int result = -1;
@@ -693,9 +726,11 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Integer;
 import java.lang.String;
 
+@GeneratedSource
 class MyClass {
   Integer test(String param) {
     return switch (param) {
@@ -737,8 +772,10 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 class MyClass {
   int test(String param1, int param2) {
     return switch (param1) {
@@ -797,8 +834,10 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 class MyClass {
   int test(String param1, int param2) {
     return switch (param1) {
@@ -842,8 +881,10 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.RuntimeException;
 
+@GeneratedSource
 class MyClass {
   int test() {
     int result = 0;
@@ -881,6 +922,9 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
   int test() {
     int result = 0;
@@ -910,6 +954,9 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 class MyClass {
   int test() {
     synchronized (this) {
@@ -945,9 +992,11 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.io.IOException;
 import java.lang.RuntimeException;
 
+@GeneratedSource
 class MyClass {
   int test() {
     int result = 0;
@@ -989,9 +1038,11 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.io.IOException;
 import java.lang.RuntimeException;
 
+@GeneratedSource
 class MyClass {
   int test() {
     try {
@@ -1033,8 +1084,10 @@ class MyClass {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 
+@GeneratedSource
 public class Example {
   Object[] myMethod(int arg1, int arg2) {
     return new Object[]{arg1 == arg2,arg1 != arg2,arg1 > arg2,arg1 < arg2,arg1 >= arg2,arg1 <= arg2,(Object) arg1 == null,(Object) arg1 != null};
@@ -1072,8 +1125,10 @@ public class Example {
         assertEquals("""
 package example;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 
+@GeneratedSource
 public class Example {
   Object[] myMethod(int arg1, int arg2) {
     return new Object[]{arg1 + arg2,arg1 - arg2,arg1 * arg2,arg1 / arg2,arg1 % arg2,arg1 & arg2,arg1 | arg2,arg1 ^ arg2,arg1 << arg2,arg1 >> arg2,arg1 >>> arg2,-arg1};
@@ -1355,8 +1410,10 @@ public class Example {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 
+@GeneratedSource
 class MyClass {
   Object test(int value) {
     return switch (value) {
@@ -1390,8 +1447,10 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 class CastedSwitch {
   String test(int value) {
     return switch (value) {
@@ -1422,9 +1481,11 @@ class CastedSwitch {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 import java.lang.String;
 
+@GeneratedSource
 class MyClass {
   String test(Object value) {
     return ((String) value).trim();
@@ -1475,8 +1536,10 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 class MyClass {
   String test(int value) {
     return (switch (value) {
@@ -1602,8 +1665,10 @@ class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 
+@GeneratedSource
 public class MyClass {
   public Object run(Object[] args) {
     return args[0];
@@ -1633,8 +1698,10 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 
+@GeneratedSource
 public class MyClass {
   public Object run(Object[] args, int i) {
     return args[i + 1];
@@ -1663,9 +1730,11 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 import java.lang.String;
 
+@GeneratedSource
 public class MyClass {
   public String run(Object o) {
     return ((String[]) o)[0];
@@ -1698,8 +1767,10 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 public class MyClass {
   public String[] values() {
     return null;
@@ -1744,6 +1815,9 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class MyClass {
   public Nested evaluate() {
     return (outerContext) -> (innerContext) -> null;

@@ -32,6 +32,7 @@ import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
+import io.micronaut.sourcegen.model.GeneratedAnnotationUtils;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
@@ -163,7 +164,7 @@ final class JdkClassFileWriter {
             .withSuperclass(ConstantDescs.CD_Object)
             .withInterfaceSymbols(List.of(ClassDesc.of(java.lang.annotation.Annotation.class.getName())));
         writeOuterInner(builder, annotationDef, owner, outerType);
-        addAnnotations(builder, annotationDef.getAnnotations());
+        addAnnotations(builder, GeneratedAnnotationUtils.getAnnotations(annotationDef));
         List<StatementDef> staticInitializer = new ArrayList<>();
         for (FieldDef field : annotationDef.getFields()) {
             writeField(builder, annotationDef, field);
@@ -252,7 +253,7 @@ final class JdkClassFileWriter {
             .withInterfaceSymbols(interfaceDef.getSuperinterfaces().stream()
                 .map(type -> classDesc(type, interfaceDef)).toList());
         writeOuterInner(builder, interfaceDef, owner, outerType);
-        addAnnotations(builder, interfaceDef.getAnnotations());
+        addAnnotations(builder, GeneratedAnnotationUtils.getAnnotations(interfaceDef));
         addSignature(builder, SignatureUtils.getInterfaceSignature(interfaceDef));
         for (MethodDef method : interfaceDef.getMethods()) {
             if (isAbstract(interfaceDef, method)) {
@@ -312,7 +313,7 @@ final class JdkClassFileWriter {
             .withInterfaceSymbols(recordDef.getSuperinterfaces().stream()
                 .map(type -> classDesc(type, recordDef)).toList());
         writeOuterInner(builder, recordDef, owner, outerType);
-        addAnnotations(builder, recordDef.getAnnotations());
+        addAnnotations(builder, GeneratedAnnotationUtils.getAnnotations(recordDef));
         addSignature(builder, SignatureUtils.getRecordSignature(recordDef));
 
         List<RecordComponentInfo> components = new ArrayList<>();
@@ -484,7 +485,7 @@ final class JdkClassFileWriter {
         builder.withInterfaceSymbols(classDef.getSuperinterfaces().stream()
             .map(type -> classDesc(type, classDef)).toList());
         writeOuterInner(builder, classDef, owner, outerType);
-        addAnnotations(builder, classDef.getAnnotations());
+        addAnnotations(builder, GeneratedAnnotationUtils.getAnnotations(classDef));
         addSignature(builder, classSignature(classDef));
         for (FieldDef field : classDef.getFields()) {
             writeField(builder, classDef, field);

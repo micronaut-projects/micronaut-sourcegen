@@ -34,6 +34,9 @@ public class EnumWriteTest {
         var expected = """
         package test;
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+        @GeneratedSource
         enum Status {
 
           ACTIVE,
@@ -57,9 +60,12 @@ public class EnumWriteTest {
         var expected = """
         package test;
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource;
+
         /**
          * Enum representing the status of a process.
          */
+        @GeneratedSource
         enum Status {
 
           /**
@@ -114,6 +120,9 @@ public class EnumWriteTest {
         var expected = """
         package test;
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+        @GeneratedSource
         enum Status {
 
           ACTIVE(2),
@@ -145,6 +154,9 @@ public class EnumWriteTest {
         var expected = """
         package test;
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+        @GeneratedSource
         enum Status {
 
           ACTIVE(2, true),
@@ -177,8 +189,10 @@ public class EnumWriteTest {
         var expected = """
         package test;
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource;
         import java.lang.String;
 
+        @GeneratedSource
         enum Status {
 
           ACTIVE,
@@ -213,8 +227,10 @@ public class EnumWriteTest {
         var expected = """
         package test;
 
+        import io.micronaut.sourcegen.annotations.GeneratedSource;
         import java.lang.String;
 
+        @GeneratedSource
         enum Status {
 
           ACTIVE,

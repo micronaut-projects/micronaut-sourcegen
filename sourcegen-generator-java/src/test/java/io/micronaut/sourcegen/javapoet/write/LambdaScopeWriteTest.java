@@ -85,6 +85,9 @@ public class LambdaScopeWriteTest extends AbstractWriteTest {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class MyClass {
   public Nested evaluate() {
     return (context) -> (context1) -> null;
@@ -121,6 +124,9 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
+
+@GeneratedSource
 public class MyClass {
   public Nested evaluate() {
     return (context) -> (context1) -> (context2) -> null;
@@ -159,8 +165,10 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 public class MyClass {
   public String evaluate() {
     StringFunction first = (context) -> context;
@@ -195,8 +203,10 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 public class MyClass {
   public StringFunction evaluate(String context) {
     return (context1) -> context1;
@@ -234,8 +244,10 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 public class MyClass {
   public String evaluate() {
     String context = "a";
@@ -272,8 +284,10 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 public class MyClass {
   public StringFunction evaluate(String prefix) {
     return (context) -> prefix.concat(context);
@@ -321,9 +335,11 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.Object;
 import java.util.stream.Stream;
 
+@GeneratedSource
 public class MyClass {
   public Stream<Object> evaluate(Object context, Stream<Object> items) {
     return items.filter((t) -> Helper.check(context, t));
@@ -360,8 +376,10 @@ public class MyClass {
         assertEquals("""
 package test;
 
+import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
+@GeneratedSource
 public class MyClass {
   public StringFunction evaluate() {
     String prefix = "prefix_";
