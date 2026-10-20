@@ -89,7 +89,7 @@ public final class InterfaceDef extends ObjectDef {
         }
 
         public InterfaceDef build() {
-            return new InterfaceDef(new ClassTypeDef.ClassName(name), modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
+            return new InterfaceDef(new ClassTypeDef.ClassName(name), modifiers, methods, properties, GeneratedAnnotationUtils.getAnnotations(annotations), javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
         }
 
     }

@@ -87,8 +87,10 @@ public abstract class ByteCodeWriterTck {
             InterfaceDef.builder("example.MarkedInterface").build(),
             AnnotationObjectDef.builder("example.MarkedAnnotation").build()
         )) {
+            List<AnnotationDef> annotationsBeforeEmission = definition.getAnnotations();
             assertGeneratedMarker(write(definition));
-            assertTrue(definition.getAnnotations().isEmpty(), "Emission must not mutate the model");
+            assertEquals(1, annotationsBeforeEmission.size());
+            assertEquals(annotationsBeforeEmission, definition.getAnnotations(), "Emission must not mutate the model");
         }
     }
 

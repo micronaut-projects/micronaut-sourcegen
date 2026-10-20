@@ -204,7 +204,7 @@ public final class EnumDef extends ObjectDef {
                     validateConstructor(constantDef);
                 }
             }
-            return new EnumDef(new ClassTypeDef.ClassName(name), modifiers, fields, methods, properties, annotations, javadoc, enumConstants, superinterfaces, innerTypes, synthetic);
+            return new EnumDef(new ClassTypeDef.ClassName(name), modifiers, fields, methods, properties, GeneratedAnnotationUtils.getAnnotations(annotations), javadoc, enumConstants, superinterfaces, innerTypes, synthetic);
         }
 
         private void validateConstructor(EnumConstantDef constantDef) {

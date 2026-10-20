@@ -21,18 +21,18 @@ class GeneratedSourceTest {
     }
 
     @Test
-    fun marksBackendCreatedCompanionObjects() {
+    fun doesNotAddMarkersToBackendCreatedCompanionObjects() {
         val definition = ClassDef.builder("example.WithStaticMember")
             .addField(FieldDef.builder("value", TypeDef.Primitive.INT)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC).build())
             .build()
         val source = write(definition)
         assertTrue(source.contains("companion object"))
-        assertEquals(2, markerCount(source))
+        assertEquals(1, markerCount(source))
     }
 
     @Test
-    fun automaticallyMarksAllTypeKinds() {
+    fun writesTheMarkerSuppliedByEveryTypeBuilder() {
         for (definition in listOf(
             ClassDef.builder("example.MarkedClass").build(),
             RecordDef.builder("example.MarkedRecord").build(),
@@ -41,7 +41,7 @@ class GeneratedSourceTest {
             AnnotationObjectDef.builder("example.MarkedAnnotation").build()
         )) {
             assertEquals(1, markerCount(write(definition)))
-            assertTrue(definition.annotations.isEmpty())
+            assertEquals(1, definition.annotations.size)
         }
     }
 

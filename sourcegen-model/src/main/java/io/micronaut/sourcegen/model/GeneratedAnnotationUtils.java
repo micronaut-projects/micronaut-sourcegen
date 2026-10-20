@@ -22,34 +22,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Supplies the generated marker at emission time without modifying the input model.
+ * Supplies the retained generated marker when building type definitions.
  */
 @Internal
-public final class GeneratedAnnotationUtils {
+final class GeneratedAnnotationUtils {
     private static final AnnotationDef GENERATED_SOURCE = AnnotationDef.builder(GeneratedSource.class).build();
 
     private GeneratedAnnotationUtils() {
     }
 
     /**
-     * Returns the marker for backend-created types without a corresponding model definition.
-     *
-     * @return The shared generated-source annotation
-     */
-    public static AnnotationDef generatedSource() {
-        return GENERATED_SOURCE;
-    }
-
-    /**
      * Returns type annotations including exactly one automatically supplied marker.
      *
-     * @param definition The type being emitted
+     * @param annotations The annotations supplied to a type builder
      * @return The original annotations, with the marker appended if absent
      */
-    public static List<AnnotationDef> getAnnotations(ObjectDef definition) {
-        List<AnnotationDef> annotations = definition.getAnnotations();
+    static List<AnnotationDef> getAnnotations(List<AnnotationDef> annotations) {
         if (annotations.stream().anyMatch(annotation -> annotation.getType().getName().equals(GeneratedSource.class.getName()))) {
-            return annotations;
+            return List.copyOf(annotations);
         }
         List<AnnotationDef> generated = new ArrayList<>(annotations);
         generated.add(GENERATED_SOURCE);

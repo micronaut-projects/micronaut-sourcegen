@@ -255,7 +255,7 @@ public final class RecordDef extends ObjectDef {
         }
 
         public RecordDef build() {
-            return new RecordDef(new ClassTypeDef.ClassName(name), modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
+            return new RecordDef(new ClassTypeDef.ClassName(name), modifiers, methods, properties, GeneratedAnnotationUtils.getAnnotations(annotations), javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
         }
 
     }

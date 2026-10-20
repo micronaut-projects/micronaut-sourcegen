@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedSourceTest {
     @Test
-    void automaticallyMarksAllJavaAndGroovyTypeKinds() throws IOException {
+    void writesTheMarkerSuppliedByEveryTypeBuilder() throws IOException {
         for (SourceGenerator generator : List.of(new JavaPoetSourceGenerator(), new GroovyPoetSourceGenerator())) {
             for (ObjectDef definition : List.of(
                 ClassDef.builder("example.MarkedClass").build(),
@@ -30,7 +30,7 @@ class GeneratedSourceTest {
                 AnnotationObjectDef.builder("example.MarkedAnnotation").build()
             )) {
                 assertEquals(1, markerCount(write(generator, definition)));
-                assertTrue(definition.getAnnotations().isEmpty());
+                assertEquals(1, definition.getAnnotations().size());
             }
         }
     }

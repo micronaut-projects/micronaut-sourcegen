@@ -51,9 +51,6 @@ import kotlin.reflect.KClass
  */
 @Internal
 class KotlinPoetSourceGenerator : SourceGenerator {
-    private fun companionObjectBuilder(): TypeSpec.Builder = TypeSpec.companionObjectBuilder()
-        .addAnnotation(asAnnotationSpec(GeneratedAnnotationUtils.generatedSource()))
-
     override fun getLanguage(): VisitorContext.Language {
         return VisitorContext.Language.KOTLIN
     }
@@ -99,7 +96,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         val builder = TypeSpec.annotationBuilder(def.simpleName)
         builder.addModifiers(asKModifiers(stripStatic(def.modifiers)))
         def.javadoc.forEach(Consumer { format: String -> builder.addKdoc(format) })
-        for (annotation in GeneratedAnnotationUtils.getAnnotations(def)) {
+        for (annotation in def.annotations) {
             builder.addAnnotation(asAnnotationSpec(annotation))
         }
         // A Kotlin annotation member is a constructor property, its default is the parameter default
@@ -124,7 +121,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         var companionBuilder: TypeSpec.Builder? = null
         for (field in def.fields) {
             if (companionBuilder == null) {
-                companionBuilder = companionObjectBuilder()
+                companionBuilder = TypeSpec.companionObjectBuilder()
             }
             companionBuilder.addProperty(
                 buildProperty(field, stripStatic(field.modifiers), field.javadoc, def)
@@ -172,7 +169,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 )
             }
         interfaceDef.javadoc.forEach(Consumer { format: String -> interfaceBuilder.addKdoc(format) })
-        GeneratedAnnotationUtils.getAnnotations(interfaceDef).stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
+        interfaceDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
             .forEach { annotationSpec: AnnotationSpec -> interfaceBuilder.addAnnotation(annotationSpec) }
 
         var companionBuilder: TypeSpec.Builder? = null
@@ -205,7 +202,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             var modifiers = method.modifiers
             if (modifiers.contains(Modifier.STATIC)) {
                 if (companionBuilder == null) {
-                    companionBuilder = companionObjectBuilder()
+                    companionBuilder = TypeSpec.companionObjectBuilder()
                 }
                 modifiers = stripStatic(modifiers)
                 companionBuilder.addFunction(
@@ -248,7 +245,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         if (classDef.superclass != null) {
             classBuilder.superclass(asType(classDef.superclass, classDef))
         }
-        GeneratedAnnotationUtils.getAnnotations(classDef).stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
+        classDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
             .forEach { annotationSpec: AnnotationSpec -> classBuilder.addAnnotation(annotationSpec) }
 
         var companionBuilder: TypeSpec.Builder? = null
@@ -257,7 +254,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
 
         classDef.staticInitializer?.let { staticInitializerDef ->
             val clinit = MethodDef.builder("<clinit>").build()
-            val currentCompanion = companionBuilder ?: companionObjectBuilder().also {
+            val currentCompanion = companionBuilder ?: TypeSpec.companionObjectBuilder().also {
                 companionBuilder = it
             }
             currentCompanion.addInitializerBlock(
@@ -268,7 +265,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         for (method in classDef.methods) {
             var modifiers = method.modifiers
             if (modifiers.contains(Modifier.STATIC)) {
-                val currentCompanion = companionBuilder ?: companionObjectBuilder().also {
+                val currentCompanion = companionBuilder ?: TypeSpec.companionObjectBuilder().also {
                     companionBuilder = it
                 }
                 modifiers = stripStatic(modifiers)
@@ -358,7 +355,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
                 )
             }
         recordDef.javadoc.forEach(Consumer { format: String -> classBuilder.addKdoc(format) })
-        GeneratedAnnotationUtils.getAnnotations(recordDef).stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
+        recordDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
             .forEach { annotationSpec: AnnotationSpec -> classBuilder.addAnnotation(annotationSpec) }
 
         var companionBuilder: TypeSpec.Builder? = null
@@ -394,7 +391,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             var modifiers = method.modifiers
             if (modifiers.contains(Modifier.STATIC)) {
                 if (companionBuilder == null) {
-                    companionBuilder = companionObjectBuilder()
+                    companionBuilder = TypeSpec.companionObjectBuilder()
                 }
                 modifiers = stripStatic(modifiers)
                 companionBuilder.addFunction(
@@ -428,7 +425,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
         enumDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, enumDef) }
             .forEach { it: TypeName -> enumBuilder.addSuperinterface(it) }
         enumDef.javadoc.forEach(Consumer { format: String -> enumBuilder.addKdoc(format) })
-        GeneratedAnnotationUtils.getAnnotations(enumDef).stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
+        enumDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
             .forEach { annotationSpec: AnnotationSpec -> enumBuilder.addAnnotation(annotationSpec) }
 
         enumDef.enumConstants.forEach { enumConstant: EnumConstantDef ->
@@ -453,7 +450,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             var modifiers = method.modifiers
             if (modifiers.contains(Modifier.STATIC)) {
                 if (companionBuilder == null) {
-                    companionBuilder = companionObjectBuilder()
+                    companionBuilder = TypeSpec.companionObjectBuilder()
                 }
                 modifiers = stripStatic(modifiers)
                 companionBuilder.addFunction(
@@ -571,7 +568,7 @@ class KotlinPoetSourceGenerator : SourceGenerator {
             val modifiers = field.modifiers
             if (modifiers.contains(Modifier.STATIC)) {
                 if (companionBuilderTmp == null) {
-                    companionBuilderTmp = companionObjectBuilder()
+                    companionBuilderTmp = TypeSpec.companionObjectBuilder()
                 }
                 companionBuilderTmp.addProperty(
                     buildProperty(field, stripStatic(modifiers), field.javadoc, objectDef)

@@ -135,7 +135,7 @@ public final class AnnotationObjectDef extends ObjectDef {
          */
         public AnnotationObjectDef build() {
             return new AnnotationObjectDef(members, fields, new ClassTypeDef.ClassName(name),
-                modifiers, annotations, javadoc, innerTypes
+                modifiers, GeneratedAnnotationUtils.getAnnotations(annotations), javadoc, innerTypes
             );
         }
 

@@ -31,7 +31,6 @@ import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.ObjectDef;
-import io.micronaut.sourcegen.model.GeneratedAnnotationUtils;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.PropertyDef;
 import io.micronaut.sourcegen.model.RecordDef;
@@ -282,7 +281,7 @@ public final class ByteCodeWriter {
             interfaceDef.getSuperinterfaces().stream().map(i -> TypeUtils.getType(i, interfaceDef)).map(Type::getInternalName).toArray(String[]::new)
         );
         writeOuterInner(classVisitor, interfaceDef.asTypeDef(), interfaceDef, outerType);
-        for (AnnotationDef annotation : GeneratedAnnotationUtils.getAnnotations(interfaceDef)) {
+        for (AnnotationDef annotation : interfaceDef.getAnnotations()) {
             writeAnnotation(annotation, classVisitor::visitAnnotation);
         }
         for (MethodDef method : interfaceDef.getMethods()) {
@@ -319,7 +318,7 @@ public final class ByteCodeWriter {
             new String[]{Type.getType(Annotation.class).getInternalName()}
         );
         writeOuterInner(classVisitor, typeDef, annotationDef, outerType);
-        for (AnnotationDef annotation : GeneratedAnnotationUtils.getAnnotations(annotationDef)) {
+        for (AnnotationDef annotation : annotationDef.getAnnotations()) {
             writeAnnotation(annotation, classVisitor::visitAnnotation);
         }
         List<StatementDef> staticInitStatements = new ArrayList<>();
@@ -423,7 +422,7 @@ public final class ByteCodeWriter {
         );
         writeOuterInner(classVisitor, recordDef.asTypeDef(), recordDef, outerType);
 
-        for (AnnotationDef annotation : GeneratedAnnotationUtils.getAnnotations(recordDef)) {
+        for (AnnotationDef annotation : recordDef.getAnnotations()) {
             writeAnnotation(annotation, classVisitor::visitAnnotation);
         }
 
@@ -684,7 +683,7 @@ public final class ByteCodeWriter {
         );
         writeOuterInner(classVisitor, classDef.asTypeDef(), classDef, outerType);
 
-        for (AnnotationDef annotation : GeneratedAnnotationUtils.getAnnotations(classDef)) {
+        for (AnnotationDef annotation : classDef.getAnnotations()) {
             writeAnnotation(annotation, classVisitor::visitAnnotation);
         }
 
