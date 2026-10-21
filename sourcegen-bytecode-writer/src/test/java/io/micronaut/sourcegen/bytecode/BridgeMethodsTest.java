@@ -73,8 +73,6 @@ class BridgeMethodsTest {
 public class example/Example extends example/Parent {
 
 
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
-
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -125,8 +123,6 @@ public class example/Example extends example/Parent {
 // declaration: example/Example extends example.Parent<java.lang.Integer>
 public class example/Example extends example/Parent {
 
-
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -181,8 +177,6 @@ public class example/Example extends example/Parent {
 public class example/Example implements java/util/function/Function {
 
 
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
-
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -236,8 +230,6 @@ public class example/Example implements java/util/function/Function {
 // declaration: example/Example implements java.util.Comparator<java.lang.String>
 public class example/Example implements java/util/Comparator {
 
-
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -303,8 +295,6 @@ public class example/Example implements java/util/Comparator {
 public class example/Example extends example/Parent {
 
 
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
-
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -359,8 +349,6 @@ public class example/Example extends example/Parent {
 public abstract class example/Example extends example/Top {
 
 
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
-
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -400,8 +388,6 @@ public abstract class example/Example extends example/Top {
 // declaration: example/Example extends example.ParentInterface<example.Example>
 public abstract interface example/Example implements example/ParentInterface {
 
-
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x401
   public abstract get()Lexample/Example;
@@ -444,8 +430,6 @@ public abstract interface example/Example implements example/ParentInterface {
 public class example/B extends example/A {
 
 
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
-
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -474,8 +458,6 @@ public class example/B extends example/A {
 // declaration: example/C extends example.B
 public class example/C extends example/B {
 
-
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -534,8 +516,6 @@ public class example/C extends example/B {
 public class example/Example extends example/Parent {
 
 
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
-
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -588,8 +568,6 @@ public class example/Example extends example/Parent {
 // declaration: example/Example extends example.Parent<java.lang.String> implements example.Id<java.lang.String>
 public class example/Example extends example/Parent implements example/Id {
 
-
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V
@@ -655,8 +633,6 @@ public class example/Example extends example/Parent implements example/Id {
 public class example/Example extends example/Parent {
 
 
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
-
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -716,8 +692,6 @@ public class example/Example extends example/Parent {
 public class example/Example extends example/Parent {
 
 
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
-
   // access flags 0x1
   public <init>()V
     ALOAD 0
@@ -754,8 +728,6 @@ public class example/Example extends example/Parent {
 // declaration: example/Example extends example.UnknownParent
 public class example/Example extends example/UnknownParent {
 
-
-  @Lio/micronaut/sourcegen/annotations/GeneratedSource;() // invisible
 
   // access flags 0x1
   public <init>()V

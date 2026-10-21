@@ -32,7 +32,7 @@ class GeneratedSourceTest {
     }
 
     @Test
-    fun writesTheMarkerSuppliedByEveryTypeBuilder() {
+    fun marksEveryTypeKind() {
         for (definition in listOf(
             ClassDef.builder("example.MarkedClass").build(),
             RecordDef.builder("example.MarkedRecord").build(),
@@ -41,7 +41,7 @@ class GeneratedSourceTest {
             AnnotationObjectDef.builder("example.MarkedAnnotation").build()
         )) {
             assertEquals(1, markerCount(write(definition)))
-            assertEquals(1, definition.annotations.size)
+            assertTrue(definition.annotations.isEmpty())
         }
     }
 
@@ -64,7 +64,7 @@ class GeneratedSourceTest {
     private fun markerCount(source: String) = source.lineSequence().count { it.trim() == "@GeneratedSource" }
 
     private fun write(definition: ObjectDef): String = StringWriter().use { writer ->
-        KotlinPoetSourceGenerator().write(definition, writer)
+        KotlinPoetSourceGenerator().write(definition.markAsGenerated(), writer)
         writer.toString()
     }
 }

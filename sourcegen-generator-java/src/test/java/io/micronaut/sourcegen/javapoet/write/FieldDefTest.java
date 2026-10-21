@@ -62,14 +62,12 @@ public class FieldDefTest extends AbstractWriteTest {
         }
 
         assertThat(result).isEqualTo("""
-            import io.micronaut.sourcegen.annotations.GeneratedSource;
             import jakarta.validation.constraints.Max;
             import jakarta.validation.constraints.Min;
             import jakarta.validation.constraints.NotNull;
             import java.lang.Float;
             import java.util.List;
 
-            @GeneratedSource
             record Record(
                 @NotNull List<@Min(1) @Max(10) Float> numbers
             ) {
@@ -97,12 +95,10 @@ public class FieldDefTest extends AbstractWriteTest {
         }
 
         assertThat(result).isEqualTo("""
-            import io.micronaut.sourcegen.annotations.GeneratedSource;
             import jakarta.validation.constraints.Min;
             import java.lang.Float;
             import java.util.List;
 
-            @GeneratedSource
             record Record(
                 List<@Min(1) Float> numbers
             ) {
@@ -128,11 +124,9 @@ public class FieldDefTest extends AbstractWriteTest {
         }
 
         assertThat(result).isEqualTo("""
-            import io.micronaut.sourcegen.annotations.GeneratedSource;
             import jakarta.validation.constraints.Min;
             import java.lang.Float;
 
-            @GeneratedSource
             record Record(
                 @Min(1) Float numbers
             ) {

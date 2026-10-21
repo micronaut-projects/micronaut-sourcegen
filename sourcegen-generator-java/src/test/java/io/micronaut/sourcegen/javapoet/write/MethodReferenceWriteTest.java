@@ -57,9 +57,6 @@ public class MethodReferenceWriteTest extends AbstractWriteTest {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
-
-@GeneratedSource
 public class MyClass {
   public StringFunction evaluate() {
     return Owner::shout;
@@ -75,9 +72,6 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
-
-@GeneratedSource
 public class MyClass {
   public StringFunction evaluate() {
     return "prefix_"::concat;
@@ -91,9 +85,6 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
-
-@GeneratedSource
 public class MyClass {
   public StringFunction evaluate() {
     return "prefix_"::concat;
@@ -112,9 +103,6 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
-
-@GeneratedSource
 public class MyClass {
   public StringFunction evaluate() {
     return Owner::new;
@@ -135,9 +123,6 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
-
-@GeneratedSource
 public class MyClass {
   public StringFunction evaluate() {
     return (true ? "prefix_" : "suffix_")::concat;
@@ -253,10 +238,8 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
-@GeneratedSource
 public class MyClass {
   public String run(StringFunction function) {
   }

@@ -72,6 +72,11 @@ public final class ClassDef extends ObjectDef {
     }
 
     @Override
+    ClassDef withAnnotations(List<AnnotationDef> annotations, List<ObjectDef> innerTypes) {
+        return new ClassDef(className, modifiers, fields, methods, properties, annotations, javadoc, typeVariables, superinterfaces, superclass, innerTypes, staticInitializer, synthetic);
+    }
+
+    @Override
     public ClassTypeDef asTypeDef() {
         if (typeVariables.isEmpty()) {
             return super.asTypeDef();
@@ -215,7 +220,7 @@ public final class ClassDef extends ObjectDef {
         }
 
         public ClassDef build() {
-            return new ClassDef(new ClassTypeDef.ClassName(name), modifiers, fields, methods, properties, GeneratedAnnotationUtils.getAnnotations(annotations), javadoc, typeVariables, superinterfaces, superclass, innerTypes, staticInitializer, synthetic);
+            return new ClassDef(new ClassTypeDef.ClassName(name), modifiers, fields, methods, properties, annotations, javadoc, typeVariables, superinterfaces, superclass, innerTypes, staticInitializer, synthetic);
         }
 
         /**

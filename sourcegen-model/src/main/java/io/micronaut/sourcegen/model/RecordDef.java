@@ -70,6 +70,11 @@ public final class RecordDef extends ObjectDef {
         return new RecordDef(className, modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, rebaseInnerTypes(className, innerTypes), synthetic);
     }
 
+    @Override
+    RecordDef withAnnotations(List<AnnotationDef> annotations, List<ObjectDef> innerTypes) {
+        return new RecordDef(className, modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
+    }
+
     public static RecordDefBuilder builder(String name) {
         return new RecordDefBuilder(name);
     }
@@ -255,7 +260,7 @@ public final class RecordDef extends ObjectDef {
         }
 
         public RecordDef build() {
-            return new RecordDef(new ClassTypeDef.ClassName(name), modifiers, methods, properties, GeneratedAnnotationUtils.getAnnotations(annotations), javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
+            return new RecordDef(new ClassTypeDef.ClassName(name), modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
         }
 
     }

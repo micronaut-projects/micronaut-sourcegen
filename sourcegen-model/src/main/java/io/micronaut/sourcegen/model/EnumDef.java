@@ -63,6 +63,11 @@ public final class EnumDef extends ObjectDef {
         return new EnumDef(className, modifiers, fields, methods, properties, annotations, javadoc, enumConstants, superinterfaces, rebaseInnerTypes(className, innerTypes), synthetic);
     }
 
+    @Override
+    EnumDef withAnnotations(List<AnnotationDef> annotations, List<ObjectDef> innerTypes) {
+        return new EnumDef(className, modifiers, fields, methods, properties, annotations, javadoc, enumConstants, superinterfaces, innerTypes, synthetic);
+    }
+
     public static EnumDefBuilder builder(String name) {
         return new EnumDefBuilder(name);
     }
@@ -204,7 +209,7 @@ public final class EnumDef extends ObjectDef {
                     validateConstructor(constantDef);
                 }
             }
-            return new EnumDef(new ClassTypeDef.ClassName(name), modifiers, fields, methods, properties, GeneratedAnnotationUtils.getAnnotations(annotations), javadoc, enumConstants, superinterfaces, innerTypes, synthetic);
+            return new EnumDef(new ClassTypeDef.ClassName(name), modifiers, fields, methods, properties, annotations, javadoc, enumConstants, superinterfaces, innerTypes, synthetic);
         }
 
         private void validateConstructor(EnumConstantDef constantDef) {

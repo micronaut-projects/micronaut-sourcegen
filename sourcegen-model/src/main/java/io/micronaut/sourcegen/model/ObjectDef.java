@@ -90,6 +90,29 @@ public abstract sealed class ObjectDef extends AbstractElement permits ClassDef,
     public abstract ObjectDef withClassName(ClassTypeDef.ClassName className);
 
     /**
+     * Creates a copy of this definition, and of its member types, annotated with the CLASS-retained
+     * {@link io.micronaut.sourcegen.annotations.GeneratedSource} marker. Types already carrying it are not annotated twice.
+     *
+     * @return the copy of this object definition marked as generated
+     * @since 2.2.4
+     */
+    public ObjectDef markAsGenerated() {
+        return withAnnotations(
+            GeneratedAnnotationUtils.getAnnotations(annotations),
+            innerTypes.stream().map(ObjectDef::markAsGenerated).toList()
+        );
+    }
+
+    /**
+     * Creates a copy of this definition with new annotations and member types.
+     *
+     * @param annotations The annotations
+     * @param innerTypes  The member types
+     * @return the copy
+     */
+    abstract ObjectDef withAnnotations(List<AnnotationDef> annotations, List<ObjectDef> innerTypes);
+
+    /**
      * Rebase member type names when their enclosing definition is itself moved below another type.
      *
      * @param className The new name of the enclosing definition

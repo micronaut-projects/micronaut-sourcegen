@@ -79,7 +79,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public abstract class ByteCodeWriterTck {
 
     @Test
-    public void automaticallyMarksEveryGeneratedTypeWithAClassRetainedAnnotation() {
+    public void marksEveryGeneratedTypeWithAClassRetainedAnnotation() {
         for (ObjectDef definition : List.of(
             ClassDef.builder("example.MarkedClass").build(),
             RecordDef.builder("example.MarkedRecord").build(),
@@ -88,8 +88,8 @@ public abstract class ByteCodeWriterTck {
             AnnotationObjectDef.builder("example.MarkedAnnotation").build()
         )) {
             List<AnnotationDef> annotationsBeforeEmission = definition.getAnnotations();
-            assertGeneratedMarker(write(definition));
-            assertEquals(1, annotationsBeforeEmission.size());
+            assertGeneratedMarker(write(definition.markAsGenerated()));
+            assertTrue(annotationsBeforeEmission.isEmpty());
             assertEquals(annotationsBeforeEmission, definition.getAnnotations(), "Emission must not mutate the model");
         }
     }
@@ -100,7 +100,7 @@ public abstract class ByteCodeWriterTck {
             .addAnnotation(AnnotationDef.builder(ClassTypeDef.of("io.micronaut.sourcegen.annotations.GeneratedSource")).build())
             .addAnnotation(Deprecated.class)
             .build();
-        assertGeneratedMarker(write(definition));
+        assertGeneratedMarker(write(definition.markAsGenerated()));
         assertEquals(2, definition.getAnnotations().size());
     }
 

@@ -62,10 +62,8 @@ interface Checker<T> {
         then:
         DecompilerUtils.decompileToJava(classWriter.toByteArray()) == '''package example;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
 import test.Checker;
 
-@GeneratedSource
 public class Checks {
    public boolean isEmpty(String value) {
       Checker checker = Checks::lambda$isEmpty$0;

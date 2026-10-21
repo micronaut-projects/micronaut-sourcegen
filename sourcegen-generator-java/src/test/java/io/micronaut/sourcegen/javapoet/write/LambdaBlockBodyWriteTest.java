@@ -74,10 +74,8 @@ public class LambdaBlockBodyWriteTest extends AbstractWriteTest {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
-@GeneratedSource
 public class MyClass {
   public StringFunction evaluate() {
     return (context) -> {
@@ -112,9 +110,6 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
-
-@GeneratedSource
 public class MyClass {
   public StringFunction evaluate() {
     return (context) -> context.trim();
@@ -148,10 +143,8 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
-@GeneratedSource
 public class MyClass {
   public String evaluate() {
     StringFunction function = (context) -> {
@@ -196,10 +189,8 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
-@GeneratedSource
 public class MyClass {
   public String call(StringFunction function) {
     return function.apply(" a ");
@@ -252,10 +243,8 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
-@GeneratedSource
 public class MyClass {
   public Nested evaluate() {
     return (context) -> (context1) -> {
@@ -301,11 +290,9 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 import java.util.List;
 
-@GeneratedSource
 public class MyClass {
   public List<String> copy(List<String> items) {
     List<String> sink = new java.util.ArrayList();
@@ -345,10 +332,8 @@ public class MyClass {
         assertEquals("""
 package test;
 
-import io.micronaut.sourcegen.annotations.GeneratedSource;
 import java.lang.String;
 
-@GeneratedSource
 public class MyClass {
   public StringFunction evaluate() {
     return (context) -> {

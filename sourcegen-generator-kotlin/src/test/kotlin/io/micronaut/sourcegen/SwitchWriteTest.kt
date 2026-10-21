@@ -38,10 +38,8 @@ class SwitchWriteTest {
             """
             package test
 
-            import io.micronaut.sourcegen.annotations.GeneratedSource
             import kotlin.Int
 
-            @GeneratedSource
             public class MyClass {
               public fun test(`value`: Int): Int {
                 var result:Int = -1

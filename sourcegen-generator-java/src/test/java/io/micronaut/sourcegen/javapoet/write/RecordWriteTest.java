@@ -41,13 +41,13 @@ public class RecordWriteTest {
         var result = writeRecord(recordDef);
 
         var expected = """
-        @GeneratedSource
         record TestRecord(
             String name,
             @Min(1) Integer age,
             @NotBlank String description
         ) {
-        }        """;
+        }
+        """;
         assertEquals(expected.strip(), result.strip());
     }
 
@@ -71,12 +71,12 @@ public class RecordWriteTest {
          * @param name The person's name
          * @param age The person's age
          */
-        @GeneratedSource
         record TestRecord(
             String name,
             Integer age
         ) {
-        }        """;
+        }
+        """;
         assertEquals(expected.strip(), result.strip());
     }
 
@@ -100,12 +100,12 @@ public class RecordWriteTest {
          * @param name$ The person's $name
          * @param age The person's age
          */
-        @GeneratedSource
         record $TestRecord(
             String name$,
             Integer age
         ) {
-        }        """;
+        }
+        """;
         assertEquals(expected.strip(), result.strip());
     }
 
@@ -121,11 +121,11 @@ public class RecordWriteTest {
         /**
          * @param name The person's name
          */
-        @GeneratedSource
         record TestRecord(
             String name
         ) {
-        }        """;
+        }
+        """;
         assertEquals(expected.strip(), result.strip());
     }
 
@@ -139,7 +139,7 @@ public class RecordWriteTest {
 
         // The regex will skip the imports and make sure it is a record
         final Pattern RECORD_REGEX = Pattern.compile("package [^;]+;[^/]+" +
-            "((?:/\\*\\*[\\S\\s]+\\*/\\s+|)@GeneratedSource\\s+record \\S+[\\s\\S]+})\\s*");
+            "((?:/\\*\\*[\\S\\s]+\\*/\\s+|)record \\S+[\\s\\S]+})\\s*");
         Matcher matcher = RECORD_REGEX.matcher(result);
         if (!matcher.matches()) {
             fail("Expected record to match regex: \n" + RECORD_REGEX + "\nbut is: \n" + result);
@@ -171,7 +171,6 @@ public class RecordWriteTest {
         var result = writeRecord(recordDef);
 
         var expected = """
-        @GeneratedSource
         record TestRecord<K, V extends Number>(
             K key,
             V value,
@@ -180,7 +179,8 @@ public class RecordWriteTest {
           public TestRecord<K, V> self() {
             return this;
           }
-        }        """;
+        }
+        """;
         assertEquals(expected.strip(), result.strip());
     }
 
@@ -202,14 +202,12 @@ public class RecordWriteTest {
         var expected = """
         package test;
 
-        import io.micronaut.sourcegen.annotations.GeneratedSource;
         import jackson.annotation.JsonSubTypes;
 
         @JsonSubTypes.Type(
             value = String.class,
             name = "string"
         )
-        @GeneratedSource
         record $TestRecord() {
         }
         """;

@@ -28,10 +28,8 @@ class SuperCallTest {
         val expectedString = """
             package test
 
-            import io.micronaut.sourcegen.annotations.GeneratedSource
             import kotlin.String
 
-            @GeneratedSource
             public class SuperTypeReferenceClass {
               public fun simpleSuperCall(): String {
                 return super.toString()
@@ -61,9 +59,6 @@ class SuperCallTest {
         val expectedString = """
             package test
 
-            import io.micronaut.sourcegen.annotations.GeneratedSource
-
-            @GeneratedSource
             public class SpecificSuperTypeReferenceClass : ParentClass() {
               public fun specificSuperCall() {
                 super<ParentClass>.specificMethod()
@@ -92,9 +87,6 @@ class SuperCallTest {
         val expectedString = """
             package test
 
-            import io.micronaut.sourcegen.annotations.GeneratedSource
-
-            @GeneratedSource
             public class NoParamChildClass public constructor() : NoParamParent()
         """.trimIndent()
         val parentType = ClassTypeDef.of("test." + "NoParamParent")
@@ -116,11 +108,9 @@ class SuperCallTest {
         val expectedString = """
             package test
 
-            import io.micronaut.sourcegen.annotations.GeneratedSource
             import kotlin.Int
             import kotlin.Long
 
-            @GeneratedSource
             public class MultiParamChildClass public constructor(
               childParam1: Int,
               childParam2: Long,

@@ -23,15 +23,14 @@ class RecordWriteTest {
         val expected = """
         package test
 
-        import io.micronaut.sourcegen.annotations.GeneratedSource
         import kotlin.Int
         import kotlin.String
 
-        @GeneratedSource
         public data class TestRecord public constructor(
           public final val name: String,
           public final val age: Int,
         )
+
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), write(recordDef).trim())
     }
@@ -62,11 +61,9 @@ class RecordWriteTest {
         val expected = """
         package test
 
-        import io.micronaut.sourcegen.annotations.GeneratedSource
         import java.lang.Number
         import java.util.function.Supplier
 
-        @GeneratedSource
         public data class TestRecord<K, V : Number> public constructor(
           public final val key: K,
           public final val `value`: V,
@@ -75,6 +72,7 @@ class RecordWriteTest {
             return this
           }
         }
+
         """.trimIndent()
         Assertions.assertEquals(expected.trim(), write(recordDef).trim())
     }

@@ -447,8 +447,7 @@ class JdkExpressionLoweringTest {
 
         // Each annotation lands under its own retention, and the source one lands nowhere
         assertEquals(List.of(RuntimeMarker.class.descriptorString()), visible(model));
-        assertEquals(List.of(ClassMarker.class.descriptorString(),
-            "Lio/micronaut/sourcegen/annotations/GeneratedSource;"), invisible(model));
+        assertEquals(List.of(ClassMarker.class.descriptorString()), invisible(model));
         assertEquals(List.of(RuntimeMarker.class.descriptorString()), visible(model.fields().getFirst()));
         assertEquals(List.of(ClassMarker.class.descriptorString()), invisible(model.fields().getFirst()));
         assertEquals(List.of(RuntimeMarker.class.descriptorString()), visible(method));

@@ -34,11 +34,9 @@ class StatementWriteTest {
             """
             package test
 
-            import io.micronaut.sourcegen.annotations.GeneratedSource
             import java.lang.IllegalStateException
             import kotlin.String
 
-            @GeneratedSource
             public class MyClass {
               public fun run(): String {
                 try {
@@ -76,12 +74,10 @@ class StatementWriteTest {
             """
             package test
 
-            import io.micronaut.sourcegen.annotations.GeneratedSource
             import java.lang.IllegalStateException
             import java.lang.RuntimeException
             import kotlin.String
 
-            @GeneratedSource
             public class MyClass {
               public fun run(): String {
                 try {
@@ -118,10 +114,8 @@ class StatementWriteTest {
             """
             package test
 
-            import io.micronaut.sourcegen.annotations.GeneratedSource
             import kotlin.String
 
-            @GeneratedSource
             public class MyClass {
               public fun run(): String {
                 var result:String = "before"
@@ -150,9 +144,6 @@ class StatementWriteTest {
             """
             package test
 
-            import io.micronaut.sourcegen.annotations.GeneratedSource
-
-            @GeneratedSource
             public class MyClass {
               public fun run() {
                 Owner.NAME = "value"

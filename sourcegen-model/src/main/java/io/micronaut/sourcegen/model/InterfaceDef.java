@@ -53,6 +53,11 @@ public final class InterfaceDef extends ObjectDef {
     }
 
     @Override
+    InterfaceDef withAnnotations(List<AnnotationDef> annotations, List<ObjectDef> innerTypes) {
+        return new InterfaceDef(className, modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
+    }
+
+    @Override
     public ClassTypeDef asTypeDef() {
         if (typeVariables.isEmpty()) {
             return super.asTypeDef();
@@ -89,7 +94,7 @@ public final class InterfaceDef extends ObjectDef {
         }
 
         public InterfaceDef build() {
-            return new InterfaceDef(new ClassTypeDef.ClassName(name), modifiers, methods, properties, GeneratedAnnotationUtils.getAnnotations(annotations), javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
+            return new InterfaceDef(new ClassTypeDef.ClassName(name), modifiers, methods, properties, annotations, javadoc, typeVariables, superinterfaces, innerTypes, synthetic);
         }
 
     }
