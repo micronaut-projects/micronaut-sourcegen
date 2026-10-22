@@ -177,6 +177,7 @@ public final class ByteCodeGenerator extends AbstractByteCodeGenerator {
             "io/micronaut/core/annotation/Introspected.class",
             "io/micronaut/inject/ast/ClassElement.class",
             "io/micronaut/sourcegen/model/ObjectDef.class",
+            "io/micronaut/sourcegen/annotations/GeneratedSource.class",
             "org/jspecify/annotations/Nullable.class"
         )) {
             for (URL url : context.getClasspathResources(resource)) {

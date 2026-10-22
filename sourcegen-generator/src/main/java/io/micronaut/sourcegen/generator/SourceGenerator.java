@@ -56,13 +56,27 @@ public interface SourceGenerator {
      * @since 1.5
      */
     default void write(ObjectDef objectDef, VisitorContext context, Element... originatingElements) {
-        context.visitGeneratedSourceFile(objectDef.getPackageName(), objectDef.getSimpleName(), originatingElements)
+        write(objectDef, context, true, originatingElements);
+    }
+
+    /**
+     * Write the file using the context.
+     *
+     * @param objectDef           The object to write
+     * @param context             The context
+     * @param markAsGenerated     Whether to annotate the written types with {@link io.micronaut.sourcegen.annotations.GeneratedSource}
+     * @param originatingElements the originated elements
+     * @since 2.2.4
+     */
+    default void write(ObjectDef objectDef, VisitorContext context, boolean markAsGenerated, Element... originatingElements) {
+        ObjectDef definition = markAsGenerated ? objectDef.markAsGenerated() : objectDef;
+        context.visitGeneratedSourceFile(definition.getPackageName(), definition.getSimpleName(), originatingElements)
             .ifPresent(generatedFile -> {
                 try {
-                    generatedFile.write(writer -> write(objectDef, writer));
+                    generatedFile.write(writer -> write(definition, writer));
                 } catch (Exception e) {
                     Element element = originatingElements.length > 0 ? originatingElements[0] : null;
-                    throw new ProcessingException(element, "Failed to generate '" + objectDef.getName() + "': " + e.getMessage(), e);
+                    throw new ProcessingException(element, "Failed to generate '" + definition.getName() + "': " + e.getMessage(), e);
                 }
             });
     }

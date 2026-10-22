@@ -18,6 +18,7 @@ package io.micronaut.sourcegen.bytecode.tck;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.AnnotationObjectDef;
 import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.FieldDef;
@@ -32,6 +33,10 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.junit.jupiter.api.Test;
+import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.Opcodes;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
@@ -72,6 +77,47 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @since 2.2
  */
 public abstract class ByteCodeWriterTck {
+
+    @Test
+    public void marksEveryGeneratedTypeWithAClassRetainedAnnotation() {
+        for (ObjectDef definition : List.of(
+            ClassDef.builder("example.MarkedClass").build(),
+            RecordDef.builder("example.MarkedRecord").build(),
+            EnumDef.builder("example.MarkedEnum").addEnumConstant("VALUE").build(),
+            InterfaceDef.builder("example.MarkedInterface").build(),
+            AnnotationObjectDef.builder("example.MarkedAnnotation").build()
+        )) {
+            List<AnnotationDef> annotationsBeforeEmission = definition.getAnnotations();
+            assertGeneratedMarker(write(definition.markAsGenerated()));
+            assertTrue(annotationsBeforeEmission.isEmpty());
+            assertEquals(annotationsBeforeEmission, definition.getAnnotations(), "Emission must not mutate the model");
+        }
+    }
+
+    @Test
+    public void doesNotDuplicateAnExplicitGeneratedMarker() {
+        ClassDef definition = ClassDef.builder("example.ExplicitMarker")
+            .addAnnotation(AnnotationDef.builder(ClassTypeDef.of("io.micronaut.sourcegen.annotations.GeneratedSource")).build())
+            .addAnnotation(Deprecated.class)
+            .build();
+        assertGeneratedMarker(write(definition.markAsGenerated()));
+        assertEquals(2, definition.getAnnotations().size());
+    }
+
+    private static void assertGeneratedMarker(byte[] bytes) {
+        AtomicInteger markers = new AtomicInteger();
+        new ClassReader(bytes).accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+                if (descriptor.equals("Lio/micronaut/sourcegen/annotations/GeneratedSource;")) {
+                    assertFalse(visible, "The marker must have CLASS, not RUNTIME, retention");
+                    markers.incrementAndGet();
+                }
+                return null;
+            }
+        }, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+        assertEquals(1, markers.get());
+    }
 
     /**
      * Writes one definition to class file bytes with the backend under test.

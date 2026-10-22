@@ -72,6 +72,11 @@ public final class ClassDef extends ObjectDef {
     }
 
     @Override
+    ClassDef withAnnotations(List<AnnotationDef> annotations, List<ObjectDef> innerTypes) {
+        return new ClassDef(className, modifiers, fields, methods, properties, annotations, javadoc, typeVariables, superinterfaces, superclass, innerTypes, staticInitializer, synthetic);
+    }
+
+    @Override
     public ClassTypeDef asTypeDef() {
         if (typeVariables.isEmpty()) {
             return super.asTypeDef();

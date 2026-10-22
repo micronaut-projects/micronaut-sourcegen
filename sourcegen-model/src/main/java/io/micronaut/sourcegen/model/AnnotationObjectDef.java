@@ -57,6 +57,11 @@ public final class AnnotationObjectDef extends ObjectDef {
         return new AnnotationObjectDef(members, fields, className, modifiers, annotations, javadoc, rebaseInnerTypes(className, innerTypes));
     }
 
+    @Override
+    AnnotationObjectDef withAnnotations(List<AnnotationDef> annotations, List<ObjectDef> innerTypes) {
+        return new AnnotationObjectDef(members, fields, className, modifiers, annotations, javadoc, innerTypes);
+    }
+
     /**
      * Get fields.
      * @return The fields
