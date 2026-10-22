@@ -64,7 +64,6 @@ loadScripts(document, 'script');</script>
 <li><a href="#method-detail" tabindex="0">Method Details</a>
 <ol class="toc-list">
 <li><a href="#getLanguage()" tabindex="0">getLanguage()</a></li>
-<li><a href="#customizeTypeBuilder(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.javapoet.TypeSpec.Builder)" tabindex="0">customizeTypeBuilder(ObjectDef, TypeSpec.Builder)</a></li>
 </ol>
 </li>
 </ol>
@@ -89,9 +88,7 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="annotations">@Internal
 </span><span class="modifiers">public final class </span><span class="element-name type-name-label">GroovyPoetSourceGenerator</span>
 <span class="extends-implements">extends <a href="JavaPoetSourceGenerator.html" title="class in io.micronaut.sourcegen">JavaPoetSourceGenerator</a></span></div>
-<div class="block">Reuse the Java source generator for Groovy.
-Every generated class, record, enum and interface is annotated with
-<code>groovy.transform.CompileStatic</code> so that the Groovy compiler compiles it statically.</div>
+<div class="block">Reuse the Java source generator for Groovy.</div>
 <dl class="notes">
 <dt>Since:</dt>
 <dd>1.0</dd>
@@ -126,16 +123,9 @@ Every generated class, record, enum and interface is annotated with
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#customizeTypeBuilder(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.javapoet.TypeSpec.Builder)" class="member-name-link">customizeTypeBuilder</a><wbr>(<a href="model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
- <a href="javapoet/TypeSpec.Builder.html" title="class in io.micronaut.sourcegen.javapoet">TypeSpec.Builder</a>&nbsp;typeBuilder)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Hook for subclasses to customize the type builder of a class, record, enum or interface
-before it is built.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>io.micronaut.inject.visitor.VisitorContext.Language</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getLanguage()" class="member-name-link">getLanguage</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>io.micronaut.inject.visitor.VisitorContext.Language</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getLanguage()" class="member-name-link">getLanguage</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
 </div>
@@ -147,7 +137,7 @@ before it is built.</div>
 <code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#clone()" title="class or interface in java.lang" class="external-link">clone</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#equals(java.lang.Object)" title="class or interface in java.lang" class="external-link">equals</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#finalize()" title="class or interface in java.lang" class="external-link">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#toString()" title="class or interface in java.lang" class="external-link">toString</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-io.micronaut.sourcegen.generator.SourceGenerator">Methods inherited from interface&nbsp;<a href="generator/SourceGenerator.html#method-summary" title="interface in io.micronaut.sourcegen.generator">SourceGenerator</a></h3>
-<code><a href="generator/SourceGenerator.html#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element...)" title="write(ObjectDef, VisitorContext, Element...)">write</a></code></div>
+<code><a href="generator/SourceGenerator.html#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,boolean,io.micronaut.inject.ast.Element...)" title="write(ObjectDef, VisitorContext, boolean, Element...)">write</a>, <a href="generator/SourceGenerator.html#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element...)" title="write(ObjectDef, VisitorContext, Element...)">write</a></code></div>
 </section>
 </li>
 </ul>
@@ -187,25 +177,6 @@ before it is built.</div>
 <dd><code><a href="JavaPoetSourceGenerator.html#getLanguage()">getLanguage</a></code>&nbsp;in class&nbsp;<code><a href="JavaPoetSourceGenerator.html" title="class in io.micronaut.sourcegen">JavaPoetSourceGenerator</a></code></dd>
 <dt>Returns:</dt>
 <dd>The source language of the generator</dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="customizeTypeBuilder(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.javapoet.TypeSpec.Builder)">
-<h3>customizeTypeBuilder</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">customizeTypeBuilder</span><wbr><span class="parameters">(<a href="model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
- <a href="javapoet/TypeSpec.Builder.html" title="class in io.micronaut.sourcegen.javapoet">TypeSpec.Builder</a>&nbsp;typeBuilder)</span></div>
-<div class="block"><span class="description-from-type-label">Description copied from class:&nbsp;<code><a href="JavaPoetSourceGenerator.html#customizeTypeBuilder(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.javapoet.TypeSpec.Builder)">JavaPoetSourceGenerator</a></code></span></div>
-<div class="block">Hook for subclasses to customize the type builder of a class, record, enum or interface
-before it is built. Annotation definitions are not passed through this hook.</div>
-<dl class="notes">
-<dt>Overrides:</dt>
-<dd><code><a href="JavaPoetSourceGenerator.html#customizeTypeBuilder(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.javapoet.TypeSpec.Builder)">customizeTypeBuilder</a></code>&nbsp;in class&nbsp;<code><a href="JavaPoetSourceGenerator.html" title="class in io.micronaut.sourcegen">JavaPoetSourceGenerator</a></code></dd>
-<dt>Parameters:</dt>
-<dd><code>objectDef</code> - The object definition</dd>
-<dd><code>typeBuilder</code> - The type builder</dd>
 </dl>
 </div>
 </section>

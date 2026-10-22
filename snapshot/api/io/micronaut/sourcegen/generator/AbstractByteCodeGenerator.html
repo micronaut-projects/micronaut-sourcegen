@@ -65,6 +65,7 @@ loadScripts(document, 'script');</script>
 <ol class="toc-list">
 <li><a href="#write(io.micronaut.sourcegen.model.ObjectDef,java.io.Writer)" tabindex="0">write(ObjectDef, Writer)</a></li>
 <li><a href="#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element...)" tabindex="0">write(ObjectDef, VisitorContext, Element...)</a></li>
+<li><a href="#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,boolean,io.micronaut.inject.ast.Element...)" tabindex="0">write(ObjectDef, VisitorContext, boolean, Element...)</a></li>
 <li><a href="#writeClass(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element%5B%5D)" tabindex="0">writeClass(ObjectDef, ClassTypeDef, VisitorContext, Element[])</a></li>
 </ol>
 </li>
@@ -131,24 +132,32 @@ emitted a second time by the traversal.</p></div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element...)" class="member-name-link">write</a><wbr>(<a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,boolean,io.micronaut.inject.ast.Element...)" class="member-name-link">write</a><wbr>(<a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  io.micronaut.inject.visitor.VisitorContext&nbsp;context,
+ boolean&nbsp;markAsGenerated,
  io.micronaut.inject.ast.Element...&nbsp;originatingElements)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Write the file using the context.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#write(io.micronaut.sourcegen.model.ObjectDef,java.io.Writer)" class="member-name-link">write</a><wbr>(<a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
- <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/io/Writer.html" title="class or interface in java.io" class="external-link">Writer</a>&nbsp;writer)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element...)" class="member-name-link">write</a><wbr>(<a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ io.micronaut.inject.visitor.VisitorContext&nbsp;context,
+ io.micronaut.inject.ast.Element...&nbsp;originatingElements)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Write the file using the context.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#write(io.micronaut.sourcegen.model.ObjectDef,java.io.Writer)" class="member-name-link">write</a><wbr>(<a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/io/Writer.html" title="class or interface in java.io" class="external-link">Writer</a>&nbsp;writer)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Write the source code.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>protected abstract boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#writeClass(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element%5B%5D)" class="member-name-link">writeClass</a><wbr>(<a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>protected abstract boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#writeClass(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.inject.visitor.VisitorContext,io.micronaut.inject.ast.Element%5B%5D)" class="member-name-link">writeClass</a><wbr>(<a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  @Nullable <a href="../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType,
  io.micronaut.inject.visitor.VisitorContext&nbsp;context,
  io.micronaut.inject.ast.Element[]&nbsp;originatingElements)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Emit one definition.</div>
 </div>
 </div>
@@ -220,6 +229,28 @@ emitted a second time by the traversal.</p></div>
 <dt>Parameters:</dt>
 <dd><code>objectDef</code> - The object to write</dd>
 <dd><code>context</code> - The context</dd>
+<dd><code>originatingElements</code> - the originated elements</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,boolean,io.micronaut.inject.ast.Element...)">
+<h3>write</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">write</span><wbr><span class="parameters">(<a href="../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ io.micronaut.inject.visitor.VisitorContext&nbsp;context,
+ boolean&nbsp;markAsGenerated,
+ io.micronaut.inject.ast.Element...&nbsp;originatingElements)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="SourceGenerator.html#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,boolean,io.micronaut.inject.ast.Element...)">SourceGenerator</a></code></span></div>
+<div class="block">Write the file using the context.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="SourceGenerator.html#write(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.inject.visitor.VisitorContext,boolean,io.micronaut.inject.ast.Element...)">write</a></code>&nbsp;in interface&nbsp;<code><a href="SourceGenerator.html" title="interface in io.micronaut.sourcegen.generator">SourceGenerator</a></code></dd>
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The object to write</dd>
+<dd><code>context</code> - The context</dd>
+<dd><code>markAsGenerated</code> - Whether to annotate the written types with <a href="../annotations/GeneratedSource.html" title="annotation interface in io.micronaut.sourcegen.annotations"><code>GeneratedSource</code></a></dd>
 <dd><code>originatingElements</code> - the originated elements</dd>
 </dl>
 </div>
