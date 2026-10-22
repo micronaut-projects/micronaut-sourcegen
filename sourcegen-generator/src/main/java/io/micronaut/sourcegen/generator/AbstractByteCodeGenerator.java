@@ -46,8 +46,13 @@ public abstract class AbstractByteCodeGenerator implements SourceGenerator {
 
     @Override
     public final void write(ObjectDef objectDef, VisitorContext context, Element... originatingElements) {
+        write(objectDef, context, true, originatingElements);
+    }
+
+    @Override
+    public final void write(ObjectDef objectDef, VisitorContext context, boolean markAsGenerated, Element... originatingElements) {
         Deque<InnerDef> innerTypes = new ArrayDeque<>();
-        write(objectDef, null, context, innerTypes, originatingElements);
+        write(markAsGenerated ? objectDef.markAsGenerated() : objectDef, null, context, innerTypes, originatingElements);
         while (!innerTypes.isEmpty()) {
             InnerDef innerType = innerTypes.removeFirst();
             write(innerType.inner(), innerType.outer(), context, innerTypes, originatingElements);

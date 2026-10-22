@@ -63,6 +63,7 @@ public final class EnumGenUtils {
 
         ClassDef.ClassDefBuilder classDefBuilder = ClassDef.builder(enumDef.getName())
             .addFields(enumDef.getFields())
+            .addAnnotations(enumDef.getAnnotations())
             .addModifiers(enumDef.getModifiers())
             .addModifiers(Modifier.FINAL)
             .superclass(TypeDef.parameterized(baseEnumTypeDef, enumTypeDef))
