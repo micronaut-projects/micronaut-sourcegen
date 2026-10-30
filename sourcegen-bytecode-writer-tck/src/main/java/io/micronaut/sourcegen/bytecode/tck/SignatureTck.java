@@ -436,7 +436,7 @@ public abstract class SignatureTck extends AbstractByteCodeWriterTck {
     private static List<String> recordMetadata(Class<?> type) {
         return Stream.concat(Arrays.stream(type.getRecordComponents()).map(component -> component.getName() + ":"
                 + annotated(component.getAnnotatedType(), type)),
-            Arrays.stream(type.getDeclaredFields()).map(field -> field.getName() + ":" + annotated(field.getAnnotatedType(), type)))
+            Arrays.stream(declaredFields(type)).map(field -> field.getName() + ":" + annotated(field.getAnnotatedType(), type)))
             .sorted().toList();
     }
 
@@ -450,7 +450,7 @@ public abstract class SignatureTck extends AbstractByteCodeWriterTck {
         for (AnnotatedType parent : reference.getAnnotatedInterfaces()) {
             builder.addSuperinterface(mapper.annotated(parent, new HashSet<>()));
         }
-        for (Method method : reference.getDeclaredMethods()) {
+        for (Method method : declaredMethods(reference)) {
             if (method.isSynthetic()) {
                 continue;
             }
@@ -473,7 +473,7 @@ public abstract class SignatureTck extends AbstractByteCodeWriterTck {
         for (AnnotatedType parent : reference.getAnnotatedInterfaces()) {
             builder.addSuperinterface(mapper.annotated(parent, new HashSet<>()));
         }
-        for (Method method : reference.getDeclaredMethods()) {
+        for (Method method : declaredMethods(reference)) {
             if (method.isSynthetic()) {
                 continue;
             }
@@ -522,7 +522,7 @@ public abstract class SignatureTck extends AbstractByteCodeWriterTck {
     }
 
     private static Stream<Executable> executables(Class<?> type) {
-        return Stream.concat(Arrays.stream(type.getDeclaredConstructors()), Arrays.stream(type.getDeclaredMethods()));
+        return Stream.concat(Arrays.stream(type.getDeclaredConstructors()), Arrays.stream(declaredMethods(type)));
     }
 
     private static String name(Executable executable) {

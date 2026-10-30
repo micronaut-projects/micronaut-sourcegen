@@ -304,7 +304,7 @@ public abstract class ByteCodeWriterTck extends AbstractByteCodeWriterTck {
         @SuppressWarnings("unchecked")
         Function<Object, Object> function = (Function<Object, Object>) generated.getConstructor().newInstance();
         assertEquals(5, function.apply("hello"));
-        Method bridge = Arrays.stream(generated.getDeclaredMethods())
+        Method bridge = Arrays.stream(declaredMethods(generated))
             .filter(Method::isBridge)
             .findFirst()
             .orElseThrow();
@@ -372,7 +372,7 @@ public abstract class ByteCodeWriterTck extends AbstractByteCodeWriterTck {
         @SuppressWarnings("unchecked")
         Supplier<Object> supplier = (Supplier<Object>) bridgedClass.getConstructor(String.class).newInstance("value");
         assertEquals("value", supplier.get());
-        assertTrue(Arrays.stream(bridgedClass.getDeclaredMethods()).anyMatch(Method::isBridge));
+        assertTrue(Arrays.stream(declaredMethods(bridgedClass)).anyMatch(Method::isBridge));
     }
 
     @Test

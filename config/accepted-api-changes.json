@@ -1,0 +1,132 @@
+[
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator",
+    "member": "Field Companion",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator.access$getBOXED_NUMBERS$cp()",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator.access$getDOUBLE$cp()",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator.access$getFLOAT$cp()",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator.addInnerTypes(java.util.List,com.squareup.kotlinpoet.TypeSpec$Builder,boolean)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator.addInnerTypes$default(io.micronaut.sourcegen.KotlinPoetSourceGenerator,java.util.List,com.squareup.kotlinpoet.TypeSpec$Builder,boolean,int,java.lang.Object)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Class io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$asAnnotationSpec(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,io.micronaut.sourcegen.model.AnnotationDef)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$asKModifiers(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,java.util.Collection)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$asKModifiers(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,io.micronaut.sourcegen.model.MethodDef,java.util.Collection)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$asType(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$asType(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,boolean)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$asType(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$asTypeVariable(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,io.micronaut.sourcegen.model.TypeDef$TypeVariable,io.micronaut.sourcegen.model.ObjectDef)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$extendModifiers(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,java.util.Set,javax.lang.model.element.Modifier)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$renderExpressionCode(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.KotlinPoetSourceGenerator$RenderScope,io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.TypeDef)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$renderStatementCodeBlock(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.KotlinPoetSourceGenerator$RenderScope,io.micronaut.sourcegen.model.StatementDef)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion.access$stripStatic(io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion,java.util.Set)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion",
+    "member": "Constructor io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion(kotlin.jvm.internal.DefaultConstructorMarker)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion$WhenMappings",
+    "member": "Field $EnumSwitchMapping$3",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion$WhenMappings",
+    "member": "Field $EnumSwitchMapping$1",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion$WhenMappings",
+    "member": "Field $EnumSwitchMapping$2",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$Companion$WhenMappings",
+    "member": "Field $EnumSwitchMapping$0",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$RenderScope$Companion",
+    "member": "Class io.micronaut.sourcegen.KotlinPoetSourceGenerator$RenderScope$Companion",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$RenderScope$Companion",
+    "member": "Method io.micronaut.sourcegen.KotlinPoetSourceGenerator$RenderScope$Companion.root(io.micronaut.sourcegen.model.MethodDef)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  },
+  {
+    "type": "io.micronaut.sourcegen.KotlinPoetSourceGenerator$RenderScope$Companion",
+    "member": "Constructor io.micronaut.sourcegen.KotlinPoetSourceGenerator$RenderScope$Companion(kotlin.jvm.internal.DefaultConstructorMarker)",
+    "reason": "KotlinPoetSourceGenerator is @Internal; its companion object and nested RenderScope moved into the files the generator is split into"
+  }
+]

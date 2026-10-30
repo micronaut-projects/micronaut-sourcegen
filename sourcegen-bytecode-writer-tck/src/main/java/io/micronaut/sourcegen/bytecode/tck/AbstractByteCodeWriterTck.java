@@ -117,7 +117,7 @@ public abstract class AbstractByteCodeWriterTck {
         }
         var definition = ClassDef.builder("test.tck.Caller").addModifiers(Modifier.PUBLIC)
             .addMethod(method.build((self, p) -> body.apply(new ArrayList<>(p)).returning())).build();
-        var call = Arrays.stream(define(definition).getDeclaredMethods()).filter(m -> m.getName().equals("call")).findFirst().orElseThrow();
+        var call = Arrays.stream(declaredMethods(define(definition))).filter(m -> m.getName().equals("call")).findFirst().orElseThrow();
         assertEquals(expected, call.invoke(null, values.toArray()));
     }
 
@@ -257,7 +257,7 @@ public abstract class AbstractByteCodeWriterTck {
         int mask = java.lang.reflect.Modifier.PUBLIC | java.lang.reflect.Modifier.PROTECTED | java.lang.reflect.Modifier.PRIVATE
             | java.lang.reflect.Modifier.STATIC | java.lang.reflect.Modifier.FINAL | java.lang.reflect.Modifier.SYNCHRONIZED
             | java.lang.reflect.Modifier.ABSTRACT;
-        return Arrays.stream(type.getDeclaredMethods()).filter(method -> !method.getName().startsWith("lambda$"))
+        return Arrays.stream(declaredMethods(type)).filter(method -> !method.getName().startsWith("lambda$"))
             .map(method -> java.lang.reflect.Modifier.toString(method.getModifiers() & mask) + " "
                 + render(method.getReturnType(), type) + " " + method.getName()
                 + Arrays.stream(method.getParameterTypes()).map(parameter -> render(parameter, type)).toList()
@@ -274,7 +274,7 @@ public abstract class AbstractByteCodeWriterTck {
      * @return One line per method, sorted
      */
     protected static List<String> genericShape(Class<?> type) {
-        return Arrays.stream(type.getDeclaredMethods()).filter(method -> !method.getName().startsWith("lambda$"))
+        return Arrays.stream(declaredMethods(type)).filter(method -> !method.getName().startsWith("lambda$"))
             .map(method -> method.toGenericString().replace(type.getName(), "SELF")
                 + (method.isBridge() ? " bridge" : "") + " variables=" + method.getTypeParameters().length)
             .sorted().toList();
@@ -308,5 +308,28 @@ public abstract class AbstractByteCodeWriterTck {
 
     private static String render(Class<?> type, Class<?> self) {
         return type == self ? "SELF" : type.getName();
+    }
+
+    /**
+     * The methods a class declares, without the members a coverage agent adds to it ({@code $jacocoInit}), which a
+     * class compiled by javac has when the tests run with coverage and a written class does not.
+     *
+     * @param type The class
+     * @return The methods
+     */
+    protected static java.lang.reflect.Method[] declaredMethods(Class<?> type) {
+        return Arrays.stream(type.getDeclaredMethods()).filter(method -> !method.getName().startsWith("$jacoco"))
+            .toArray(java.lang.reflect.Method[]::new);
+    }
+
+    /**
+     * The fields a class declares, without the fields a coverage agent adds to it ({@code $jacocoData}).
+     *
+     * @param type The class
+     * @return The fields
+     */
+    protected static java.lang.reflect.Field[] declaredFields(Class<?> type) {
+        return Arrays.stream(type.getDeclaredFields()).filter(field -> !field.getName().startsWith("$jacoco"))
+            .toArray(java.lang.reflect.Field[]::new);
     }
 }

@@ -74,7 +74,7 @@ public abstract class BridgeTck extends AbstractByteCodeWriterTck {
             .addSuperinterface(TypeDef.parameterized(Supplier.class, TypeDef.STRING))
             .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .returns(TypeDef.STRING).build()).build();
-        Method bridge = java.util.Arrays.stream(define(parent).getDeclaredMethods())
+        Method bridge = java.util.Arrays.stream(declaredMethods(define(parent)))
             .filter(Method::isBridge).findFirst().orElseThrow();
         assertEquals(true, bridge.isDefault());
     }
@@ -183,7 +183,7 @@ public abstract class BridgeTck extends AbstractByteCodeWriterTck {
             .addSuperinterface(TypeDef.parameterized(Supplier.class, TypeDef.STRING))
             .addSuperinterface(TypeDef.of(SequenceSupplier.class)).addMethod(method).build();
         assertEquals(List.of("java.lang.CharSequence", "java.lang.Object", "java.lang.String"),
-            Arrays.stream(define(definition).getDeclaredMethods()).map(m -> m.getReturnType().getName()).sorted().toList());
+            Arrays.stream(declaredMethods(define(definition))).map(m -> m.getReturnType().getName()).sorted().toList());
     }
 
     @Test

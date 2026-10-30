@@ -256,8 +256,8 @@ public abstract class MemberTypeTck extends AbstractByteCodeWriterTck {
             .addMethod(MethodDef.builder("accept").addModifiers(Modifier.PUBLIC).addParameter("value", TypeDef.of(Integer.class))
                 .returns(TypeDef.STRING).build((self, p) -> ExpressionDef.constant("child").returning())).build();
         Class<?> generated = define(definition);
-        assertTrue(Arrays.stream(OuterBridge.class.getDeclaredMethods()).anyMatch(Method::isBridge));
-        assertTrue(Arrays.stream(generated.getDeclaredMethods()).anyMatch(Method::isBridge), "javac emits accept(Number) as a bridge");
+        assertTrue(Arrays.stream(declaredMethods(OuterBridge.class)).anyMatch(Method::isBridge));
+        assertTrue(Arrays.stream(declaredMethods(generated)).anyMatch(Method::isBridge), "javac emits accept(Number) as a bridge");
         Outer<Integer>.Base instance = (Outer<Integer>.Base) generated.getConstructor(Outer.class).newInstance(new Outer<Integer>());
         assertEquals("child", instance.accept(1));
     }
@@ -308,7 +308,7 @@ public abstract class MemberTypeTck extends AbstractByteCodeWriterTck {
     }
 
     static Stream<Arguments> typedMemberMethods() {
-        return Arrays.stream(TypedMembers.class.getDeclaredMethods()).map(method -> Arguments.of(Named.of(method.getName(), method)));
+        return Arrays.stream(declaredMethods(TypedMembers.class)).map(method -> Arguments.of(Named.of(method.getName(), method)));
     }
 
     private static TypeDef.TypeVariable declaration(TypeVariable<?> variable) {
