@@ -1,2 +1,3 @@
 io.micronaut.sourcegen.JavaPoetSourceGenerator
 io.micronaut.sourcegen.GroovyPoetSourceGenerator
+io.micronaut.sourcegen.PythonPoetSourceGenerator

@@ -20,6 +20,7 @@ import io.micronaut.inject.ast.Element;
 import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.model.ObjectDef;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -34,9 +35,12 @@ import java.io.Writer;
 public interface SourceGenerator {
 
     /**
-     * @return The source language of the generator
+     * The source language of the generator.
+     *
+     * @return The language, or {@code null} if the language is not known to the version of Micronaut core present
+     * at runtime (such a generator is never selected)
      */
-    VisitorContext.Language getLanguage();
+    VisitorContext.@Nullable Language getLanguage();
 
     /**
      * Write the source code.

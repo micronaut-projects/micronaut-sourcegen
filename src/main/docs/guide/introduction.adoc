@@ -7,5 +7,6 @@ Any processors built with the Micronaut SourceGen API work with:
 * Java
 * Kotlin via KAPT
 * Kotlin via KSP
+* Python via the Python compiler (`micronaut-inject-python`, Micronaut core 5.2+): the generated sources are Java classes compiled together with the Python classes, which Python code uses through host interop
 
 Note that Groovy is not supported at this time of writing since it lacks APIs to add generated sources to the current compilation unit and perform multiple rounds of processing like Java and Kotlin do.
