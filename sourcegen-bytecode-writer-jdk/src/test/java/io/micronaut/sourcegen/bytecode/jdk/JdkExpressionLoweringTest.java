@@ -419,6 +419,7 @@ class JdkExpressionLoweringTest {
     }
 
     @Test
+    @SuppressWarnings("NonRuntimeAnnotation") // deliberately asserting CLASS-retained annotations are invisible at runtime
     void honoursTheRetentionOfEveryAnnotationItWrites() throws Exception {
         AnnotationDef runtime = AnnotationDef.builder(ClassTypeDef.of(RuntimeMarker.class)).build();
         AnnotationDef classFile = AnnotationDef.builder(ClassTypeDef.of(ClassMarker.class)).build();
