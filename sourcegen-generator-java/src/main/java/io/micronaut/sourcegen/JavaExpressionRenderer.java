@@ -392,15 +392,16 @@ final class JavaExpressionRenderer {
         MethodDef implementation = withTypeVariables(lambda.implementation(), methodDef);
         // Java forbids a lambda parameter from shadowing a name that is already in scope, so a
         // colliding parameter is emitted under an allocated name and its references remapped
+        List<StatementDef> statements = implementation.getStatements();
         RenderScope lambdaScope = scope.nested(implementation);
         // A renamed parameter does not take the name of a local the body declares, which the body reserves
-        lambdaScope.body(implementation.getStatements());
+        lambdaScope.body(statements);
         lambdaScope.handling(context.exceptions().functionalThrows(lambda.type()));
         // The locals it captures which the enclosing body assigns are read from their copies, and those it assigns
         // itself from copies of its own, which the bytecode passes it
         scope.copiesOf(lambda).forEach(lambdaScope::renameLocal);
         CodeBlock.Builder prologue = CodeBlock.builder();
-        Set<String> assigned = JavaLambdaRules.assignedLocals(implementation.getStatements());
+        Set<String> assigned = JavaLambdaRules.assignedLocals(statements);
         JavaLambdaRules.capturedLocals(lambda).forEach((name, type) -> {
             if (assigned.contains(name)) {
                 String captured = lambdaScope.resolveLocal(name);
@@ -420,7 +421,6 @@ final class JavaExpressionRenderer {
             }
         }
         builder.add(") -> ");
-        List<StatementDef> statements = implementation.getStatements();
         ExpressionDef body = singleExpressionBody(lambda);
         if (body != null && !context.sourceRules().hasBlockBody(lambda, objectDef)) {
             builder.add(renderConverted(objectDef, implementation, lambdaScope, body,

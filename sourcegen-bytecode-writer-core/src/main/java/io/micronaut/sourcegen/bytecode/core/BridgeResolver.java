@@ -317,23 +317,7 @@ public final class BridgeResolver {
         Set<String> declared = new HashSet<>();
         objectDef.getMethods().forEach(method -> declared.add(method.getName() + TypeUtils.getMethodDescriptor(objectDef, method, enclosingScope)));
         InheritedMethods found = new InheritedMethods(objectDef, declared, enclosingScope);
-        TypeDef superclass = classDef.getSuperclass();
-        while (superclass != null) {
-            TypeDef raw = TypeOperations.rawClassOf(superclass);
-            if (raw instanceof ClassTypeDef.ClassDefType classDefType) {
-                ObjectDef parent = classDefType.objectDef();
-                found.collectDefinition(parent);
-                superclass = parent instanceof ClassDef parentClass ? parentClass.getSuperclass() : null;
-                continue;
-            }
-            if (raw instanceof ClassTypeDef.ClassElementType elementType) {
-                found.collectElement(elementType);
-            } else {
-                Class<?> type = raw instanceof ClassTypeDef classTypeDef ? TypeLookup.reflective().loadClass(classTypeDef.getName()) : null;
-                found.collectClasses(type);
-            }
-            superclass = null;
-        }
+        collectSuperclasses(found, classDef.getSuperclass());
         List<InheritedBridge> result = new ArrayList<>();
         Set<String> bridged = new HashSet<>(declared);
         for (MethodDef method : found.inherited) {
@@ -350,6 +334,29 @@ public final class BridgeResolver {
             }
         }
         return result;
+    }
+
+    /**
+     * Collects the methods of the superclasses: those generated, then the first one which is an element or a class.
+     */
+    private static void collectSuperclasses(InheritedMethods found, @Nullable TypeDef superclass) {
+        TypeDef current = superclass;
+        while (current != null) {
+            TypeDef raw = TypeOperations.rawClassOf(current);
+            if (raw instanceof ClassTypeDef.ClassDefType classDefType) {
+                ObjectDef parent = classDefType.objectDef();
+                found.collectDefinition(parent);
+                current = parent instanceof ClassDef parentClass ? parentClass.getSuperclass() : null;
+            } else {
+                if (raw instanceof ClassTypeDef.ClassElementType elementType) {
+                    found.collectElement(elementType);
+                } else {
+                    Class<?> type = raw instanceof ClassTypeDef classTypeDef ? TypeLookup.reflective().loadClass(classTypeDef.getName()) : null;
+                    found.collectClasses(type);
+                }
+                current = null;
+            }
+        }
     }
 
     /**

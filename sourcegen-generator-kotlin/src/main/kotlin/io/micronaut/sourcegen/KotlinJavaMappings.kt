@@ -175,9 +175,7 @@ internal object KotlinJavaMappings {
             unboxingCall(name, receiverClass, primitive)?.let { return it }
         }
         renamedMember(method, supertypes, receiverClass ?: loadedClass(receiverType))?.let { return MappedCall.Renamed(it) }
-        if (receiverClass == String::class.java && name !in KOTLIN_STRING_MEMBERS
-            // A Kotlin extension of String, `uppercase`, which a model for Kotlin names, is called as it is
-            && String::class.java.methods.any { it.name == name && it.parameterCount == arity }) {
+        if (receiverClass == String::class.java && isJavaOnlyStringMethod(name, arity)) {
             return MappedCall.ThroughJavaType(JAVA_STRING)
         }
         if (name == "toArray" && arity <= 1 && supertypes.any { Collection::class.java.isAssignableFrom(it) }) {
@@ -185,6 +183,12 @@ internal object KotlinJavaMappings {
         }
         return null
     }
+
+    /** A method of java.lang.String which is no member of kotlin.String. */
+    private fun isJavaOnlyStringMethod(name: String, arity: Int): Boolean =
+        name !in KOTLIN_STRING_MEMBERS
+            // A Kotlin extension of String, `uppercase`, which a model for Kotlin names, is called as it is
+            && String::class.java.methods.any { it.name == name && it.parameterCount == arity }
 
     /** A call of an unboxing method of a number, a char or a boolean: the value itself, or a numeric conversion. */
     private fun unboxingCall(name: String, receiverClass: Class<*>?, primitive: TypeDef.Primitive?): MappedCall? {

@@ -168,6 +168,13 @@ final class Applicability {
         if (param instanceof TypeDef.Wildcard wildcard) {
             param = wildcard.upperBounds().isEmpty() ? TypeDef.OBJECT : wildcard.upperBounds().getFirst();
         }
+        return convertibleToType(context, argument, param, loose);
+    }
+
+    /**
+     * Whether a value converts to a parameter which is no type variable or wildcard.
+     */
+    private static Tri convertibleToType(ResolutionContext context, @Nullable TypeDef argument, TypeDef param, boolean loose) {
         if (argument == null) {
             return param.isPrimitive() ? Tri.NO : Tri.YES;
         }
@@ -423,23 +430,24 @@ final class Applicability {
         Tri result = Tri.YES;
         for (int i = 0; i < classes.size(); i++) {
             for (int j = i + 1; j < classes.size(); j++) {
-                ClassTypeDef a = classes.get(i);
-                ClassTypeDef b = classes.get(j);
-                Tri related = isSubtype(a, b.getName()) == Tri.YES || isSubtype(b, a.getName()) == Tri.YES ? Tri.YES : Tri.NO;
-                if (related == Tri.YES && (conflicting(declared.get(i), declared.get(j)) || conflicting(declared.get(j), declared.get(i)))) {
-                    // No type is a subtype of two parameterizations of one class: `List<String>` and `List<Integer>`
-                    return Tri.NO;
-                }
-                if (related == Tri.NO) {
-                    boolean aClass = !a.isInterface();
-                    boolean bClass = !b.isInterface();
-                    // Two unrelated classes have no common subtype, nor a final class and an interface it lacks
-                    related = aClass && bClass || aClass && isFinal(a) || bClass && isFinal(b) ? Tri.NO : Tri.YES;
-                }
-                result = result.and(related);
+                result = result.and(satisfiable(classes.get(i), classes.get(j), declared.get(i), declared.get(j)));
             }
         }
         return result;
+    }
+
+    /**
+     * Whether some type is a subtype of two classes, as their declared types are.
+     */
+    private static Tri satisfiable(ClassTypeDef a, ClassTypeDef b, ClassTypeDef declaredA, ClassTypeDef declaredB) {
+        if (isSubtype(a, b.getName()) == Tri.YES || isSubtype(b, a.getName()) == Tri.YES) {
+            // No type is a subtype of two parameterizations of one class: `List<String>` and `List<Integer>`
+            return conflicting(declaredA, declaredB) || conflicting(declaredB, declaredA) ? Tri.NO : Tri.YES;
+        }
+        boolean aClass = !a.isInterface();
+        boolean bClass = !b.isInterface();
+        // Two unrelated classes have no common subtype, nor a final class and an interface it lacks
+        return aClass && bClass || aClass && isFinal(a) || bClass && isFinal(b) ? Tri.NO : Tri.YES;
     }
 
     /**

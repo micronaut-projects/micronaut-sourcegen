@@ -235,13 +235,7 @@ final class Inference {
         TypeDef argument = TypeHierarchy.unwrap(declared);
         TypeDef value = TypeHierarchy.unwrap(actual);
         if (value instanceof TypeDef.Wildcard wildcard) {
-            if (argument instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
-                // The variable is a fresh capture of the wildcard: a `List<? extends String>` binds no
-                // `T extends Number`, and two captures are distinct
-                bindEquality(variable, context.capture(wildcard, declaredBound));
-            } else if (argument instanceof TypeDef.Wildcard formal) {
-                equateWildcards(formal, wildcard);
-            }
+            equateWildcard(argument, wildcard, declaredBound);
             return;
         }
         if (argument instanceof TypeDef.Array argumentArray && value instanceof TypeDef.Array valueArray
@@ -268,6 +262,16 @@ final class Inference {
             for (int i = 0; i < nested.typeArguments().size(); i++) {
                 equate(nested.typeArguments().get(i), nestedValue.typeArguments().get(i), boundAt(declaredBounds, i));
             }
+        }
+    }
+
+    private void equateWildcard(TypeDef argument, TypeDef.Wildcard wildcard, List<TypeDef> declaredBound) {
+        if (argument instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
+            // The variable is a fresh capture of the wildcard: a `List<? extends String>` binds no
+            // `T extends Number`, and two captures are distinct
+            bindEquality(variable, context.capture(wildcard, declaredBound));
+        } else if (argument instanceof TypeDef.Wildcard formal) {
+            equateWildcards(formal, wildcard);
         }
     }
 

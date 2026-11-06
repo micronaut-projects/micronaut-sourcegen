@@ -415,11 +415,27 @@ public final class OverrideResolver {
             }
         }
         if (converted || resultType != null) {
-            return new ReferenceAdaptation(argumentTypes, argumentConversions,
-                resultType == null || exact ? resultType : TypeOperations.raw(resultType),
-                exact || resultType == null ? null : boundConversion(resultType, returned, current, caller, scope));
+            return adaptation(argumentTypes, argumentConversions, resultType, returned, current, caller, scope, exact);
         }
         return null;
+    }
+
+    /**
+     * The adaptation of a reference: for Java, the result is cast to its raw type and converted to its bound.
+     */
+    private static ReferenceAdaptation adaptation(List<@Nullable TypeDef> argumentTypes,
+                                                  List<List<TypeDef>> argumentConversions,
+                                                  @Nullable TypeDef resultType,
+                                                  TypeDef returned,
+                                                  @Nullable ObjectDef current,
+                                                  @Nullable MethodDef caller,
+                                                  GenerationScope scope,
+                                                  boolean exact) {
+        if (resultType == null || exact) {
+            return new ReferenceAdaptation(argumentTypes, argumentConversions, resultType, null);
+        }
+        return new ReferenceAdaptation(argumentTypes, argumentConversions, TypeOperations.raw(resultType),
+            boundConversion(resultType, returned, current, caller, scope));
     }
 
     /**

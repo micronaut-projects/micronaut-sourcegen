@@ -205,8 +205,7 @@ final class JavaConversionRenderer {
         List<List<TypeDef>> conversions = new ArrayList<>();
         boolean converted = false;
         for (int i = 0; i < parameterTypes.size(); i++) {
-            TypeDef bound = receiverBound(parameterTypes.get(i),
-                signature != null && signature.parameterTypes().size() == parameterTypes.size() ? signature.parameterTypes().get(i) : null,
+            TypeDef bound = receiverBound(parameterTypes.get(i), declaredParameter(signature, parameterTypes.size(), i),
                 method.getTypeVariables(), receiverArguments);
             boolean cast = isArgumentCast(overloaded, bound, parameterTypes.get(i), passed.get(i), method);
             argumentTypes.add(cast ? rawIfParameterized(bound) : null);
@@ -221,6 +220,13 @@ final class JavaConversionRenderer {
         boolean ambiguous = reference.isStatic() && owner != null && JavaSignatures.hasInstanceMethodForReference(owner, method);
         return converted || resultType != null || ambiguous
             ? new OverrideResolver.ReferenceAdaptation(argumentTypes, conversions, resultType, null) : null;
+    }
+
+    /**
+     * The declared type of a parameter of the invoked signature, where the signature has as many parameters.
+     */
+    private static @Nullable TypeDef declaredParameter(@Nullable InvokedSignature signature, int count, int index) {
+        return signature != null && signature.parameterTypes().size() == count ? signature.parameterTypes().get(index) : null;
     }
 
     private Map<String, TypeDef> boundReceiverArguments(@Nullable ObjectDef objectDef, @Nullable ClassTypeDef owner, MethodDef method) {
