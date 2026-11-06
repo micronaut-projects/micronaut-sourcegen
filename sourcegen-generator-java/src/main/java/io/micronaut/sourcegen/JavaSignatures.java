@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -103,18 +104,26 @@ final class JavaSignatures {
 
     @Nullable
     private static Executable find(Class<?> type, String methodName, List<String> erasures, Set<Class<?>> visited) {
-        for (Class<?> current = type; current != null && visited.add(current); current = current.getSuperclass()) {
-            for (Method method : current.getDeclaredMethods()) {
-                // A bridge declares the erasure of the signature of the method it calls
-                if (!method.isBridge() && !method.isSynthetic() && method.getName().equals(methodName) && matches(method, erasures)) {
-                    return method;
-                }
+        // The order OverrideResolver finds the declaring class in - the superclass and its supertypes, then the
+        // interfaces - so that the signature and the receiver's type arguments come from the same declaration
+        if (!visited.add(type)) {
+            return null;
+        }
+        for (Method method : type.getDeclaredMethods()) {
+            // A bridge declares the erasure of the signature of the method it calls
+            if (!method.isBridge() && !method.isSynthetic() && method.getName().equals(methodName) && matches(method, erasures)) {
+                return method;
             }
-            for (Class<?> interfaceType : current.getInterfaces()) {
-                Executable found = find(interfaceType, methodName, erasures, visited);
-                if (found != null) {
-                    return found;
-                }
+        }
+        List<Class<?>> supertypes = new ArrayList<>();
+        if (type.getSuperclass() != null) {
+            supertypes.add(type.getSuperclass());
+        }
+        supertypes.addAll(Arrays.asList(type.getInterfaces()));
+        for (Class<?> supertype : supertypes) {
+            Executable found = find(supertype, methodName, erasures, visited);
+            if (found != null) {
+                return found;
             }
         }
         return null;

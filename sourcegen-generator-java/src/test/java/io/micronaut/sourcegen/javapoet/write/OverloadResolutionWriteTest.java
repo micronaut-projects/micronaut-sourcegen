@@ -120,6 +120,18 @@ class OverloadResolutionWriteTest {
         assertEquals(0, run(def, "a", "a"));
     }
 
+    // `accept(Object)` of `Base<B>` called on an `Impl extends Base<String> implements Api<String>`: the signature is
+    // read from the declaration the receiver's `{B=String}` binds - Base's, as the declaring class is found - so the
+    // Object value is cast to the String of the only `accept` Impl declares in source.
+    @Test
+    void declarationOfASuperclassBeforeAnInterface() throws Exception {
+        var accept = DeclarationOrderFixtures.HierarchyBase.class.getMethod("accept", Object.class);
+        var def = single("SuperclassBeforeInterface", String.class,
+            List.of(TypeDef.of(DeclarationOrderFixtures.HierarchyImpl.class), TypeDef.OBJECT),
+            (self, p) -> p.get(0).invoke(accept, p.get(1)).returning());
+        assertEquals("impl:a", run(def, new DeclarationOrderFixtures.HierarchyImpl(), "a"));
+    }
+
     // A static method of a parameterized owner - as `ClassTypeDef.of(element)` builds it for an element with type
     // arguments - is called as `List<String>.of(p0)`.
     @Test
