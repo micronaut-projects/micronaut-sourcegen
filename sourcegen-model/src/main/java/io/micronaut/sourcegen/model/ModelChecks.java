@@ -36,11 +36,6 @@ import java.util.function.Consumer;
 @Internal
 final class ModelChecks {
 
-    private static final Set<String> NUMERIC_WRAPPERS = Set.of(
-        Byte.class.getName(), Short.class.getName(), Integer.class.getName(), Long.class.getName(),
-        Float.class.getName(), Double.class.getName(), Character.class.getName()
-    );
-
     // Names of the operands and operations the expressions check
     static final String ARGUMENT = "argument";
     static final String INSTANCE = "instance";
@@ -52,6 +47,11 @@ final class ModelChecks {
     static final String NOT_EQUALS_STRUCTURALLY = "Not equals structurally";
     static final String EQUALS_REFERENTIALLY = "Equals referentially";
     static final String NOT_EQUALS_REFERENTIALLY = "Not equals referentially";
+
+    private static final Set<String> NUMERIC_WRAPPERS = Set.of(
+        Byte.class.getName(), Short.class.getName(), Integer.class.getName(), Long.class.getName(),
+        Float.class.getName(), Double.class.getName(), Character.class.getName()
+    );
 
     private static final String A_VALUE_OF = "a value of ";
     private static final String MATH = "Math ";

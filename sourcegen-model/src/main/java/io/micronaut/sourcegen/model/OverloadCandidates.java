@@ -101,7 +101,8 @@ final class OverloadCandidates {
                 return collect(context, memberOf.member(), name, receiver, result, visited, own);
             }
             case ClassTypeDef.JavaClass javaClass -> {
-                return collectReflected(context, javaClass.type(), name, receiver, result, constructor);
+                collectReflected(context, javaClass.type(), name, receiver, result, constructor);
+                return true;
             }
             case ClassTypeDef.ClassElementType elementType -> {
                 ClassElement element = elementType.classElement();
@@ -121,15 +122,15 @@ final class OverloadCandidates {
         }
     }
 
-    private static boolean collectReflected(ResolutionContext context, Class<?> type, String name, ClassTypeDef receiver,
-                                            Map<String, Candidate> result, boolean constructor) {
+    private static void collectReflected(ResolutionContext context, Class<?> type, String name, ClassTypeDef receiver,
+                                         Map<String, Candidate> result, boolean constructor) {
         if (constructor) {
             for (Constructor<?> declared : type.getDeclaredConstructors()) {
                 if (!declared.isSynthetic()) {
                     add(context, result, reflected(declared, MethodDef.builder(declared).build(), receiver), Map.of());
                 }
             }
-            return true;
+            return;
         }
         // The public methods, then the others each class of the hierarchy declares
         Arrays.stream(type.getMethods()).filter(method -> method.getName().equals(name) && !method.isSynthetic() && !method.isBridge())
@@ -138,7 +139,6 @@ final class OverloadCandidates {
             Arrays.stream(current.getDeclaredMethods()).filter(method -> method.getName().equals(name) && !method.isSynthetic() && !method.isBridge())
                 .forEach(method -> add(context, result, reflected(method, MethodDef.of(method), receiver), Map.of()));
         }
-        return true;
     }
 
     private static boolean collectDefined(ResolutionContext context, ObjectDef definition, String name, ClassTypeDef receiver,
