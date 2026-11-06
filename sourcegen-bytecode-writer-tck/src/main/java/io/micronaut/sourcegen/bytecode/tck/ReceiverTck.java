@@ -653,6 +653,18 @@ public abstract class ReceiverTck extends AbstractByteCodeWriterTck {
     }
 
     @Test
+    public void staticMethodCalledOnSuperIsInvokedStatically() throws Exception {
+        // javac: super.label() of a static method is invokestatic StaticParent.label()
+        var definition = ClassDef.builder("test.hardening.SuperStaticCaller").addModifiers(Modifier.PUBLIC)
+            .superclass(ClassTypeDef.of(StaticParent.class))
+            .addMethod(MethodDef.builder("call").addModifiers(Modifier.PUBLIC).returns(TypeDef.STRING)
+                .build((self, p) -> self.superRef().invoke("label", TypeDef.STRING).returning()))
+            .build();
+        Class<?> generated = define(definition);
+        assertEquals(StaticParent.label(), generated.getMethod("call").invoke(generated.getConstructor().newInstance()));
+    }
+
+    @Test
     public void cloneOfAnArrayReceiverIsTypedAsTheArray() throws Exception {
         String[] values = {"a", "b"};
         assertCall(Arrays.asList(values.clone()), List.of(TypeDef.STRING.array()), List.of((Object) values),
@@ -961,6 +973,15 @@ public abstract class ReceiverTck extends AbstractByteCodeWriterTck {
         @Override
         public String name() {
             return Left.super.name();
+        }
+    }
+
+    /**
+     * A superclass declaring a static method, called through {@code super}.
+     */
+    public static class StaticParent {
+        public static String label() {
+            return "static";
         }
     }
 }

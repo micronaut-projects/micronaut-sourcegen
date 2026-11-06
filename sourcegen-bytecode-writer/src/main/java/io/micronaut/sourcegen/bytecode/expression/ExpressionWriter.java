@@ -17,6 +17,7 @@ package io.micronaut.sourcegen.bytecode.expression;
 
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.sourcegen.bytecode.MethodContext;
+import io.micronaut.sourcegen.bytecode.TypeUtils;
 import io.micronaut.sourcegen.bytecode.core.InvocationPlan;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.ExpressionDef.Lambda;
@@ -143,7 +144,14 @@ public sealed interface ExpressionWriter
         generatorAdapter.visitMethodInsn(plan.kind().opcode(), plan.ownerInternalName(), plan.name(), plan.descriptor(),
             plan.ownerInterface());
         InvocationPlan.ResultConversion result = plan.result();
-        if (result != null) {
+        if (result != null && result.to().equals(TypeDef.VOID)) {
+            // A value requested as void is discarded
+            if (TypeUtils.getScopedType(result.from(), context).getSize() == 2) {
+                generatorAdapter.pop2();
+            } else {
+                generatorAdapter.pop();
+            }
+        } else if (result != null) {
             CastExpressionWriter.cast(generatorAdapter, context, result.from(), result.to());
         }
     }

@@ -300,6 +300,60 @@ public abstract class ConversionTck extends AbstractByteCodeWriterTck {
             p -> p.getFirst().invoke("get", TypeDef.Primitive.INT));
     }
 
+    @ParameterizedTest(name = "StringBuilder.append(String) requested as {0} invokes the override, not a bridge")
+    @MethodSource("supertypesOfStringBuilder")
+    public void requestedSupertypeOfACovariantOverride(TypeDef requested) throws Exception {
+        // javac: invokevirtual StringBuilder.append(String)StringBuilder, whatever the call is assigned to
+        StringBuilder builder = new StringBuilder("a");
+        assertCall("ax", List.of(TypeDef.of(StringBuilder.class)), List.of(builder),
+            p -> p.getFirst().invoke("append", requested, ExpressionDef.constant("x")).invoke("toString", TypeDef.STRING));
+    }
+
+    private static Stream<Arguments> supertypesOfStringBuilder() {
+        return Stream.of(Arguments.of(Named.of("Object", TypeDef.OBJECT)), Arguments.of(Named.of("CharSequence", TypeDef.of(CharSequence.class))));
+    }
+
+    @Test
+    public void requestedPrimitiveOfAnotherBoxedReturn() throws Exception {
+        // javac: long v = Integer.valueOf("42") unboxes the Integer and widens it
+        long expected = Integer.valueOf("42");
+        assertCall(expected, List.of(TypeDef.STRING), List.of("42"),
+            p -> ClassTypeDef.of(Integer.class).invokeStatic("valueOf", TypeDef.Primitive.LONG, p));
+    }
+
+    @Test
+    public void callRequestedAsVoidDiscardsTheReturnedValue() throws Exception {
+        // javac: builder.append("x"); Long.parseLong("5"); - evaluated and discarded
+        Method run = run("test.hardening.VoidOfAValue", TypeDef.STRING, List.of(TypeDef.of(StringBuilder.class)), (self, p) ->
+            StatementDef.multi(
+                p.getFirst().invoke("append", TypeDef.VOID, ExpressionDef.constant("x")),
+                ClassTypeDef.of(Long.class).invokeStatic("parseLong", TypeDef.VOID, ExpressionDef.constant("5")),
+                p.getFirst().invoke("toString", TypeDef.STRING).returning()));
+        assertEquals("ax", invoke(run, new StringBuilder("a")));
+    }
+
+    @Test
+    public void requestedPrimitiveOfAGeneratedGenericReturn() throws Exception {
+        // class Holder<T> { T value; T get() } read as int through a Holder<Character>:
+        // javac: invokevirtual Holder.get()Object, checkcast Character, charValue
+        TypeDef.TypeVariable variable = TypeDef.variable("T");
+        ClassDef holder = ClassDef.builder("test.hardening.Holder").addModifiers(Modifier.PUBLIC).addTypeVariable(variable)
+            .addField(io.micronaut.sourcegen.model.FieldDef.builder("value", variable).addModifiers(Modifier.PUBLIC).build())
+            .addAllFieldsConstructor(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("get").addModifiers(Modifier.PUBLIC).returns(variable)
+                .build((self, p) -> self.field("value", variable).returning()))
+            .build();
+        ClassDef caller = ClassDef.builder("test.hardening.HolderReader").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("read").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter("holder", TypeDef.parameterized(holder.asTypeDef(), TypeDef.of(Character.class))).returns(TypeDef.Primitive.INT)
+                .build((self, p) -> p.getFirst().invoke("get", TypeDef.Primitive.INT).returning()))
+            .build();
+        ClassLoader loader = load(holder, caller);
+        Object value = loader.loadClass(holder.getName()).getConstructor(Object.class).newInstance('x');
+        Method read = loader.loadClass(caller.getName()).getMethod("read", loader.loadClass(holder.getName()));
+        assertEquals((int) 'x', read.invoke(null, value));
+    }
+
     @Test
     public void castBetweenInterfaceArraysIsChecked() throws Exception {
         Alpha[] values = {new ZetaAlphaOne()};

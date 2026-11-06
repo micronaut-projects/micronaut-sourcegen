@@ -20,6 +20,7 @@ import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.ParameterDef;
+import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeHierarchy;
 import io.micronaut.sourcegen.model.VariableDef;
@@ -47,11 +48,33 @@ public final class ReferenceAdapters {
      * @param reference The reference
      * @return The lambda, or {@code null} where the method takes the arguments as they are passed
      */
-    @Nullable
-    public static ExpressionDef varargsAdapter(MethodReferenceExpression reference) {
+    public static ExpressionDef.@Nullable Lambda varargsAdapter(MethodReferenceExpression reference) {
+        return varargsAdapter(reference, reference.instance());
+    }
+
+    /**
+     * Whether the receiver of a reference is read where the adapter is invoked unless the writer reads it first: a
+     * field, which a bound reference reads once, where it is created. The writer reads it, checks it is not null,
+     * holds it in a local and passes the local to {@link #varargsAdapter(MethodReferenceExpression, ExpressionDef)}.
+     *
+     * @param reference The reference
+     * @return Whether the receiver is read into a local before the adapter is written
+     */
+    public static boolean capturesReceiverValue(MethodReferenceExpression reference) {
+        return reference.instance() instanceof VariableDef.Field && varargsAdapter(reference) != null;
+    }
+
+    /**
+     * The adapter of {@link #varargsAdapter(MethodReferenceExpression)}, invoking the method on the receiver given: the
+     * local a writer holds the value of a field receiver in.
+     *
+     * @param reference The reference
+     * @param instance  The receiver, or {@code null} for a static method
+     * @return The lambda, or {@code null} where the method takes the arguments as they are passed
+     */
+    public static ExpressionDef.@Nullable Lambda varargsAdapter(MethodReferenceExpression reference, @Nullable ExpressionDef instance) {
         MethodDef method = reference.method();
         List<ParameterDef> parameters = method.getParameters();
-        ExpressionDef instance = reference.instance();
         if (reference.isConstructor() || parameters.isEmpty()
             || !(TypeHierarchy.unwrap(parameters.getLast().getType()) instanceof TypeDef.Array array)
             || !reference.isStatic() && !(instance instanceof VariableDef) || instance instanceof VariableDef.Super) {
@@ -63,6 +86,14 @@ public final class ReferenceAdapters {
             && TypeHierarchy.unwrap(passed.getLast().getType()) instanceof TypeDef.Array) {
             return null;
         }
+        return adapter(reference, instance, array, fixed);
+    }
+
+    private static ExpressionDef.Lambda adapter(MethodReferenceExpression reference,
+                                                @Nullable ExpressionDef instance,
+                                                TypeDef.Array array,
+                                                int fixed) {
+        MethodDef method = reference.method();
         return reference.type().getLambda().implement((aThis, values) -> {
             List<ExpressionDef> arguments = new ArrayList<>(values.subList(0, fixed));
             List<VariableDef.MethodParameter> tail = values.subList(fixed, values.size());
@@ -70,7 +101,7 @@ public final class ReferenceAdapters {
             ExpressionDef call = instance == null ? reference.owner().invokeStatic(method, arguments)
                 : instance.invoke(method, arguments);
             return TypeDef.VOID.equals(method.getReturnType()) || TypeDef.VOID.equals(reference.instantiated().getReturnType())
-                ? (io.micronaut.sourcegen.model.StatementDef) call : call.returning();
+                ? (StatementDef) call : call.returning();
         });
     }
 

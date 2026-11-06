@@ -95,6 +95,33 @@ public abstract class LambdaAndReferenceTck extends AbstractByteCodeWriterTck {
     }
 
     /**
+     * A reference to a method of variable arity bound to a field - {@code Function<String, String> f =
+     * this.format::formatted} - reads the field once, where it is created: assigning the field afterwards does not
+     * change what the reference calls, and a null field fails where it is created.
+     *
+     * @throws Exception If the generated class cannot be used
+     * @since 2.3
+     */
+    @Test
+    public void varargsReferenceBoundToAFieldCapturesItsValue() throws Exception {
+        var format = FieldDef.builder("format", String.class).addModifiers(Modifier.PUBLIC)
+            .initializer(ExpressionDef.constant("%s-first")).build();
+        var function = TypeDef.parameterized(Function.class, String.class, String.class);
+        var formatted = MethodDef.of(String.class.getMethod("formatted", Object[].class));
+        var def = ClassDef.builder("test.VarargsFieldReference").addModifiers(Modifier.PUBLIC).addField(format)
+            .addMethod(MethodDef.builder("capture").addModifiers(Modifier.PUBLIC).returns(function)
+                .build((self, p) -> function.methodReference(self.field(format), formatted).returning())).build();
+        var cls = load(def).loadClass(def.getName());
+        var instance = cls.getConstructor().newInstance();
+        @SuppressWarnings("unchecked") var captured = (Function<String, String>) cls.getMethod("capture").invoke(instance);
+        cls.getField("format").set(instance, "%s-second");
+        assertEquals("x-first", captured.apply("x"));
+        cls.getField("format").set(instance, null);
+        var error = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> cls.getMethod("capture").invoke(instance));
+        assertInstanceOf(NullPointerException.class, error.getCause());
+    }
+
+    /**
      * A bound reference checks its receiver where it is created, as `target::apply` does in source, not where the
      * reference is invoked.
      *

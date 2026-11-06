@@ -894,6 +894,30 @@ final class JdkMethodWriter {
         };
     }
 
+    /**
+     * The adapter of a reference bound to a field, which reads the field once where the reference is created: the
+     * value is checked, held in a local, and the lambda captures the local.
+     */
+    private void writeAdapterOfAFieldReceiver(MethodReferenceExpression methodReference, ExpressionDef instance) {
+        writeExpression(instance);
+        checkReceiverNotNull();
+        int slot = code.allocateLocal(TypeKind.REFERENCE);
+        store(instance.type(), slot);
+        String name = "receiver$" + slot;
+        locals.put(name, new Local(instance.type(), slot));
+        writeLambda(java.util.Objects.requireNonNull(io.micronaut.sourcegen.bytecode.core.ReferenceAdapters.varargsAdapter(
+            methodReference, new VariableDef.Local(name, instance.type()))));
+        locals.remove(name);
+    }
+
+    /**
+     * Checks the receiver on the stack is not null, keeping it there.
+     */
+    private void checkReceiverNotNull() {
+        code.dup().invokestatic(ClassDesc.of("java.util.Objects"), "requireNonNull",
+            MethodTypeDesc.of(ConstantDescs.CD_Object, ConstantDescs.CD_Object)).pop();
+    }
+
     private void writeMethodReference(MethodReferenceExpression methodReference) {
         ExpressionDef instance = methodReference.instance();
         if (instance instanceof VariableDef.Super superInstance) {
@@ -905,18 +929,21 @@ final class JdkMethodWriter {
             }));
             return;
         }
-        ExpressionDef adapter = io.micronaut.sourcegen.bytecode.core.ReferenceAdapters.varargsAdapter(methodReference);
-        if (adapter instanceof ExpressionDef.Lambda lambda) {
+        if (instance instanceof VariableDef.Field field && io.micronaut.sourcegen.bytecode.core.ReferenceAdapters.capturesReceiverValue(methodReference)) {
+            writeAdapterOfAFieldReceiver(methodReference, field);
+            return;
+        }
+        ExpressionDef.Lambda adapter = io.micronaut.sourcegen.bytecode.core.ReferenceAdapters.varargsAdapter(methodReference);
+        if (adapter != null) {
             // The values of a variable arity call are packed into its array, which no handle does
-            writeLambda(lambda);
+            writeLambda(adapter);
             return;
         }
         if (instance != null) {
             writeExpression(instance);
             if (!(instance instanceof VariableDef.This)) {
                 // A bound reference checks its receiver where it is created, as `target::apply` does in source
-                code.dup().invokestatic(ClassDesc.of("java.util.Objects"), "requireNonNull",
-                    MethodTypeDesc.of(ConstantDescs.CD_Object, ConstantDescs.CD_Object)).pop();
+                checkReceiverNotNull();
             }
         }
         MethodHandleDesc handle = referencedHandle(methodReference);
@@ -1754,7 +1781,10 @@ final class JdkMethodWriter {
             default -> code.invokevirtual(methodOwner, plan.name(), type);
         }
         InvocationPlan.ResultConversion result = plan.result();
-        if (result != null) {
+        if (result != null && result.to().equals(TypeDef.VOID)) {
+            // A value requested as void is discarded
+            popIfNeeded(result.from());
+        } else if (result != null) {
             writeConversion(result.from(), result.to());
         }
     }

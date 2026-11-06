@@ -28,6 +28,7 @@ import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.TypeHierarchy;
+import io.micronaut.sourcegen.model.TypeOperations;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 
@@ -126,8 +127,10 @@ public record InvocationPlan(Kind kind,
         TypeDef declaringType = superType != null ? superType : receiverType;
         ObjectDef scope = TypeUtils.declaringScope(declaringType, current, invoked, enclosingScope);
         MethodDef scoped = TypeUtils.inDeclaringScope(invoked, scope, current);
-        boolean isStatic = scoped.getModifiers().contains(Modifier.STATIC) && !scoped.isConstructor() && superType == null;
         String descriptor = TypeUtils.getMethodDescriptor(scope, scoped, enclosingScope);
+        // A static method is invoked statically, on super too: javac writes super.staticMethod() as invokestatic
+        boolean isStatic = !scoped.isConstructor()
+            && (scoped.getModifiers().contains(Modifier.STATIC) || superType != null && staticOfSuper(superType, scoped, descriptor));
         TypeDef declared = DeclaredReturns.of(declaringType, scoped, descriptor, invoked.getReturnType(), current, enclosingScope);
         if (declared != null) {
             descriptor = withReturn(descriptor, declared, current, enclosingScope);
@@ -136,7 +139,7 @@ public record InvocationPlan(Kind kind,
         Kind kind = instanceKind(isStatic, receiverType, superType, scoped, receiverInterface, current);
         TypeDef owner = receiverType;
         boolean ownerInterface = receiverInterface;
-        if (kind == Kind.SPECIAL && superType != null) {
+        if (kind != Kind.VIRTUAL && kind != Kind.INTERFACE && superType != null) {
             owner = superType;
             ownerInterface = superType.isInterface();
         } else if (kind == Kind.SPECIAL) {
@@ -170,6 +173,25 @@ public record InvocationPlan(Kind kind,
             return Kind.INTERFACE;
         }
         return Kind.VIRTUAL;
+    }
+
+    /**
+     * Whether the supertype a {@code super} call names declares the method static, which a method the model names
+     * without its modifiers does not say.
+     */
+    private static boolean staticOfSuper(ClassTypeDef superType, MethodDef method, String descriptor) {
+        TypeDef raw = TypeOperations.rawClassOf(superType);
+        if (raw instanceof ClassTypeDef.JavaClass javaClass) {
+            java.lang.reflect.Method declaration = Conversions.declaration(javaClass.type(), method.getName(),
+                descriptor.substring(0, descriptor.indexOf(')') + 1));
+            return declaration != null && java.lang.reflect.Modifier.isStatic(declaration.getModifiers());
+        }
+        if (raw instanceof ClassTypeDef.ClassDefType generated) {
+            return generated.objectDef().getMethods().stream().anyMatch(declared -> declared.getName().equals(method.getName())
+                && declared.getParameters().size() == method.getParameters().size()
+                && declared.getModifiers().contains(Modifier.STATIC));
+        }
+        return false;
     }
 
     private static Receiver receiverAction(boolean isStatic, TypeUtils.Receiver receiver) {

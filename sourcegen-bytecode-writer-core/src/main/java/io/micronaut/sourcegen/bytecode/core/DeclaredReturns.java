@@ -52,6 +52,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class DeclaredReturns {
 
     private static final Map<ObjectDef, Map<String, List<Declared>>> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Map<String, TypeDef.Primitive> PRIMITIVES_OF_WRAPPERS = Map.of(
+        Byte.class.getName(), TypeDef.Primitive.BYTE,
+        Short.class.getName(), TypeDef.Primitive.SHORT,
+        Character.class.getName(), TypeDef.Primitive.CHAR,
+        Integer.class.getName(), TypeDef.Primitive.INT,
+        Long.class.getName(), TypeDef.Primitive.LONG,
+        Float.class.getName(), TypeDef.Primitive.FLOAT,
+        Double.class.getName(), TypeDef.Primitive.DOUBLE,
+        Boolean.class.getName(), TypeDef.Primitive.BOOLEAN);
 
     private DeclaredReturns() {
     }
@@ -107,24 +116,20 @@ public final class DeclaredReturns {
         int split = descriptor.indexOf(')') + 1;
         String parameters = descriptor.substring(0, split);
         String returns = descriptor.substring(split);
-        String declared = null;
+        List<String> candidates = new ArrayList<>();
         for (Declared candidate : declared(ownerClass, method.getName(), method.getParameters().size(), current, enclosingScope)) {
             if (candidate.parameters().equals(parameters)) {
                 if (candidate.returns().equals(returns)) {
                     // The call names a declared method: a bridge of a covariant override is one
                     return null;
                 }
-                if (declared != null) {
-                    // Several declare other return types: which of them javac invokes is not known here
-                    return null;
-                }
-                declared = candidate.returns();
+                candidates.add(candidate.returns());
             }
         }
-        if (declared == null) {
+        TypeDef declaredType = mostSpecific(candidates);
+        if (declaredType == null) {
             return null;
         }
-        TypeDef declaredType = typeOf(declared);
         // Only the erasure of a generic return, which the requested type specializes, or a covariant override the
         // compiler knows no bridge of: a declaration returning an unrelated type is not the one the call means
         return related(requested, declaredType, current, enclosingScope) ? declaredType : null;
@@ -134,11 +139,16 @@ public final class DeclaredReturns {
         TypeDef type = TypeHierarchy.unwrap(ObjectDef.getContextualType(current, requested));
         if (type instanceof TypeDef.Primitive primitive) {
             if (primitive.equals(TypeDef.VOID)) {
-                return false;
+                // A value requested as void is evaluated and discarded, which the writers do with the declared value
+                return true;
             }
             if (declared instanceof TypeDef.Primitive declaredPrimitive) {
                 // A primitive return widens to the primitive requested, as javac widens Math.max(int, int) to a long
                 return widens(declaredPrimitive, primitive);
+            }
+            if (unboxesAndWidens(declared, primitive)) {
+                // A wrapper of another primitive unboxes and widens to the one requested, a long of an Integer
+                return true;
             }
             // A primitive requested of a generic return unboxes its wrapper
             type = primitive.wrapperType();
@@ -164,6 +174,42 @@ public final class DeclaredReturns {
         return type instanceof ClassTypeDef requestedClass && declared instanceof ClassTypeDef declaredClass
             && (TypeHierarchy.inherits(requestedClass, declaredClass.getName(), null)
             || TypeHierarchy.inherits(loaded(declaredClass), requestedClass.getName(), null));
+    }
+
+    /**
+     * The most specific of the return types an owner declares a method of the call's parameters with: a covariant
+     * override and the bridges of it return the override's type and supertypes of it, and javac invokes the override.
+     *
+     * @return The type, or {@code null} where there is none or no one of them is a subtype of the others
+     */
+    @Nullable
+    private static TypeDef mostSpecific(List<String> candidates) {
+        if (candidates.size() == 1) {
+            return typeOf(candidates.getFirst());
+        }
+        for (String candidate : candidates) {
+            if (candidates.stream().allMatch(other -> other.equals(candidate) || subtype(candidate, other))) {
+                return typeOf(candidate);
+            }
+        }
+        // Several declare unrelated return types: which of them javac invokes is not known here
+        return null;
+    }
+
+    private static boolean subtype(String descriptor, String of) {
+        return typeOf(descriptor) instanceof ClassTypeDef type && typeOf(of) instanceof ClassTypeDef other
+            && TypeHierarchy.inherits(loaded(type), other.getName(), null);
+    }
+
+    /**
+     * Whether the declared type is the wrapper of a primitive that is or widens to the one requested.
+     */
+    private static boolean unboxesAndWidens(TypeDef declared, TypeDef.Primitive requested) {
+        if (!(declared instanceof ClassTypeDef declaredClass)) {
+            return false;
+        }
+        TypeDef.Primitive unboxed = PRIMITIVES_OF_WRAPPERS.get(declaredClass.getName());
+        return unboxed != null && (unboxed.equals(requested) || widens(unboxed, requested));
     }
 
     /**

@@ -28,6 +28,7 @@ import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -59,6 +60,10 @@ final class MethodReferenceExpressionWriter extends AbstractStatementAwareExpres
             ExpressionWriter.writeExpression(generatorAdapter, context, asSuperCall(methodReference, superInstance));
             return;
         }
+        if (instance instanceof VariableDef.Field field && io.micronaut.sourcegen.bytecode.core.ReferenceAdapters.capturesReceiverValue(methodReference)) {
+            writeAdapterOfAFieldReceiver(generatorAdapter, context, field);
+            return;
+        }
         ExpressionDef adapter = io.micronaut.sourcegen.bytecode.core.ReferenceAdapters.varargsAdapter(methodReference);
         if (adapter != null) {
             // The values of a variable arity call are packed into its array, which no handle does
@@ -69,10 +74,7 @@ final class MethodReferenceExpressionWriter extends AbstractStatementAwareExpres
             ExpressionWriter.writeExpression(generatorAdapter, context, instance);
             if (!(instance instanceof VariableDef.This)) {
                 // A bound reference checks its receiver where it is created, as `target::apply` does in source
-                generatorAdapter.dup();
-                generatorAdapter.invokeStatic(Type.getType(java.util.Objects.class),
-                    new org.objectweb.asm.commons.Method("requireNonNull", "(Ljava/lang/Object;)Ljava/lang/Object;"));
-                generatorAdapter.pop();
+                checkReceiverNotNull(generatorAdapter);
             }
         }
 
@@ -107,6 +109,35 @@ final class MethodReferenceExpressionWriter extends AbstractStatementAwareExpres
      * @param superInstance Its receiver
      * @return The lambda that calls the method on `super`
      */
+    /**
+     * The adapter of a reference bound to a field, which reads the field once where the reference is created: the
+     * value is checked, held in a local, and the lambda captures the local.
+     */
+    private void writeAdapterOfAFieldReceiver(GeneratorAdapter generatorAdapter, MethodContext context, ExpressionDef instance) {
+        Type type = TypeUtils.getScopedType(instance.type(), context);
+        ExpressionWriter.writeExpression(generatorAdapter, context, instance);
+        checkReceiverNotNull(generatorAdapter);
+        int index = generatorAdapter.newLocal(type);
+        generatorAdapter.storeLocal(index, type);
+        String name = "receiver$" + index;
+        Label start = new Label();
+        generatorAdapter.visitLabel(start);
+        context.locals().put(name, new MethodContext.LocalData(name, type, start, index));
+        ExpressionWriter.writeExpression(generatorAdapter, context, java.util.Objects.requireNonNull(
+            io.micronaut.sourcegen.bytecode.core.ReferenceAdapters.varargsAdapter(methodReference, new VariableDef.Local(name, instance.type()))));
+        context.locals().remove(name);
+    }
+
+    /**
+     * Checks the receiver on the stack is not null, keeping it there.
+     */
+    private static void checkReceiverNotNull(GeneratorAdapter generatorAdapter) {
+        generatorAdapter.dup();
+        generatorAdapter.invokeStatic(Type.getType(java.util.Objects.class),
+            new org.objectweb.asm.commons.Method("requireNonNull", "(Ljava/lang/Object;)Ljava/lang/Object;"));
+        generatorAdapter.pop();
+    }
+
     static ExpressionDef asSuperCall(MethodReferenceExpression reference, VariableDef.Super superInstance) {
         return reference.type().getLambda().implement((aThis, parameters) -> {
             ExpressionDef.InvokeInstanceMethod call = superInstance.invoke(reference.method(), parameters);

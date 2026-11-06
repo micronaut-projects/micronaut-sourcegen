@@ -411,8 +411,11 @@ public final class Conversions {
         }
         TypeDef ownerType = TypeHierarchy.unwrap(ObjectDef.getContextualType(current, owner));
         TypeDef raw = TypeOperations.rawClassOf(ownerType);
-        if (!(raw instanceof ClassTypeDef.JavaClass javaClass) || !(ownerType instanceof ClassTypeDef ownerClass)) {
+        if (!(ownerType instanceof ClassTypeDef ownerClass)) {
             return null;
+        }
+        if (!(raw instanceof ClassTypeDef.JavaClass javaClass)) {
+            return modelReturnedType(raw, ownerClass, method, current);
         }
         Method declaration = declaration(javaClass.type(), method.getName(), descriptor.substring(0, descriptor.indexOf(')') + 1));
         if (declaration == null || !(declaration.getGenericReturnType() instanceof java.lang.reflect.TypeVariable<?> variable)) {
@@ -430,6 +433,33 @@ public final class Conversions {
             }
         }
         return null;
+    }
+
+    /**
+     * The type a method of a generated or a compiler element owner returns where it declares a variable of the class
+     * as its return type: the type argument of the receiver's type, through {@link TypeHierarchy#typeArguments}.
+     */
+    @Nullable
+    private static ClassTypeDef modelReturnedType(TypeDef raw, ClassTypeDef ownerClass, MethodDef method, @Nullable ObjectDef current) {
+        if (!(raw instanceof ClassTypeDef rawClass)) {
+            return null;
+        }
+        int arity = method.getParameters().size();
+        String variable = null;
+        for (MethodDef candidate : rawClass.findDeclaredMethods(method.getName(), arity)) {
+            if (candidate.getParameters().size() != arity) {
+                continue;
+            }
+            if (!(TypeHierarchy.unwrap(candidate.getReturnType()) instanceof TypeDef.TypeVariable returned)
+                || variable != null && !variable.equals(returned.name())
+                || candidate.getTypeVariables().stream().anyMatch(declared -> declared.name().equals(returned.name()))) {
+                // Not a variable of the class, or several methods returning different types
+                return null;
+            }
+            variable = returned.name();
+        }
+        TypeDef argument = variable == null ? null : TypeHierarchy.typeArguments(ownerClass, null).get(variable);
+        return argument == null ? null : classOf(argument, current);
     }
 
     /**
@@ -476,7 +506,7 @@ public final class Conversions {
      * written with.
      */
     @Nullable
-    private static Method declaration(Class<?> type, String name, String parameters) {
+    static Method declaration(Class<?> type, String name, String parameters) {
         Deque<Class<?>> queue = new ArrayDeque<>();
         Set<Class<?>> visited = new HashSet<>();
         queue.add(type);
