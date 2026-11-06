@@ -45,6 +45,40 @@ final class DiffKotlinParity {
         boxedSwitchKeys(m);
         nullValues(m);
         conversions(m);
+        boxingConversions(m);
+        logicalComparisons(m);
+    }
+
+    static void boxingConversions(DiffModels m) {
+        for (Ty from : List.of(INT, CHAR, BYTE, SHORT)) {
+            for (Ty to : List.of(LONG_W, DOUBLE_W, FLOAT_W)) {
+                m.add("implicit return " + from + " as " + to, to, List.of(from), (self, p) -> p.get(0).returning());
+                m.add("implicit local " + from + " as " + to, OBJECT, List.of(from), (self, p) -> {
+                    var define = new StatementDef.DefineAndAssign(new VariableDef.Local("x", to.def()), p.get(0));
+                    return StatementDef.multi(define, define.variable().returning());
+                });
+            }
+        }
+        String name = m.nextName();
+        var owner = io.micronaut.sourcegen.model.ClassTypeDef.of(name);
+        var echo = io.micronaut.sourcegen.model.MethodDef.builder("echo")
+            .addModifiers(javax.lang.model.element.Modifier.PUBLIC, javax.lang.model.element.Modifier.STATIC)
+            .addParameter("value", LONG_W.def()).returns(TypeDef.OBJECT).build((self, p) -> p.get(0).returning());
+        var run = io.micronaut.sourcegen.model.MethodDef.builder("run").addModifiers(javax.lang.model.element.Modifier.PUBLIC)
+            .addParameter("p0", TypeDef.Primitive.INT).returns(TypeDef.OBJECT)
+            .build((self, p) -> owner.invokeStatic(echo, p.get(0)).returning());
+        m.addClass("implicit argument int as Long", io.micronaut.sourcegen.model.ClassDef.builder(name)
+                .addModifiers(javax.lang.model.element.Modifier.PUBLIC).addMethod(echo).addMethod(run),
+            new Class<?>[]{int.class}, List.<Object[]>of(new Object[]{5}, new Object[]{-1}));
+    }
+
+    static void logicalComparisons(DiffModels m) {
+        m.add("comparison of a conjunction", BOOLEAN, List.of(BOOLEAN, BOOLEAN, BOOLEAN), (self, p) ->
+            new ExpressionDef.ComparisonOperation(ExpressionDef.ComparisonOperation.OpType.EQUAL_TO,
+                new ExpressionDef.And(p.get(0).isTrue(), p.get(1).isTrue()), p.get(2)).returning());
+        m.add("comparison of a disjunction", BOOLEAN, List.of(BOOLEAN, BOOLEAN, BOOLEAN), (self, p) ->
+            new ExpressionDef.ComparisonOperation(ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO,
+                new ExpressionDef.Or(p.get(0).isTrue(), p.get(1).isTrue()), p.get(2)).returning());
     }
 
     static void captures(DiffModels m) {

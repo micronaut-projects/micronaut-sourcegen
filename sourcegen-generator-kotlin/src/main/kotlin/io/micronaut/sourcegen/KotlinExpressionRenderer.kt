@@ -796,10 +796,22 @@ private fun KotlinWriteContext.renderComparison(
             expressionDef.opType == ComparisonOperation.OpType.NOT_EQUAL_TO)
     }
     return CodeBlock.builder()
-        .add(renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.left))
+        .add(renderComparisonOperand(objectDef, methodDef, scope, expressionDef.left))
         .add("%L", getOpType(expressionDef.opType))
-        .add(renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.right))
+        .add(renderComparisonOperand(objectDef, methodDef, scope, expressionDef.right))
         .build()
+}
+
+/** An operand of a comparison: a conjunction or a disjunction is parenthesized, `p0 && p1 == p2` compares `p1` alone. */
+private fun KotlinWriteContext.renderComparisonOperand(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef,
+    scope: KotlinRenderScope,
+    operand: ExpressionDef
+): CodeBlock {
+    val rendered = renderExpressionWithParentheses(objectDef, methodDef, scope, operand)
+    val unwrapped = unwrapCasts(operand)
+    return if ((unwrapped is And || unwrapped is Or) && !requiresParentheses(operand)) addParentheses(rendered) else rendered
 }
 
 private fun KotlinWriteContext.renderNewArrayOfSize(

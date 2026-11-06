@@ -114,6 +114,19 @@ internal object KotlinConversions {
     }
 
     /**
+     * The primitive of a wrapper a primitive of another numeric type is written to: an `int` returned as a `Long`
+     * is converted, `v.toLong()`, as the bytecode converts it before boxing.
+     */
+    private fun boxedOtherPrimitive(targetType: TypeDef, valueType: TypeDef): TypeDef.Primitive? {
+        val boxed = unboxed(targetType) ?: return null
+        val primitive = valueType as? TypeDef.Primitive ?: return null
+        if (primitive == boxed || primitive == BOOLEAN || boxed == BOOLEAN || primitive == TypeDef.VOID) {
+            return null
+        }
+        return boxed
+    }
+
+    /**
      * A key of a switch converted to the type of its selector: the primitive of a wrapper, which the selector is
      * unboxed to, as the bytecode compares it.
      *
@@ -145,6 +158,7 @@ internal object KotlinConversions {
         }
         val targetType = TypeHierarchy.unwrap(target)
         val valueType = TypeHierarchy.unwrap(value.type())
+        boxedOtherPrimitive(targetType, valueType)?.let { return coerce(value, it) }
         if (targetType is TypeDef.Primitive) {
             if (targetType == valueType || targetType == TypeDef.VOID || targetType == BOOLEAN) {
                 return value

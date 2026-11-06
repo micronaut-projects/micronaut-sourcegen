@@ -206,6 +206,42 @@ class BackendParityRegressionTest {
         }
     }
 
+    /** A primitive written to the wrapper of another primitive is converted: returned, stored and passed. */
+    @Test
+    fun primitiveIntoTheBoxOfAnotherPrimitive() {
+        val longType = ClassTypeDef.of(java.lang.Long::class.java)
+        val doubleType = ClassTypeDef.of(java.lang.Double::class.java)
+        assertEquals(5L, runMethod("test.IntToLongReturn", longType, listOf(TypeDef.Primitive.INT), 5) { _, p ->
+            p[0].returning()
+        })
+        assertEquals(97.0, runMethod("test.CharToDoubleReturn", doubleType, listOf(TypeDef.Primitive.CHAR), 'a') { _, p ->
+            p[0].returning()
+        })
+        assertEquals(3L, runMethod("test.ByteToLongLocal", TypeDef.OBJECT, listOf(TypeDef.Primitive.BYTE), 3.toByte()) { _, p ->
+            StatementDef.DefineAndAssign(VariableDef.Local("x", longType), p[0]).let { define ->
+                StatementDef.multi(define, define.variable.returning())
+            }
+        })
+        val echo = MethodDef.builder("echo").addModifiers(Modifier.PUBLIC, Modifier.STATIC).addParameter("value", longType)
+            .returns(TypeDef.OBJECT).build { _, p -> p[0].returning() }
+        val owner = ClassTypeDef.of("test.ShortToLongArgument")
+        val def = ClassDef.builder(owner.name).addModifiers(Modifier.PUBLIC).addMethod(echo)
+            .addMethod(MethodDef.builder("run").addModifiers(Modifier.PUBLIC).addParameter("p0", TypeDef.Primitive.SHORT)
+                .returns(TypeDef.OBJECT).build { _, p -> owner.invokeStatic(echo, p[0]).returning() })
+            .build()
+        assertEquals(7L, KotlinCompileAssertions.invokeRun(def, 7.toShort()))
+    }
+
+    /** A conjunction compared is parenthesized: `p0 && p1 == p2` compares `p1` alone. */
+    @Test
+    fun conjunctionOperandOfAComparison() {
+        val bool = TypeDef.Primitive.BOOLEAN
+        assertEquals(true, runMethod("test.AndCompared", bool, listOf(bool, bool, bool), false, true, false) { _, p ->
+            ExpressionDef.ComparisonOperation(ExpressionDef.ComparisonOperation.OpType.EQUAL_TO,
+                ExpressionDef.And(p[0].isTrue, p[1].isTrue), p[2]).returning()
+        })
+    }
+
     /** The bridge `String.compareTo(Object)` is not the signature read: `Comparable<T>.compareTo(T)` of String is. */
     @Test
     fun bridgeSignatureOfConcreteReceiver() {
