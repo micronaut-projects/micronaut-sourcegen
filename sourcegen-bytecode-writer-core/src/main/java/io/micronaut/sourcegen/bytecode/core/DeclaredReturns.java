@@ -153,6 +153,11 @@ public final class DeclaredReturns {
             // A primitive requested of a generic return unboxes its wrapper
             type = primitive.wrapperType();
         }
+        return relatedReference(type, declared, current, enclosingScope);
+    }
+
+    private static boolean relatedReference(TypeDef requested, TypeDef declared, @Nullable ObjectDef current, EnclosingScope enclosingScope) {
+        TypeDef type = requested;
         if (declared instanceof TypeDef.Primitive declaredPrimitive) {
             // A primitive return boxes to a reference its wrapper is
             return !declaredPrimitive.equals(TypeDef.VOID) && type instanceof ClassTypeDef requestedClass

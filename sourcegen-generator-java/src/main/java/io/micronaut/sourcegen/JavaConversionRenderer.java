@@ -81,6 +81,26 @@ final class JavaConversionRenderer {
     }
 
     /**
+     * The conversions of a reference: those override resolution or the bound receiver need, or none for a reference
+     * written as a lambda only to rethrow what the method declares.
+     */
+    private OverrideResolver.@Nullable ReferenceAdaptation adaptationOf(@Nullable ObjectDef objectDef,
+                                                                        @Nullable MethodDef methodDef,
+                                                                        MethodReferenceExpression reference,
+                                                                        @Nullable ExpressionDef instance,
+                                                                        boolean rethrows) {
+        OverrideResolver.ReferenceAdaptation adaptation = instance == null ? null : OverrideResolver.adaptReference(
+            ownerOf(objectDef, instance.type()), objectDef, methodDef, reference, generationScope, false);
+        if (adaptation == null) {
+            adaptation = boundReference(objectDef, reference, instance);
+        }
+        if (adaptation == null && rethrows) {
+            adaptation = unconvertedReference(reference, instance);
+        }
+        return adaptation;
+    }
+
+    /**
      * A reference as a lambda converting its arguments and result, where the reference would name another method
      * than the model, or return what the functional interface does not: to a generated method that override
      * resolution narrowed, to a less specific overload, to a static method an instance method of the name makes
@@ -96,15 +116,8 @@ final class JavaConversionRenderer {
                                      RenderScope scope,
                                      MethodReferenceExpression reference,
                                      @Nullable ExpressionDef instance) {
-        OverrideResolver.ReferenceAdaptation adaptation = instance == null ? null : OverrideResolver.adaptReference(
-            ownerOf(objectDef, instance.type()), objectDef, methodDef, reference, generationScope, false);
-        if (adaptation == null) {
-            adaptation = boundReference(objectDef, reference, instance);
-        }
         boolean rethrows = !expressions.context().exceptions().undeclaredByReference(reference, objectDef).isEmpty();
-        if (adaptation == null && rethrows) {
-            adaptation = unconvertedReference(reference, instance);
-        }
+        OverrideResolver.ReferenceAdaptation adaptation = adaptationOf(objectDef, methodDef, reference, instance, rethrows);
         if (adaptation == null) {
             return null;
         }
