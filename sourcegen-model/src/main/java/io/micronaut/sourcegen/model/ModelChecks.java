@@ -111,7 +111,7 @@ final class ModelChecks {
             // Discards the value, if any
             return;
         }
-        requireValue("Cast to " + describe(target), "operand", operand);
+        requireValue("Cast to " + describe(target), OPERAND, operand);
         TypeDef source = operand.type();
         if (!isPrimitiveValue(source) && !isPrimitiveValue(target)) {
             return;
