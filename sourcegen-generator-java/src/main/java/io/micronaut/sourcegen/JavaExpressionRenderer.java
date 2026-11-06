@@ -767,28 +767,6 @@ final class JavaExpressionRenderer {
             .collect(CodeBlock.joining(", "));
     }
 
-    /**
-     * The arguments of an invocation being written, with what the invoked method says of them.
-     */
-    private record Arguments(@Nullable ObjectDef objectDef,
-                             @Nullable MethodDef enclosingMethod,
-                             RenderScope scope,
-                             @Nullable List<TypeDef> sameArityParameterTypes,
-                             @Nullable List<TypeDef> declaredTypes,
-                             boolean varargs,
-                             boolean overloaded,
-                             boolean generated,
-                             List<TypeDef.TypeVariable> inferred,
-                             Map<String, TypeDef> receiverArguments,
-                             List<? extends ExpressionDef> values,
-                             Map<String, List<TypeDef>> methodVariables) {
-
-        @Nullable
-        TypeDef declaredType(int i) {
-            return declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null;
-        }
-    }
-
     private CodeBlock renderArgument(Arguments arguments, int i) {
         ExpressionDef value = arguments.values().get(i);
         List<TypeDef> sameArityParameterTypes = arguments.sameArityParameterTypes();
@@ -1241,5 +1219,40 @@ final class JavaExpressionRenderer {
          * Returned from a method or a lambda.
          */
         RETURNED
+    }
+
+    /**
+     * The arguments of an invocation being written, with what the invoked method says of them.
+     *
+     * @param objectDef The definition being written
+     * @param enclosingMethod The method being written
+     * @param scope The scope of the body
+     * @param sameArityParameterTypes The parameter types the overloads of the same arity agree on
+     * @param declaredTypes The parameter types the invoked method declares
+     * @param varargs Whether the method is invoked with variable arguments
+     * @param overloaded Whether the method is overloaded
+     * @param generated Whether the method is generated
+     * @param inferred The variables of the method the call infers
+     * @param receiverArguments The type arguments the receiver binds
+     * @param values The arguments
+     * @param methodVariables The bounds of the variables of the method
+     */
+    private record Arguments(@Nullable ObjectDef objectDef,
+                             @Nullable MethodDef enclosingMethod,
+                             RenderScope scope,
+                             @Nullable List<TypeDef> sameArityParameterTypes,
+                             @Nullable List<TypeDef> declaredTypes,
+                             boolean varargs,
+                             boolean overloaded,
+                             boolean generated,
+                             List<TypeDef.TypeVariable> inferred,
+                             Map<String, TypeDef> receiverArguments,
+                             List<? extends ExpressionDef> values,
+                             Map<String, List<TypeDef>> methodVariables) {
+
+        @Nullable
+        TypeDef declaredType(int i) {
+            return declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null;
+        }
     }
 }

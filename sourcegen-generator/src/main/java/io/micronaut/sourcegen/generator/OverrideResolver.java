@@ -1171,23 +1171,6 @@ public final class OverrideResolver {
     }
 
     /**
-     * What resolving an override against one inherited method works with.
-     */
-    private record OverrideScope(Declared declared,
-                                 OwnVariables own,
-                                 Function<TypeDef, TypeDef> erasure,
-                                 Set<String> visibleVariables,
-                                 Set<String> withMethodVariables,
-                                 TypeDef genericReturn) {
-    }
-
-    /**
-     * The inherited parameters substituted, and whether the override is the erasure of the inherited signature.
-     */
-    private record SubstitutedParameters(List<TypeDef> types, boolean erasedSignature) {
-    }
-
-    /**
      * Whether two types are the same, a variable known by its name whatever bounds a reference to it carries.
      */
     private static boolean sameType(TypeDef substituted, TypeDef declared) {
@@ -1435,5 +1418,32 @@ public final class OverrideResolver {
      * @param declaringType The declaring type
      */
     private record Hierarchy(TypeHierarchy.Lookup lookup, TypeHierarchy.InheritedType declaringType) {
+    }
+
+    /**
+     * What resolving an override against one inherited method works with.
+     *
+     * @param declared The declared method
+     * @param own The variables the declared method has of its own
+     * @param erasure The erasure of a substituted type
+     * @param visibleVariables The variables in scope of the declared method
+     * @param withMethodVariables The visible variables and those of the inherited method
+     * @param genericReturn The inherited return type, substituted
+     */
+    private record OverrideScope(Declared declared,
+                                 OwnVariables own,
+                                 Function<TypeDef, TypeDef> erasure,
+                                 Set<String> visibleVariables,
+                                 Set<String> withMethodVariables,
+                                 TypeDef genericReturn) {
+    }
+
+    /**
+     * The inherited parameters substituted, and whether the override is the erasure of the inherited signature.
+     *
+     * @param types The substituted parameter types
+     * @param erasedSignature Whether the override is the erasure of the inherited signature
+     */
+    private record SubstitutedParameters(List<TypeDef> types, boolean erasedSignature) {
     }
 }
