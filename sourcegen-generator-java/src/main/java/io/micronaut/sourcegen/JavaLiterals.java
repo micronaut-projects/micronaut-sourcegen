@@ -179,10 +179,15 @@ final class JavaLiterals {
             case "int" -> number.intValue() < 0;
             case "long" -> number.longValue() < 0;
             // A negative zero is written with its sign, a non-finite value as the constant of its box
-            case "float", "double" -> Double.isFinite(number.doubleValue())
-                && (number.doubleValue() < 0 || Double.doubleToRawLongBits(number.doubleValue()) == Long.MIN_VALUE);
+            // A float is written narrowed, which can overflow to an infinity
+            case "float" -> isNegativeFinite(number.floatValue());
+            case "double" -> isNegativeFinite(number.doubleValue());
             default -> false;
         };
+    }
+
+    private static boolean isNegativeFinite(double value) {
+        return Double.isFinite(value) && (value < 0 || Double.doubleToRawLongBits(value) == Long.MIN_VALUE);
     }
 
     private CodeBlock primitive(TypeDef.Primitive primitive, Object value) {
@@ -198,7 +203,7 @@ final class JavaLiterals {
             case "short" -> CodeBlock.of("(short) $L", number.shortValue());
             case "int" -> CodeBlock.of("$L", number.intValue());
             case "long" -> CodeBlock.of("$Ll", number.longValue());
-            case "float" -> nonFinite(Float.class, number.doubleValue(), CodeBlock.of("$Lf",
+            case "float" -> nonFinite(Float.class, number.floatValue(), CodeBlock.of("$Lf",
                 number instanceof Double ? Float.toString(number.floatValue()) : number.toString()));
             case "double" -> nonFinite(Double.class, number.doubleValue(), CodeBlock.of("$Ld",
                 number instanceof Float ? Double.toString(number.doubleValue()) : number.toString()));

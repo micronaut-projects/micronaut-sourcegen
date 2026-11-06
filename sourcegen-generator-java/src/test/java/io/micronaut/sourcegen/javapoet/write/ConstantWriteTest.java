@@ -102,7 +102,13 @@ public class ConstantWriteTest {
                 "NegativeBoxedConstantToLong", TypeDef.Primitive.LONG,
                 ExpressionDef.constant((Object) Integer.MIN_VALUE).cast(TypeDef.Primitive.LONG), (long) Integer.MIN_VALUE),
             new ConstantCase("a boxed Character constant cast to int is converted, not 'a'.charValue()",
-                "BoxedCharConstantToInt", TypeDef.Primitive.INT, ExpressionDef.constant((Object) 'a').cast(TypeDef.Primitive.INT), 97)
+                "BoxedCharConstantToInt", TypeDef.Primitive.INT, ExpressionDef.constant((Object) 'a').cast(TypeDef.Primitive.INT), 97),
+            new ConstantCase("a float constant of a double beyond the float range is the infinity it narrows to, not Infinityf",
+                "FloatOverflowConstant", TypeDef.Primitive.FLOAT, new ExpressionDef.Constant(TypeDef.Primitive.FLOAT, 1e300),
+                Float.POSITIVE_INFINITY),
+            new ConstantCase("a float constant of a negative double beyond the float range is the negative infinity",
+                "FloatNegativeOverflowConstant", TypeDef.Primitive.FLOAT, new ExpressionDef.Constant(TypeDef.Primitive.FLOAT, -1e300),
+                Float.NEGATIVE_INFINITY)
         );
     }
 

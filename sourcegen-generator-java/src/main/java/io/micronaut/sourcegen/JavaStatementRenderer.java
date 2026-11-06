@@ -246,8 +246,15 @@ final class JavaStatementRenderer {
                                          @Nullable MethodDef methodDef,
                                          RenderScope scope,
                                          StatementDef statementDef) {
+        return renderCaptureCopies(objectDef, methodDef, scope, JavaLambdaRules.createdLambdas(statementDef));
+    }
+
+    private CodeBlock renderCaptureCopies(@Nullable ObjectDef objectDef,
+                                         @Nullable MethodDef methodDef,
+                                         RenderScope scope,
+                                         List<ExpressionDef.Lambda> lambdas) {
         CodeBlock.Builder builder = CodeBlock.builder();
-        for (ExpressionDef.Lambda lambda : JavaLambdaRules.createdLambdas(statementDef)) {
+        for (ExpressionDef.Lambda lambda : lambdas) {
             Map<String, String> copies = new LinkedHashMap<>();
             JavaLambdaRules.capturedLocals(lambda).forEach((name, type) -> {
                 if (scope.isAssignedInBody(name)) {
@@ -260,6 +267,34 @@ final class JavaStatementRenderer {
                 scope.recordCopies(lambda, copies);
             }
         }
+        return builder.build();
+    }
+
+    private CodeBlock renderWhile(@Nullable ObjectDef objectDef,
+                                  @Nullable MethodDef methodDef,
+                                  RenderScope scope,
+                                  StatementDef.While aWhile) {
+        if (sourceRules.isConstantFalse(aWhile.expression())) {
+            // Never entered, where javac rejects its body as unreachable
+            return CodeBlock.of("");
+        }
+        CodeBlock.Builder builder = CodeBlock.builder();
+        // A lambda of the condition capturing a local the body assigns is created from a copy on each evaluation:
+        // the loop is written `while (true)` with the copies and the condition at the top of its body
+        CodeBlock copies = renderCaptureCopies(objectDef, methodDef, scope, JavaLambdaRules.conditionLambdas(aWhile));
+        CodeBlock condition = expressions.renderExpression(objectDef, methodDef, scope, aWhile.expression());
+        if (copies.isEmpty()) {
+            builder.add("while (").add(condition).add(") {\n");
+            builder.indent();
+        } else {
+            builder.add("while (true) {\n");
+            builder.indent();
+            builder.add(copies);
+            builder.add("if (!($L)) {\n", condition).indent().addStatement("break").unindent().add("}\n");
+        }
+        builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, aWhile.statement()));
+        builder.unindent();
+        builder.add("}\n");
         return builder.build();
     }
 
@@ -339,19 +374,7 @@ final class JavaStatementRenderer {
                 return builder.build();
             }
             case StatementDef.While aWhile -> {
-                if (sourceRules.isConstantFalse(aWhile.expression())) {
-                    // Never entered, where javac rejects its body as unreachable
-                    return CodeBlock.of("");
-                }
-                CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("while (");
-                builder.add(expressions.renderExpression(objectDef, methodDef, scope, aWhile.expression()));
-                builder.add(") {\n");
-                builder.indent();
-                builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, aWhile.statement()));
-                builder.unindent();
-                builder.add("}\n");
-                return builder.build();
+                return renderWhile(objectDef, methodDef, scope, aWhile);
             }
             case StatementDef.Return aReturn when aReturn.expression() != null
                 && TypeDef.VOID.equals(aReturn.expression().type()) -> {

@@ -457,8 +457,15 @@ final class JavaSourceRules {
     private Object conditionalValue(ExpressionDef.IfElse conditional) {
         Object then = constantValue(conditional.ifExpression());
         Object otherwise = constantValue(conditional.elseExpression());
-        return constantValue(conditional.condition()) instanceof Boolean condition && then != null && otherwise != null
-            ? (condition ? then : otherwise) : null;
+        if (!(constantValue(conditional.condition()) instanceof Boolean condition) || then == null || otherwise == null) {
+            return null;
+        }
+        // The selected branch is written converted to the type of the conditional: `true ? (int) 0.5 : ...` is `0`
+        Object selected = condition ? then : otherwise;
+        if (conditional.type() instanceof TypeDef.Primitive primitive) {
+            return converted(selected, primitive);
+        }
+        return selected instanceof String ? selected : null;
     }
 
     @Nullable

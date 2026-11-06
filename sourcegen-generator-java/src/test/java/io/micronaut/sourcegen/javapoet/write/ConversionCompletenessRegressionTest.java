@@ -125,6 +125,40 @@ public class ConversionCompletenessRegressionTest {
         }
     }
 
+    // An int returned from a method returning `Long`: the bytecode widens and boxes it, `return v;` does not compile.
+    @Test
+    void primitiveReturnedAsTheBoxOfAnotherPrimitiveIsConverted() throws Exception {
+        var def = single("IntReturnedAsLong", Long.class, List.of(TypeDef.Primitive.INT),
+            (self, p) -> p.get(0).returning());
+        assertEquals(5L, run(def, 5));
+        var narrowed = single("LongReturnedAsInteger", Integer.class, List.of(TypeDef.Primitive.LONG),
+            (self, p) -> p.get(0).returning());
+        assertEquals(7, run(narrowed, 7L));
+        var character = single("IntReturnedAsCharacter", Character.class, List.of(TypeDef.Primitive.INT),
+            (self, p) -> p.get(0).returning());
+        assertEquals('a', run(character, 97));
+    }
+
+    // `Long x = <int>`: the local is assigned the widened box.
+    @Test
+    void primitiveStoredInALocalOfTheBoxOfAnotherPrimitiveIsConverted() throws Exception {
+        var def = single("IntStoredAsLong", Long.class, List.of(TypeDef.Primitive.INT),
+            (self, p) -> {
+                var local = new VariableDef.Local("x", TypeDef.of(Long.class));
+                return StatementDef.multi(local.defineAndAssign(p.get(0)), local.returning());
+            });
+        assertEquals(5L, run(def, 5));
+    }
+
+    // An int passed to a `Long` parameter is widened and boxed.
+    @Test
+    void primitivePassedToTheBoxOfAnotherPrimitiveIsConverted() throws Exception {
+        var longBox = Overloads.class.getMethod("longBox", Long.class);
+        var def = single("IntPassedAsLong", String.class, List.of(TypeDef.Primitive.INT),
+            (self, p) -> ClassTypeDef.of(Overloads.class).invokeStatic(longBox, p.get(0)).returning());
+        assertEquals("long 5", run(def, 5));
+    }
+
     // A long passed to an `int` parameter is narrowed (l2i) by the bytecode writer; the source has no `(int)` cast and does not compile.
     @Test
     void longPassedToIntParameterIsNarrowed() throws Exception {
@@ -1048,6 +1082,14 @@ public class ConversionCompletenessRegressionTest {
          */
         public static String box(Integer value) {
             return "boxed";
+        }
+
+        /**
+         * @param value The value
+         * @return The value described
+         */
+        public static String longBox(Long value) {
+            return "long " + value;
         }
 
         /**

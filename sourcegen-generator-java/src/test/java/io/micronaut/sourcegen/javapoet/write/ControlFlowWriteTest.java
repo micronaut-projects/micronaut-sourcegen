@@ -255,6 +255,51 @@ class ControlFlowWriteTest {
         }
     }
 
+    // A reference to a method that throws a checked exception the functional method does not declare: javac rejects
+    // `r::readLine` as a Supplier ("incompatible thrown types"), the bytecode writers run it.
+    @Test
+    void methodReferenceToAMethodThrowingACheckedException() throws Exception {
+        var supplier = TypeDef.parameterized(java.util.function.Supplier.class, String.class);
+        var readLine = java.io.BufferedReader.class.getMethod("readLine");
+        var def = single("CheckedReference", supplier, List.of(TypeDef.of(java.io.BufferedReader.class)),
+            (self, p) -> supplier.methodReference(p.getFirst(), readLine).returning());
+        try (var loader = compile(def)) {
+            var reader = new java.io.BufferedReader(new java.io.StringReader("line"));
+            var result = (java.util.function.Supplier<?>) invoke(loader, def, reader);
+            assertEquals("line", result.get());
+        }
+    }
+
+    // A conditional whose branches are converted to its type is folded as converted: `true ? (int) 0.5 : (int) 0.7`
+    // is `0`, so a loop while it equals `0` is entered.
+    @Test
+    void conditionalConstantIsFoldedConverted() throws Exception {
+        var conditional = new ExpressionDef.IfElse(ExpressionDef.constant(true), ExpressionDef.constant(0.5),
+            ExpressionDef.constant(0.7), TypeDef.Primitive.INT);
+        var def = single("ConvertedConditional", int.class, List.of(), (self, p) -> StatementDef.multi(
+            new StatementDef.While(conditional.compare(ExpressionDef.ComparisonOperation.OpType.EQUAL_TO, ExpressionDef.constant(0)),
+                ExpressionDef.constant(1).returning()),
+            ExpressionDef.constant(2).returning()));
+        assertEquals(1, run(def));
+    }
+
+    // A lambda in a loop condition reads a local the loop body modifies: each evaluation sees its current value.
+    @Test
+    void lambdaInALoopConditionCapturesAModifiedLocal() throws Exception {
+        var supplier = ClassTypeDef.of(java.util.function.BooleanSupplier.class);
+        var getAsBoolean = java.util.function.BooleanSupplier.class.getMethod("getAsBoolean");
+        var def = single("LoopConditionCapture", int.class, List.of(), (self, p) ->
+            ExpressionDef.constant(0).newLocal("counter", counter -> StatementDef.multi(
+                new StatementDef.While(
+                    supplier.getLambda().implement((ls, lp) -> counter.compare(
+                        ExpressionDef.ComparisonOperation.OpType.LESS_THAN, ExpressionDef.constant(2)).returning())
+                        .invoke(getAsBoolean),
+                    counter.assign(
+                        counter.math(ExpressionDef.MathBinaryOperation.OpType.ADDITION, ExpressionDef.constant(1)))),
+                counter.returning())));
+        assertEquals(2, run(def));
+    }
+
     // A lambda that throws a checked exception its functional method does not declare.
     @Test
     void lambdaThrowsCheckedException() throws Exception {
@@ -400,6 +445,31 @@ class ControlFlowWriteTest {
         try (var loader = compile(base, def)) {
             var cls = loader.loadClass(def.getName());
             assertEquals("super;pre;", cls.getMethod("call").invoke(cls.getConstructor().newInstance()));
+        }
+    }
+
+    /**
+     * {@code super(read())} where {@code read()} throws a checked exception: no try can enclose the constructor call,
+     * so the constructor declares it, which the bytecode writers do not check.
+     */
+    @Test
+    void constructorCallArgumentThrowingACheckedException() throws Exception {
+        var type = ClassTypeDef.of("test.SuperArgumentThrows");
+        var read = MethodDef.builder("read").addModifiers(Modifier.PUBLIC, Modifier.STATIC).returns(String.class)
+            .addThrows(TypeDef.of(IOException.class))
+            .build((self, p) -> ExpressionDef.constant("read").returning());
+        var message = Exception.class.getConstructor(String.class);
+        var def = ClassDef.builder(type.getName()).addModifiers(Modifier.PUBLIC).superclass(ClassTypeDef.of(Exception.class))
+            .addMethod(read)
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC)
+                .build((self, p) -> self.superRef().invokeSuperConstructor(message, type.invokeStatic(read))))
+            .addMethod(MethodDef.constructor().addModifiers(Modifier.PUBLIC).addParameter("ignored", int.class)
+                .build((self, p) -> self.invoke(MethodDef.constructor().build(), List.of())))
+            .build();
+        try (var loader = compile(def)) {
+            var cls = loader.loadClass(def.getName());
+            assertEquals("read", ((Exception) cls.getConstructor().newInstance()).getMessage());
+            assertEquals("read", ((Exception) cls.getConstructor(int.class).newInstance(1)).getMessage());
         }
     }
 

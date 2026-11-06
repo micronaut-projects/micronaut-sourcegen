@@ -101,6 +101,10 @@ final class JavaConversionRenderer {
         if (adaptation == null) {
             adaptation = boundReference(objectDef, reference, instance);
         }
+        boolean rethrows = !expressions.context().exceptions().undeclaredByReference(reference, objectDef).isEmpty();
+        if (adaptation == null && rethrows) {
+            adaptation = unconvertedReference(reference, instance);
+        }
         if (adaptation == null) {
             return null;
         }
@@ -119,7 +123,8 @@ final class JavaConversionRenderer {
         if (adaptation.resultType() != null) {
             call = CodeBlock.of(CAST, types.asType(adaptation.resultType(), objectDef, methodDef), call);
         }
-        CodeBlock lambda = CodeBlock.of("($L) -> $L", CodeBlock.join(parameters, ", "), call);
+        CodeBlock lambda = rethrows ? rethrowingLambda(lambdaScope, reference, parameters, call)
+            : CodeBlock.of("($L) -> $L", CodeBlock.join(parameters, ", "), call);
         if (instance == null || !captured) {
             return lambda;
         }
@@ -130,6 +135,45 @@ final class JavaConversionRenderer {
         // A lambda returning a raw type makes `map` an unchecked invocation, whose result is erased
         return adaptation.resultType() != null && names.isRawGeneric(adaptation.resultType())
             ? CodeBlock.of(CAST, functional, read) : read;
+    }
+
+    /**
+     * The adaptation of a reference that converts nothing, or {@code null} where the reference is unbound: its
+     * receiver is the first argument of the functional method.
+     */
+    private static OverrideResolver.@Nullable ReferenceAdaptation unconvertedReference(MethodReferenceExpression reference,
+                                                                                      @Nullable ExpressionDef instance) {
+        if (instance == null && !reference.isStatic() && !reference.isConstructor()) {
+            return null;
+        }
+        int count = reference.method().getParameters().size();
+        List<@Nullable TypeDef> argumentTypes = new ArrayList<>();
+        List<List<TypeDef>> conversions = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            argumentTypes.add(null);
+            conversions.add(List.of());
+        }
+        return new OverrideResolver.ReferenceAdaptation(argumentTypes, conversions, null, null);
+    }
+
+    /**
+     * A lambda calling the referenced method, which rethrows what it throws unchecked: the method declares a checked
+     * exception the functional method does not, which the bytecode does not check.
+     */
+    private CodeBlock rethrowingLambda(RenderScope lambdaScope, MethodReferenceExpression reference,
+                                       List<CodeBlock> parameters, CodeBlock call) {
+        String throwable = lambdaScope.declareFresh("throwable");
+        boolean returns = !TypeDef.VOID.equals(reference.type().getLambda().getImplementation().getReturnType());
+        return CodeBlock.builder()
+            .add("($L) -> {\n", CodeBlock.join(parameters, ", ")).indent()
+            .add("try {\n").indent()
+            // No statement markers: the lambda is written in a statement of its own, which JavaPoet does not nest
+            .add(returns ? "return $L;\n" : "$L;\n", call)
+            .unindent().add("} catch ($T $L) {\n", Throwable.class, throwable).indent()
+            .add("throw $L;\n", expressions.statementRenderer().sneakyThrow(CodeBlock.of("$L", throwable)))
+            .unindent().add("}\n")
+            .unindent().add("}")
+            .build();
     }
 
     private void addAdaptedArguments(@Nullable ObjectDef objectDef,

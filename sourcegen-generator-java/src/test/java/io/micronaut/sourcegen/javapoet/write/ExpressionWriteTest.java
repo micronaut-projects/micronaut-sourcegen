@@ -1226,6 +1226,9 @@ public class Example {
             arguments(named("a disjunction of a conjunction and a disjunction", new ExpressionDef.Or(
                 ExpressionDef.trueValue().isTrue().and(ExpressionDef.falseValue().isTrue()),
                 ExpressionDef.trueValue().isTrue().or(ExpressionDef.falseValue().isTrue()))), "true && false || true || false"),
+            arguments(named("a comparison of a conjunction", new ExpressionDef.And(
+                new VariableDef.Local("a", TypeDef.Primitive.BOOLEAN).isTrue(), new VariableDef.Local("b", TypeDef.Primitive.BOOLEAN).isTrue())
+                .compare(EQUAL_TO, new VariableDef.Local("c", TypeDef.Primitive.BOOLEAN))), "(a && b) == c"),
             arguments(named("a call on a division", ExpressionDef.constant(100)
                 .math(DIVISION, new VariableDef.Local("divisor", TypeDef.Primitive.INT)).invoke("toString", TypeDef.STRING)),
                 "(100 / divisor).toString()"),

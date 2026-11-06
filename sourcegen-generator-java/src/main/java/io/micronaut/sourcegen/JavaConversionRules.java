@@ -450,6 +450,9 @@ final class JavaConversionRules {
             TypeDef unboxed = value instanceof TypeDef.Primitive ? value : unboxedOf(value);
             return unboxed == null || !widens((TypeDef.Primitive) unboxed, primitive);
         }
+        if (convertsToAnotherBox(paramType, valueType)) {
+            return true;
+        }
         // A value of a supertype of the declared one, as the erasure of a bounded type variable is - `Number` for
         // `N extends Number`: the verifier accepts it, source needs the cast
         if (paramType instanceof ClassTypeDef.JavaClass paramClass
@@ -469,6 +472,23 @@ final class JavaConversionRules {
             && paramArray.dimensions() == valueArray.dimensions()
             && !paramArray.componentType().equals(valueArray.componentType())
             && requiresImplicitInvocationCast(paramArray.componentType(), valueArray.componentType());
+    }
+
+    /**
+     * Whether a numeric or char primitive flows into the box of another numeric or char primitive: Java boxes only
+     * to the primitive's own wrapper, the bytecode converts the primitive and boxes it, as the cast writes it -
+     * `Long.valueOf((long) i)` for an `int` returned as a `Long`.
+     */
+    private static boolean convertsToAnotherBox(TypeDef paramType, TypeDef valueType) {
+        if (!(TypeHierarchy.unwrap(valueType) instanceof TypeDef.Primitive value)) {
+            return false;
+        }
+        TypeDef.Primitive target = unboxedOf(TypeHierarchy.unwrap(paramType));
+        return target != null && !target.equals(value) && isNumericOrChar(target) && isNumericOrChar(value);
+    }
+
+    private static boolean isNumericOrChar(TypeDef.Primitive primitive) {
+        return !TypeDef.Primitive.BOOLEAN.equals(primitive) && !TypeDef.VOID.equals(primitive);
     }
 
     /**

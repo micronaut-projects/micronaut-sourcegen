@@ -139,7 +139,7 @@ final class JavaPrecedence {
 
     /**
      * Whether an operand of an operator is put in parentheses whatever the operator: anything but a primary, a name,
-     * a literal, an {@code &&} and a switch.
+     * a literal and a switch.
      *
      * @param expressionDef The operand, whose casts are seen through
      * @return true if it is put in parentheses
@@ -152,7 +152,6 @@ final class JavaPrecedence {
         }
         return !(operand instanceof StatementDef
             || operand instanceof VariableDef
-            || operand instanceof ExpressionDef.And
             || operand instanceof ExpressionDef.Constant
             || operand instanceof ExpressionDef.GetPropertyValue
             || operand instanceof ExpressionDef.InvokeGetClassMethod

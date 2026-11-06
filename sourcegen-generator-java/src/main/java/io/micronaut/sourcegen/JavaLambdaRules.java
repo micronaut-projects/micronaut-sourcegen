@@ -139,6 +139,18 @@ final class JavaLambdaRules {
         return lambdas;
     }
 
+    /**
+     * The lambdas a loop condition creates on each evaluation.
+     *
+     * @param aWhile The loop
+     * @return The lambdas
+     */
+    static List<ExpressionDef.Lambda> conditionLambdas(StatementDef.While aWhile) {
+        List<ExpressionDef.Lambda> lambdas = new ArrayList<>();
+        collectLambdas(aWhile.expression(), lambdas);
+        return lambdas;
+    }
+
     private static void collectLambdas(ExpressionDef expression, List<ExpressionDef.Lambda> lambdas) {
         if (expression instanceof ExpressionDef.Lambda lambda) {
             lambdas.add(lambda);

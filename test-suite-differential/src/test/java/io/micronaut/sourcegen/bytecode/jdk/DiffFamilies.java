@@ -82,7 +82,11 @@ final class DiffFamilies {
         int expressions = m.models.size();
         if (all || f.contains("stmt")) {
             DiffStatements.generate(m);
+<<<<<<< HEAD
             DiffKotlinParity.generate(m);
+=======
+            DiffJavaReview.generate(m);
+>>>>>>> 9bfb9e52 (Fix Java generator review findings: box conversions, conditional folding, loop-condition captures, throwing method references, conjunction precedence, constructor-call throws, float overflow constants)
         }
         return expressions;
     }

@@ -23,6 +23,7 @@ import io.micronaut.sourcegen.model.ClassTypeDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.MethodReferenceExpression;
 import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
@@ -35,7 +36,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 import static io.micronaut.sourcegen.JavaTypes.ownerOf;
 
@@ -60,6 +64,8 @@ final class JavaExceptionRules {
     // The top level definition being written, which declares the helper where it is used
     private final ObjectDef topLevel;
     private boolean sneakyThrow;
+    // The constructors whose constructor invocation is being read, as one delegating to another is
+    private final Set<MethodDef> visitedConstructors = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /**
      * @param context  The context of the file being written
@@ -314,7 +320,7 @@ final class JavaExceptionRules {
             for (MethodDef declared : definition.getMethods()) {
                 if (declared.getName().equals(method.getName()) && erasures.equals(declared.getParameters().stream()
                     .map(parameter -> TypeHierarchy.erasedName(parameter.getType())).toList())) {
-                    return declared.getThrowTypes();
+                    return withConstructorInvocationThrows(definition, declared);
                 }
             }
             return method.getThrowTypes();
@@ -327,6 +333,25 @@ final class JavaExceptionRules {
             .filter(type -> !(type instanceof java.lang.reflect.TypeVariable<?>))
             .map(TypeHierarchy::typeDefOf)
             .toList();
+    }
+
+    /**
+     * The checked exceptions a referenced method declares that the functional method does not: javac rejects the
+     * reference, which is written as a lambda rethrowing them.
+     *
+     * @param reference The method reference
+     * @param objectDef The definition being written
+     * @return The exceptions
+     */
+    List<TypeDef> undeclaredByReference(MethodReferenceExpression reference, @Nullable ObjectDef objectDef) {
+        ExpressionDef instance = reference.instance();
+        ClassTypeDef owner = instance == null ? reference.owner() : ownerOf(objectDef, instance.type());
+        List<TypeDef> declared = checked(declaredThrows(owner, reference.method(), objectDef));
+        if (declared.isEmpty()) {
+            return declared;
+        }
+        List<TypeDef> functional = functionalThrows(reference.type());
+        return declared.stream().filter(type -> !handles(functional, type)).toList();
     }
 
     /**
@@ -365,6 +390,54 @@ final class JavaExceptionRules {
         } catch (NoSuchMethodException e) {
             return false;
         }
+    }
+
+    /**
+     * The checked exceptions the constructor invocation of a constructor and its arguments throw that the constructor
+     * does not declare: no try can enclose the invocation, so the constructor declares them, which the bytecode does
+     * not check.
+     *
+     * @param objectDef   The definition being written
+     * @param constructor The method, which is a constructor or not
+     * @return The exceptions
+     */
+    List<TypeDef> undeclaredByConstructorInvocation(ObjectDef objectDef, MethodDef constructor) {
+        if (!constructor.isConstructor() || !visitedConstructors.add(constructor)) {
+            return List.of();
+        }
+        try {
+            return undeclaredByInvocationOf(objectDef, constructor);
+        } finally {
+            visitedConstructors.remove(constructor);
+        }
+    }
+
+    /**
+     * The exceptions a generated method declares, with those a constructor declares for its constructor invocation.
+     */
+    private List<TypeDef> withConstructorInvocationThrows(ObjectDef definition, MethodDef declared) {
+        List<TypeDef> invocation = undeclaredByConstructorInvocation(definition, declared);
+        if (invocation.isEmpty()) {
+            return declared.getThrowTypes();
+        }
+        List<TypeDef> all = new ArrayList<>(declared.getThrowTypes());
+        all.addAll(invocation);
+        return all;
+    }
+
+    private List<TypeDef> undeclaredByInvocationOf(ObjectDef objectDef, MethodDef constructor) {
+        StatementDef invocation = constructor.getStatements().stream()
+            .filter(JavaExceptionRules::isConstructorInvocation).findFirst().orElse(null);
+        if (invocation == null) {
+            return List.of();
+        }
+        List<TypeDef> undeclared = new ArrayList<>();
+        for (TypeDef type : thrown(List.of(invocation), false, objectDef, constructor)) {
+            if (!handles(constructor.getThrowTypes(), type) && !handles(undeclared, type)) {
+                undeclared.add(type);
+            }
+        }
+        return undeclared;
     }
 
     /**

@@ -54,6 +54,7 @@ import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -430,7 +431,10 @@ final class JavaTypeRenderer {
         // The resolved method declares the variables the inherited one does - bounded as it bounds them, and renamed
         // where the declared ones would capture a variable of the class the resolved types name
         MethodDef scope = renderMethod;
-        RenderScope methodScope = RenderScope.root(renderMethod).body(renderMethod.getStatements()).handling(scope.getThrowTypes());
+        List<TypeDef> throwTypes = new ArrayList<>(scope.getThrowTypes());
+        // A constructor call no try can enclose: what it and its arguments throw is declared
+        throwTypes.addAll(context.exceptions().undeclaredByConstructorInvocation(objectDef, renderMethod));
+        RenderScope methodScope = RenderScope.root(renderMethod).body(renderMethod.getStatements()).handling(throwTypes);
         MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(method.getModifiersArray())
             .addParameters(
@@ -460,7 +464,7 @@ final class JavaTypeRenderer {
                 asAnnotationSpec(annotation)
             );
         }
-        for (TypeDef type: scope.getThrowTypes()) {
+        for (TypeDef type: throwTypes) {
             methodBuilder.addException(asType(type, objectDef, scope));
         }
         context.enterMethod(renderMethod);
