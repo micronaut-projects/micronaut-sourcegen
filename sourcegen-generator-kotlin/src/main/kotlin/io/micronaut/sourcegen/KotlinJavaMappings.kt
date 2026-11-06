@@ -172,20 +172,7 @@ internal object KotlinJavaMappings {
         }
         // A Java subclass of Number is one of kotlin.Number, a generated one extends the Java class
         if (arity == 0 && (primitive != null || receiverClass != null && Number::class.java.isAssignableFrom(receiverClass))) {
-            NUMBER_CONVERSIONS[name]?.let { target ->
-                if (primitive == target) {
-                    return MappedCall.Identity
-                }
-                val source = primitive ?: if (receiverClass == Double::class.javaObjectType || receiverClass == Float::class.javaObjectType) {
-                    TypeDef.Primitive.DOUBLE
-                } else {
-                    null
-                }
-                return MappedCall.Conversion(source?.let { KotlinConversions.conversion(target, it) } ?: KotlinConversions.numberConversion(target))
-            }
-            if (name == "charValue" && primitive == TypeDef.Primitive.CHAR || name == "booleanValue" && primitive == TypeDef.Primitive.BOOLEAN) {
-                return MappedCall.Identity
-            }
+            unboxingCall(name, receiverClass, primitive)?.let { return it }
         }
         renamedMember(method, supertypes, receiverClass ?: loadedClass(receiverType))?.let { return MappedCall.Renamed(it) }
         if (receiverClass == String::class.java && name !in KOTLIN_STRING_MEMBERS
@@ -195,6 +182,25 @@ internal object KotlinJavaMappings {
         }
         if (name == "toArray" && arity <= 1 && supertypes.any { Collection::class.java.isAssignableFrom(it) }) {
             return MappedCall.ThroughJavaType(JAVA_COLLECTION)
+        }
+        return null
+    }
+
+    /** A call of an unboxing method of a number, a char or a boolean: the value itself, or a numeric conversion. */
+    private fun unboxingCall(name: String, receiverClass: Class<*>?, primitive: TypeDef.Primitive?): MappedCall? {
+        NUMBER_CONVERSIONS[name]?.let { target ->
+            if (primitive == target) {
+                return MappedCall.Identity
+            }
+            val source = primitive ?: if (receiverClass == Double::class.javaObjectType || receiverClass == Float::class.javaObjectType) {
+                TypeDef.Primitive.DOUBLE
+            } else {
+                null
+            }
+            return MappedCall.Conversion(source?.let { KotlinConversions.conversion(target, it) } ?: KotlinConversions.numberConversion(target))
+        }
+        if (name == "charValue" && primitive == TypeDef.Primitive.CHAR || name == "booleanValue" && primitive == TypeDef.Primitive.BOOLEAN) {
+            return MappedCall.Identity
         }
         return null
     }

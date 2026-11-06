@@ -166,27 +166,31 @@ internal fun KotlinWriteContext.returnsNullable(objectDef: ObjectDef?, method: M
 /**
  * The locals of a function written nullable: one the model assigns `null`, and one of a wrapper.
  */
-internal fun KotlinWriteContext.nullableLocals(method: MethodDef): Set<String> {
-    fun compute(): Set<String> {
-        val result = LinkedHashSet<String>()
-        method.statements.forEach { body ->
-            forEachStatement(body) { statement ->
-                when (statement) {
-                    is DefineAndAssign -> if (!statement.variable.type.isNullable && !statement.variable.type.isPrimitive
-                        && (isNullLiteral(statement.expression) || isBoxed(statement.variable.type))) {
-                        result.add(statement.variable.name)
-                    }
-                    is Assign -> if (isNullLiteral(statement.expression)) {
-                        result.add(statement.variable.name)
-                    }
-                    else -> Unit
+internal fun KotlinWriteContext.nullableLocals(method: MethodDef): Set<String> =
+    nullableLocalsCache.getOrPut(method) { computeNullableLocals(method) }
+
+private fun KotlinWriteContext.computeNullableLocals(method: MethodDef): Set<String> {
+    val result = LinkedHashSet<String>()
+    method.statements.forEach { body ->
+        forEachStatement(body) { statement ->
+            when (statement) {
+                is DefineAndAssign -> if (declaresNullableLocal(statement)) {
+                    result.add(statement.variable.name)
                 }
+                is Assign -> if (isNullLiteral(statement.expression)) {
+                    result.add(statement.variable.name)
+                }
+                else -> Unit
             }
         }
-        return result
     }
-    return nullableLocalsCache.getOrPut(method) { compute() }
+    return result
 }
+
+/** Whether a local declared not null is assigned `null` or is a wrapper. */
+private fun KotlinWriteContext.declaresNullableLocal(statement: DefineAndAssign): Boolean =
+    !statement.variable.type.isNullable && !statement.variable.type.isPrimitive
+        && (isNullLiteral(statement.expression) || isBoxed(statement.variable.type))
 
 /**
  * Whether a value is one Kotlin types as nullable where the model types it as not null: rendered with `!!`
@@ -351,24 +355,35 @@ internal fun KotlinWriteContext.sourceTypeOf(value: ExpressionDef, methodDef: Me
         return branchesType(value.cases.values + listOfNotNull(value.defaultCase), value.type(), methodDef, objectDef)
     }
     if (value is ArrayElement) {
-        // An element of an array an override narrowed has the narrowed component type
-        val arrayType = sourceTypeOf(value.expression, methodDef, objectDef)
-        if (arrayType != value.expression.type() && arrayType is TypeDef.Array) {
-            return if (arrayType.dimensions == 1) {
-                arrayType.componentType
-            } else {
-                TypeDef.array(arrayType.componentType, arrayType.dimensions - 1)
-            }
-        }
+        narrowedElementType(value, methodDef, objectDef)?.let { return it }
     }
     if (value is VariableDef.MethodParameter) {
-        methodDef.parameters.firstOrNull { it.name == value.name }?.let { return it.type }
-        // A lambda captures the parameter of the function it is written in, as that function is written
-        enclosingFunctions.forEach { outer ->
-            outer.parameters.firstOrNull { it.name == value.name }?.let { return it.type }
-        }
+        parameterSourceType(value, methodDef)?.let { return it }
     }
     return value.type()
+}
+
+/** The type of an element of an array an override narrowed: the narrowed component type, `null` for another. */
+private fun KotlinWriteContext.narrowedElementType(value: ArrayElement, methodDef: MethodDef, objectDef: ObjectDef?): TypeDef? {
+    val arrayType = sourceTypeOf(value.expression, methodDef, objectDef)
+    if (arrayType != value.expression.type() && arrayType is TypeDef.Array) {
+        return if (arrayType.dimensions == 1) {
+            arrayType.componentType
+        } else {
+            TypeDef.array(arrayType.componentType, arrayType.dimensions - 1)
+        }
+    }
+    return null
+}
+
+/** The type of the parameter a value names: of the function, or of one a lambda captures it from, as it is written. */
+private fun KotlinWriteContext.parameterSourceType(value: VariableDef.MethodParameter, methodDef: MethodDef): TypeDef? {
+    methodDef.parameters.firstOrNull { it.name == value.name }?.let { return it.type }
+    // A lambda captures the parameter of the function it is written in, as that function is written
+    enclosingFunctions.forEach { outer ->
+        outer.parameters.firstOrNull { it.name == value.name }?.let { return it.type }
+    }
+    return null
 }
 
 /**

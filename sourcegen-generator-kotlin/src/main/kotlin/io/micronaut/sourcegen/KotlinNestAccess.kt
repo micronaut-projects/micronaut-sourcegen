@@ -57,32 +57,39 @@ internal class KotlinNestAccess private constructor(private val accessed: Set<St
             }
             val accessed = HashSet<String>()
             for ((name, definition) in definitions) {
-                val record = { owner: TypeDef?, member: String ->
-                    val ownerName = ((TypeHierarchy.unwrap(owner ?: TypeDef.OBJECT) as? ClassTypeDef)
-                        ?.let { (it as? ClassTypeDef.Parameterized)?.rawType ?: it })?.name
-                    // A type may use the private members of the types enclosing it, and its own
-                    if (ownerName != null && ownerName in definitions && ownerName != name && !name.startsWith("$ownerName$")) {
-                        accessed.add("$ownerName#$member")
-                    }
-                }
-                forEachExpression(definition) { expression ->
-                    when (expression) {
-                        is ExpressionDef.InvokeInstanceMethod -> record(
-                            if (expression.instance is VariableDef.This) definition.asTypeDef() else expression.instance.type(),
-                            if (expression.method.isConstructor) "<init>" else expression.method.name
-                        )
-                        is ExpressionDef.InvokeStaticMethod -> record(expression.classDef, expression.method.name)
-                        is ExpressionDef.NewInstance -> record(expression.type, "<init>")
-                        is VariableDef.Field -> record(
-                            if (expression.declaringType == TypeDef.THIS) definition.asTypeDef() else expression.declaringType,
-                            expression.name
-                        )
-                        is VariableDef.StaticField -> record(expression.ownerType, expression.name)
-                        else -> Unit
-                    }
-                }
+                collectAccesses(name, definition, definitions, accessed)
             }
             return KotlinNestAccess(accessed)
+        }
+
+        /** Records the members of the other types of the file a definition uses. */
+        private fun collectAccesses(name: String, definition: ObjectDef, definitions: Map<String, ObjectDef>, accessed: MutableSet<String>) {
+            val record = { owner: TypeDef?, member: String -> recordAccess(name, owner, member, definitions, accessed) }
+            forEachExpression(definition) { expression ->
+                when (expression) {
+                    is ExpressionDef.InvokeInstanceMethod -> record(
+                        if (expression.instance is VariableDef.This) definition.asTypeDef() else expression.instance.type(),
+                        if (expression.method.isConstructor) "<init>" else expression.method.name
+                    )
+                    is ExpressionDef.InvokeStaticMethod -> record(expression.classDef, expression.method.name)
+                    is ExpressionDef.NewInstance -> record(expression.type, "<init>")
+                    is VariableDef.Field -> record(
+                        if (expression.declaringType == TypeDef.THIS) definition.asTypeDef() else expression.declaringType,
+                        expression.name
+                    )
+                    is VariableDef.StaticField -> record(expression.ownerType, expression.name)
+                    else -> Unit
+                }
+            }
+        }
+
+        private fun recordAccess(name: String, owner: TypeDef?, member: String, definitions: Map<String, ObjectDef>, accessed: MutableSet<String>) {
+            val ownerName = ((TypeHierarchy.unwrap(owner ?: TypeDef.OBJECT) as? ClassTypeDef)
+                ?.let { (it as? ClassTypeDef.Parameterized)?.rawType ?: it })?.name
+            // A type may use the private members of the types enclosing it, and its own
+            if (ownerName != null && ownerName in definitions && ownerName != name && !name.startsWith("$ownerName$")) {
+                accessed.add("$ownerName#$member")
+            }
         }
 
         private fun collect(definition: ObjectDef, definitions: MutableMap<String, ObjectDef>) {

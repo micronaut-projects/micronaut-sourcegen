@@ -55,31 +55,36 @@ internal fun KotlinWriteContext.renderConstantExpression(
             return renderArrayConstant(type, value, methodDef, scope)
         }
     } else if (type is ClassTypeDef) {
-        if (value is TypeDef) {
-            // A class literal names the class, without type arguments
-            val literalType = TypeHierarchy.unwrap(value).let { (it as? ClassTypeDef.Parameterized)?.rawType ?: it }
-            return CodeBlock.of("%T::class.java",
-                if (literalType is ClassTypeDef && literalType !is ClassTypeDef.Parameterized && TypeHierarchy.enclosingOf(literalType) == null) asClassName(literalType)
-                else asType(value, null))
-        }
-        val name = type.name
-        return if (ClassUtils.isJavaLangType(name)) {
-            when (name) {
-                "java.lang.Byte" -> renderPrimitiveConstant("byte", value)
-                "java.lang.Short" -> renderPrimitiveConstant("short", value)
-                "java.lang.Character" -> renderPrimitiveConstant("char", value)
-                "java.lang.Integer" -> renderPrimitiveConstant("int", value)
-                "java.lang.Long" -> renderPrimitiveConstant("long", value)
-                "java.lang.Float" -> renderPrimitiveConstant("float", value)
-                "java.lang.Double" -> renderPrimitiveConstant("double", value)
-                "java.lang.String" -> CodeBlock.of("%S", value)
-                else -> CodeBlock.of("%L", value)
-            }
-        } else {
-            CodeBlock.of("%L", value)
-        }
+        return renderClassConstant(type, value)
     }
     throw IllegalStateException("Unrecognized expression: $constant")
+}
+
+/** A constant of a class type: a class literal, a box or a string. */
+private fun KotlinWriteContext.renderClassConstant(type: ClassTypeDef, value: Any): CodeBlock {
+    if (value is TypeDef) {
+        // A class literal names the class, without type arguments
+        val literalType = TypeHierarchy.unwrap(value).let { (it as? ClassTypeDef.Parameterized)?.rawType ?: it }
+        return CodeBlock.of("%T::class.java",
+            if (literalType is ClassTypeDef && literalType !is ClassTypeDef.Parameterized && TypeHierarchy.enclosingOf(literalType) == null) asClassName(literalType)
+            else asType(value, null))
+    }
+    val name = type.name
+    return if (ClassUtils.isJavaLangType(name)) {
+        when (name) {
+            "java.lang.Byte" -> renderPrimitiveConstant("byte", value)
+            "java.lang.Short" -> renderPrimitiveConstant("short", value)
+            "java.lang.Character" -> renderPrimitiveConstant("char", value)
+            "java.lang.Integer" -> renderPrimitiveConstant("int", value)
+            "java.lang.Long" -> renderPrimitiveConstant("long", value)
+            "java.lang.Float" -> renderPrimitiveConstant("float", value)
+            "java.lang.Double" -> renderPrimitiveConstant("double", value)
+            "java.lang.String" -> CodeBlock.of("%S", value)
+            else -> CodeBlock.of("%L", value)
+        }
+    } else {
+        CodeBlock.of("%L", value)
+    }
 }
 
 private fun KotlinWriteContext.renderArrayConstant(
