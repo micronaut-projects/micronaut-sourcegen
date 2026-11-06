@@ -214,22 +214,7 @@ internal object KotlinFieldRules {
         // Nothing completes past either; a return ends the constructor with the field as it is
         is Return -> Assignment(true, !assigned, false)
         is Throw -> Assignment(true, false, false)
-        is Multi -> {
-            var current = assigned
-            var returnsUnassigned = false
-            var completes = true
-            for (child in statement.statements) {
-                val assignment = assignmentOf(child, name, current)
-                current = assignment.assigned
-                returnsUnassigned = returnsUnassigned || assignment.returnsUnassigned
-                if (!assignment.completes || Completion.KOTLIN.cannotCompleteNormally(child)) {
-                    // The statements after it are not rendered
-                    completes = false
-                    break
-                }
-            }
-            Assignment(current, returnsUnassigned, completes)
-        }
+        is Multi -> assignmentOfMulti(statement, name, assigned)
         is StatementDef.If -> {
             val then = assignmentOf(statement.statement, name, assigned)
             Assignment(assigned, then.returnsUnassigned, true)
@@ -243,38 +228,59 @@ internal object KotlinFieldRules {
                 then.completes || otherwise.completes
             )
         }
-        is StatementDef.Switch -> {
-            val cases = statement.cases.values.map { assignmentOf(it, name, assigned) }
-            val default = statement.defaultCase?.let { assignmentOf(it, name, assigned) }
-            // Without a default, the path no case matches continues with the state it came in with
-            Assignment(
-                (default?.assigned ?: assigned) && cases.all { it.assigned },
-                cases.any { it.returnsUnassigned } || default?.returnsUnassigned == true,
-                default == null || default.completes || cases.any { it.completes }
-            )
-        }
+        is StatementDef.Switch -> assignmentOfSwitch(statement, name, assigned)
         is StatementDef.While ->
             Assignment(assigned, assignmentOf(statement.statement, name, assigned).returnsUnassigned, true)
         is StatementDef.Synchronized -> assignmentOf(statement.statement(), name, assigned)
-        is StatementDef.Try -> {
-            val body = assignmentOf(statement.statement(), name, assigned)
-            val catches = statement.catches().map { assignmentOf(it.statement(), name, assigned) }
-            val completed = body.assigned && catches.all { it.assigned }
-            // The finally follows the paths of the try and its catches that complete, with what they assigned;
-            // where none does - a body that only throws - it starts with the state before the try
-            val completing = (listOf(body) + catches).filter { it.completes }
-            val entering = if (completing.isEmpty()) assigned else completing.all { it.assigned }
-            val finallyAssignment = assignmentOf(statement.finallyStatement(), name, entering)
-            // A return in the try or a catch runs the finally before it leaves
-            val returnsInside = body.returnsUnassigned || catches.any { it.returnsUnassigned }
-            val finallyAssigns = statement.finallyStatement() != null
-                && assignmentOf(statement.finallyStatement(), name, false).assigned
-            Assignment(
-                completed || finallyAssignment.assigned,
-                returnsInside && !finallyAssigns || finallyAssignment.returnsUnassigned,
-                completing.isNotEmpty() && finallyAssignment.completes
-            )
-        }
+        is StatementDef.Try -> assignmentOfTry(statement, name, assigned)
         else -> Assignment(assigned, false, true)
+    }
+
+    private fun assignmentOfMulti(statement: Multi, name: String, assigned: Boolean): Assignment {
+        var current = assigned
+        var returnsUnassigned = false
+        var completes = true
+        for (child in statement.statements) {
+            val assignment = assignmentOf(child, name, current)
+            current = assignment.assigned
+            returnsUnassigned = returnsUnassigned || assignment.returnsUnassigned
+            if (!assignment.completes || Completion.KOTLIN.cannotCompleteNormally(child)) {
+                // The statements after it are not rendered
+                completes = false
+                break
+            }
+        }
+        return Assignment(current, returnsUnassigned, completes)
+    }
+
+    private fun assignmentOfSwitch(statement: StatementDef.Switch, name: String, assigned: Boolean): Assignment {
+        val cases = statement.cases.values.map { assignmentOf(it, name, assigned) }
+        val default = statement.defaultCase?.let { assignmentOf(it, name, assigned) }
+        // Without a default, the path no case matches continues with the state it came in with
+        return Assignment(
+            (default?.assigned ?: assigned) && cases.all { it.assigned },
+            cases.any { it.returnsUnassigned } || default?.returnsUnassigned == true,
+            default == null || default.completes || cases.any { it.completes }
+        )
+    }
+
+    private fun assignmentOfTry(statement: StatementDef.Try, name: String, assigned: Boolean): Assignment {
+        val body = assignmentOf(statement.statement(), name, assigned)
+        val catches = statement.catches().map { assignmentOf(it.statement(), name, assigned) }
+        val completed = body.assigned && catches.all { it.assigned }
+        // The finally follows the paths of the try and its catches that complete, with what they assigned;
+        // where none does - a body that only throws - it starts with the state before the try
+        val completing = (listOf(body) + catches).filter { it.completes }
+        val entering = if (completing.isEmpty()) assigned else completing.all { it.assigned }
+        val finallyAssignment = assignmentOf(statement.finallyStatement(), name, entering)
+        // A return in the try or a catch runs the finally before it leaves
+        val returnsInside = body.returnsUnassigned || catches.any { it.returnsUnassigned }
+        val finallyAssigns = statement.finallyStatement() != null
+            && assignmentOf(statement.finallyStatement(), name, false).assigned
+        return Assignment(
+            completed || finallyAssignment.assigned,
+            returnsInside && !finallyAssigns || finallyAssignment.returnsUnassigned,
+            completing.isNotEmpty() && finallyAssignment.completes
+        )
     }
 }

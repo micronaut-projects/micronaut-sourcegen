@@ -37,50 +37,11 @@ internal fun KotlinWriteContext.buildFunction(objectDef: ObjectDef?, declaredMet
     // The body is rendered against the resolved signature, so a returned value is cast to its type
     val method = (OverrideResolver.resolve(objectDef, declaredMethod, generationScope, true)
         ?.apply(declaredMethod) ?: declaredMethod).let { keepingNullability(it, declaredMethod, nullableArguments(objectDef)) }
-    var funBuilder = if (method.isConstructor) {
-        FunSpec.constructorBuilder()
-    } else {
-        // A Java method Kotlin maps to a member of another name is overridden as that one: `get` for `charAt`
-        val name = (if (method.isOverride && objectDef != null) KotlinJavaMappings.overrideName(KotlinJavaMappings.compiledSupertypes(generationScope, objectDef), method) else null)
-            ?: method.name
-        FunSpec.builder(name).returns(asType(method.returnType, objectDef, method).let { type ->
-            // The iterator of a Java `Iterable` is the mutable one, which the read-only type does not override
-            val raw = ((method.returnType as? ClassTypeDef.Parameterized)?.rawType ?: method.returnType as? ClassTypeDef)?.name
-            if (method.isOverride && (raw == "java.util.Iterator" || raw == "java.util.ListIterator")) {
-                val mutable = ClassName("kotlin.collections", KotlinJavaMappings.mutableCollectionOf(raw))
-                ((type as? ParameterizedTypeName)?.let { mutable.parameterizedBy(it.typeArguments) }
-                    ?: mutable.parameterizedBy(STAR)).copy(nullable = type.isNullable)
-            } else if (returnsNullable(objectDef, method)) {
-                // A result that can be null, as the JVM's is, where the model does not say so
-                type.copy(nullable = true)
-            } else {
-                type
-            }
-        })
-    }
-    // `equals` of `Any` takes a nullable value, which the erased `Object` of the model does not say
-    val overridesEquals = method.name == "equals" && method.isOverride && method.parameters.size == 1
-        && method.parameters[0].type == TypeDef.OBJECT
+    var funBuilder = functionBuilder(objectDef, method)
     funBuilder = funBuilder
         .addModifiers(asKModifiers(method, modifiers))
         .addTypeVariables(method.typeVariables.map { asTypeVariable(it, objectDef, method) })
-        .addParameters(
-            method.parameters.mapIndexed { index, param ->
-                val array = param.type as? TypeDef.Array
-                if (array != null && index == method.parameters.size - 1 && overridesVarargs(objectDef, method)) {
-                    // `vararg parts: String` is the array the body reads
-                    ParameterSpec.builder(param.name, asType(if (array.dimensions == 1) array.componentType
-                        else TypeDef.array(array.componentType, array.dimensions - 1), objectDef, method), KModifier.VARARG).build()
-                } else {
-                    // A wrapper is nullable, as the JVM type Java takes, where the function declares its own signature
-                    val nullable = overridesEquals || declaresOwnSignature(method) && isBoxed(param.type)
-                    ParameterSpec.builder(
-                        param.name,
-                        asType(if (nullable) param.type.makeNullable() else param.type, objectDef, method)
-                    ).build()
-                }
-            }
-        )
+        .addParameters(functionParameters(objectDef, method))
     if (method.isOverride) {
         funBuilder.modifiers += KModifier.OVERRIDE
     }
@@ -111,6 +72,57 @@ internal fun KotlinWriteContext.buildFunction(objectDef: ObjectDef?, declaredMet
     }
     method.javadoc.forEach(Consumer { format: String -> funBuilder.addKdoc(format) })
     return funBuilder.build()
+}
+
+/** The builder of a function or a constructor, with the name and the result type Kotlin overrides it with. */
+private fun KotlinWriteContext.functionBuilder(objectDef: ObjectDef?, method: MethodDef): FunSpec.Builder {
+    return if (method.isConstructor) {
+        FunSpec.constructorBuilder()
+    } else {
+        // A Java method Kotlin maps to a member of another name is overridden as that one: `get` for `charAt`
+        val name = (if (method.isOverride && objectDef != null) KotlinJavaMappings.overrideName(KotlinJavaMappings.compiledSupertypes(generationScope, objectDef), method) else null)
+            ?: method.name
+        FunSpec.builder(name).returns(functionReturnType(objectDef, method))
+    }
+}
+
+/** The result type of a function: the iterator of a Java `Iterable` is the mutable one, and a result can be null. */
+private fun KotlinWriteContext.functionReturnType(objectDef: ObjectDef?, method: MethodDef): TypeName {
+    val type = asType(method.returnType, objectDef, method)
+    // The iterator of a Java `Iterable` is the mutable one, which the read-only type does not override
+    val raw = ((method.returnType as? ClassTypeDef.Parameterized)?.rawType ?: method.returnType as? ClassTypeDef)?.name
+    return if (method.isOverride && (raw == "java.util.Iterator" || raw == "java.util.ListIterator")) {
+        val mutable = ClassName("kotlin.collections", KotlinJavaMappings.mutableCollectionOf(raw))
+        ((type as? ParameterizedTypeName)?.let { mutable.parameterizedBy(it.typeArguments) }
+            ?: mutable.parameterizedBy(STAR)).copy(nullable = type.isNullable)
+    } else if (returnsNullable(objectDef, method)) {
+        // A result that can be null, as the JVM's is, where the model does not say so
+        type.copy(nullable = true)
+    } else {
+        type
+    }
+}
+
+/** The parameters of a function: a trailing array of an overridden varargs method is `vararg`. */
+private fun KotlinWriteContext.functionParameters(objectDef: ObjectDef?, method: MethodDef): List<ParameterSpec> {
+    // `equals` of `Any` takes a nullable value, which the erased `Object` of the model does not say
+    val overridesEquals = method.name == "equals" && method.isOverride && method.parameters.size == 1
+        && method.parameters[0].type == TypeDef.OBJECT
+    return method.parameters.mapIndexed { index, param ->
+        val array = param.type as? TypeDef.Array
+        if (array != null && index == method.parameters.size - 1 && overridesVarargs(objectDef, method)) {
+            // `vararg parts: String` is the array the body reads
+            ParameterSpec.builder(param.name, asType(if (array.dimensions == 1) array.componentType
+                else TypeDef.array(array.componentType, array.dimensions - 1), objectDef, method), KModifier.VARARG).build()
+        } else {
+            // A wrapper is nullable, as the JVM type Java takes, where the function declares its own signature
+            val nullable = overridesEquals || declaresOwnSignature(method) && isBoxed(param.type)
+            ParameterSpec.builder(
+                param.name,
+                asType(if (nullable) param.type.makeNullable() else param.type, objectDef, method)
+            ).build()
+        }
+    }
 }
 
 /** Whether Java lets a subclass override the method, which Kotlin needs to be told with `open`. */
