@@ -1,0 +1,12 @@
+package test;
+
+public class Shadowmonitor {
+  public static int value;
+
+  static {
+    synchronized ("lock") {
+      int value = 1;
+    }
+    Shadowmonitor.value = 9;
+  }
+}

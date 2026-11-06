@@ -26,6 +26,9 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 import org.objectweb.asm.commons.TableSwitchGenerator;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -87,9 +90,10 @@ final class SwitchExpressionWriter extends AbstractSwitchWriter implements Expre
             Method.getMethod(ReflectionUtils.getRequiredMethod(String.class, "hashCode"))
         );
 
-        Map<Integer, Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef>> map = aSwitch.cases().entrySet().stream()
-            .map(e -> Map.entry(toSwitchKey(e.getKey()), Map.entry(e.getKey(), e.getValue())))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        // Strings of the same hash code share a case of the table, which tells them apart by equals, one after another
+        Map<Integer, List<Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef>>> map = new LinkedHashMap<>();
+        aSwitch.cases().forEach((constant, value) -> map.computeIfAbsent(toSwitchKey(constant), ignore -> new ArrayList<>())
+            .add(Map.entry(constant, value)));
         int[] keys = map.keySet().stream().mapToInt(x -> x).sorted().toArray();
         Label defaultEnd = new Label();
         Label finalEnd = new Label();
@@ -98,30 +102,31 @@ final class SwitchExpressionWriter extends AbstractSwitchWriter implements Expre
         generatorAdapter.tableSwitch(keys, new TableSwitchGenerator() {
             @Override
             public void generateCase(int key, Label end) {
-                Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef> entry = map.get(key);
-                if (entry == null) {
-                    if (hasDefault) {
-                        generatorAdapter.goTo(defaultEnd);
-                        return;
-                    }
-                    generatorAdapter.goTo(finalEnd);
+                List<Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef>> entries = map.get(key);
+                if (entries == null) {
+                    generatorAdapter.goTo(hasDefault ? defaultEnd : finalEnd);
                     return;
                 }
-                if (!(entry.getKey().value() instanceof String stringValue)) {
-                    throw new IllegalStateException("Expected a switch string value got " + entry.getKey());
+                for (Map.Entry<ExpressionDef.Constant, ? extends ExpressionDef> entry : entries) {
+                    if (!(entry.getKey().value() instanceof String stringValue)) {
+                        throw new IllegalStateException("Expected a switch string value got " + entry.getKey());
+                    }
+                    Label next = new Label();
+                    generatorAdapter.loadLocal(switchValueLocal, stringType);
+                    generatorAdapter.push(stringValue);
+                    generatorAdapter.invokeVirtual(stringType, Method.getMethod(ReflectionUtils.getRequiredMethod(String.class, "equals", Object.class)));
+                    generatorAdapter.push(true);
+                    generatorAdapter.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, next);
+                    ExpressionWriter.writeExpressionCheckCast(
+                        generatorAdapter,
+                        context,
+                        Objects.requireNonNull(entry.getValue(), "Switch expression result cannot be null"),
+                        aSwitch.type()
+                    );
+                    generatorAdapter.goTo(finalEnd);
+                    generatorAdapter.visitLabel(next);
                 }
-                generatorAdapter.loadLocal(switchValueLocal, stringType);
-                generatorAdapter.push(stringValue);
-                generatorAdapter.invokeVirtual(stringType, Method.getMethod(ReflectionUtils.getRequiredMethod(String.class, "equals", Object.class)));
-                generatorAdapter.push(true);
-                generatorAdapter.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, defaultEnd);
-                ExpressionWriter.writeExpressionCheckCast(
-                    generatorAdapter,
-                    context,
-                    Objects.requireNonNull(entry.getValue(), "Switch expression result cannot be null"),
-                    aSwitch.type()
-                );
-                generatorAdapter.goTo(finalEnd);
+                generatorAdapter.goTo(hasDefault ? defaultEnd : finalEnd);
             }
 
             @Override

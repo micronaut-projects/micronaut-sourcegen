@@ -16,6 +16,7 @@
 package io.micronaut.sourcegen.bytecode;
 
 import io.micronaut.core.annotation.Internal;
+import io.micronaut.sourcegen.bytecode.core.EnclosingScope;
 import org.jspecify.annotations.Nullable;
 import io.micronaut.inject.processing.JavaModelUtils;
 import io.micronaut.sourcegen.model.ClassTypeDef;
@@ -39,12 +40,47 @@ public final class TypeUtils {
     public static final Type OBJECT_TYPE = Type.getType(Object.class);
     private static final Pattern ARRAY_PATTERN = Pattern.compile("(\\[])+$");
 
+    /**
+     * The descriptor of a method outside the write of an inner class: no variables of an enclosing class are in scope.
+     *
+     * @param objectDef The definition, if any
+     * @param methodDef The method
+     * @return The descriptor
+     */
     public static String getMethodDescriptor(@Nullable ObjectDef objectDef, MethodDef methodDef) {
-        return io.micronaut.sourcegen.bytecode.core.TypeUtils.getMethodDescriptor(objectDef, methodDef);
+        return getMethodDescriptor(objectDef, methodDef, EnclosingScope.NONE);
     }
 
+    public static String getMethodDescriptor(@Nullable ObjectDef objectDef, MethodDef methodDef, EnclosingScope enclosingScope) {
+        return io.micronaut.sourcegen.bytecode.core.TypeUtils.getMethodDescriptor(objectDef, methodDef, enclosingScope);
+    }
+
+    /**
+     * The type of a value in a method body, erased in the scope of the method: a variable it declares shadows one of
+     * the class of the same name.
+     *
+     * @param typeDef The type
+     * @param context The method being written
+     * @return The erased type
+     * @since 2.3
+     */
+    public static Type getScopedType(TypeDef typeDef, MethodContext context) {
+        return Type.getType(io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(typeDef, context.objectDef(), context.methodDef(), context.enclosingScope()));
+    }
+
+    /**
+     * The type of a type outside the write of an inner class: no variables of an enclosing class are in scope.
+     *
+     * @param typeDef   The type
+     * @param objectDef The definition, if any
+     * @return The erased type
+     */
     public static Type getType(TypeDef typeDef, @Nullable ObjectDef objectDef) {
-        return Type.getType(io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(typeDef, objectDef));
+        return getType(typeDef, objectDef, EnclosingScope.NONE);
+    }
+
+    public static Type getType(TypeDef typeDef, @Nullable ObjectDef objectDef, EnclosingScope enclosingScope) {
+        return Type.getType(io.micronaut.sourcegen.bytecode.core.TypeUtils.getDescriptor(typeDef, objectDef, enclosingScope));
     }
 
     public static Type getType(TypeDef.Primitive primitive) {

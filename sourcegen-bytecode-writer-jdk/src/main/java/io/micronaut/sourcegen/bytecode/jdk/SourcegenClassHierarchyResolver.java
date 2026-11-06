@@ -26,6 +26,7 @@ import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.TypeHierarchy;
 import org.jspecify.annotations.Nullable;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassHierarchyResolver;
@@ -164,6 +165,10 @@ final class SourcegenClassHierarchyResolver implements ClassHierarchyResolver {
             case ClassTypeDef.ClassDefType classDefType -> addObjectDef(
                 classDefType.objectDef(), interfaces, superclasses, visited
             );
+            case ClassTypeDef memberType when TypeHierarchy.carriedEnclosingOf(memberType) instanceof ClassTypeDef enclosing -> {
+                addObjectTypes(enclosing, interfaces, superclasses, visited);
+                addObjectTypes(TypeHierarchy.memberClass(memberType), interfaces, superclasses, visited);
+            }
             case ClassTypeDef.Parameterized parameterized -> {
                 addObjectTypes(parameterized.rawType(), interfaces, superclasses, visited);
                 parameterized.typeArguments().forEach(argument ->
@@ -222,6 +227,10 @@ final class SourcegenClassHierarchyResolver implements ClassHierarchyResolver {
     private static void collectClassElements(TypeDef type, Set<ClassElement> result) {
         switch (type) {
             case ClassTypeDef.ClassElementType classElementType -> result.add(classElementType.classElement());
+            case ClassTypeDef memberType when TypeHierarchy.carriedEnclosingOf(memberType) instanceof ClassTypeDef enclosing -> {
+                collectClassElements(enclosing, result);
+                collectClassElements(TypeHierarchy.memberClass(memberType), result);
+            }
             case ClassTypeDef.Parameterized parameterized -> {
                 collectClassElements(parameterized.rawType(), result);
                 parameterized.typeArguments().forEach(argument -> collectClassElements(argument, result));

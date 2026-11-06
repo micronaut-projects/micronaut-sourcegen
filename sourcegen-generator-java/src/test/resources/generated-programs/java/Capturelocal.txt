@@ -1,0 +1,30 @@
+package test;
+
+import java.lang.Object;
+import java.lang.String;
+import java.util.Optional;
+import java.util.function.Function;
+
+public class Capturelocal {
+  private CapturedTarget receiver = new test.CapturedTarget("first");
+
+  private int count = 0;
+
+  public CapturedTarget next() {
+    this.count = this.count + 1;
+    return this.receiver;
+  }
+
+  public int reads() {
+    return this.count;
+  }
+
+  public void replace() {
+    this.receiver = new test.CapturedTarget("second");
+  }
+
+  public Function<Object, Object> capture() {
+    CapturedTarget target = this.receiver;
+    return Optional.of(target).<Function<Object, Object>>map(target1 -> (arg) -> target1.apply((String) arg)).get();
+  }
+}

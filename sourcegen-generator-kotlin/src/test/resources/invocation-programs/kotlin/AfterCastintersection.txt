@@ -1,0 +1,19 @@
+package test
+
+import io.micronaut.sourcegen.CalleeBoundsRegressionTest
+import io.micronaut.sourcegen.InvocationProgramRegressionTest
+import java.lang.Runnable
+import kotlin.Any
+import kotlin.CharSequence
+import kotlin.String
+
+public open class AfterCastintersection {
+  public open fun call(`value`: Any): String {
+    CalleeBoundsRegressionTest.Calls.intersection(run {
+      `value` as CharSequence
+      `value` as Runnable
+      `value`
+    })
+    return InvocationProgramRegressionTest.Calls.choose(`value`)
+  }
+}

@@ -1,0 +1,14 @@
+package test
+
+import io.micronaut.sourcegen.CalleeBoundsRegressionTest
+import io.micronaut.sourcegen.InvocationProgramRegressionTest
+import kotlin.Any
+import kotlin.CharSequence
+import kotlin.String
+
+public open class AfterCastgeneric {
+  public open fun call(`value`: Any): String {
+    CalleeBoundsRegressionTest.Calls.text(`value` as CharSequence)
+    return InvocationProgramRegressionTest.Calls.choose(`value` as Any)
+  }
+}

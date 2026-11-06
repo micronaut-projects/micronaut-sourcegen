@@ -1,0 +1,11 @@
+package test;
+
+import java.lang.CharSequence;
+import java.lang.Object;
+import java.lang.StringBuilder;
+
+public class TypedConstructor {
+  public StringBuilder create(Object value) {
+    return new java.lang.StringBuilder((CharSequence) value);
+  }
+}
