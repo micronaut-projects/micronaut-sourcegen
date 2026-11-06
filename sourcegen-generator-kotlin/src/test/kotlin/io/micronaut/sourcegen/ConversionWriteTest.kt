@@ -161,6 +161,9 @@ class ConversionWriteTest {
             "return '$escaped'",
             writeBody(TypeDef.Primitive.CHAR) { _, _ -> ExpressionDef.constant(value).returning() }
         )
+        assertEquals(value, runMethod("test.EscapedChar", TypeDef.Primitive.CHAR, listOf()) { _, _ ->
+            ExpressionDef.constant(value).returning()
+        })
     }
 
     /**
@@ -411,7 +414,7 @@ class ConversionWriteTest {
             arguments(named("a tab", '\t'), "\\t"),
             arguments(named("a carriage return", '\r'), "\\r"),
             arguments(named("a backspace", '\b'), "\\b"),
-            arguments(named("a form feed", '\u000C'), "\\f"),
+            arguments(named("a form feed", '\u000C'), "\\u000c"),
             arguments(named("a single quote", '\''), "\\'"),
             arguments(named("a backslash", '\\'), "\\\\"),
             arguments(named("a control character", '\u0001'), "\\u0001"),

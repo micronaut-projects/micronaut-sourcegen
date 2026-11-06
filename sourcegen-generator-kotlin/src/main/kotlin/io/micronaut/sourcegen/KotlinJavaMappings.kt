@@ -291,6 +291,14 @@ internal object KotlinJavaMappings {
     fun mutableCollectionOf(javaType: String): String = MUTABLE_COLLECTIONS.getValue(javaType)
 
     /**
+     * @param owner The owner of a called method
+     * @return Whether Kotlin maps it onto a class of its own whose methods take values that are not nullable:
+     * `kotlin.String.compareTo(String)`
+     */
+    fun isKotlinBuiltIn(owner: ClassTypeDef?): Boolean =
+        owner?.name == "java.lang.String" || owner?.name == "java.lang.Comparable"
+
+    /**
      * @param javaClass The name of a Java class
      * @return The Kotlin class it is written as
      */

@@ -91,21 +91,31 @@ public record InvokedSignature(List<TypeDef> parameterTypes, boolean varargs) {
             return Arrays.stream(type.getDeclaredConstructors())
                 .filter(constructor -> matches(constructor, erasures)).findFirst().orElse(null);
         }
+        // The class's own methods, then the superclass chain, then the interfaces, as OverrideResolver orders them
         for (Class<?> current = type; current != null; current = current.getSuperclass()) {
-            Executable found = Arrays.stream(current.getDeclaredMethods())
-                .filter(method -> method.getName().equals(methodName) && matches(method, erasures))
-                .findFirst().orElse(null);
+            Executable found = declaredMethod(current, methodName, erasures);
             if (found != null) {
                 return found;
             }
+        }
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
             for (Class<?> interfaceType : current.getInterfaces()) {
-                found = findExecutable(interfaceType, methodName, erasures);
+                Executable found = findExecutable(interfaceType, methodName, erasures);
                 if (found != null) {
                     return found;
                 }
             }
         }
         return null;
+    }
+
+    @Nullable
+    private static Executable declaredMethod(Class<?> type, String methodName, List<String> erasures) {
+        return Arrays.stream(type.getDeclaredMethods())
+            // A bridge erases the signature it overrides with: the generic one is read from the supertype
+            .filter(method -> !method.isBridge() && !method.isSynthetic())
+            .filter(method -> method.getName().equals(methodName) && matches(method, erasures))
+            .findFirst().orElse(null);
     }
 
     /**

@@ -120,7 +120,7 @@ private fun KotlinWriteContext.functionParameters(objectDef: ObjectDef?, method:
             ParameterSpec.builder(
                 param.name,
                 asType(if (nullable) param.type.makeNullable() else param.type, objectDef, method)
-            ).build()
+            ).addAnnotations(param.annotations.map { asAnnotationSpec(it) }).build()
         }
     }
 }

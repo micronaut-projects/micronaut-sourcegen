@@ -62,10 +62,7 @@ internal object KotlinFieldRules {
         // A Kotlin property must be initialized where it is declared, or by every constructor; one a constructor
         // assigns more than once, as in a try and its catch, is a lateinit var. A field no constructor assigns holds
         // the JVM default: null, or the default of its primitive
-        val lateInit = !nullified && field.initializer.isEmpty && !field.type.isNullable
-            && byConstructors && assignments(objectDef, field) > constructorsOf(objectDef)
-            && field.type !is TypeDef.Primitive && field.type !is TypeDef.TypeVariable
-            && !isKotlinPrimitive(field.type)
+        val lateInit = !nullified && isAssignedAfterConstruction(objectDef, field, byConstructors)
         // A val is assigned where it is declared, or once by each constructor: anything else the model assigns is a var
         val reassigned = nullified || field.initializer.isEmpty && (!byConstructors && assignments(objectDef, field) > 0
             || byConstructors && assignments(objectDef, field) > constructorsOf(objectDef))
@@ -78,6 +75,16 @@ internal object KotlinFieldRules {
         val jvmField = !lateInit && !constant && Modifier.PRIVATE !in modifiers && clashesWithAnAccessor(objectDef, field)
         return Declaration(static, byConstructors, nullified, lateInit, reassigned, constant, jvmField)
     }
+
+    /**
+     * Whether every constructor assigns a field of a reference type, and the definition assigns it again: a
+     * lateinit var, unless its accessors would clash with methods.
+     */
+    private fun isAssignedAfterConstruction(objectDef: ObjectDef?, field: FieldDef, byConstructors: Boolean): Boolean =
+        field.initializer.isEmpty && !field.type.isNullable
+            && byConstructors && assignments(objectDef, field) > constructorsOf(objectDef)
+            && field.type !is TypeDef.Primitive && field.type !is TypeDef.TypeVariable
+            && !isKotlinPrimitive(field.type)
 
     /** Whether the definition declares a method named as the getter or the setter a property of the field has. */
     private fun clashesWithAnAccessor(objectDef: ObjectDef?, field: FieldDef): Boolean {
@@ -120,14 +127,20 @@ internal object KotlinFieldRules {
      * A field of a reference type that no constructor assigns holds `null`, the JVM default, until it is assigned:
      * the lazily initialized one, `if (cache == null) cache = ..`, one a getter returns before its setter is
      * called, and a boxed one. It is a nullable property holding `null`, read with `!!` where Kotlin needs a
-     * value. So is a field the model assigns `null`.
+     * value. So is a field the model assigns `null`, a wrapper, which holds `null` where it is assigned it, and
+     * one that would be a lateinit var whose accessors clash with methods of the definition - @JvmField cannot
+     * be lateinit.
      */
     fun isNullified(objectDef: ObjectDef?, field: FieldDef): Boolean {
         if (field.type.isNullable || field.type is TypeDef.Primitive) {
             return false
         }
         val byConstructors = !field.modifiers.contains(Modifier.STATIC) && isAssignedByEveryConstructor(objectDef, field)
-        return field.initializer.isEmpty && !byConstructors || isAssignedNull(objectDef, field)
+        if (field.initializer.isEmpty && (!byConstructors || isBoxed(field.type))) {
+            return true
+        }
+        return isAssignedNull(objectDef, field)
+            || isAssignedAfterConstruction(objectDef, field, byConstructors) && clashesWithAnAccessor(objectDef, field)
     }
 
     /** Whether a statement of the definition assigns `null` to the field. */

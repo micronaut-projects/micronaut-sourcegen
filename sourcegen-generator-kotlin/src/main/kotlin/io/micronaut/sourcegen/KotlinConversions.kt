@@ -114,6 +114,23 @@ internal object KotlinConversions {
     }
 
     /**
+     * A key of a switch converted to the type of its selector: the primitive of a wrapper, which the selector is
+     * unboxed to, as the bytecode compares it.
+     *
+     * @param key      The key
+     * @param selector The type of the selector
+     * @return The key of the selector's type
+     */
+    fun coerceSwitchKey(key: ExpressionDef, selector: TypeDef): ExpressionDef {
+        val unboxedSelector = unboxed(selector) ?: return coerce(key, selector)
+        if (unboxed(key.type()) == unboxedSelector) {
+            // A key of the wrapper is already one of the selector
+            return key
+        }
+        return coerce(key, unboxedSelector)
+    }
+
+    /**
      * A value converted to the type it is written to, as the bytecode writer converts it: a primitive to the primitive
      * written, a numeric constant written as one of that type, and an array of references cast to the array type
      * written, which Kotlin's arrays - invariant - are not otherwise.

@@ -82,6 +82,7 @@ final class DiffFamilies {
         int expressions = m.models.size();
         if (all || f.contains("stmt")) {
             DiffStatements.generate(m);
+            DiffKotlinParity.generate(m);
         }
         return expressions;
     }

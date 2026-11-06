@@ -497,3 +497,15 @@ internal fun KotlinWriteContext.rawInstantiationArguments(type: ClassTypeDef): L
         null
     }
 }
+
+/**
+ * A supertype: a raw generic one with the arguments of Java's raw type, `ArrayList<Any?>`, where Kotlin forbids the
+ * star projection a raw type is written with elsewhere.
+ */
+internal fun KotlinWriteContext.asSupertype(type: TypeDef, objectDef: ObjectDef): TypeName {
+    val unwrapped = TypeHierarchy.unwrap(type)
+    if (unwrapped is ClassTypeDef && unwrapped !is ClassTypeDef.Parameterized && !type.isNullable) {
+        rawInstantiationArguments(unwrapped)?.let { return asClassName(unwrapped).parameterizedBy(it) }
+    }
+    return asType(type, objectDef)
+}

@@ -34,6 +34,7 @@ internal class KotlinRenderScope private constructor(
     private val taken = LinkedHashSet<String>()
     private val smartCasts = LinkedHashSet<String>()
     private val nullableLocals = LinkedHashSet<String>()
+    private val localCopies = LinkedHashMap<String, String>()
 
     /**
      * Records a local declared nullable where the model types it as not null.
@@ -210,6 +211,35 @@ internal class KotlinRenderScope private constructor(
             scope = scope.parent
         }
         return null
+    }
+
+    /**
+     * Records that a captured local is read from a copy in this scope: the value it has where the lambda is created.
+     *
+     * @param name        The name of the local
+     * @param emittedName The name of the copy
+     */
+    fun copyLocal(name: String, emittedName: String) {
+        localCopies[name] = emittedName
+        taken.add(emittedName)
+    }
+
+    /**
+     * Resolves the name a local is emitted under: its copy in the innermost scope that has one, or its own name.
+     *
+     * @param name The name of the local
+     * @return The name to emit
+     */
+    fun resolveLocal(name: String): String {
+        var scope: KotlinRenderScope? = this
+        while (scope != null) {
+            val emittedName = scope.localCopies[name]
+            if (emittedName != null) {
+                return emittedName
+            }
+            scope = scope.parent
+        }
+        return name
     }
 
     /**

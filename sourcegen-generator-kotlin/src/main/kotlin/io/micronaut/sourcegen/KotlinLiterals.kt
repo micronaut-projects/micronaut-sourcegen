@@ -172,12 +172,11 @@ private fun asFloatingPointLiteral(value: Any, type: ClassName): CodeBlock {
 
 // Copy from com.squareup.javapoet.Util
 internal fun characterLiteralWithoutSingleQuotes(c: Char): String {
-    // see https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.10.6
+    // Kotlin has no \f escape: a form feed is written as a unicode escape, as any other control character
     return when (c) {
         '\b' -> "\\b"
         '\t' -> "\\t"
         '\n' -> "\\n"
-        '\u000c' -> "\\f"
         '\r' -> "\\r"
         '\"' -> "\""
         '\'' -> "\\'"

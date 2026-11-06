@@ -266,7 +266,7 @@ private fun KotlinWriteContext.renderSwitchStatement(
     for ((key, statement) in statementDef.cases) {
         // A key is one of the type of the subject: `1.toByte()` for a byte, which `1` is not
         builder.add(renderConstantExpression(
-            KotlinConversions.coerce(key, statementDef.expression.type()) as? Constant ?: key, methodDef, scope))
+            KotlinConversions.coerceSwitchKey(key, statementDef.expression.type()) as? Constant ?: key, methodDef, scope))
         builder.add("-> {\n")
         builder.indent()
         builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement, tailPosition))

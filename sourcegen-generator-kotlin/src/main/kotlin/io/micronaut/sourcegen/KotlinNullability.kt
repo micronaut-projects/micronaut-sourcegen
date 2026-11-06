@@ -177,7 +177,7 @@ private fun KotlinWriteContext.computeNullableLocals(method: MethodDef): Set<Str
                 is DefineAndAssign -> if (declaresNullableLocal(statement)) {
                     result.add(statement.variable.name)
                 }
-                is Assign -> if (isNullLiteral(statement.expression)) {
+                is Assign -> if (holdsNullLiteral(statement.expression)) {
                     result.add(statement.variable.name)
                 }
                 else -> Unit
@@ -190,7 +190,14 @@ private fun KotlinWriteContext.computeNullableLocals(method: MethodDef): Set<Str
 /** Whether a local declared not null is assigned `null` or is a wrapper. */
 private fun KotlinWriteContext.declaresNullableLocal(statement: DefineAndAssign): Boolean =
     !statement.variable.type.isNullable && !statement.variable.type.isPrimitive
-        && (isNullLiteral(statement.expression) || isBoxed(statement.variable.type))
+        && (holdsNullLiteral(statement.expression) || isBoxed(statement.variable.type))
+
+/** Whether a value is `null`, or a conditional or a switch expression one of whose values is. */
+private fun holdsNullLiteral(expression: ExpressionDef): Boolean = when (val value = unwrapCasts(expression)) {
+    is IfElse -> holdsNullLiteral(value.ifExpression) || holdsNullLiteral(value.elseExpression)
+    is Switch -> value.cases.values.any { holdsNullLiteral(it) } || value.defaultCase?.let { holdsNullLiteral(it) } == true
+    else -> isNullLiteral(value)
+}
 
 /**
  * Whether a value is one Kotlin types as nullable where the model types it as not null: rendered with `!!`
@@ -217,6 +224,8 @@ internal fun KotlinWriteContext.isMaybeNull(objectDef: ObjectDef?, method: Metho
             || generatedReturnsNullable(ownerOf(objectDef, value.instance.type()), objectDef, value.method))
         is InvokeStaticMethod -> generatedReturnsNullable(value.classDef, objectDef, value.method)
         is IfElse -> isMaybeNull(objectDef, method, value.ifExpression, scope) || isMaybeNull(objectDef, method, value.elseExpression, scope)
+        is Switch -> value.cases.values.any { isMaybeNull(objectDef, method, it, scope) }
+            || value.defaultCase?.let { isMaybeNull(objectDef, method, it, scope) } == true
         else -> false
     }
 }

@@ -112,7 +112,7 @@ private fun KotlinWriteContext.getInterfaceBuilder(interfaceDef: InterfaceDef): 
     interfaceBuilder.addModifiers(asKModifiers(stripStatic(interfaceDef.modifiers)))
     interfaceDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, interfaceDef) }
         .forEach { typeVariable: TypeVariableName -> interfaceBuilder.addTypeVariable(typeVariable) }
-    interfaceDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(typeDef, interfaceDef) }
+    interfaceDef.superinterfaces.stream().map { typeDef: TypeDef -> asSupertype(typeDef, interfaceDef) }
         .forEach { it: TypeName ->
             interfaceBuilder.addSuperinterface(
                 it
@@ -178,7 +178,7 @@ private fun KotlinWriteContext.getClassBuilder(classDef: ClassDef): TypeSpec.Bui
     }
     classDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, classDef) }
         .forEach { typeVariable: TypeVariableName -> classBuilder.addTypeVariable(typeVariable) }
-    classDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(withNullableArguments(typeDef, classDef), classDef) }
+    classDef.superinterfaces.stream().map { typeDef: TypeDef -> asSupertype(withNullableArguments(typeDef, classDef), classDef) }
         .forEach { it: TypeName ->
             classBuilder.addSuperinterface(
                 it
@@ -189,7 +189,7 @@ private fun KotlinWriteContext.getClassBuilder(classDef: ClassDef): TypeSpec.Bui
         val superclass = classDef.superclass!!
         // A subclass of Number overrides its Java methods, `intValue()`, which kotlin.Number names `toInt()`
         classBuilder.superclass(if (TypeHierarchy.erasedName(superclass) == "java.lang.Number") ClassName("java.lang", "Number")
-            else asType(withNullableArguments(superclass, classDef), classDef))
+            else asSupertype(withNullableArguments(superclass, classDef), classDef))
     }
     classDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
         .forEach { annotationSpec: AnnotationSpec -> classBuilder.addAnnotation(annotationSpec) }
@@ -268,15 +268,17 @@ private fun KotlinWriteContext.addPrimaryConstructor(
     modifiers: Set<Modifier>,
     superArguments: CodeBlock
 ) {
+    // A private constructor the outer type calls is exposed, as the secondary constructor is
     val constructorFunSpecBuilder = FunSpec.constructorBuilder()
-        .addModifiers(asKModifiers(method, modifiers))
+        .addModifiers(asKModifiers(method, exposedToNest(classDef, "<init>", modifiers)))
+        .addAnnotations(method.annotations.map { asAnnotationSpec(it) })
         .addParameters(
             method.parameters.stream()
                 .map { param: ParameterDef ->
                     ParameterSpec.builder(
                         param.name,
                         asType(if (isBoxed(param.type)) param.type.makeNullable() else param.type, classDef)
-                    ).build()
+                    ).addAnnotations(param.annotations.map { asAnnotationSpec(it) }).build()
                 }.toList()
         )
     classBuilder.superclassConstructorParameters.add(superArguments)
@@ -310,7 +312,7 @@ private fun KotlinWriteContext.getRecordBuilder(recordDef: RecordDef): TypeSpec.
     classBuilder.addModifiers(asKModifiers(stripStatic(recordDef.modifiers)))
     recordDef.typeVariables.stream().map { tv: TypeDef.TypeVariable -> asTypeVariable(tv, recordDef) }
         .forEach { typeVariable: TypeVariableName -> classBuilder.addTypeVariable(typeVariable) }
-    recordDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(withNullableArguments(typeDef, recordDef), recordDef) }
+    recordDef.superinterfaces.stream().map { typeDef: TypeDef -> asSupertype(withNullableArguments(typeDef, recordDef), recordDef) }
         .forEach { it: TypeName ->
             classBuilder.addSuperinterface(
                 it,
@@ -391,7 +393,7 @@ private fun KotlinWriteContext.renderRecordInitializer(
 private fun KotlinWriteContext.getEnumBuilder(enumDef: EnumDef): TypeSpec.Builder {
     val enumBuilder = TypeSpec.enumBuilder(enumDef.simpleName)
     enumBuilder.addModifiers(asKModifiers(stripStatic(enumDef.modifiers)))
-    enumDef.superinterfaces.stream().map { typeDef: TypeDef -> asType(withNullableArguments(typeDef, enumDef), enumDef) }
+    enumDef.superinterfaces.stream().map { typeDef: TypeDef -> asSupertype(withNullableArguments(typeDef, enumDef), enumDef) }
         .forEach { it: TypeName -> enumBuilder.addSuperinterface(it) }
     enumDef.javadoc.forEach(Consumer { format: String -> enumBuilder.addKdoc(format) })
     enumDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }

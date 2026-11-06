@@ -208,7 +208,7 @@ private class Argument(val call: Call, val index: Int, val value: ExpressionDef,
             // A compiled method takes `null` where the bytecode passes it on: a cast to a type that is not
             // nullable would throw
             val parameterType = parameterType!!
-            value.cast(if (call.generated || parameterType.isPrimitive
+            value.cast(if (call.generated || parameterType.isPrimitive || KotlinJavaMappings.isKotlinBuiltIn(call.owner)
                 || isKotlinClass(call.owner) && !declaresNullableParameter(call.owner, call.methodName, call.values.size, index)) parameterType
                 else parameterType.makeNullable())
         }

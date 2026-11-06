@@ -363,7 +363,8 @@ private fun KotlinWriteContext.renderArrayElement(
     }
     return array.toBuilder()
         .add("[")
-        .add(renderExpressionCode(objectDef, methodDef, scope, expressionDef.indexExpression))
+        // A byte, short or char index is widened, as the JVM widens it
+        .add(renderExpressionCode(objectDef, methodDef, scope, KotlinConversions.coerce(expressionDef.indexExpression, TypeDef.Primitive.INT)))
         .add("]")
         .build()
 }
@@ -577,7 +578,7 @@ private fun KotlinWriteContext.renderSwitchExpression(
     builder.indent()
     for ((key, value) in expressionDef.cases) {
         builder.add(renderExpressionCode(objectDef, methodDef, scope,
-            KotlinConversions.coerce(key, expressionDef.expression.type())))
+            KotlinConversions.coerceSwitchKey(key, expressionDef.expression.type())))
         builder.add(" -> ")
         builder.add(renderExpressionCode(objectDef, methodDef, scope, KotlinConversions.coerce(value, expressionDef.type)))
         if (value is SwitchYieldCase) {
@@ -668,10 +669,31 @@ private fun KotlinWriteContext.renderIsFalse(
             .add(addParentheses(renderExpressionCode(objectDef, methodDef, scope, expression)))
             .build()
     }
+    var operand = renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.expression)
+    if (hasTopLevelCast(operand.toString())) {
+        // `!p as Boolean` negates `p` before the cast
+        operand = addParentheses(operand)
+    }
     return CodeBlock.builder()
         .add("!")
-        .add(renderExpressionWithParentheses(objectDef, methodDef, scope, expressionDef.expression))
+        .add(operand)
         .build()
+}
+
+/** Whether a rendered expression is an `as` cast outside any parentheses, brackets, braces or string. */
+internal fun hasTopLevelCast(rendered: String): Boolean {
+    var depth = 0
+    var inString = false
+    for ((index, c) in rendered.withIndex()) {
+        when {
+            c == '"' && (index == 0 || rendered[index - 1] != '\\') -> inString = !inString
+            inString -> Unit
+            c == '(' || c == '[' || c == '{' -> depth++
+            c == ')' || c == ']' || c == '}' -> depth--
+            depth == 0 && (rendered.startsWith(" as ", index) || rendered.startsWith(" as? ", index)) -> return true
+        }
+    }
+    return false
 }
 
 private fun KotlinWriteContext.renderInstanceOf(
@@ -872,7 +894,10 @@ private fun KotlinWriteContext.renderLambda(
     expressionDef: Lambda
 ): CodeBlock {
     val implementation = expressionDef.implementation
+    // The locals it captures which are assigned are read from copies: the lambda captures their values
+    val copies = captureCopies(methodDef, scope, expressionDef)
     val lambdaScope = scope.nested(implementation)
+    copies.forEach { (name, copy) -> lambdaScope.copyLocal(name, copy) }
     lambdaScope.returnType = implementation.returnType
     // A renamed parameter does not take the name of a local the body declares
     implementation.statements.forEach { declaredLocals(it).forEach(lambdaScope::declare) }
@@ -907,7 +932,73 @@ private fun KotlinWriteContext.renderLambda(
         }
         builder.unindent()
     }
-    return builder.add("}").build()
+    return withCaptureCopies(scope, copies, builder.add("}").build())
+}
+
+/**
+ * The copies of the locals a lambda captures which the enclosing functions or the lambda assign, by the name of the
+ * local: the bytecode passes the lambda the value a local has where it is created, Kotlin would share the variable.
+ */
+private fun KotlinWriteContext.captureCopies(
+    methodDef: MethodDef,
+    scope: KotlinRenderScope,
+    lambda: Lambda
+): Map<String, String> {
+    val captured = capturedLocals(lambda)
+    if (captured.isEmpty()) {
+        return emptyMap()
+    }
+    val assigned = HashSet<String>()
+    val bodies = enclosingFunctions.flatMap { it.statements } + methodDef.statements + lambda.implementation.statements
+    bodies.forEach { body ->
+        forEachStatement(body) { statement ->
+            if (statement is Assign) {
+                assigned.add(statement.variable.name)
+            }
+        }
+    }
+    val copies = LinkedHashMap<String, String>()
+    captured.filter { it in assigned }.forEach { name ->
+        val copy = scope.allocate(name)
+        scope.declare(copy)
+        copies[name] = copy
+    }
+    return copies
+}
+
+/** The locals a lambda reads or assigns which it does not declare. */
+private fun capturedLocals(lambda: Lambda): Set<String> {
+    val used = LinkedHashSet<String>()
+    val declared = HashSet<String>()
+    lambda.implementation.statements.forEach { body ->
+        forEachStatement(body) { statement ->
+            when (statement) {
+                is DefineAndAssign -> declared.add(statement.variable.name)
+                is Assign -> used.add(statement.variable.name)
+                else -> Unit
+            }
+        }
+        forEachExpression(body) { expression ->
+            if (expression is VariableDef.Local) {
+                used.add(expression.name)
+            }
+        }
+    }
+    used.removeAll(declared)
+    return used
+}
+
+/** A lambda created in a block that declares the copies of the locals it captures: `kotlin.run { val a1 = a; ... }`. */
+private fun withCaptureCopies(scope: KotlinRenderScope, copies: Map<String, String>, lambda: CodeBlock): CodeBlock {
+    if (copies.isEmpty()) {
+        return lambda
+    }
+    // Qualified: a member function named run would be resolved first
+    val builder = CodeBlock.builder().add("kotlin.run {\n").indent()
+    copies.forEach { (name, copy) ->
+        builder.add("val %N = %N\n", copy, scope.resolveLocal(name))
+    }
+    return builder.add("%L\n", lambda).unindent().add("}").build()
 }
 
 /** The parameters of a lambda, renamed where the enclosing scope takes their names. */
@@ -1312,7 +1403,7 @@ internal fun KotlinWriteContext.renderVariable(
     }
     if (variableDef is VariableDef.Local) {
         // A local declared nullable where the model's type is not: asserted where Kotlin needs a value
-        return CodeBlock.of(if (!raw && scope.isNullableLocal(variableDef.name)) "%N!!" else "%N", variableDef.name)
+        return CodeBlock.of(if (!raw && scope.isNullableLocal(variableDef.name)) "%N!!" else "%N", scope.resolveLocal(variableDef.name))
     }
     if (variableDef is VariableDef.Super) {
         return renderSuper(objectDef, variableDef)
