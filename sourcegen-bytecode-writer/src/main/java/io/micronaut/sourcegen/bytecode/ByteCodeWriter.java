@@ -964,8 +964,8 @@ public final class ByteCodeWriter {
 
         List<StatementDef> statements = methodDef.getStatements();
         if (methodDef.isConstructor()) {
-            // The constructor call first, then the field initializers - run again after a delegation to this(...)
-            statements = ConstructorBody.of(objectDef, statements, ConstructorBody.InitializersAfterThis.RERUN).asStatements();
+            // The constructor call first, then the field initializers - which a delegation to this(...) has already run
+            statements = ConstructorBody.of(objectDef, statements, ConstructorBody.InitializersAfterThis.SKIP).asStatements();
         }
         if (!statements.isEmpty()) {
             writeStatements(generatorAdapter, objectDef, methodDef, context, statements, startMethod);

@@ -57,19 +57,6 @@ class AsmByteCodeWriterTckTest {
         public void writesCatchVariablesThrowsAndDeclarationMetadata() {
             // Empty on purpose: the override exists only to disable the inherited test.
         }
-
-        @Override
-        @Disabled("The ASM backend rejects a void method whose body returns a value-producing call "
-            + "instead of discarding the value")
-        public void writesVoidMethodsThatReturnAnExpression() {
-            // Empty on purpose: the override exists only to disable the inherited test.
-        }
-
-        @Override
-        @Disabled("The ASM backend repeats the field initializers in a delegating constructor, so they run twice")
-        public void writesConstructorDelegationWithoutRepeatingFieldInitializers() {
-            // Empty on purpose: the override exists only to disable the inherited test.
-        }
     }
 
     @Nested

@@ -39,8 +39,20 @@ final class ReturnStatementWriter implements StatementWriter {
             writeYield(generatorAdapter, context, finallyBlock, yieldTarget);
             return;
         }
-        aReturn.validate(context.methodDef());
         int openGaps = context.openGaps().size();
+        ExpressionDef expression = aReturn.expression();
+        if (expression != null && context.methodDef().getReturnType().equals(TypeDef.VOID)
+            && !expression.type().equals(TypeDef.VOID)) {
+            // A void method returning a value evaluates it for its effect and discards it, as the JDK writer does
+            writeDiscarded(generatorAdapter, context, expression);
+            if (finallyBlock != null) {
+                finallyBlock.run();
+            }
+            generatorAdapter.returnValue();
+            context.closeGaps(generatorAdapter, openGaps);
+            return;
+        }
+        aReturn.validate(context.methodDef());
         if (aReturn.expression() != null) {
             ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, aReturn.expression(), context.methodDef().getReturnType());
             pushFinallyStatement(generatorAdapter, context, finallyBlock, context.methodDef().getReturnType());
@@ -51,6 +63,15 @@ final class ReturnStatementWriter implements StatementWriter {
         }
         generatorAdapter.returnValue();
         context.closeGaps(generatorAdapter, openGaps);
+    }
+
+    private static void writeDiscarded(GeneratorAdapter generatorAdapter, MethodContext context, ExpressionDef expression) {
+        ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, expression, expression.type());
+        if (TypeUtils.getScopedType(expression.type(), context).getSize() == 2) {
+            generatorAdapter.pop2();
+        } else {
+            generatorAdapter.pop();
+        }
     }
 
     /**

@@ -44,9 +44,8 @@ import java.util.Optional;
  *     assigns.</li>
  * </ul>
  *
- * <p>The writers differ on a constructor delegating to {@code this(...)}, and each keeps its behavior -
- * {@link InitializersAfterThis}: the ASM writer runs the field initializers again after the delegated constructor has
- * run them, the JDK writer runs them only once, as javac does.</p>
+ * <p>Both writers run the field initializers once on a constructor delegating to {@code this(...)}, as javac does -
+ * {@link InitializersAfterThis#SKIP}; {@link InitializersAfterThis#RERUN} is kept for a writer running them again.</p>
  *
  * @param implicitSuper     Whether the writer writes the call of the superclass's no-argument constructor first
  * @param hoistedCall       The constructor call moved to the front of the statements, if any
@@ -145,11 +144,11 @@ public record ConstructorBody(boolean implicitSuper,
      */
     public enum InitializersAfterThis {
         /**
-         * The ASM writer's: they run again after the delegated constructor has run them.
+         * They run again after the delegated constructor has run them, which javac does not do.
          */
         RERUN,
         /**
-         * The JDK writer's: they run once, in the constructor delegated to, as javac runs them.
+         * They run once, in the constructor delegated to, as javac runs them: what both writers do.
          */
         SKIP
     }
