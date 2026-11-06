@@ -66,16 +66,21 @@ public final class ReferenceAdapters {
         return reference.type().getLambda().implement((aThis, values) -> {
             List<ExpressionDef> arguments = new ArrayList<>(values.subList(0, fixed));
             List<VariableDef.MethodParameter> tail = values.subList(fixed, values.size());
-            // The array of what the values are passed as, `String[]`, as javac infers the variable of the method
-            TypeDef component = tail.isEmpty() || tail.stream().anyMatch(value -> !value.type().equals(tail.getFirst().type()))
-                || tail.getFirst().type().isPrimitive()
-                ? (array.dimensions() == 1 ? array.componentType() : TypeDef.array(array.componentType(), array.dimensions() - 1))
-                : tail.getFirst().type();
-            arguments.add(TypeDef.array(component, 1).instantiate(tail));
+            arguments.add(TypeDef.array(passedComponent(array, tail), 1).instantiate(tail));
             ExpressionDef call = instance == null ? reference.owner().invokeStatic(method, arguments)
                 : instance.invoke(method, arguments);
             return TypeDef.VOID.equals(method.getReturnType()) || TypeDef.VOID.equals(reference.instantiated().getReturnType())
                 ? (io.micronaut.sourcegen.model.StatementDef) call : call.returning();
         });
+    }
+
+    /**
+     * The array of what the values are passed as, `String[]`, as javac infers the variable of the method.
+     */
+    private static TypeDef passedComponent(TypeDef.Array array, List<VariableDef.MethodParameter> tail) {
+        return tail.isEmpty() || tail.stream().anyMatch(value -> !value.type().equals(tail.getFirst().type()))
+            || tail.getFirst().type().isPrimitive()
+            ? (array.dimensions() == 1 ? array.componentType() : TypeDef.array(array.componentType(), array.dimensions() - 1))
+            : tail.getFirst().type();
     }
 }

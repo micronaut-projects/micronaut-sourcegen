@@ -76,6 +76,9 @@ import static io.micronaut.sourcegen.generator.OverloadRules.receiverBound;
 @Internal
 final class JavaExpressionRenderer {
 
+    private static final String CAST = "($T) $L";
+    private static final String CAST_PREFIX = "($T) ";
+
     private final JavaTypeRenderer types;
     private final JavaWriteContext context;
     private final JavaConversionRules conversionRules;
@@ -156,42 +159,7 @@ final class JavaExpressionRenderer {
                 return renderNewArrayInitialized(objectDef, methodDef, scope, newArray);
             }
             case ExpressionDef.Cast castExpressionDef -> {
-                ExpressionDef exp = collapseNestedCasts(castExpressionDef.expressionDef());
-                if (dropsCast(castExpressionDef, exp, castContext)) {
-                    return renderExpression(objectDef, methodDef, scope, exp, castContext);
-                }
-                CodeBlock unboxed = conversions.renderUnboxed(objectDef, methodDef, scope, castExpressionDef.type(), exp);
-                if (unboxed != null) {
-                    return unboxed;
-                }
-                CodeBlock numeric = conversions.renderNumericConversion(objectDef, methodDef, scope, castExpressionDef.type(), exp);
-                if (numeric != null) {
-                    return numeric;
-                }
-                TypeDef castType = castExpressionDef.type();
-                if (castType instanceof ClassTypeDef.Parameterized parameterized
-                    && conversionRules.sourceTypeOf(exp, methodDef, objectDef) instanceof ClassTypeDef.Parameterized narrowed
-                    && !narrowed.equals(exp.type()) && conversionRules.requiresRawCastTo(castType, narrowed, objectDef, methodDef)) {
-                    // A value an override narrowed to a parameterization the cast does not accept is cast raw
-                    castType = parameterized.rawType();
-                }
-                CodeBlock explicitCast = CodeBlock.of("($T)", types.asType(castType, objectDef, methodDef));
-                CodeBlock rendered = renderExpression(objectDef, methodDef, scope, exp);
-                if (conversionRules.castsThroughObject(exp, castType, methodDef, objectDef)) {
-                    return CodeBlock.of("$L ($T) $L", explicitCast, Object.class, renderCastOperand(objectDef, methodDef, scope, exp));
-                }
-                if (isFunctional(exp) && !sameErasure(castType, exp.type())) {
-                    rendered = withTargetType(objectDef, methodDef, exp, rendered);
-                }
-                ExpressionDef castOperand = unwrapCasts(exp);
-                if (!requiresCastOperandParentheses(castOperand)) {
-                    return CodeBlock.concat(explicitCast, CodeBlock.of(" "), rendered);
-                }
-                return CodeBlock.concat(
-                    explicitCast,
-                    CodeBlock.of(" "),
-                    addParentheses(rendered)
-                );
+                return renderCast(objectDef, methodDef, scope, castExpressionDef, castContext);
             }
             case ExpressionDef.Constant constant -> {
                 return literals.render(objectDef, methodDef, constant);
@@ -219,13 +187,7 @@ final class JavaExpressionRenderer {
                 ));
             }
             case ExpressionDef.MathUnaryOperation mathOperation -> {
-                CodeBlock operand = renderExpressionWithParentheses(objectDef, methodDef, scope, mathOperation.expression());
-                if (!requiresParentheses(mathOperation.expression())
-                    && JavaPrecedence.startsWithMinus(writtenNode(mathOperation.expression(), CastContext.DEFAULT))) {
-                    // `-(-1)`: `--1` is a decrement
-                    operand = addParentheses(operand);
-                }
-                return narrowed(objectDef, mathOperation, CodeBlock.concat(CodeBlock.of(operator(mathOperation)), operand));
+                return renderMathUnary(objectDef, methodDef, scope, mathOperation);
             }
             case ExpressionDef.IfElse condition -> {
                 return renderIfElse(objectDef, methodDef, scope, condition, false);
@@ -256,6 +218,57 @@ final class JavaExpressionRenderer {
             }
             case null, default -> throw new IllegalStateException("Unrecognized expression: " + expressionDef);
         }
+    }
+
+    private CodeBlock renderMathUnary(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope,
+                                      ExpressionDef.MathUnaryOperation mathOperation) {
+        CodeBlock operand = renderExpressionWithParentheses(objectDef, methodDef, scope, mathOperation.expression());
+        if (!requiresParentheses(mathOperation.expression())
+            && JavaPrecedence.startsWithMinus(writtenNode(mathOperation.expression(), CastContext.DEFAULT))) {
+            // `-(-1)`: `--1` is a decrement
+            operand = addParentheses(operand);
+        }
+        return narrowed(objectDef, mathOperation, CodeBlock.concat(CodeBlock.of(operator(mathOperation)), operand));
+    }
+
+    private CodeBlock renderCast(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope,
+                                 ExpressionDef.Cast castExpressionDef, CastContext castContext) {
+        ExpressionDef exp = collapseNestedCasts(castExpressionDef.expressionDef());
+        if (dropsCast(castExpressionDef, exp, castContext)) {
+            return renderExpression(objectDef, methodDef, scope, exp, castContext);
+        }
+        CodeBlock unboxed = conversions.renderUnboxed(objectDef, methodDef, scope, castExpressionDef.type(), exp);
+        if (unboxed != null) {
+            return unboxed;
+        }
+        CodeBlock numeric = conversions.renderNumericConversion(objectDef, methodDef, scope, castExpressionDef.type(), exp);
+        if (numeric != null) {
+            return numeric;
+        }
+        TypeDef castType = castExpressionDef.type();
+        if (castType instanceof ClassTypeDef.Parameterized parameterized
+            && conversionRules.sourceTypeOf(exp, methodDef, objectDef) instanceof ClassTypeDef.Parameterized narrowed
+            && !narrowed.equals(exp.type()) && conversionRules.requiresRawCastTo(castType, narrowed, objectDef, methodDef)) {
+            // A value an override narrowed to a parameterization the cast does not accept is cast raw
+            castType = parameterized.rawType();
+        }
+        CodeBlock explicitCast = CodeBlock.of("($T)", types.asType(castType, objectDef, methodDef));
+        CodeBlock rendered = renderExpression(objectDef, methodDef, scope, exp);
+        if (conversionRules.castsThroughObject(exp, castType, methodDef, objectDef)) {
+            return CodeBlock.of("$L ($T) $L", explicitCast, Object.class, renderCastOperand(objectDef, methodDef, scope, exp));
+        }
+        if (isFunctional(exp) && !sameErasure(castType, exp.type())) {
+            rendered = withTargetType(objectDef, methodDef, exp, rendered);
+        }
+        ExpressionDef castOperand = unwrapCasts(exp);
+        if (!requiresCastOperandParentheses(castOperand)) {
+            return CodeBlock.concat(explicitCast, CodeBlock.of(" "), rendered);
+        }
+        return CodeBlock.concat(
+            explicitCast,
+            CodeBlock.of(" "),
+            addParentheses(rendered)
+        );
     }
 
     private CodeBlock renderArrayElement(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, RenderScope scope, ExpressionDef.ArrayElement arrayElement) {
@@ -381,7 +394,8 @@ final class JavaExpressionRenderer {
         // colliding parameter is emitted under an allocated name and its references remapped
         RenderScope lambdaScope = scope.nested(implementation);
         // A renamed parameter does not take the name of a local the body declares, which the body reserves
-        lambdaScope.body(implementation.getStatements()).handling(context.exceptions().functionalThrows(lambda.type()));
+        lambdaScope.body(implementation.getStatements());
+        lambdaScope.handling(context.exceptions().functionalThrows(lambda.type()));
         // The locals it captures which the enclosing body assigns are read from their copies, and those it assigns
         // itself from copies of its own, which the bytecode passes it
         scope.copiesOf(lambda).forEach(lambdaScope::renameLocal);
@@ -619,6 +633,14 @@ final class JavaExpressionRenderer {
             // `flag ? 1 : (long) 2.5` is a long
             return renderExpression(objectDef, methodDef, scope, value.cast(type));
         }
+        return renderConvertedBranch(objectDef, methodDef, scope, type, value);
+    }
+
+    private CodeBlock renderConvertedBranch(@Nullable ObjectDef objectDef,
+                                            @Nullable MethodDef methodDef,
+                                            RenderScope scope,
+                                            TypeDef type,
+                                            ExpressionDef value) {
         if (value instanceof ExpressionDef.SwitchYieldCase || isNullLiteral(value)) {
             return renderExpression(objectDef, methodDef, scope, value);
         }
@@ -690,7 +712,7 @@ final class JavaExpressionRenderer {
         TypeDef raw = context.generics().conflictingResult(value, targetType, objectDef, methodDef);
         if (raw != null) {
             // The target would fix a variable of the generic method an argument does not convert to
-            return CodeBlock.of("($T) $L", types.asType(raw, objectDef, methodDef), renderCastOperand(objectDef, methodDef, scope, value));
+            return CodeBlock.of(CAST, types.asType(raw, objectDef, methodDef), renderCastOperand(objectDef, methodDef, scope, value));
         }
         if (target == Target.STORED
             && (isNullLiteral(value) || TypeDef.VOID.equals(targetType) || value.type().equals(TypeDef.VOID))) {
@@ -738,104 +760,175 @@ final class JavaExpressionRenderer {
             values.stream().map(value -> isNullLiteral(value) || isFunctional(value) ? null : conversionRules.sourceTypeOf(value, enclosingMethod, objectDef)).toList(),
             context.scope());
         Map<String, List<TypeDef>> methodVariables = JavaSignatures.methodVariables(owner, methodName, sameArityParameterTypes, inferred);
+        Arguments arguments = new Arguments(objectDef, enclosingMethod, scope, sameArityParameterTypes, declaredTypes, varargs,
+            overloaded, generated, inferred, receiverArguments, values, methodVariables);
         return IntStream.range(0, values.size())
-            .mapToObj(i -> {
-                ExpressionDef value = values.get(i);
-                if (sameArityParameterTypes != null) {
-                    TypeDef paramType = receiverBound(sameArityParameterTypes.get(i),
-                        declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null,
-                        inferred, receiverArguments);
-                    boolean vararg = varargs && i == values.size() - 1
-                        && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array
-                        && !(TypeHierarchy.unwrap(value.type()) instanceof TypeDef.Array);
-                    if (vararg) {
-                        // A value that is not an array is one element of the varargs, which a cast would not be.
-                        // Where an override narrowed it to an array, it is cast to the element type, which keeps it one
-                        if (TypeHierarchy.unwrap(conversionRules.sourceTypeOf(value, enclosingMethod, objectDef)) instanceof TypeDef.Array
-                            && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array varargsType) {
-                            TypeDef elementType = varargsType.dimensions() == 1 ? varargsType.componentType()
-                                : TypeDef.array(varargsType.componentType(), varargsType.dimensions() - 1);
-                            return CodeBlock.concat(
-                                CodeBlock.of("($T) ", types.asType(elementType, objectDef, enclosingMethod)),
-                                renderCastOperand(objectDef, enclosingMethod, scope, value)
-                            );
-                        }
-                        return renderExpression(objectDef, enclosingMethod, scope, value);
-                    }
-                    if (isFunctional(value)) {
-                        // A lambda takes its type from the parameter: an overloaded method, or one taking an `Object`,
-                        // gives it none. One of a raw type the model gives it is typed by it, where the parameter would
-                        // type its parameters and result by the type arguments of the receiver
-                        CodeBlock rendered = renderExpression(objectDef, enclosingMethod, scope, value);
-                        boolean raw = declaredTypes != null && declaredTypes.size() == values.size()
-                            && conversions.typedByModel(value, declaredTypes.get(i), receiverArguments, objectDef);
-                        return overloaded || raw || !sameErasure(paramType, value.type())
-                            ? withTargetType(objectDef, enclosingMethod, value, rendered) : rendered;
-                    }
-                    TypeDef sourceType = conversionRules.sourceTypeOf(value, enclosingMethod, objectDef);
-                    List<TypeDef> intersection = conversionRules.intersectionArrayBounds(paramType, sourceType, inferred, receiverArguments,
-                        objectDef, enclosingMethod);
-                    if (intersection != null) {
-                        return conversions.renderIntersectionArray(objectDef, enclosingMethod, scope, value, intersection,
-                            ((TypeDef.Array) TypeHierarchy.unwrap(paramType)).dimensions());
-                    }
-                    TypeDef sibling = TypeDef.OBJECT.equals(sourceType) ? conversions.siblingType(sameArityParameterTypes, values, i, inferred,
-                        enclosingMethod, objectDef) : null;
-                    if (sibling != null) {
-                        // `max(text, (String) value)` of `<T extends Comparable<T>>`: the bound alone infers no `T`
-                        return CodeBlock.concat(CodeBlock.of("($T) ", types.asType(sibling, objectDef, enclosingMethod)),
-                            renderCastOperand(objectDef, enclosingMethod, scope, value));
-                    }
-                    TypeDef declared = declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null;
-                    List<List<TypeDef>> casts = conversionRules.argumentCasts(paramType, value.type(), sourceType, declared,
-                        generated, inferred, receiverArguments, objectDef, enclosingMethod);
-                    if (casts.isEmpty() && declared != null
-                        && conversionRules.passesWildcardForBoundedVariable(declared, sourceType, methodVariables)) {
-                        // Only an unchecked invocation passes a capture where a bounded variable is inferred
-                        casts = List.of(List.of(TypeOperations.raw(paramType)));
-                    }
-                    if (casts.size() < 2 && !sourceType.equals(value.type()) && !paramType.equals(sourceType)
-                        && (!casts.isEmpty() || !(sourceType instanceof TypeDef.Primitive))) {
-                        if (!casts.isEmpty()) {
-                            // Written out: the cast can be to the type the value has in the model
-                            return renderConverted(objectDef, enclosingMethod, scope, value, casts, true);
-                        }
-                        // An override narrowed the parameter the value names - `Object value` to `String value` -
-                        // which would select another overload than the one the model calls: keep its type. Written
-                        // out, since in the model the cast is to the type the value already has, which is dropped. A
-                        // parameterized type is cast to as raw: the narrowed one need not relate to it
-                        return CodeBlock.concat(CodeBlock.of("($T) ", types.asType(paramType instanceof ClassTypeDef.Parameterized
-                            parameterized ? parameterized.rawType() : paramType, objectDef, enclosingMethod)),
-                            renderCastOperand(objectDef, enclosingMethod, scope, value)
-                        );
-                    }
-                    if (casts.isEmpty() && overloaded && !isNullLiteral(value)
-                        && TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable variable && methodVariables.containsKey(variable.name())) {
-                        // A variable of the invoked method takes the value as the source types it, where a more specific
-                        // overload takes it too: its erasure names the method of the model
-                        TypeDef erasure = JavaTypes.erasure(TypeDef.variable(variable.name(),
-                            methodVariables.get(variable.name())), objectDef, enclosingMethod);
-                        if (!TypeHierarchy.erasedName(erasure).equals(TypeHierarchy.erasedName(sourceType))) {
-                            return CodeBlock.concat(CodeBlock.of("($T) ", types.asType(erasure, objectDef, enclosingMethod)),
-                                renderCastOperand(objectDef, enclosingMethod, scope, value));
-                        }
-                    }
-                    if (casts.isEmpty() && overloaded && pinsOverload(paramType, isNullLiteral(value) ? null
-                        : OverloadRules.lexicalErasure(sourceType, objectDef, enclosingMethod), inferred)) {
-                        // Another overload takes the values as the source types them: the cast names the one of the model
-                        return CodeBlock.concat(CodeBlock.of("($T) ", types.asType(paramType instanceof ClassTypeDef.Parameterized
-                            parameterized ? parameterized.rawType() : paramType, objectDef, enclosingMethod)),
-                            isNullLiteral(value) ? CodeBlock.of("null") : renderCastOperand(objectDef, enclosingMethod, scope, value));
-                    }
-                    return renderConverted(objectDef, enclosingMethod, scope, value, casts);
-                }
-                return renderExpression(objectDef, enclosingMethod, scope, value);
-            })
+            .mapToObj(i -> renderArgument(arguments, i))
             .collect(CodeBlock.joining(", "));
     }
 
+    /**
+     * The arguments of an invocation being written, with what the invoked method says of them.
+     */
+    private record Arguments(@Nullable ObjectDef objectDef,
+                             @Nullable MethodDef enclosingMethod,
+                             RenderScope scope,
+                             @Nullable List<TypeDef> sameArityParameterTypes,
+                             @Nullable List<TypeDef> declaredTypes,
+                             boolean varargs,
+                             boolean overloaded,
+                             boolean generated,
+                             List<TypeDef.TypeVariable> inferred,
+                             Map<String, TypeDef> receiverArguments,
+                             List<? extends ExpressionDef> values,
+                             Map<String, List<TypeDef>> methodVariables) {
+
+        @Nullable
+        TypeDef declaredType(int i) {
+            return declaredTypes != null && declaredTypes.size() == values.size() ? declaredTypes.get(i) : null;
+        }
+    }
+
+    private CodeBlock renderArgument(Arguments arguments, int i) {
+        ExpressionDef value = arguments.values().get(i);
+        List<TypeDef> sameArityParameterTypes = arguments.sameArityParameterTypes();
+        if (sameArityParameterTypes == null) {
+            return renderExpression(arguments.objectDef(), arguments.enclosingMethod(), arguments.scope(), value);
+        }
+        ObjectDef objectDef = arguments.objectDef();
+        MethodDef enclosingMethod = arguments.enclosingMethod();
+        RenderScope scope = arguments.scope();
+        List<? extends ExpressionDef> values = arguments.values();
+        TypeDef paramType = receiverBound(sameArityParameterTypes.get(i), arguments.declaredType(i),
+            arguments.inferred(), arguments.receiverArguments());
+        boolean vararg = arguments.varargs() && i == values.size() - 1
+            && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array
+            && !(TypeHierarchy.unwrap(value.type()) instanceof TypeDef.Array);
+        if (vararg) {
+            return renderVarargElement(objectDef, enclosingMethod, scope, value, paramType);
+        }
+        if (isFunctional(value)) {
+            // A lambda takes its type from the parameter: an overloaded method, or one taking an `Object`,
+            // gives it none. One of a raw type the model gives it is typed by it, where the parameter would
+            // type its parameters and result by the type arguments of the receiver
+            CodeBlock rendered = renderExpression(objectDef, enclosingMethod, scope, value);
+            List<TypeDef> declaredTypes = arguments.declaredTypes();
+            boolean raw = declaredTypes != null && declaredTypes.size() == values.size()
+                && conversions.typedByModel(value, declaredTypes.get(i), arguments.receiverArguments(), objectDef);
+            return arguments.overloaded() || raw || !sameErasure(paramType, value.type())
+                ? withTargetType(objectDef, enclosingMethod, value, rendered) : rendered;
+        }
+        TypeDef sourceType = conversionRules.sourceTypeOf(value, enclosingMethod, objectDef);
+        List<TypeDef> intersection = conversionRules.intersectionArrayBounds(paramType, sourceType, arguments.inferred(),
+            arguments.receiverArguments(), objectDef, enclosingMethod);
+        if (intersection != null) {
+            return conversions.renderIntersectionArray(objectDef, enclosingMethod, scope, value, intersection,
+                ((TypeDef.Array) TypeHierarchy.unwrap(paramType)).dimensions());
+        }
+        TypeDef sibling = TypeDef.OBJECT.equals(sourceType) ? conversions.siblingType(sameArityParameterTypes, values, i,
+            arguments.inferred(), enclosingMethod, objectDef) : null;
+        if (sibling != null) {
+            // `max(text, (String) value)` of `<T extends Comparable<T>>`: the bound alone infers no `T`
+            return CodeBlock.concat(CodeBlock.of(CAST_PREFIX, types.asType(sibling, objectDef, enclosingMethod)),
+                renderCastOperand(objectDef, enclosingMethod, scope, value));
+        }
+        return renderCastArgument(arguments, i, value, paramType, sourceType);
+    }
+
+    private CodeBlock renderVarargElement(@Nullable ObjectDef objectDef, @Nullable MethodDef enclosingMethod, RenderScope scope,
+                                          ExpressionDef value, TypeDef paramType) {
+        // A value that is not an array is one element of the varargs, which a cast would not be.
+        // Where an override narrowed it to an array, it is cast to the element type, which keeps it one
+        if (TypeHierarchy.unwrap(conversionRules.sourceTypeOf(value, enclosingMethod, objectDef)) instanceof TypeDef.Array
+            && TypeHierarchy.unwrap(paramType) instanceof TypeDef.Array varargsType) {
+            TypeDef elementType = varargsType.dimensions() == 1 ? varargsType.componentType()
+                : TypeDef.array(varargsType.componentType(), varargsType.dimensions() - 1);
+            return CodeBlock.concat(
+                CodeBlock.of(CAST_PREFIX, types.asType(elementType, objectDef, enclosingMethod)),
+                renderCastOperand(objectDef, enclosingMethod, scope, value)
+            );
+        }
+        return renderExpression(objectDef, enclosingMethod, scope, value);
+    }
+
+    private CodeBlock renderCastArgument(Arguments arguments, int i, ExpressionDef value, TypeDef paramType, TypeDef sourceType) {
+        ObjectDef objectDef = arguments.objectDef();
+        MethodDef enclosingMethod = arguments.enclosingMethod();
+        RenderScope scope = arguments.scope();
+        TypeDef declared = arguments.declaredType(i);
+        List<List<TypeDef>> casts = conversionRules.argumentCasts(paramType, value.type(), sourceType, declared,
+            arguments.generated(), arguments.inferred(), arguments.receiverArguments(), objectDef, enclosingMethod);
+        if (casts.isEmpty() && declared != null
+            && conversionRules.passesWildcardForBoundedVariable(declared, sourceType, arguments.methodVariables())) {
+            // Only an unchecked invocation passes a capture where a bounded variable is inferred
+            casts = List.of(List.of(TypeOperations.raw(paramType)));
+        }
+        CodeBlock narrowed = renderNarrowedArgument(objectDef, enclosingMethod, scope, value, paramType, sourceType, casts);
+        if (narrowed != null) {
+            return narrowed;
+        }
+        if (casts.isEmpty() && arguments.overloaded()) {
+            CodeBlock pinned = renderOverloadPinningArgument(arguments, value, paramType, sourceType);
+            if (pinned != null) {
+                return pinned;
+            }
+        }
+        return renderConverted(objectDef, enclosingMethod, scope, value, casts);
+    }
+
+    @Nullable
+    private CodeBlock renderNarrowedArgument(@Nullable ObjectDef objectDef, @Nullable MethodDef enclosingMethod, RenderScope scope,
+                                             ExpressionDef value, TypeDef paramType, TypeDef sourceType, List<List<TypeDef>> casts) {
+        if (casts.size() < 2 && !sourceType.equals(value.type()) && !paramType.equals(sourceType)
+            && (!casts.isEmpty() || !(sourceType instanceof TypeDef.Primitive))) {
+            if (!casts.isEmpty()) {
+                // Written out: the cast can be to the type the value has in the model
+                return renderConverted(objectDef, enclosingMethod, scope, value, casts, true);
+            }
+            // An override narrowed the parameter the value names - `Object value` to `String value` -
+            // which would select another overload than the one the model calls: keep its type. Written
+            // out, since in the model the cast is to the type the value already has, which is dropped. A
+            // parameterized type is cast to as raw: the narrowed one need not relate to it
+            return CodeBlock.concat(CodeBlock.of(CAST_PREFIX, types.asType(paramType instanceof ClassTypeDef.Parameterized
+                parameterized ? parameterized.rawType() : paramType, objectDef, enclosingMethod)),
+                renderCastOperand(objectDef, enclosingMethod, scope, value)
+            );
+        }
+        return null;
+    }
+
+    /**
+     * An argument without casts of an overloaded method, cast where another overload would take it.
+     */
+    @Nullable
+    private CodeBlock renderOverloadPinningArgument(Arguments arguments, ExpressionDef value, TypeDef paramType, TypeDef sourceType) {
+        ObjectDef objectDef = arguments.objectDef();
+        MethodDef enclosingMethod = arguments.enclosingMethod();
+        RenderScope scope = arguments.scope();
+        Map<String, List<TypeDef>> methodVariables = arguments.methodVariables();
+        if (!isNullLiteral(value)
+            && TypeHierarchy.unwrap(paramType) instanceof TypeDef.TypeVariable variable && methodVariables.containsKey(variable.name())) {
+            // A variable of the invoked method takes the value as the source types it, where a more specific
+            // overload takes it too: its erasure names the method of the model
+            TypeDef erasure = JavaTypes.erasure(TypeDef.variable(variable.name(),
+                methodVariables.get(variable.name())), objectDef, enclosingMethod);
+            if (!TypeHierarchy.erasedName(erasure).equals(TypeHierarchy.erasedName(sourceType))) {
+                return CodeBlock.concat(CodeBlock.of(CAST_PREFIX, types.asType(erasure, objectDef, enclosingMethod)),
+                    renderCastOperand(objectDef, enclosingMethod, scope, value));
+            }
+        }
+        if (pinsOverload(paramType, isNullLiteral(value) ? null
+            : OverloadRules.lexicalErasure(sourceType, objectDef, enclosingMethod), arguments.inferred())) {
+            // Another overload takes the values as the source types them: the cast names the one of the model
+            return CodeBlock.concat(CodeBlock.of(CAST_PREFIX, types.asType(paramType instanceof ClassTypeDef.Parameterized
+                parameterized ? parameterized.rawType() : paramType, objectDef, enclosingMethod)),
+                isNullLiteral(value) ? CodeBlock.of("null") : renderCastOperand(objectDef, enclosingMethod, scope, value));
+        }
+        return null;
+    }
+
     CodeBlock withTargetType(@Nullable ObjectDef objectDef, @Nullable MethodDef methodDef, ExpressionDef functional, CodeBlock rendered) {
-        return CodeBlock.of("($T) $L", types.asType(functional.type(), objectDef, methodDef), rendered);
+        return CodeBlock.of(CAST, types.asType(functional.type(), objectDef, methodDef), rendered);
     }
 
     CodeBlock renderCastOperand(@Nullable ObjectDef objectDef,
@@ -861,7 +954,7 @@ final class JavaExpressionRenderer {
         TypeDef raw = context.generics().uninferredReceiver(written, objectDef);
         if (raw != null) {
             // A variable no argument names is inferred from its bounds alone, which the model does not bind
-            return addParentheses(CodeBlock.of("($T) $L", types.asType(raw, objectDef, methodDef), renderCastOperand(objectDef, methodDef, scope, instance)));
+            return addParentheses(CodeBlock.of(CAST, types.asType(raw, objectDef, methodDef), renderCastOperand(objectDef, methodDef, scope, instance)));
         }
         CodeBlock rendered = renderExpression(objectDef, methodDef, scope, instance);
         return requiresReceiverParentheses(instance) || JavaPrecedence.of(written) < JavaPrecedence.POSTFIX
@@ -921,29 +1014,10 @@ final class JavaExpressionRenderer {
                 );
             }
             case ExpressionDef.ComparisonOperation comparisonOperation -> {
-                if (comparisonOperation.opType() == ExpressionDef.ComparisonOperation.OpType.EQUAL_TO
-                    || comparisonOperation.opType() == ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO) {
-                    return renderReferenceComparison(objectDef, methodDef, scope, comparisonOperation.left(),
-                        comparisonOperation.right(), operator(comparisonOperation), isRef);
-                }
-                return CodeBlock.concat(
-                    renderExpressionWithParentheses(objectDef, methodDef, scope, comparisonOperation.left(), isRef),
-                    CodeBlock.of(operator(comparisonOperation)),
-                    renderExpressionWithParentheses(objectDef, methodDef, scope, comparisonOperation.right(), isRef)
-                );
+                return renderComparison(objectDef, methodDef, scope, comparisonOperation, isRef);
             }
             case ExpressionDef.InstanceOf instanceOf -> {
-                // A cast to `Object` is not written, which leaves the operand it wraps
-                ExpressionDef operand = writtenNode(instanceOf.expression(), CastContext.OBJECT_REFERENCE);
-                CodeBlock rendered = renderExpression(objectDef, methodDef, scope, instanceOf.expression(), true);
-                return CodeBlock.concat(
-                    conversionRules.castsThroughObject(operand, instanceOf.instanceType(), methodDef, objectDef)
-                        ? CodeBlock.of("(($T) $L)", Object.class, renderCastOperand(objectDef, methodDef, scope, operand))
-                        : JavaPrecedence.of(operand) <= JavaPrecedence.RELATIONAL ? addParentheses(rendered) : rendered,
-                    CodeBlock.of(" instanceof "),
-                    // Fully qualified like before, but passed as an argument so a `$` in the name is not a placeholder
-                    CodeBlock.of("$L", context.names().asClassType(instanceOf.instanceType()).canonicalName())
-                );
+                return renderInstanceOf(objectDef, methodDef, scope, instanceOf);
             }
             case ExpressionDef.And andExpressionDef -> {
                 return CodeBlock.concat(
@@ -985,6 +1059,40 @@ final class JavaExpressionRenderer {
         }
     }
 
+    private CodeBlock renderComparison(@Nullable ObjectDef objectDef,
+                                       @Nullable MethodDef methodDef,
+                                       RenderScope scope,
+                                       ExpressionDef.ComparisonOperation comparisonOperation,
+                                       boolean isRef) {
+        if (comparisonOperation.opType() == ExpressionDef.ComparisonOperation.OpType.EQUAL_TO
+            || comparisonOperation.opType() == ExpressionDef.ComparisonOperation.OpType.NOT_EQUAL_TO) {
+            return renderReferenceComparison(objectDef, methodDef, scope, comparisonOperation.left(),
+                comparisonOperation.right(), operator(comparisonOperation), isRef);
+        }
+        return CodeBlock.concat(
+            renderExpressionWithParentheses(objectDef, methodDef, scope, comparisonOperation.left(), isRef),
+            CodeBlock.of(operator(comparisonOperation)),
+            renderExpressionWithParentheses(objectDef, methodDef, scope, comparisonOperation.right(), isRef)
+        );
+    }
+
+    private CodeBlock renderInstanceOf(@Nullable ObjectDef objectDef,
+                                       @Nullable MethodDef methodDef,
+                                       RenderScope scope,
+                                       ExpressionDef.InstanceOf instanceOf) {
+        // A cast to `Object` is not written, which leaves the operand it wraps
+        ExpressionDef operand = writtenNode(instanceOf.expression(), CastContext.OBJECT_REFERENCE);
+        CodeBlock rendered = renderExpression(objectDef, methodDef, scope, instanceOf.expression(), true);
+        return CodeBlock.concat(
+            conversionRules.castsThroughObject(operand, instanceOf.instanceType(), methodDef, objectDef)
+                ? CodeBlock.of("(($T) $L)", Object.class, renderCastOperand(objectDef, methodDef, scope, operand))
+                : JavaPrecedence.of(operand) <= JavaPrecedence.RELATIONAL ? addParentheses(rendered) : rendered,
+            CodeBlock.of(" instanceof "),
+            // Fully qualified like before, but passed as an argument so a `$` in the name is not a placeholder
+            CodeBlock.of("$L", context.names().asClassType(instanceOf.instanceType()).canonicalName())
+        );
+    }
+
     private CodeBlock renderAndConditionOperand(@Nullable ObjectDef objectDef,
                                                 @Nullable MethodDef methodDef,
                                                 RenderScope scope,
@@ -1007,7 +1115,7 @@ final class JavaExpressionRenderer {
         boolean widened = conversionRules.comparesThroughObject(leftOperand, rightOperand, methodDef, objectDef)
             || conversionRules.comparesThroughObject(rightOperand, leftOperand, methodDef, objectDef);
         return CodeBlock.builder()
-            .add(widened ? CodeBlock.of("($T) ", Object.class) : CodeBlock.of(""))
+            .add(widened ? CodeBlock.of(CAST_PREFIX, Object.class) : CodeBlock.of(""))
             .add(renderComparedOperand(objectDef, methodDef, scope, left, right, castContext))
             .add(operator)
             .add(renderComparedOperand(objectDef, methodDef, scope, right, left, castContext))

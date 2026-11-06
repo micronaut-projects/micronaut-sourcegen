@@ -700,6 +700,45 @@ final class JdkMethodWriter {
         throw new UnsupportedOperationException("Unsupported switch constant: " + constant.value());
     }
 
+    private void writeMathBinary(ExpressionDef.MathBinaryOperation math) {
+        writeExpression(math.left());
+        if (kind(math.type()) == TypeKind.LONG && isShift(math.opType())) {
+            // The JVM shifts a long by an int distance, which the model converts to the type of the operation
+            ExpressionDef distance = math.right();
+            if (distance instanceof ExpressionDef.Cast cast && cast.expressionDef().type().isPrimitive()
+                && exactKind(cast.expressionDef().type()) != TypeKind.BOOLEAN && kind(cast.expressionDef().type()) == TypeKind.INT) {
+                // An int widened to long only to be narrowed again
+                distance = cast.expressionDef();
+            }
+            writeExpression(distance);
+            if (kind(distance.type()) == TypeKind.LONG) {
+                code.l2i();
+            }
+        } else {
+            writeExpression(math.right());
+        }
+        writeMath(math);
+        narrow(math.type());
+    }
+
+    private void writeMathUnary(ExpressionDef.MathUnaryOperation math) {
+        // A wrapper is unboxed, negated as the primitive it holds and boxed again: the model types the
+        // negation as its operand
+        TypeDef operand = TypeDef.Primitive.unboxIfPossible(math.type());
+        writeExpression(new ExpressionDef.Cast(operand, math.expression()));
+        if (math.opType() == ExpressionDef.MathUnaryOperation.OpType.NEGATE) {
+            switch (kind(operand)) {
+                case INT -> code.ineg();
+                case LONG -> code.lneg();
+                case FLOAT -> code.fneg();
+                case DOUBLE -> code.dneg();
+                default -> throw unsupported(math);
+            }
+            narrow(operand);
+        }
+        writeConversion(operand, math.type());
+    }
+
     void writeExpression(ExpressionDef expression) {
         switch (expression) {
             case ExpressionDef.Constant constant -> writeConstant(constant);
@@ -712,43 +751,8 @@ final class JdkMethodWriter {
             }
             case ExpressionDef.InvokeInstanceMethod invoke -> writeInvocation(invoke.instance(), invoke.method(), invoke.values());
             case ExpressionDef.InvokeStaticMethod invoke -> writeStaticInvocation(invoke.classDef(), invoke.method(), invoke.values());
-            case ExpressionDef.MathBinaryOperation math -> {
-                writeExpression(math.left());
-                if (kind(math.type()) == TypeKind.LONG && isShift(math.opType())) {
-                    // The JVM shifts a long by an int distance, which the model converts to the type of the operation
-                    ExpressionDef distance = math.right();
-                    if (distance instanceof ExpressionDef.Cast cast && cast.expressionDef().type().isPrimitive()
-                        && exactKind(cast.expressionDef().type()) != TypeKind.BOOLEAN && kind(cast.expressionDef().type()) == TypeKind.INT) {
-                        // An int widened to long only to be narrowed again
-                        distance = cast.expressionDef();
-                    }
-                    writeExpression(distance);
-                    if (kind(distance.type()) == TypeKind.LONG) {
-                        code.l2i();
-                    }
-                } else {
-                    writeExpression(math.right());
-                }
-                writeMath(math);
-                narrow(math.type());
-            }
-            case ExpressionDef.MathUnaryOperation math -> {
-                // A wrapper is unboxed, negated as the primitive it holds and boxed again: the model types the
-                // negation as its operand
-                TypeDef operand = TypeDef.Primitive.unboxIfPossible(math.type());
-                writeExpression(new ExpressionDef.Cast(operand, math.expression()));
-                if (math.opType() == ExpressionDef.MathUnaryOperation.OpType.NEGATE) {
-                    switch (kind(operand)) {
-                        case INT -> code.ineg();
-                        case LONG -> code.lneg();
-                        case FLOAT -> code.fneg();
-                        case DOUBLE -> code.dneg();
-                        default -> throw unsupported(expression);
-                    }
-                    narrow(operand);
-                }
-                writeConversion(operand, math.type());
-            }
+            case ExpressionDef.MathBinaryOperation math -> writeMathBinary(math);
+            case ExpressionDef.MathUnaryOperation math -> writeMathUnary(math);
             case ExpressionDef.StringConcatenation concat -> writeConcat(concat);
             case ExpressionDef.Lambda lambda -> writeLambda(lambda);
             case MethodReferenceExpression methodReference -> writeMethodReference(methodReference);
@@ -915,30 +919,35 @@ final class JdkMethodWriter {
                     MethodTypeDesc.of(ConstantDescs.CD_Object, ConstantDescs.CD_Object)).pop();
             }
         }
-        ClassDesc referencedOwner = classDesc(ObjectDef.getContextualType(objectDef, methodReference.owner()));
-        DirectMethodHandleDesc.Kind handleKind;
-        MethodHandleDesc handle;
-        if (methodReference.isStatic()) {
-            handleKind = methodReference.owner().isInterface()
-                ? DirectMethodHandleDesc.Kind.INTERFACE_STATIC : DirectMethodHandleDesc.Kind.STATIC;
-            handle = MethodHandleDesc.ofMethod(handleKind, referencedOwner, methodReference.method().getName(),
-                referencedType(methodReference));
-        } else if (methodReference.isConstructor()) {
-            // Erased in the scope of the constructor, as its class declares it
-            handle = MethodHandleDesc.ofConstructor(referencedOwner,
-                referencedType(methodReference).parameterList().toArray(ClassDesc[]::new));
-        } else {
-            handleKind = methodReference.owner().isInterface()
-                ? DirectMethodHandleDesc.Kind.INTERFACE_VIRTUAL : DirectMethodHandleDesc.Kind.VIRTUAL;
-            handle = MethodHandleDesc.ofMethod(handleKind, referencedOwner, methodReference.method().getName(),
-                referencedType(methodReference));
-        }
+        MethodHandleDesc handle = referencedHandle(methodReference);
         DynamicCallSiteDesc callSite = DynamicCallSiteDesc.of(
             lambdaMetafactory(), methodReference.instantiated().getName(),
             methodType(instance == null ? List.of() : List.of(instance.type()), methodReference.type()),
             methodType(methodReference.target()), handle, methodType(methodReference.instantiated())
         );
         code.invokedynamic(callSite);
+    }
+
+    /**
+     * The handle of the method a reference names.
+     */
+    private MethodHandleDesc referencedHandle(MethodReferenceExpression methodReference) {
+        ClassDesc referencedOwner = classDesc(ObjectDef.getContextualType(objectDef, methodReference.owner()));
+        DirectMethodHandleDesc.Kind handleKind;
+        if (methodReference.isStatic()) {
+            handleKind = methodReference.owner().isInterface()
+                ? DirectMethodHandleDesc.Kind.INTERFACE_STATIC : DirectMethodHandleDesc.Kind.STATIC;
+            return MethodHandleDesc.ofMethod(handleKind, referencedOwner, methodReference.method().getName(),
+                referencedType(methodReference));
+        } else if (methodReference.isConstructor()) {
+            // Erased in the scope of the constructor, as its class declares it
+            return MethodHandleDesc.ofConstructor(referencedOwner,
+                referencedType(methodReference).parameterList().toArray(ClassDesc[]::new));
+        }
+        handleKind = methodReference.owner().isInterface()
+            ? DirectMethodHandleDesc.Kind.INTERFACE_VIRTUAL : DirectMethodHandleDesc.Kind.VIRTUAL;
+        return MethodHandleDesc.ofMethod(handleKind, referencedOwner, methodReference.method().getName(),
+            referencedType(methodReference));
     }
 
     /**

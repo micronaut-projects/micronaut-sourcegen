@@ -63,6 +63,9 @@ import java.util.Set;
 @Internal
 final class JavaConversionRenderer {
 
+    private static final String CAST = "($T) $L";
+    private static final String CAST_PREFIX = "($T) ";
+
     private final JavaExpressionRenderer expressions;
     private final JavaTypeRenderer types;
     private final JavaConversionRules conversionRules;
@@ -107,36 +110,14 @@ final class JavaConversionRenderer {
         String receiver = captured ? lambdaScope.declareFresh("target") : "";
         List<CodeBlock> parameters = new ArrayList<>();
         List<CodeBlock> arguments = new ArrayList<>();
-        for (int i = 0; i < adaptation.argumentTypes().size(); i++) {
-            String name = lambdaScope.declareFresh("arg");
-            parameters.add(CodeBlock.of("$L", name));
-            TypeDef type = adaptation.argumentTypes().get(i);
-            CodeBlock.Builder argument = CodeBlock.builder();
-            if (type != null) {
-                argument.add("($T) ", types.asType(type, objectDef, methodDef));
-                adaptation.argumentConversions().get(i).forEach(conversion -> argument.add("($T) ", types.asType(conversion, objectDef)));
-            }
-            arguments.add(argument.add("$L", name).build());
-        }
-        CodeBlock call;
-        if (instance == null) {
-            ClassTypeDef owner = reference.owner();
-            call = reference.isConstructor()
-                ? CodeBlock.of("new $L($L)", expressions.renderInstantiated(owner, objectDef, methodDef), CodeBlock.join(arguments, ", "))
-                // A static member is named by the raw type
-                : CodeBlock.of("$T.$L($L)", types.asType(TypeOperations.rawClass(owner), objectDef, methodDef),
-                reference.method().getName(), CodeBlock.join(arguments, ", "));
-        } else {
-            call = CodeBlock.of("$L.$L($L)", captured ? receiver
-                : expressions.renderExpression(objectDef, methodDef, scope, instance), reference.method().getName(),
-                CodeBlock.join(arguments, ", "));
-        }
+        addAdaptedArguments(objectDef, methodDef, lambdaScope, adaptation, parameters, arguments);
+        CodeBlock call = renderAdaptedCall(objectDef, methodDef, scope, reference, instance, captured ? receiver : null, arguments);
         if (adaptation.resultBound() != null) {
             // Only an unchecked conversion through the bound's raw type turns the result into the variable
-            call = CodeBlock.of("($T) $L", types.asType(adaptation.resultBound(), objectDef, methodDef), call);
+            call = CodeBlock.of(CAST, types.asType(adaptation.resultBound(), objectDef, methodDef), call);
         }
         if (adaptation.resultType() != null) {
-            call = CodeBlock.of("($T) $L", types.asType(adaptation.resultType(), objectDef, methodDef), call);
+            call = CodeBlock.of(CAST, types.asType(adaptation.resultType(), objectDef, methodDef), call);
         }
         CodeBlock lambda = CodeBlock.of("($L) -> $L", CodeBlock.join(parameters, ", "), call);
         if (instance == null || !captured) {
@@ -148,7 +129,49 @@ final class JavaConversionRenderer {
                 : expressions.renderExpression(objectDef, methodDef, scope, instance), functional, receiver, lambda);
         // A lambda returning a raw type makes `map` an unchecked invocation, whose result is erased
         return adaptation.resultType() != null && names.isRawGeneric(adaptation.resultType())
-            ? CodeBlock.of("($T) $L", functional, read) : read;
+            ? CodeBlock.of(CAST, functional, read) : read;
+    }
+
+    private void addAdaptedArguments(@Nullable ObjectDef objectDef,
+                                     @Nullable MethodDef methodDef,
+                                     RenderScope lambdaScope,
+                                     OverrideResolver.ReferenceAdaptation adaptation,
+                                     List<CodeBlock> parameters,
+                                     List<CodeBlock> arguments) {
+        for (int i = 0; i < adaptation.argumentTypes().size(); i++) {
+            String name = lambdaScope.declareFresh("arg");
+            parameters.add(CodeBlock.of("$L", name));
+            TypeDef type = adaptation.argumentTypes().get(i);
+            CodeBlock.Builder argument = CodeBlock.builder();
+            if (type != null) {
+                argument.add(CAST_PREFIX, types.asType(type, objectDef, methodDef));
+                adaptation.argumentConversions().get(i).forEach(conversion -> argument.add(CAST_PREFIX, types.asType(conversion, objectDef)));
+            }
+            arguments.add(argument.add("$L", name).build());
+        }
+    }
+
+    /**
+     * @param receiver The name of the captured receiver, or {@code null} where the instance is written as is
+     */
+    private CodeBlock renderAdaptedCall(@Nullable ObjectDef objectDef,
+                                        @Nullable MethodDef methodDef,
+                                        RenderScope scope,
+                                        MethodReferenceExpression reference,
+                                        @Nullable ExpressionDef instance,
+                                        @Nullable String receiver,
+                                        List<CodeBlock> arguments) {
+        if (instance == null) {
+            ClassTypeDef owner = reference.owner();
+            return reference.isConstructor()
+                ? CodeBlock.of("new $L($L)", expressions.renderInstantiated(owner, objectDef, methodDef), CodeBlock.join(arguments, ", "))
+                // A static member is named by the raw type
+                : CodeBlock.of("$T.$L($L)", types.asType(TypeOperations.rawClass(owner), objectDef, methodDef),
+                reference.method().getName(), CodeBlock.join(arguments, ", "));
+        }
+        return CodeBlock.of("$L.$L($L)", receiver != null ? receiver
+            : expressions.renderExpression(objectDef, methodDef, scope, instance), reference.method().getName(),
+            CodeBlock.join(arguments, ", "));
     }
 
     /**
@@ -177,12 +200,7 @@ final class JavaConversionRenderer {
         boolean overloaded = hasApplicableOverload(owner, generationScope.definitionOf(owner, objectDef), method.getName(),
             parameterTypes, new ArrayList<>(passed), generationScope);
         InvokedSignature signature = conversionRules.declaredSignature(owner, method.getName(), parameterTypes);
-        Map<String, TypeDef> receiverArguments = new HashMap<>(OverrideResolver.receiverArguments(owner, objectDef, method, generationScope));
-        if (receiverArguments.isEmpty() && owner != null && !(owner instanceof ClassTypeDef.Parameterized)
-            && generationScope.definitionOf(owner, objectDef) == null) {
-            // A raw receiver of a compiled class erases the variables of the class
-            receiverArguments.putAll(OverloadRules.erasedClassVariables(owner));
-        }
+        Map<String, TypeDef> receiverArguments = boundReceiverArguments(objectDef, owner, method);
         List<@Nullable TypeDef> argumentTypes = new ArrayList<>();
         List<List<TypeDef>> conversions = new ArrayList<>();
         boolean converted = false;
@@ -190,9 +208,8 @@ final class JavaConversionRenderer {
             TypeDef bound = receiverBound(parameterTypes.get(i),
                 signature != null && signature.parameterTypes().size() == parameterTypes.size() ? signature.parameterTypes().get(i) : null,
                 method.getTypeVariables(), receiverArguments);
-            boolean cast = overloaded && pinsOverload(bound, passed.get(i), method.getTypeVariables())
-                || !bound.equals(parameterTypes.get(i)) && conversionRules.requiresImplicitInvocationCast(bound, passed.get(i));
-            argumentTypes.add(cast ? bound instanceof ClassTypeDef.Parameterized parameterized ? parameterized.rawType() : bound : null);
+            boolean cast = isArgumentCast(overloaded, bound, parameterTypes.get(i), passed.get(i), method);
+            argumentTypes.add(cast ? rawIfParameterized(bound) : null);
             conversions.add(List.of());
             converted |= cast;
         }
@@ -204,6 +221,25 @@ final class JavaConversionRenderer {
         boolean ambiguous = reference.isStatic() && owner != null && JavaSignatures.hasInstanceMethodForReference(owner, method);
         return converted || resultType != null || ambiguous
             ? new OverrideResolver.ReferenceAdaptation(argumentTypes, conversions, resultType, null) : null;
+    }
+
+    private Map<String, TypeDef> boundReceiverArguments(@Nullable ObjectDef objectDef, @Nullable ClassTypeDef owner, MethodDef method) {
+        Map<String, TypeDef> receiverArguments = new HashMap<>(OverrideResolver.receiverArguments(owner, objectDef, method, generationScope));
+        if (receiverArguments.isEmpty() && owner != null && !(owner instanceof ClassTypeDef.Parameterized)
+            && generationScope.definitionOf(owner, objectDef) == null) {
+            // A raw receiver of a compiled class erases the variables of the class
+            receiverArguments.putAll(OverloadRules.erasedClassVariables(owner));
+        }
+        return receiverArguments;
+    }
+
+    private boolean isArgumentCast(boolean overloaded, TypeDef bound, TypeDef parameterType, TypeDef passed, MethodDef method) {
+        return overloaded && pinsOverload(bound, passed, method.getTypeVariables())
+            || !bound.equals(parameterType) && conversionRules.requiresImplicitInvocationCast(bound, passed);
+    }
+
+    private static TypeDef rawIfParameterized(TypeDef type) {
+        return type instanceof ClassTypeDef.Parameterized parameterized ? parameterized.rawType() : type;
     }
 
     /**
@@ -259,25 +295,11 @@ final class JavaConversionRenderer {
             arguments.put(functional.getTypeParameters()[i].getName(), declared.typeArguments().get(i));
         }
         MethodDef implementation = lambda.implementation();
-        TypeDef result = targetType(method.getGenericReturnType(), arguments, false);
-        if (result != null && !TypeDef.VOID.equals(result)) {
-            List<ExpressionDef> returned = new ArrayList<>();
-            implementation.getStatements().forEach(statement -> returnedValues(statement, returned));
-            if (returned.stream().anyMatch(expression -> !JavaCasts.isNullLiteral(expression)
-                && conversionRules.requiresImplicitInvocationCast(result, conversionRules.sourceTypeOf(expression, implementation, objectDef)))) {
-                return true;
-            }
+        if (returnsOtherThanTarget(method, arguments, implementation, objectDef)) {
+            return true;
         }
         // A parameter the target types otherwise, passed where another overload takes it so
-        Map<String, TypeDef> parameters = new HashMap<>();
-        java.lang.reflect.Type[] genericParameters = method.getGenericParameterTypes();
-        for (int i = 0; i < genericParameters.length && i < implementation.getParameters().size(); i++) {
-            TypeDef target = targetType(genericParameters[i], arguments, true);
-            ParameterDef parameter = implementation.getParameters().get(i);
-            if (target != null && !target.equals(parameter.getType())) {
-                parameters.put(parameter.getName(), target);
-            }
-        }
+        Map<String, TypeDef> parameters = retypedParameters(method, arguments, implementation);
         if (parameters.isEmpty()) {
             return false;
         }
@@ -288,6 +310,32 @@ final class JavaConversionRenderer {
             }
         });
         return overloaded[0];
+    }
+
+    private boolean returnsOtherThanTarget(java.lang.reflect.Method method, Map<String, TypeDef> arguments,
+                                           MethodDef implementation, @Nullable ObjectDef objectDef) {
+        TypeDef result = targetType(method.getGenericReturnType(), arguments, false);
+        if (result == null || TypeDef.VOID.equals(result)) {
+            return false;
+        }
+        List<ExpressionDef> returned = new ArrayList<>();
+        implementation.getStatements().forEach(statement -> returnedValues(statement, returned));
+        return returned.stream().anyMatch(expression -> !JavaCasts.isNullLiteral(expression)
+            && conversionRules.requiresImplicitInvocationCast(result, conversionRules.sourceTypeOf(expression, implementation, objectDef)));
+    }
+
+    private static Map<String, TypeDef> retypedParameters(java.lang.reflect.Method method, Map<String, TypeDef> arguments,
+                                                          MethodDef implementation) {
+        Map<String, TypeDef> parameters = new HashMap<>();
+        java.lang.reflect.Type[] genericParameters = method.getGenericParameterTypes();
+        for (int i = 0; i < genericParameters.length && i < implementation.getParameters().size(); i++) {
+            TypeDef target = targetType(genericParameters[i], arguments, true);
+            ParameterDef parameter = implementation.getParameters().get(i);
+            if (target != null && !target.equals(parameter.getType())) {
+                parameters.put(parameter.getName(), target);
+            }
+        }
+        return parameters;
     }
 
     private boolean passesToAnotherOverload(ExpressionDef expression, Map<String, TypeDef> parameters,
@@ -482,19 +530,28 @@ final class JavaConversionRenderer {
             if (!targetPrimitive.equals(TypeDef.Primitive.CHAR) || source instanceof TypeDef.Primitive) {
                 return null;
             }
-            if (JavaLiterals.isBoxedValue(value)) {
-                // A boxed constant is written as its literal: `(char) 1000`
-                CodeBlock literal = expressions.renderExpression(objectDef, methodDef, scope, value);
-                return CodeBlock.of("($T) $L", types.asType(targetPrimitive, objectDef, methodDef),
-                    JavaPrecedence.of(value) < JavaPrecedence.POSTFIX ? expressions.addParentheses(literal) : literal);
-            }
-            // A number is no Character: the primitive it holds is converted to a char
-            CodeBlock operand = expressions.renderCastOperand(objectDef, methodDef, scope, value);
-            return CodeBlock.of("($T) $L.$LValue()", types.asType(targetPrimitive, objectDef, methodDef),
-                requiresReceiverParentheses(value) ? expressions.addParentheses(operand) : operand, sourcePrimitive.name());
+            return renderBoxToChar(objectDef, methodDef, scope, value, sourcePrimitive, targetPrimitive);
         }
         CodeBlock converted = expressions.renderExpression(objectDef, methodDef, scope, new ExpressionDef.Cast(targetPrimitive, value));
         return CodeBlock.of("$T.valueOf($L)", types.asType(targetPrimitive.wrapperType(), objectDef, methodDef), converted);
+    }
+
+    private CodeBlock renderBoxToChar(@Nullable ObjectDef objectDef,
+                                      @Nullable MethodDef methodDef,
+                                      RenderScope scope,
+                                      ExpressionDef value,
+                                      TypeDef.Primitive sourcePrimitive,
+                                      TypeDef.Primitive targetPrimitive) {
+        if (JavaLiterals.isBoxedValue(value)) {
+            // A boxed constant is written as its literal: `(char) 1000`
+            CodeBlock literal = expressions.renderExpression(objectDef, methodDef, scope, value);
+            return CodeBlock.of(CAST, types.asType(targetPrimitive, objectDef, methodDef),
+                JavaPrecedence.of(value) < JavaPrecedence.POSTFIX ? expressions.addParentheses(literal) : literal);
+        }
+        // A number is no Character: the primitive it holds is converted to a char
+        CodeBlock operand = expressions.renderCastOperand(objectDef, methodDef, scope, value);
+        return CodeBlock.of("($T) $L.$LValue()", types.asType(targetPrimitive, objectDef, methodDef),
+            requiresReceiverParentheses(value) ? expressions.addParentheses(operand) : operand, sourcePrimitive.name());
     }
 
     /**
@@ -523,7 +580,7 @@ final class JavaConversionRenderer {
         if (JavaLiterals.isBoxedValue(value)) {
             // A boxed constant is written as its literal, which is converted as the box would be: `(long) 5`
             CodeBlock literal = expressions.renderExpression(objectDef, methodDef, scope, value);
-            return CodeBlock.of("($T) $L", types.asType(primitive, objectDef, methodDef),
+            return CodeBlock.of(CAST, types.asType(primitive, objectDef, methodDef),
                 JavaPrecedence.of(value) < JavaPrecedence.POSTFIX ? expressions.addParentheses(literal) : literal);
         }
         CodeBlock operand = expressions.renderCastOperand(objectDef, methodDef, scope, value);

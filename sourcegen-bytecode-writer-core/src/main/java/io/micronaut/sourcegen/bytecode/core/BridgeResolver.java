@@ -200,9 +200,7 @@ public final class BridgeResolver {
                                               MethodDef methodDef,
                                               boolean written,
                                               EnclosingScope enclosingScope) {
-        if (objectDef == null || methodDef.isConstructor()
-            || methodDef.getModifiers().contains(Modifier.STATIC)
-            || methodDef.getModifiers().contains(Modifier.PRIVATE)) {
+        if (objectDef == null || !bridgeable(methodDef)) {
             return List.of();
         }
         // An inherited method is bridged to Object's by the class declaring it
@@ -243,16 +241,31 @@ public final class BridgeResolver {
             return true;
         });
         if (objectMethods) {
-            // Object is no supertype the hierarchy walks, but a covariant `clone()` overrides its method all the same,
-            // and javac bridges it - with the exceptions Object declares it with
-            for (java.lang.reflect.Method method : OBJECT_METHODS) {
-                BridgeMethod bridge = objectBridgeFor(declared, method);
-                if (bridge != null && !inheritedDescriptors.contains(descriptorOf(bridge)) && taken.add(descriptorOf(bridge))) {
-                    result.add(bridge);
-                }
-            }
+            addObjectBridges(declared, inheritedDescriptors, taken, result);
         }
         return result;
+    }
+
+    /**
+     * Object is no supertype the hierarchy walks, but a covariant `clone()` overrides its method all the same,
+     * and javac bridges it - with the exceptions Object declares it with.
+     */
+    private static void addObjectBridges(Declared declared,
+                                         Set<String> inheritedDescriptors,
+                                         Set<String> taken,
+                                         List<BridgeMethod> result) {
+        for (java.lang.reflect.Method method : OBJECT_METHODS) {
+            BridgeMethod bridge = objectBridgeFor(declared, method);
+            if (bridge != null && !inheritedDescriptors.contains(descriptorOf(bridge)) && taken.add(descriptorOf(bridge))) {
+                result.add(bridge);
+            }
+        }
+    }
+
+    private static boolean bridgeable(MethodDef methodDef) {
+        return !methodDef.isConstructor()
+            && !methodDef.getModifiers().contains(Modifier.STATIC)
+            && !methodDef.getModifiers().contains(Modifier.PRIVATE);
     }
 
     @Nullable
@@ -303,115 +316,151 @@ public final class BridgeResolver {
         }
         Set<String> declared = new HashSet<>();
         objectDef.getMethods().forEach(method -> declared.add(method.getName() + TypeUtils.getMethodDescriptor(objectDef, method, enclosingScope)));
-        Set<String> seen = new HashSet<>();
-        Set<String> existing = new HashSet<>();
-        List<MethodDef> inherited = new ArrayList<>();
-        // The class declaring each inherited method, and its variables, which the class's supertype binds
-        java.util.Map<MethodDef, java.util.Map.Entry<String, List<String>>> declarations = new java.util.IdentityHashMap<>();
-        // The generic shape of a compiled method, whose erased model has no variables left to bind
-        java.util.Map<MethodDef, MethodDef> generic = new java.util.IdentityHashMap<>();
+        InheritedMethods found = new InheritedMethods(objectDef, declared, enclosingScope);
         TypeDef superclass = classDef.getSuperclass();
         while (superclass != null) {
             TypeDef raw = TypeOperations.rawClassOf(superclass);
             if (raw instanceof ClassTypeDef.ClassDefType classDefType) {
                 ObjectDef parent = classDefType.objectDef();
-                for (MethodDef method : parent.getMethods()) {
-                    String key = method.getName() + TypeUtils.getMethodDescriptor(parent, method, enclosingScope);
-                    // A private method is not inherited, and does not stand for a bridge this class needs
-                    if (!method.getModifiers().contains(Modifier.PRIVATE)) {
-                        existing.add(key);
-                    }
-                    if (inheritable(method.getModifiers(), method.isConstructor()) && !declared.contains(key) && seen.add(key)) {
-                        // As the superclass declares it: its variables erase to their bounds there, not in this class
-                        MethodDef target = TypeUtils.inDeclaringScope(method, parent, objectDef);
-                        inherited.add(target);
-                        declarations.put(target, java.util.Map.entry(parent.getName(), variableNames(parent)));
-                    }
-                }
+                found.collectDefinition(parent);
                 superclass = parent instanceof ClassDef parentClass ? parentClass.getSuperclass() : null;
                 continue;
             }
             if (raw instanceof ClassTypeDef.ClassElementType elementType) {
-                // A class being compiled, which no class loader has: the compiler describes its methods
-                for (io.micronaut.inject.ast.MethodElement method : elementType.classElement()
-                    .getEnclosedElements(io.micronaut.inject.ast.ElementQuery.ALL_METHODS.onlyInstance())) {
-                    String key = method.getName() + java.util.Arrays.stream(method.getParameters())
-                        .map(parameter -> TypeUtils.elementDescriptor(parameter.getType()))
-                        .collect(Collectors.joining("", "(", ")")) + TypeUtils.elementDescriptor(method.getReturnType());
-                    if (!method.isPrivate()) {
-                        existing.add(key);
-                    }
-                    if ((method.isPublic() || method.isProtected()) && !method.isStatic()
-                        && !declared.contains(key) && seen.add(key)) {
-                        // With its checked exceptions, which the bridge declares too
-                        MethodDef target = MethodDef.builder(method).addThrows(java.util.Arrays.stream(method.getThrownTypes())
-                            .<TypeDef>map(thrown -> TypeDef.erasure(thrown)).toList()).build();
-                        inherited.add(target);
-                        // Its generic shape, which the erased model loses, and the class declaring it
-                        MethodDef.MethodDefBuilder shape = MethodDef.builder(method.getName())
-                            .returns(TypeDef.of(method.getGenericReturnType(), ignore -> null, false));
-                        io.micronaut.inject.ast.ParameterElement[] parameters = method.getParameters();
-                        for (int i = 0; i < parameters.length; i++) {
-                            shape.addParameter("p" + i, TypeDef.of(parameters[i].getGenericType(), ignore -> null, false));
-                        }
-                        method.getDeclaredTypeVariables().forEach(variable -> shape.addTypeVariable(TypeDef.variable(variable.getVariableName(),
-                            variable.getBounds().stream().map(bound -> TypeDef.of(bound, ignore -> null, false)).toList())));
-                        generic.put(target, shape.build());
-                        io.micronaut.inject.ast.ClassElement declaringType = method.getDeclaringType();
-                        declarations.put(target, java.util.Map.entry(declaringType.getName(), declaringType.getDeclaredGenericPlaceholders()
-                            .stream().map(io.micronaut.inject.ast.GenericPlaceholderElement::getVariableName).toList()));
-                    }
-                }
-                superclass = null;
-                continue;
-            }
-            Class<?> type = raw instanceof ClassTypeDef classTypeDef ? TypeLookup.reflective().loadClass(classTypeDef.getName()) : null;
-            for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
-                for (java.lang.reflect.Method method : current.getDeclaredMethods()) {
-                    String key = method.getName() + methodDescriptor(method);
-                    int modifiers = method.getModifiers();
-                    if (!java.lang.reflect.Modifier.isPrivate(modifiers)) {
-                        existing.add(key);
-                    }
-                    if (!method.isSynthetic() && !java.lang.reflect.Modifier.isStatic(modifiers)
-                        && (java.lang.reflect.Modifier.isPublic(modifiers) || java.lang.reflect.Modifier.isProtected(modifiers))
-                        && !declared.contains(key) && seen.add(key)) {
-                        // With its checked exceptions, which the bridge declares too
-                        MethodDef target = MethodDef.builder(method).addThrows(java.util.Arrays.stream(method.getExceptionTypes())
-                            .<TypeDef>map(TypeDef::of).toList()).build();
-                        inherited.add(target);
-                        MethodDef.MethodDefBuilder shape = MethodDef.builder(method.getName())
-                            .returns(TypeHierarchy.typeDefOf(method.getGenericReturnType()));
-                        java.lang.reflect.Type[] parameterTypes = method.getGenericParameterTypes();
-                        for (int i = 0; i < parameterTypes.length; i++) {
-                            shape.addParameter("p" + i, TypeHierarchy.typeDefOf(parameterTypes[i]));
-                        }
-                        java.util.Arrays.stream(method.getTypeParameters()).forEach(variable -> shape.addTypeVariable(
-                            TypeDef.variable(variable.getName(), java.util.Arrays.stream(variable.getBounds()).map(TypeHierarchy::typeDefOf).toList())));
-                        generic.put(target, shape.build());
-                        declarations.put(target, java.util.Map.entry(current.getName(), java.util.Arrays.stream(current.getTypeParameters())
-                            .map(java.lang.reflect.TypeVariable::getName).toList()));
-                    }
-                }
+                found.collectElement(elementType);
+            } else {
+                Class<?> type = raw instanceof ClassTypeDef classTypeDef ? TypeLookup.reflective().loadClass(classTypeDef.getName()) : null;
+                found.collectClasses(type);
             }
             superclass = null;
         }
         List<InheritedBridge> result = new ArrayList<>();
         Set<String> bridged = new HashSet<>(declared);
-        for (MethodDef method : inherited) {
+        for (MethodDef method : found.inherited) {
             String own = method.getName() + TypeUtils.getMethodDescriptor(objectDef, method, enclosingScope);
             // Matched as this class inherits it: `apply(T)` of a `NumericIdentity<Integer>` is its `apply(Integer)`,
             // which `Function<Integer, Integer>` needs a bridge to
-            MethodDef specialized = specialized(generic.getOrDefault(method, method), declarations.get(method), classDef.getSuperclass());
+            MethodDef specialized = specialized(found.generic.getOrDefault(method, method), found.declarations.get(method), classDef.getSuperclass());
             for (BridgeMethod bridge : resolve(objectDef, specialized, false, enclosingScope)) {
                 String key = method.getName() + descriptorOf(bridge);
                 // A bridge with the descriptor of the method it delegates to would call itself
-                if (!key.equals(own) && !existing.contains(key) && bridged.add(key)) {
+                if (!key.equals(own) && !found.existing.contains(key) && bridged.add(key)) {
                     result.add(new InheritedBridge(method, bridge));
                 }
             }
         }
         return result;
+    }
+
+    /**
+     * The methods a class inherits from its superclasses, collected along the superclass chain.
+     */
+    private static final class InheritedMethods {
+        private final ObjectDef objectDef;
+        private final Set<String> declared;
+        private final EnclosingScope enclosingScope;
+        private final Set<String> seen = new HashSet<>();
+        private final Set<String> existing = new HashSet<>();
+        private final List<MethodDef> inherited = new ArrayList<>();
+        // The class declaring each inherited method, and its variables, which the class's supertype binds
+        private final java.util.Map<MethodDef, java.util.Map.Entry<String, List<String>>> declarations = new java.util.IdentityHashMap<>();
+        // The generic shape of a compiled method, whose erased model has no variables left to bind
+        private final java.util.Map<MethodDef, MethodDef> generic = new java.util.IdentityHashMap<>();
+
+        private InheritedMethods(ObjectDef objectDef, Set<String> declared, EnclosingScope enclosingScope) {
+            this.objectDef = objectDef;
+            this.declared = declared;
+            this.enclosingScope = enclosingScope;
+        }
+
+        private void collectDefinition(ObjectDef parent) {
+            for (MethodDef method : parent.getMethods()) {
+                String key = method.getName() + TypeUtils.getMethodDescriptor(parent, method, enclosingScope);
+                // A private method is not inherited, and does not stand for a bridge this class needs
+                if (!method.getModifiers().contains(Modifier.PRIVATE)) {
+                    existing.add(key);
+                }
+                if (inheritable(method.getModifiers(), method.isConstructor()) && !declared.contains(key) && seen.add(key)) {
+                    // As the superclass declares it: its variables erase to their bounds there, not in this class
+                    MethodDef target = TypeUtils.inDeclaringScope(method, parent, objectDef);
+                    inherited.add(target);
+                    declarations.put(target, java.util.Map.entry(parent.getName(), variableNames(parent)));
+                }
+            }
+        }
+
+        private void collectElement(ClassTypeDef.ClassElementType elementType) {
+            // A class being compiled, which no class loader has: the compiler describes its methods
+            for (io.micronaut.inject.ast.MethodElement method : elementType.classElement()
+                .getEnclosedElements(io.micronaut.inject.ast.ElementQuery.ALL_METHODS.onlyInstance())) {
+                String key = method.getName() + java.util.Arrays.stream(method.getParameters())
+                    .map(parameter -> TypeUtils.elementDescriptor(parameter.getType()))
+                    .collect(Collectors.joining("", "(", ")")) + TypeUtils.elementDescriptor(method.getReturnType());
+                if (!method.isPrivate()) {
+                    existing.add(key);
+                }
+                if ((method.isPublic() || method.isProtected()) && !method.isStatic()
+                    && !declared.contains(key) && seen.add(key)) {
+                    addElementMethod(method);
+                }
+            }
+        }
+
+        private void addElementMethod(io.micronaut.inject.ast.MethodElement method) {
+            // With its checked exceptions, which the bridge declares too
+            MethodDef target = MethodDef.builder(method).addThrows(java.util.Arrays.stream(method.getThrownTypes())
+                .<TypeDef>map(thrown -> TypeDef.erasure(thrown)).toList()).build();
+            inherited.add(target);
+            // Its generic shape, which the erased model loses, and the class declaring it
+            MethodDef.MethodDefBuilder shape = MethodDef.builder(method.getName())
+                .returns(TypeDef.of(method.getGenericReturnType(), ignore -> null, false));
+            io.micronaut.inject.ast.ParameterElement[] parameters = method.getParameters();
+            for (int i = 0; i < parameters.length; i++) {
+                shape.addParameter("p" + i, TypeDef.of(parameters[i].getGenericType(), ignore -> null, false));
+            }
+            method.getDeclaredTypeVariables().forEach(variable -> shape.addTypeVariable(TypeDef.variable(variable.getVariableName(),
+                variable.getBounds().stream().map(bound -> TypeDef.of(bound, ignore -> null, false)).toList())));
+            generic.put(target, shape.build());
+            io.micronaut.inject.ast.ClassElement declaringType = method.getDeclaringType();
+            declarations.put(target, java.util.Map.entry(declaringType.getName(), declaringType.getDeclaredGenericPlaceholders()
+                .stream().map(io.micronaut.inject.ast.GenericPlaceholderElement::getVariableName).toList()));
+        }
+
+        private void collectClasses(@Nullable Class<?> type) {
+            for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
+                for (java.lang.reflect.Method method : current.getDeclaredMethods()) {
+                    collectReflective(current, method);
+                }
+            }
+        }
+
+        private void collectReflective(Class<?> current, java.lang.reflect.Method method) {
+            String key = method.getName() + methodDescriptor(method);
+            int modifiers = method.getModifiers();
+            if (!java.lang.reflect.Modifier.isPrivate(modifiers)) {
+                existing.add(key);
+            }
+            if (method.isSynthetic() || java.lang.reflect.Modifier.isStatic(modifiers)
+                || !(java.lang.reflect.Modifier.isPublic(modifiers) || java.lang.reflect.Modifier.isProtected(modifiers))
+                || declared.contains(key) || !seen.add(key)) {
+                return;
+            }
+            // With its checked exceptions, which the bridge declares too
+            MethodDef target = MethodDef.builder(method).addThrows(java.util.Arrays.stream(method.getExceptionTypes())
+                .<TypeDef>map(TypeDef::of).toList()).build();
+            inherited.add(target);
+            MethodDef.MethodDefBuilder shape = MethodDef.builder(method.getName())
+                .returns(TypeHierarchy.typeDefOf(method.getGenericReturnType()));
+            java.lang.reflect.Type[] parameterTypes = method.getGenericParameterTypes();
+            for (int i = 0; i < parameterTypes.length; i++) {
+                shape.addParameter("p" + i, TypeHierarchy.typeDefOf(parameterTypes[i]));
+            }
+            java.util.Arrays.stream(method.getTypeParameters()).forEach(variable -> shape.addTypeVariable(
+                TypeDef.variable(variable.getName(), java.util.Arrays.stream(variable.getBounds()).map(TypeHierarchy::typeDefOf).toList())));
+            generic.put(target, shape.build());
+            declarations.put(target, java.util.Map.entry(current.getName(), java.util.Arrays.stream(current.getTypeParameters())
+                .map(java.lang.reflect.TypeVariable::getName).toList()));
+        }
     }
 
     /**

@@ -57,37 +57,10 @@ final class JavaRecordConstructors {
         recordDef.getProperties().forEach(property -> components.add(property.getName()));
         // The call of the constructor of Record is the one of the canonical constructor
         List<StatementDef> body = statements.stream().filter(statement -> !JavaExceptionRules.isConstructorInvocation(statement)).toList();
-        int last = -1;
         Map<String, Integer> topLevel = new HashMap<>();
         Set<String> assigned = new HashSet<>();
         Set<String> nested = new HashSet<>();
-        for (int i = 0; i < body.size(); i++) {
-            StatementDef statement = body.get(i);
-            String component = componentOf(statement, components);
-            if (component != null) {
-                topLevel.merge(component, 1, Integer::sum);
-            }
-            List<String> all = new ArrayList<>();
-            JavaLambdaRules.forEachStatement(List.of(statement), child -> {
-                String name = componentOf(child, components);
-                if (name != null) {
-                    all.add(name);
-                }
-            });
-            if (component != null) {
-                // The statement itself, visited first
-                all.remove(component);
-            }
-            Set<String> inside = new HashSet<>(all);
-            nested.addAll(inside);
-            if (component != null || !inside.isEmpty()) {
-                last = i;
-                assigned.addAll(inside);
-                if (component != null) {
-                    assigned.add(component);
-                }
-            }
-        }
+        int last = scanAssignments(body, components, topLevel, assigned, nested);
         Map<String, String> locals = new LinkedHashMap<>();
         CodeBlock.Builder builder = CodeBlock.builder();
         for (PropertyDef property : recordDef.getProperties()) {
@@ -120,6 +93,47 @@ final class JavaRecordConstructors {
         }
         builder.addStatement("this($L)", CodeBlock.join(arguments, ", "));
         return builder.add(renderer.renderBlock(recordDef, constructor, scope, body.subList(last + 1, body.size()), true)).build();
+    }
+
+    /**
+     * Counts the top-level puts of each component, and collects the components assigned and those assigned nested.
+     *
+     * @return The index of the last statement assigning a component, or -1
+     */
+    private static int scanAssignments(List<StatementDef> body,
+                                       Set<String> components,
+                                       Map<String, Integer> topLevel,
+                                       Set<String> assigned,
+                                       Set<String> nested) {
+        int last = -1;
+        for (int i = 0; i < body.size(); i++) {
+            StatementDef statement = body.get(i);
+            String component = componentOf(statement, components);
+            if (component != null) {
+                topLevel.merge(component, 1, Integer::sum);
+            }
+            List<String> all = new ArrayList<>();
+            JavaLambdaRules.forEachStatement(List.of(statement), child -> {
+                String name = componentOf(child, components);
+                if (name != null) {
+                    all.add(name);
+                }
+            });
+            if (component != null) {
+                // The statement itself, visited first
+                all.remove(component);
+            }
+            Set<String> inside = new HashSet<>(all);
+            nested.addAll(inside);
+            if (component != null || !inside.isEmpty()) {
+                last = i;
+                assigned.addAll(inside);
+                if (component != null) {
+                    assigned.add(component);
+                }
+            }
+        }
+        return last;
     }
 
     /**

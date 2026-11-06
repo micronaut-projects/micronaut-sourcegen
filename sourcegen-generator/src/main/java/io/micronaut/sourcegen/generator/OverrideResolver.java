@@ -196,9 +196,8 @@ public final class OverrideResolver {
                                                        Map<ObjectDef, Optional<OverriddenMethod>> inherited) {
         // A definition reached again along another path of the hierarchy - an interface two supertypes extend -
         // inherits the method as it did the first time: each is walked once, which also ends a cycle
-        Optional<OverriddenMethod> known = inherited.get(objectDef);
-        if (known != null) {
-            return known.orElse(null);
+        if (inherited.containsKey(objectDef)) {
+            return inherited.getOrDefault(objectDef, Optional.empty()).orElse(null);
         }
         inherited.put(objectDef, Optional.empty());
         List<TypeDef> supertypes = new ArrayList<>();
@@ -261,38 +260,12 @@ public final class OverrideResolver {
             // Within the definition itself, its variables are in scope
             return emitted;
         }
-        // The variables of the calling method, and those of the calling definition outside a static method
-        Set<String> inScope = new HashSet<>();
-        if (caller != null) {
-            caller.getTypeVariables().forEach(variable -> inScope.add(variable.name()));
-        }
-        if (current != null && (caller == null || !caller.getModifiers().contains(Modifier.STATIC))) {
-            inScope.addAll(TypeHierarchy.declaring(current).getTypeParameters());
-            scope.enclosingVariables(current).forEach(variable -> inScope.add(variable.name()));
-        }
-        List<String> variables = TypeHierarchy.declaring(target).getTypeParameters();
-        Function<TypeDef, TypeDef> asSeen;
+        Set<String> inScope = variablesInScope(current, caller, scope);
         // A member of a parameterized type binds the variables of its enclosing types as well: `Outer<String>.Inner`
         Map<String, TypeDef> substitution = new HashMap<>();
-        if (owner != null) {
-            // The arguments of its own class are the parameterization's, which are bound below
-            ClassTypeDef ownerClass = owner instanceof ClassTypeDef.Parameterized parameterized ? parameterized.rawType() : owner;
-            TypeHierarchy.typeArguments(ownerClass, scope.hierarchyLookup())
-                .forEach((name, argument) -> substitution.put(name, asWritten(argument, inScope)));
-        }
-        if (owner instanceof ClassTypeDef.Parameterized parameterized) {
-            if (parameterized.typeArguments().size() != variables.size()) {
-                return null;
-            }
-            for (int i = 0; i < variables.size(); i++) {
-                substitution.put(variables.get(i), asWritten(parameterized.typeArguments().get(i), inScope));
-            }
-            asSeen = type -> TypeOperations.substitute(type, substitution);
-        } else if (!variables.isEmpty()) {
-            // The members of a raw type are erased
-            asSeen = TypeHierarchy.declaring(target)::erase;
-        } else {
-            asSeen = substitution.isEmpty() ? Function.identity() : type -> TypeOperations.substitute(type, substitution);
+        Function<TypeDef, TypeDef> asSeen = memberView(owner, target, scope, inScope, substitution);
+        if (asSeen == null) {
+            return null;
         }
         List<TypeDef> parameterTypes = emitted.parameterTypes().stream().map(asSeen).toList();
         TypeDef returnType = asSeen.apply(emitted.returnType());
@@ -311,6 +284,54 @@ public final class OverrideResolver {
             return null;
         }
         return new OverriddenMethod(parameterTypes, returnType);
+    }
+
+    /**
+     * The variables of the calling method, and those of the calling definition outside a static method.
+     */
+    private static Set<String> variablesInScope(@Nullable ObjectDef current, @Nullable MethodDef caller, GenerationScope scope) {
+        Set<String> inScope = new HashSet<>();
+        if (caller != null) {
+            caller.getTypeVariables().forEach(variable -> inScope.add(variable.name()));
+        }
+        if (current != null && (caller == null || !caller.getModifiers().contains(Modifier.STATIC))) {
+            inScope.addAll(TypeHierarchy.declaring(current).getTypeParameters());
+            scope.enclosingVariables(current).forEach(variable -> inScope.add(variable.name()));
+        }
+        return inScope;
+    }
+
+    /**
+     * How the members of the target are seen through the owner, filling the substitution of its type arguments.
+     *
+     * @return The mapping of the member types, or {@code null} where the owner has the wrong number of type arguments
+     */
+    @Nullable
+    private static Function<TypeDef, TypeDef> memberView(@Nullable ClassTypeDef owner,
+                                                         ObjectDef target,
+                                                         GenerationScope scope,
+                                                         Set<String> inScope,
+                                                         Map<String, TypeDef> substitution) {
+        List<String> variables = TypeHierarchy.declaring(target).getTypeParameters();
+        if (owner != null) {
+            // The arguments of its own class are the parameterization's, which are bound below
+            ClassTypeDef ownerClass = owner instanceof ClassTypeDef.Parameterized parameterized ? parameterized.rawType() : owner;
+            TypeHierarchy.typeArguments(ownerClass, scope.hierarchyLookup())
+                .forEach((name, argument) -> substitution.put(name, asWritten(argument, inScope)));
+        }
+        if (owner instanceof ClassTypeDef.Parameterized parameterized) {
+            if (parameterized.typeArguments().size() != variables.size()) {
+                return null;
+            }
+            for (int i = 0; i < variables.size(); i++) {
+                substitution.put(variables.get(i), asWritten(parameterized.typeArguments().get(i), inScope));
+            }
+            return type -> TypeOperations.substitute(type, substitution);
+        } else if (!variables.isEmpty()) {
+            // The members of a raw type are erased
+            return TypeHierarchy.declaring(target)::erase;
+        }
+        return substitution.isEmpty() ? Function.identity() : type -> TypeOperations.substitute(type, substitution);
     }
 
     /**
@@ -381,8 +402,31 @@ public final class OverrideResolver {
             argumentTypes.add(changed ? type : null);
             converted |= changed;
         }
-        TypeDef resultType = null;
         MethodDef functional = functionalMethod(reference.type());
+        TypeDef returned = TypeOperations.unwrap(emitted.returnType());
+        TypeDef resultType = resultCast(functionalReturnType(functional), returned);
+        // For Java, a value that is not an `Object` is cast to a raw type: a parameterization does not convert to
+        // another. Kotlin casts to the parameterization
+        List<List<TypeDef>> argumentConversions = new ArrayList<>(argumentTypes.size());
+        argumentTypes.forEach(type -> argumentConversions.add(List.of()));
+        if (!exact && functional != null && functional.getParameters().size() == argumentTypes.size()) {
+            for (int i = 0; i < argumentTypes.size(); i++) {
+                convertArgument(i, argumentTypes, argumentConversions, functional, current, caller, scope);
+            }
+        }
+        if (converted || resultType != null) {
+            return new ReferenceAdaptation(argumentTypes, argumentConversions,
+                resultType == null || exact ? resultType : TypeOperations.raw(resultType),
+                exact || resultType == null ? null : boundConversion(resultType, returned, current, caller, scope));
+        }
+        return null;
+    }
+
+    /**
+     * The type the method of a functional interface returns, where a reference result can be cast to it.
+     */
+    @Nullable
+    private static TypeDef functionalReturnType(@Nullable MethodDef functional) {
         TypeDef functionalReturn = functional == null ? null : TypeOperations.unwrap(functional.getReturnType());
         if (functionalReturn instanceof TypeDef.Wildcard wildcard) {
             // `Supplier<? extends String>` returns a String
@@ -393,43 +437,50 @@ public final class OverrideResolver {
             || functionalReturn instanceof TypeDef.Primitive || functionalReturn instanceof TypeDef.TypeVariable)) {
             functionalReturn = null;
         }
-        TypeDef returned = TypeOperations.unwrap(emitted.returnType());
+        return functionalReturn;
+    }
+
+    /**
+     * The type the result of a reference is cast to, or {@code null} where it is returned as is.
+     */
+    @Nullable
+    private static TypeDef resultCast(@Nullable TypeDef functionalReturn, TypeDef returned) {
         if (functionalReturn != null && !TypeDef.OBJECT.equals(functionalReturn) && !TypeDef.VOID.equals(functionalReturn)
             && !(returned instanceof TypeDef.Primitive) && !functionalReturn.equals(returned)) {
             // A primitive is unboxed from its wrapper, which the reference type is cast to
-            resultType = functionalReturn instanceof TypeDef.Primitive primitive ? primitive.wrapperType() : functionalReturn;
-        }
-        // For Java, a value that is not an `Object` is cast to a raw type: a parameterization does not convert to
-        // another. Kotlin casts to the parameterization
-        List<List<TypeDef>> argumentConversions = new ArrayList<>(argumentTypes.size());
-        argumentTypes.forEach(type -> argumentConversions.add(List.of()));
-        if (!exact && functional != null && functional.getParameters().size() == argumentTypes.size()) {
-            for (int i = 0; i < argumentTypes.size(); i++) {
-                TypeDef type = argumentTypes.get(i);
-                TypeDef passed = TypeOperations.unwrap(functional.getParameters().get(i).getType());
-                if (type != null && !TypeDef.OBJECT.equals(passed)) {
-                    argumentTypes.set(i, TypeOperations.raw(type));
-                    // A primitive is boxed before it is cast to a variable, through a bound the box does not convert to
-                    TypeDef boxed = passed instanceof TypeDef.Primitive primitive
-                        && TypeOperations.unwrap(type) instanceof TypeDef.TypeVariable ? primitive.wrapperType() : null;
-                    TypeDef bound = boundConversion(type, boxed == null ? passed : boxed, current, caller, scope);
-                    List<TypeDef> conversions = new ArrayList<>();
-                    if (bound != null) {
-                        conversions.add(bound);
-                    }
-                    if (boxed != null) {
-                        conversions.add(boxed);
-                    }
-                    argumentConversions.set(i, conversions);
-                }
-            }
-        }
-        if (converted || resultType != null) {
-            return new ReferenceAdaptation(argumentTypes, argumentConversions,
-                resultType == null || exact ? resultType : TypeOperations.raw(resultType),
-                exact || resultType == null ? null : boundConversion(resultType, returned, current, caller, scope));
+            return functionalReturn instanceof TypeDef.Primitive primitive ? primitive.wrapperType() : functionalReturn;
         }
         return null;
+    }
+
+    /**
+     * Makes the argument at an index raw, and records the conversions of the value passed to it.
+     */
+    private static void convertArgument(int i,
+                                        List<@Nullable TypeDef> argumentTypes,
+                                        List<List<TypeDef>> argumentConversions,
+                                        MethodDef functional,
+                                        @Nullable ObjectDef current,
+                                        @Nullable MethodDef caller,
+                                        GenerationScope scope) {
+        TypeDef type = argumentTypes.get(i);
+        TypeDef passed = TypeOperations.unwrap(functional.getParameters().get(i).getType());
+        if (type == null || TypeDef.OBJECT.equals(passed)) {
+            return;
+        }
+        argumentTypes.set(i, TypeOperations.raw(type));
+        // A primitive is boxed before it is cast to a variable, through a bound the box does not convert to
+        TypeDef boxed = passed instanceof TypeDef.Primitive primitive
+            && TypeOperations.unwrap(type) instanceof TypeDef.TypeVariable ? primitive.wrapperType() : null;
+        TypeDef bound = boundConversion(type, boxed == null ? passed : boxed, current, caller, scope);
+        List<TypeDef> conversions = new ArrayList<>();
+        if (bound != null) {
+            conversions.add(bound);
+        }
+        if (boxed != null) {
+            conversions.add(boxed);
+        }
+        argumentConversions.set(i, conversions);
     }
 
     /**
@@ -533,25 +584,33 @@ public final class OverrideResolver {
             definition = scope.definitionsLookup().definition(TypeOperations.rawClass(type).getName());
         }
         if (definition != null) {
-            if (declaredMethod(definition, callMethod) != null) {
-                return definition.getName();
-            }
-            // A hierarchy of any depth is followed: the visited types end a cycle
-            if (!visited.add(definition.getName())) {
-                return null;
-            }
-            for (TypeDef supertype : TypeHierarchy.superTypesOf(definition)) {
-                if (TypeOperations.unwrap(supertype) instanceof ClassTypeDef classType) {
-                    String found = declaringTypeName(classType, null, callMethod, visited, scope);
-                    if (found != null) {
-                        return found;
-                    }
-                }
-            }
-            return null;
+            return declaringDefinitionName(definition, callMethod, visited, scope);
         }
         Class<?> loaded = loaded(type);
         return loaded == null ? null : declaringClassName(loaded, callMethod, visited);
+    }
+
+    @Nullable
+    private static String declaringDefinitionName(ObjectDef definition,
+                                                  MethodDef callMethod,
+                                                  Set<String> visited,
+                                                  GenerationScope scope) {
+        if (declaredMethod(definition, callMethod) != null) {
+            return definition.getName();
+        }
+        // A hierarchy of any depth is followed: the visited types end a cycle
+        if (!visited.add(definition.getName())) {
+            return null;
+        }
+        for (TypeDef supertype : TypeHierarchy.superTypesOf(definition)) {
+            if (TypeOperations.unwrap(supertype) instanceof ClassTypeDef classType) {
+                String found = declaringTypeName(classType, null, callMethod, visited, scope);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     @Nullable
@@ -589,18 +648,28 @@ public final class OverrideResolver {
             return false;
         }
         if (callMethod.getTypeVariables().isEmpty()) {
-            // An erased call: the erased parameters name the method
-            for (int i = 0; i < method.getParameterCount(); i++) {
-                if (!TypeHierarchy.erasedName(TypeOperations.erase(callMethod.getParameters().get(i).getType()))
-                    .equals(TypeHierarchy.erasedName(TypeDef.of(method.getParameterTypes()[i])))) {
-                    return false;
-                }
-            }
-            return true;
+            return erasedParametersMatch(method, callMethod);
         }
         if (method.getTypeParameters().length != callMethod.getTypeVariables().size()) {
             return false;
         }
+        return typeVariableBoundsMatch(method, callMethod) && genericParametersMatch(method, callMethod);
+    }
+
+    /**
+     * An erased call: the erased parameters name the method.
+     */
+    private static boolean erasedParametersMatch(Method method, MethodDef callMethod) {
+        for (int i = 0; i < method.getParameterCount(); i++) {
+            if (!TypeHierarchy.erasedName(TypeOperations.erase(callMethod.getParameters().get(i).getType()))
+                .equals(TypeHierarchy.erasedName(TypeDef.of(method.getParameterTypes()[i])))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean typeVariableBoundsMatch(Method method, MethodDef callMethod) {
         for (int i = 0; i < method.getTypeParameters().length; i++) {
             // The variables are bounded alike: `<U extends Number>` is another method than `<U extends X>`
             TypeDef.TypeVariable invoked = callMethod.getTypeVariables().get(i);
@@ -611,6 +680,10 @@ public final class OverrideResolver {
                 return false;
             }
         }
+        return true;
+    }
+
+    private static boolean genericParametersMatch(Method method, MethodDef callMethod) {
         for (int i = 0; i < method.getParameterCount(); i++) {
             TypeDef invoked = TypeOperations.unwrap(callMethod.getParameters().get(i).getType());
             Type declared = method.getGenericParameterTypes()[i];
@@ -769,33 +842,41 @@ public final class OverrideResolver {
             return bounds.stream().anyMatch(bound -> isSubtype(bound, sup, hierarchy, depth + 1));
         }
         if (sub instanceof TypeDef.Array subArray) {
-            if (sup instanceof TypeDef.Array supArray) {
-                // Arrays of references are covariant: `String[]` is an `Object[]`, and `String[][]` is too
-                if (subArray.dimensions() == supArray.dimensions()) {
-                    TypeDef subComponent = subArray.componentType();
-                    TypeDef supComponent = supArray.componentType();
-                    return subComponent.isPrimitive() || supComponent.isPrimitive()
-                        ? subComponent.equals(supComponent)
-                        : isSubtype(subComponent, supComponent, hierarchy, depth + 1);
-                }
-                // The deeper elements are arrays, which are Objects, Cloneables and Serializables:
-                // `int[][]` is a `Cloneable[]`
-                return subArray.dimensions() > supArray.dimensions()
-                    && (TypeDef.OBJECT.equals(supArray.componentType())
-                    || supArray.componentType() instanceof ClassTypeDef supComponent
-                    && !(supComponent instanceof ClassTypeDef.Parameterized)
-                    && ARRAY_SUPERTYPES.contains(supComponent.getName()));
-            }
-            // Every array is Cloneable and Serializable as well
-            return sup instanceof ClassTypeDef supClass && !(sup instanceof ClassTypeDef.Parameterized)
-                && ARRAY_SUPERTYPES.contains(supClass.getName());
+            return isArraySubtype(subArray, sup, hierarchy, depth);
         }
         if (!(sub instanceof ClassTypeDef subClassType) || !(sup instanceof ClassTypeDef supClassType)) {
             // A variable as the supertype is only known to relate to itself
             return false;
         }
-        Class<?> subClass = loaded(sub);
-        Class<?> supClass = loaded(sup);
+        return isClassSubtype(subClassType, supClassType, hierarchy, depth);
+    }
+
+    private static boolean isArraySubtype(TypeDef.Array subArray, TypeDef sup, Hierarchy hierarchy, int depth) {
+        if (sup instanceof TypeDef.Array supArray) {
+            // Arrays of references are covariant: `String[]` is an `Object[]`, and `String[][]` is too
+            if (subArray.dimensions() == supArray.dimensions()) {
+                TypeDef subComponent = subArray.componentType();
+                TypeDef supComponent = supArray.componentType();
+                return subComponent.isPrimitive() || supComponent.isPrimitive()
+                    ? subComponent.equals(supComponent)
+                    : isSubtype(subComponent, supComponent, hierarchy, depth + 1);
+            }
+            // The deeper elements are arrays, which are Objects, Cloneables and Serializables:
+            // `int[][]` is a `Cloneable[]`
+            return subArray.dimensions() > supArray.dimensions()
+                && (TypeDef.OBJECT.equals(supArray.componentType())
+                || supArray.componentType() instanceof ClassTypeDef supComponent
+                && !(supComponent instanceof ClassTypeDef.Parameterized)
+                && ARRAY_SUPERTYPES.contains(supComponent.getName()));
+        }
+        // Every array is Cloneable and Serializable as well
+        return sup instanceof ClassTypeDef supClass && !(sup instanceof ClassTypeDef.Parameterized)
+            && ARRAY_SUPERTYPES.contains(supClass.getName());
+    }
+
+    private static boolean isClassSubtype(ClassTypeDef subClassType, ClassTypeDef supClassType, Hierarchy hierarchy, int depth) {
+        Class<?> subClass = loaded(subClassType);
+        Class<?> supClass = loaded(supClassType);
         if (subClass != null && supClass != null) {
             if (!supClass.isAssignableFrom(subClass)) {
                 return false;
@@ -812,7 +893,7 @@ public final class OverrideResolver {
         }
         // A type generated in this round cannot be loaded: its model or its element says what it inherits, and with
         // which type arguments - `Child extends Parent<String>` is a `Parent<String>`
-        String supName = TypeHierarchy.erasedName(sup);
+        String supName = TypeHierarchy.erasedName(supClassType);
         ClassTypeDef asSupertype = TypeOperations.asSupertype(subClassType, supName, hierarchy.lookup());
         if (asSupertype == null) {
             return false;
@@ -876,10 +957,7 @@ public final class OverrideResolver {
         if (type.isRaw()) {
             return null;
         }
-        if (!inherited.name().equals(methodDef.getName())
-            || inherited.overrideParameters().size() != declared.parameterErasures().size()
-            || inherited.finalMethod()
-            || (inherited.packagePrivate() && !type.getPackageName().equals(TypeHierarchy.packageOf(declared.objectDef())))) {
+        if (!mayOverride(declared, type, inherited)) {
             return null;
         }
         List<TypeDef.TypeVariable> inheritedVariables = inherited.typeVariables();
@@ -913,92 +991,200 @@ public final class OverrideResolver {
         Map<String, TypeDef> methodScope = TypeHierarchy.methodScope(own.resolved());
         Function<TypeDef, TypeDef> erasure = substituted -> type.erase(TypeOperations.substitute(substituted, methodScope),
             declared.declaringType());
-        List<TypeDef> substitutedParameters = new ArrayList<>(declarationErasure.size());
+        OverrideScope scope = new OverrideScope(declared, own, erasure, visibleVariables, withMethodVariables, genericReturn);
+        SubstitutedParameters substituted = substituteParameters(scope, parameters);
+        if (substituted == null) {
+            return null;
+        }
+        // For Java, only a substitution that changes an erasure - where the bytecode writer adds a bridge - needs the
+        // resolved parameters. A difference in type arguments alone (a raw `Set` for `Set<Class<?>>`) is a valid
+        // override as is, and keeping it leaves the body assigning to the declared, raw types. The declared method
+        // is taken with its variables renamed where they are
+        List<TypeDef> parameterTypes = new ArrayList<>(declarationErasure.size());
+        boolean changed = own.changes();
+        changed |= resolveParameters(scope, substituted, declarationErasure.size(), parameterTypes);
+        return resolveReturn(scope, type, inherited, parameterTypes, substituted.erasedSignature(), changed);
+    }
+
+    /**
+     * Whether the inherited method is one the declared method can override, by its name, arity and access.
+     */
+    private static boolean mayOverride(Declared declared,
+                                       TypeHierarchy.InheritedType type,
+                                       TypeHierarchy.InheritedMethod inherited) {
+        return inherited.name().equals(declared.methodDef().getName())
+            && inherited.overrideParameters().size() == declared.parameterErasures().size()
+            && !inherited.finalMethod()
+            && !(inherited.packagePrivate() && !type.getPackageName().equals(TypeHierarchy.packageOf(declared.objectDef())));
+    }
+
+    /**
+     * The inherited parameters with the variables the declared method overrides them with substituted.
+     *
+     * @return The parameters, or {@code null} where one keeps a variable the declared method cannot override it with
+     */
+    @Nullable
+    private static SubstitutedParameters substituteParameters(OverrideScope scope, List<TypeDef> parameters) {
+        List<TypeDef> substitutedParameters = new ArrayList<>(parameters.size());
         // A Java method overrides a generic one with the erasure of its signature, as a member of the supertype:
         // `String echo(String, Object)` for `<U> T echo(T, U)` of a `Parent<String>`. Kotlin cannot
         boolean erasedSignature = false;
         for (TypeDef parameter : parameters) {
-            TypeDef substituted = TypeOperations.substitute(parameter, own.references());
-            if (TypeOperations.containsVariableOtherThan(substituted, visibleVariables)) {
-                if (declared.exact() || TypeOperations.containsVariableOtherThan(substituted, withMethodVariables)) {
+            TypeDef substituted = TypeOperations.substitute(parameter, scope.own().references());
+            if (TypeOperations.containsVariableOtherThan(substituted, scope.visibleVariables())) {
+                if (scope.declared().exact() || TypeOperations.containsVariableOtherThan(substituted, scope.withMethodVariables())) {
                     return null;
                 }
                 erasedSignature = true;
             }
             substitutedParameters.add(substituted);
         }
-        // For Java, only a substitution that changes an erasure - where the bytecode writer adds a bridge - needs the
-        // resolved parameters. A difference in type arguments alone (a raw `Set` for `Set<Class<?>>`) is a valid
-        // override as is, and keeping it leaves the body assigning to the declared, raw types. The declared method
-        // is taken with its variables renamed where they are
-        boolean changed = own.changes();
-        List<TypeDef> parameterTypes = new ArrayList<>(declarationErasure.size());
-        for (int i = 0; i < declarationErasure.size(); i++) {
-            TypeDef substituted = substitutedParameters.get(i);
-            TypeDef declaredType = own.rename(methodDef.getParameters().get(i).getType());
-            TypeDef erased = erasure.apply(substituted);
+        return new SubstitutedParameters(substitutedParameters, erasedSignature);
+    }
+
+    /**
+     * Adds the parameter types of the override to the list.
+     *
+     * @return Whether a parameter changed
+     */
+    private static boolean resolveParameters(OverrideScope scope,
+                                             SubstitutedParameters substitutedParameters,
+                                             int count,
+                                             List<TypeDef> parameterTypes) {
+        Declared declared = scope.declared();
+        boolean changed = false;
+        for (int i = 0; i < count; i++) {
+            TypeDef substituted = substitutedParameters.types().get(i);
+            TypeDef declaredType = scope.own().rename(declared.methodDef().getParameters().get(i).getType());
+            TypeDef erased = scope.erasure().apply(substituted);
             boolean parameterChanged = declared.exact()
                 ? !sameType(substituted, declaredType)
                 : !TypeHierarchy.erasedName(erased).equals(declared.parameterErasures().get(i));
             changed |= parameterChanged;
             // A Java parameter of the same erasure is a valid override as declared - a raw `List` for `List<T>` -
             // and the body is written against it; only a changed erasure takes the substituted type
-            parameterTypes.add(!parameterChanged ? declaredType : erasedSignature ? erased : substituted);
+            TypeDef changedType = substitutedParameters.erasedSignature() ? erased : substituted;
+            parameterTypes.add(!parameterChanged ? declaredType : changedType);
         }
-        TypeDef returnType = own.rename(methodDef.getReturnType());
+        return changed;
+    }
+
+    @Nullable
+    private static OverriddenMethod resolveReturn(OverrideScope scope,
+                                                  TypeHierarchy.InheritedType type,
+                                                  TypeHierarchy.InheritedMethod inherited,
+                                                  List<TypeDef> parameterTypes,
+                                                  boolean erasedSignature,
+                                                  boolean changed) {
+        Declared declared = scope.declared();
+        OwnVariables own = scope.own();
+        TypeDef returnType = own.rename(declared.methodDef().getReturnType());
         String declarationReturnErasure = TypeHierarchy.erasedName(type.erase(inherited.returnType()));
         if (!declarationReturnErasure.equals(declared.returnErasure())
             && isNarrower(type.erase(inherited.returnType()), declarationReturnErasure, declared.returnErasure(),
                 declared.lookup())
             && !(TypeOperations.unwrap(inherited.returnType()) instanceof TypeDef.Primitive)) {
-            // A wider return cannot implement a narrower one, which another supertype may need erased: the narrower
-            // one is a constraint on the return type as well - `Integer get()` next to `A<Number>.get()`, or next to
-            // `A<T extends Number>.get()` erased to `Number get()`
-            TypeDef substituted = TypeOperations.substitute(genericReturn, own.references());
-            if (TypeOperations.containsVariableOtherThan(substituted, visibleVariables)) {
-                if (declared.exact() || TypeOperations.containsVariableOtherThan(substituted, withMethodVariables)) {
-                    return null;
-                }
-                // A variable of the inherited method, which the erased override does not declare, is written as its
-                // erasure: `Outer.Member make()` for `<X> Outer<X>.Member make()`
-                return own.method(parameterTypes, erasure.apply(substituted));
-            }
-            return own.method(parameterTypes, erasedSignature ? erasure.apply(substituted) : substituted);
+            return narrowedReturn(scope, parameterTypes, erasedSignature);
         }
         if (declarationReturnErasure.equals(declared.returnErasure())
             && !(TypeOperations.unwrap(returnType) instanceof TypeDef.Primitive)) {
-            TypeDef substituted = TypeOperations.substitute(genericReturn, own.references());
-            if (TypeOperations.containsVariableOtherThan(substituted, visibleVariables)) {
-                // A variable of the method is written as its erasure
-                TypeDef erased = erasure.apply(substituted);
-                if (!TypeHierarchy.erasedName(erased).equals(declarationReturnErasure)) {
-                    return own.method(parameterTypes, erased);
-                }
-                return changed ? own.method(parameterTypes, returnType) : null;
+            TypeDef substituted = TypeOperations.substitute(scope.genericReturn(), own.references());
+            if (TypeOperations.containsVariableOtherThan(substituted, scope.visibleVariables())) {
+                return erasedReturn(scope, parameterTypes, substituted, returnType, declarationReturnErasure, changed);
             }
-            // A return type has to be a subtype of the substituted one: the erasure of a type variable is not,
-            // even where it is the same class
-            boolean returnChanged = declared.exact()
-                ? !sameType(substituted, returnType)
-                : isVariableOrArrayOfVariable(substituted)
-                || !TypeHierarchy.erasedName(erasure.apply(substituted)).equals(declarationReturnErasure);
-            if (returnChanged) {
+            if (returnChanged(scope, substituted, returnType, declarationReturnErasure)) {
                 changed = true;
                 returnType = substituted;
             }
         }
         if (!declarationReturnErasure.equals(declared.returnErasure())
             && !(TypeOperations.unwrap(returnType) instanceof TypeDef.Primitive)) {
-            // A return between the erasure and the type argument - `CharSequence get()` of a `Supplier<String>` -
-            // implements the inherited method only as the type argument
-            TypeDef substituted = TypeOperations.substitute(genericReturn, own.references());
-            Hierarchy hierarchy = new Hierarchy(declared.lookup(), declared.declaringType());
-            if (!TypeOperations.containsVariableOtherThan(substituted, visibleVariables)
-                && !isSubtype(returnType, substituted, hierarchy, 0) && isSubtype(substituted, returnType, hierarchy, 0)) {
-                return own.method(parameterTypes, substituted);
+            OverriddenMethod typeArgumentReturn = typeArgumentReturn(scope, parameterTypes, returnType);
+            if (typeArgumentReturn != null) {
+                return typeArgumentReturn;
             }
         }
         return changed ? own.method(parameterTypes, returnType) : null;
+    }
+
+    /**
+     * A variable of the method is written as its erasure.
+     */
+    @Nullable
+    private static OverriddenMethod erasedReturn(OverrideScope scope,
+                                                 List<TypeDef> parameterTypes,
+                                                 TypeDef substituted,
+                                                 TypeDef returnType,
+                                                 String declarationReturnErasure,
+                                                 boolean changed) {
+        TypeDef erased = scope.erasure().apply(substituted);
+        if (!TypeHierarchy.erasedName(erased).equals(declarationReturnErasure)) {
+            return scope.own().method(parameterTypes, erased);
+        }
+        return changed ? scope.own().method(parameterTypes, returnType) : null;
+    }
+
+    /**
+     * A wider return cannot implement a narrower one, which another supertype may need erased: the narrower
+     * one is a constraint on the return type as well - `Integer get()` next to `A<Number>.get()`, or next to
+     * `A<T extends Number>.get()` erased to `Number get()`.
+     */
+    @Nullable
+    private static OverriddenMethod narrowedReturn(OverrideScope scope, List<TypeDef> parameterTypes, boolean erasedSignature) {
+        TypeDef substituted = TypeOperations.substitute(scope.genericReturn(), scope.own().references());
+        if (TypeOperations.containsVariableOtherThan(substituted, scope.visibleVariables())) {
+            if (scope.declared().exact() || TypeOperations.containsVariableOtherThan(substituted, scope.withMethodVariables())) {
+                return null;
+            }
+            // A variable of the inherited method, which the erased override does not declare, is written as its
+            // erasure: `Outer.Member make()` for `<X> Outer<X>.Member make()`
+            return scope.own().method(parameterTypes, scope.erasure().apply(substituted));
+        }
+        return scope.own().method(parameterTypes, erasedSignature ? scope.erasure().apply(substituted) : substituted);
+    }
+
+    /**
+     * A return type has to be a subtype of the substituted one: the erasure of a type variable is not,
+     * even where it is the same class.
+     */
+    private static boolean returnChanged(OverrideScope scope, TypeDef substituted, TypeDef returnType, String declarationReturnErasure) {
+        return scope.declared().exact()
+            ? !sameType(substituted, returnType)
+            : isVariableOrArrayOfVariable(substituted)
+            || !TypeHierarchy.erasedName(scope.erasure().apply(substituted)).equals(declarationReturnErasure);
+    }
+
+    /**
+     * A return between the erasure and the type argument - `CharSequence get()` of a `Supplier<String>` -
+     * implements the inherited method only as the type argument.
+     */
+    @Nullable
+    private static OverriddenMethod typeArgumentReturn(OverrideScope scope, List<TypeDef> parameterTypes, TypeDef returnType) {
+        Declared declared = scope.declared();
+        TypeDef substituted = TypeOperations.substitute(scope.genericReturn(), scope.own().references());
+        Hierarchy hierarchy = new Hierarchy(declared.lookup(), declared.declaringType());
+        if (!TypeOperations.containsVariableOtherThan(substituted, scope.visibleVariables())
+            && !isSubtype(returnType, substituted, hierarchy, 0) && isSubtype(substituted, returnType, hierarchy, 0)) {
+            return scope.own().method(parameterTypes, substituted);
+        }
+        return null;
+    }
+
+    /**
+     * What resolving an override against one inherited method works with.
+     */
+    private record OverrideScope(Declared declared,
+                                 OwnVariables own,
+                                 Function<TypeDef, TypeDef> erasure,
+                                 Set<String> visibleVariables,
+                                 Set<String> withMethodVariables,
+                                 TypeDef genericReturn) {
+    }
+
+    /**
+     * The inherited parameters substituted, and whether the override is the erasure of the inherited signature.
+     */
+    private record SubstitutedParameters(List<TypeDef> types, boolean erasedSignature) {
     }
 
     /**

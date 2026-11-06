@@ -45,6 +45,9 @@ import static io.micronaut.sourcegen.JavaSourceRules.containsSwitchExpression;
 @Internal
 final class JavaStatementRenderer {
 
+    private static final String CATCH = "} catch ($T $L) {\n";
+    private static final String ELSE = "} else {\n";
+
     private final JavaExpressionRenderer expressions;
     private final JavaTypeRenderer types;
     private final JavaConversionRules conversionRules;
@@ -117,7 +120,7 @@ final class JavaStatementRenderer {
         String throwable = enclosed.declareFresh("throwable");
         return builder.add("try {\n").indent()
             .add(renderBlock(objectDef, methodDef, enclosed, body, true))
-            .unindent().add("} catch ($T $L) {\n", Throwable.class, throwable).indent()
+            .unindent().add(CATCH, Throwable.class, throwable).indent()
             .addStatement("throw $L", sneakyThrow(CodeBlock.of("$L", throwable)))
             .unindent().add("}\n")
             .build();
@@ -194,7 +197,7 @@ final class JavaStatementRenderer {
             return CodeBlock.builder()
                 .add("if (").add(expressions.renderExpression(objectDef, methodDef, scope, conditional.condition())).add(") {\n")
                 .indent().add(renderVoid(objectDef, methodDef, scope, conditional.ifExpression())).unindent()
-                .add("} else {\n")
+                .add(ELSE)
                 .indent().add(renderVoid(objectDef, methodDef, scope, conditional.elseExpression())).unindent()
                 .add("}\n")
                 .build();
@@ -302,7 +305,7 @@ final class JavaStatementRenderer {
                 builder.indent();
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, ifStatement.statement(), tailPosition));
                 builder.unindent();
-                builder.add("} else {\n");
+                builder.add(ELSE);
                 builder.indent();
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, ifStatement.elseStatement(), tailPosition));
                 builder.unindent();
@@ -409,7 +412,7 @@ final class JavaStatementRenderer {
         int[] index = {0};
         for (StatementDef.Try.Catch aCatch : catches.subList(0, dispatched)) {
             RenderScope catchScope = scope.catching(objectDef, aCatch.statement(), index);
-            builder.add(CodeBlock.of("} catch ($T $L) {\n", types.asType(aCatch.exception(), objectDef), catchScope.caughtException()));
+            builder.add(CodeBlock.of(CATCH, types.asType(aCatch.exception(), objectDef), catchScope.caughtException()));
             builder.indent();
             builder.add(renderStatementCodeBlock(objectDef, methodDef, catchScope, aCatch.statement(), tailPosition));
             builder.unindent();
@@ -417,7 +420,7 @@ final class JavaStatementRenderer {
         if (dispatched < catches.size()) {
             RenderScope dispatchScope = scope.nested(null);
             String throwable = dispatchScope.declareFresh("throwable");
-            builder.add("} catch ($T $L) {\n", Throwable.class, throwable);
+            builder.add(CATCH, Throwable.class, throwable);
             builder.indent();
             for (StatementDef.Try.Catch aCatch : catches.subList(dispatched, catches.size())) {
                 RenderScope catchScope = dispatchScope.catching(objectDef, aCatch.statement(), index);
@@ -427,7 +430,7 @@ final class JavaStatementRenderer {
                 builder.add(renderStatementCodeBlock(objectDef, methodDef, catchScope, aCatch.statement(), tailPosition));
                 builder.unindent();
             }
-            builder.add("} else {\n");
+            builder.add(ELSE);
             builder.indent();
             builder.addStatement("throw $L", sneakyThrow(CodeBlock.of("$L", throwable)));
             builder.unindent();

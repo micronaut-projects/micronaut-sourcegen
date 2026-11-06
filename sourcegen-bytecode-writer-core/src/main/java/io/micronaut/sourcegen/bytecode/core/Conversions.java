@@ -188,23 +188,7 @@ public final class Conversions {
         boolean targetReference = isReference(targetDescriptor);
         List<Step> steps = new ArrayList<>(2);
         if (sourceReference && targetReference) {
-            TypeDef.Primitive sourceWrapped = WRAPPERS.get(sourceDescriptor);
-            TypeDef.Primitive targetWrapped = WRAPPERS.get(targetDescriptor);
-            if (sourceWrapped != null && targetWrapped != null && !sourceWrapped.equals(targetWrapped)
-                && isNumeric(sourceWrapped) && isNumeric(targetWrapped)) {
-                // The box of another number or char holds the value converted to its primitive: a Byte converted to
-                // a Long is unboxed, widened and boxed, as a byte converted to a Long is
-                Unboxing unboxing = unboxing(sourceDescriptor, targetWrapped);
-                steps.add(unboxing);
-                if (!unboxing.unboxed().equals(targetWrapped)) {
-                    steps.add(new PrimitiveConversion(unboxing.unboxed(), targetWrapped));
-                }
-                steps.add(new Box(targetWrapped));
-                return steps;
-            }
-            if (checkcasts.checks(source, sourceDescriptor, target, targetDescriptor, false)) {
-                steps.add(new CheckCast(targetDescriptor));
-            }
+            planReferences(source, sourceDescriptor, target, targetDescriptor, checkcasts, steps);
             return steps;
         }
         if (sourceDescriptor.equals(targetDescriptor) || isVoid(sourceDescriptor) || isVoid(targetDescriptor)) {
@@ -220,24 +204,57 @@ public final class Conversions {
                 steps.add(new PrimitiveConversion(unboxing.unboxed(), primitive));
             }
         } else {
-            TypeDef.Primitive primitive = TypeDef.primitive(sourceDescriptor);
-            TypeDef.Primitive boxed = WRAPPERS.get(targetDescriptor);
-            if (boxed != null && !boxed.equals(primitive) && isNumeric(boxed) && isNumeric(primitive)) {
-                // The wrapper of another primitive holds the value converted to that primitive, as the Java source
-                // converts a char branch of a conditional typed Integer to an int before boxing it
-                steps.add(new PrimitiveConversion(primitive, boxed));
-                steps.add(new Box(boxed));
-                return steps;
-            }
-            steps.add(new Box(primitive));
-            // The target may be narrower than the box, and may even be unrelated to it when the model casts through a
-            // shared dispatch signature; a checkcast keeps that verifiable
-            ClassTypeDef wrapper = primitive.wrapperType();
-            if (checkcasts.checks(wrapper, TypeUtils.getDescriptor(wrapper, null, EnclosingScope.NONE), target, targetDescriptor, true)) {
-                steps.add(new CheckCast(targetDescriptor));
-            }
+            planBoxing(sourceDescriptor, target, targetDescriptor, checkcasts, steps);
         }
         return steps;
+    }
+
+    private static void planReferences(TypeDef source,
+                                       String sourceDescriptor,
+                                       TypeDef target,
+                                       String targetDescriptor,
+                                       Checkcasts checkcasts,
+                                       List<Step> steps) {
+        TypeDef.Primitive sourceWrapped = WRAPPERS.get(sourceDescriptor);
+        TypeDef.Primitive targetWrapped = WRAPPERS.get(targetDescriptor);
+        if (sourceWrapped != null && targetWrapped != null && !sourceWrapped.equals(targetWrapped)
+            && isNumeric(sourceWrapped) && isNumeric(targetWrapped)) {
+            // The box of another number or char holds the value converted to its primitive: a Byte converted to
+            // a Long is unboxed, widened and boxed, as a byte converted to a Long is
+            Unboxing unboxing = unboxing(sourceDescriptor, targetWrapped);
+            steps.add(unboxing);
+            if (!unboxing.unboxed().equals(targetWrapped)) {
+                steps.add(new PrimitiveConversion(unboxing.unboxed(), targetWrapped));
+            }
+            steps.add(new Box(targetWrapped));
+            return;
+        }
+        if (checkcasts.checks(source, sourceDescriptor, target, targetDescriptor, false)) {
+            steps.add(new CheckCast(targetDescriptor));
+        }
+    }
+
+    private static void planBoxing(String sourceDescriptor,
+                                   TypeDef target,
+                                   String targetDescriptor,
+                                   Checkcasts checkcasts,
+                                   List<Step> steps) {
+        TypeDef.Primitive primitive = TypeDef.primitive(sourceDescriptor);
+        TypeDef.Primitive boxed = WRAPPERS.get(targetDescriptor);
+        if (boxed != null && !boxed.equals(primitive) && isNumeric(boxed) && isNumeric(primitive)) {
+            // The wrapper of another primitive holds the value converted to that primitive, as the Java source
+            // converts a char branch of a conditional typed Integer to an int before boxing it
+            steps.add(new PrimitiveConversion(primitive, boxed));
+            steps.add(new Box(boxed));
+            return;
+        }
+        steps.add(new Box(primitive));
+        // The target may be narrower than the box, and may even be unrelated to it when the model casts through a
+        // shared dispatch signature; a checkcast keeps that verifiable
+        ClassTypeDef wrapper = primitive.wrapperType();
+        if (checkcasts.checks(wrapper, TypeUtils.getDescriptor(wrapper, null, EnclosingScope.NONE), target, targetDescriptor, true)) {
+            steps.add(new CheckCast(targetDescriptor));
+        }
     }
 
     /**

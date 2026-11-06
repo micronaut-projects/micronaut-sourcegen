@@ -236,19 +236,7 @@ public final class DeclaredReturns {
             return;
         }
         for (PropertyDef property : definition.getProperties()) {
-            MethodDef accessor = null;
-            if (definition instanceof RecordDef) {
-                if (arity == 0 && property.getName().equals(name)) {
-                    accessor = MethodDef.builder(name).returns(property.getType()).build();
-                }
-            } else {
-                String capitalized = NameUtils.capitalize(property.getName());
-                if (arity == 0 && name.equals("get" + capitalized)) {
-                    accessor = MethodDef.builder(name).returns(property.getType()).build();
-                } else if (arity == 1 && name.equals("set" + capitalized)) {
-                    accessor = MethodDef.builder(name).addParameter(property.getName(), property.getType()).returns(TypeDef.VOID).build();
-                }
-            }
+            MethodDef accessor = accessorOf(definition, property, name, arity);
             if (accessor != null) {
                 String descriptor = TypeUtils.getMethodDescriptor(definition, accessor, enclosingScope);
                 int split = descriptor.indexOf(')') + 1;
@@ -261,6 +249,26 @@ public final class DeclaredReturns {
                 synthesized(superDefinition.objectDef(), name, arity, result, enclosingScope, visited);
             }
         }
+    }
+
+    /**
+     * The accessor a writer adds for a property of a generated definition, of the name and arity asked for.
+     */
+    @Nullable
+    private static MethodDef accessorOf(ObjectDef definition, PropertyDef property, String name, int arity) {
+        if (definition instanceof RecordDef) {
+            if (arity == 0 && property.getName().equals(name)) {
+                return MethodDef.builder(name).returns(property.getType()).build();
+            }
+            return null;
+        }
+        String capitalized = NameUtils.capitalize(property.getName());
+        if (arity == 0 && name.equals("get" + capitalized)) {
+            return MethodDef.builder(name).returns(property.getType()).build();
+        } else if (arity == 1 && name.equals("set" + capitalized)) {
+            return MethodDef.builder(name).addParameter(property.getName(), property.getType()).returns(TypeDef.VOID).build();
+        }
+        return null;
     }
 
     private static TypeDef typeOf(String descriptor) {

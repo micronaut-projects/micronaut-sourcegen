@@ -33,7 +33,6 @@ import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * An invocation as both bytecode writers emit it, planned once: the instruction and what it names - the owner, the
@@ -133,36 +132,51 @@ public record InvocationPlan(Kind kind,
         if (declared != null) {
             descriptor = withReturn(descriptor, declared, current, enclosingScope);
         }
-        Kind kind;
+        boolean receiverInterface = isInterface(receiverType, current);
+        Kind kind = instanceKind(isStatic, receiverType, superType, scoped, receiverInterface, current);
         TypeDef owner = receiverType;
-        boolean ownerInterface = isInterface(receiverType, current);
-        if (isStatic) {
-            kind = Kind.STATIC;
-        } else if (!(dispatched(receiverType, current) instanceof ClassTypeDef) && !(dispatched(receiverType, current) instanceof TypeDef.Array)) {
-            throw new IllegalStateException("Unsupported instance type: " + receiverType);
-        } else if (superType != null) {
-            kind = Kind.SPECIAL;
+        boolean ownerInterface = receiverInterface;
+        if (kind == Kind.SPECIAL && superType != null) {
             owner = superType;
             ownerInterface = superType.isInterface();
-        } else if (scoped.isConstructor()) {
-            kind = Kind.SPECIAL;
+        } else if (kind == Kind.SPECIAL) {
             ownerInterface = false;
-        } else if (ownerInterface) {
-            kind = Kind.INTERFACE;
-        } else {
-            kind = Kind.VIRTUAL;
         }
-        Receiver receiverAction;
-        if (isStatic) {
-            receiverAction = Receiver.DISCARD;
-        } else {
-            receiverAction = receiver.cast() ? Receiver.CAST : Receiver.KEEP;
-        }
+        Receiver receiverAction = receiverAction(isStatic, receiver);
         String cast = receiverAction == Receiver.CAST ? TypeUtils.getDescriptor(receiverType, current, enclosing, enclosingScope) : null;
         ResultConversion result = declared == null ? null : new ResultConversion(Conversions.convertedFrom(declared,
             invoked.getReturnType(), declaringType, scoped, descriptor, arguments, current), invoked.getReturnType());
         return new InvocationPlan(kind, TypeUtils.getDescriptor(owner, current, enclosing, enclosingScope), scoped.getName(), descriptor,
             ownerInterface, receiverAction, cast, scoped, arguments, result);
+    }
+
+    /**
+     * The instruction a call on a value is: static where the method is, special on {@code super} or for a
+     * constructor, and else interface or virtual as the receiver's type is.
+     */
+    private static Kind instanceKind(boolean isStatic,
+                                     TypeDef receiverType,
+                                     @Nullable ClassTypeDef superType,
+                                     MethodDef scoped,
+                                     boolean receiverInterface,
+                                     @Nullable ObjectDef current) {
+        if (isStatic) {
+            return Kind.STATIC;
+        } else if (!(dispatched(receiverType, current) instanceof ClassTypeDef) && !(dispatched(receiverType, current) instanceof TypeDef.Array)) {
+            throw new IllegalStateException("Unsupported instance type: " + receiverType);
+        } else if (superType != null || scoped.isConstructor()) {
+            return Kind.SPECIAL;
+        } else if (receiverInterface) {
+            return Kind.INTERFACE;
+        }
+        return Kind.VIRTUAL;
+    }
+
+    private static Receiver receiverAction(boolean isStatic, TypeUtils.Receiver receiver) {
+        if (isStatic) {
+            return Receiver.DISCARD;
+        }
+        return receiver.cast() ? Receiver.CAST : Receiver.KEEP;
     }
 
     /**
@@ -313,7 +327,8 @@ public record InvocationPlan(Kind kind,
             return ClassTypeDef.of(Record.class);
         }
         if (current instanceof ClassDef classDef) {
-            return Objects.requireNonNullElse(classDef.getSuperclass(), TypeDef.OBJECT);
+            ClassTypeDef superclass = classDef.getSuperclass();
+            return superclass != null ? superclass : TypeDef.OBJECT;
         }
         return TypeDef.OBJECT;
     }

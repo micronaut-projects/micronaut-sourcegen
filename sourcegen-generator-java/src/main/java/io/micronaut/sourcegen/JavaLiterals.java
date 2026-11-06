@@ -40,6 +40,8 @@ import java.util.stream.IntStream;
 @Internal
 final class JavaLiterals {
 
+    private static final String QUALIFIED_NAME = "$T.$L";
+
     private final JavaTypeRenderer types;
     private final JavaPoetNames names;
 
@@ -68,11 +70,11 @@ final class JavaLiterals {
         }
         if (value instanceof Enum<?> anEnum) {
             // Of the enum that declares it: a constant with a body is of an anonymous subclass
-            return CodeBlock.of("$T.$L", types.asType(TypeDef.of(anEnum.getDeclaringClass()), null), anEnum.name());
+            return CodeBlock.of(QUALIFIED_NAME, types.asType(TypeDef.of(anEnum.getDeclaringClass()), null), anEnum.name());
         }
         if (type instanceof ClassTypeDef classTypeDef && classTypeDef.isEnum()) {
             // A constant of a generated enum, named
-            return CodeBlock.of("$T.$L", types.asType(classTypeDef, null), value.toString());
+            return CodeBlock.of(QUALIFIED_NAME, types.asType(classTypeDef, null), value.toString());
         }
         TypeDef.Primitive primitive = literalPrimitive(constant);
         if (primitive != null) {
@@ -213,7 +215,7 @@ final class JavaLiterals {
             return CodeBlock.of("$T.NaN", box);
         }
         if (Double.isInfinite(value)) {
-            return CodeBlock.of("$T.$L", box, value > 0 ? "POSITIVE_INFINITY" : "NEGATIVE_INFINITY");
+            return CodeBlock.of(QUALIFIED_NAME, box, value > 0 ? "POSITIVE_INFINITY" : "NEGATIVE_INFINITY");
         }
         return finite;
     }

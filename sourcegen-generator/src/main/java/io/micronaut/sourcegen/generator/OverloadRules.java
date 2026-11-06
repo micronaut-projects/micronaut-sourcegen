@@ -203,29 +203,45 @@ public final class OverloadRules {
                 || !own && (method.isConstructor() || method.getModifiers().contains(Modifier.PRIVATE))) {
                 continue;
             }
-            // Resolved against the definitions of the file alone, not the elements of the context
-            OverrideResolver.OverriddenMethod overridden = OverrideResolver.resolve(definition, method, scope.withoutVisitorContext());
-            List<TypeDef> written = overridden != null && overridden.parameterTypes().size() == erasures.size()
-                ? overridden.parameterTypes() : method.getParameters().stream().map(ParameterDef::getType).toList();
-            if (!written.stream().map(TypeHierarchy::erasedName).toList().equals(erasures)) {
-                candidates.add(written.stream().<@Nullable Class<?>>map(OverloadRules::loaded).toList());
-            }
+            addGeneratedCandidate(definition, method, erasures, candidates, scope);
         }
         if (MethodDef.CONSTRUCTOR.equals(methodName)) {
             return;
         }
         for (TypeDef superType : TypeHierarchy.superTypesOf(definition)) {
-            if (!(TypeOperations.unwrap(superType) instanceof ClassTypeDef classType)) {
-                continue;
+            if (TypeOperations.unwrap(superType) instanceof ClassTypeDef classType) {
+                inheritedCandidates(classType, methodName, erasures, candidates, visited, scope);
             }
-            ObjectDef inherited = scope.definitionOf(classType);
-            if (inherited != null) {
-                generatedCandidates(inherited, methodName, erasures, candidates, visited, false, scope);
-            } else {
-                Class<?> type = loaded(classType);
-                if (type != null && visited.add(type.getName())) {
-                    compiledCandidates(type, methodName, erasures, candidates);
-                }
+        }
+    }
+
+    private static void addGeneratedCandidate(ObjectDef definition,
+                                              MethodDef method,
+                                              List<String> erasures,
+                                              List<List<@Nullable Class<?>>> candidates,
+                                              GenerationScope scope) {
+        // Resolved against the definitions of the file alone, not the elements of the context
+        OverrideResolver.OverriddenMethod overridden = OverrideResolver.resolve(definition, method, scope.withoutVisitorContext());
+        List<TypeDef> written = overridden != null && overridden.parameterTypes().size() == erasures.size()
+            ? overridden.parameterTypes() : method.getParameters().stream().map(ParameterDef::getType).toList();
+        if (!written.stream().map(TypeHierarchy::erasedName).toList().equals(erasures)) {
+            candidates.add(written.stream().<@Nullable Class<?>>map(OverloadRules::loaded).toList());
+        }
+    }
+
+    private static void inheritedCandidates(ClassTypeDef classType,
+                                            String methodName,
+                                            List<String> erasures,
+                                            List<List<@Nullable Class<?>>> candidates,
+                                            Set<String> visited,
+                                            GenerationScope scope) {
+        ObjectDef inherited = scope.definitionOf(classType);
+        if (inherited != null) {
+            generatedCandidates(inherited, methodName, erasures, candidates, visited, false, scope);
+        } else {
+            Class<?> type = loaded(classType);
+            if (type != null && visited.add(type.getName())) {
+                compiledCandidates(type, methodName, erasures, candidates);
             }
         }
     }

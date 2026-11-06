@@ -68,23 +68,7 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
         TypeDef unwrapped = TypeOperations.unwrap(type);
         TypeDef.TypeVariable declared = unwrapped instanceof TypeDef.TypeVariable variable ? variable(variable.name()) : null;
         if (declared != null) {
-            // A bound that is another variable of the method is that variable's bounds, along a chain of any length
-            List<TypeDef> bounds = new ArrayList<>();
-            for (TypeDef bound : TypeOperations.expandBounds(declared, own -> variable(own.name()))) {
-                TypeDef boundType = TypeOperations.unwrap(bound);
-                if (names(boundType)) {
-                    // `Comparable<T>` names a variable of the method, out of scope where it is called - and can name
-                    // one of the class too, which the receiver binds
-                    bounds.add(withoutOwnVariables(TypeOperations.unwrap(TypeOperations.substitute(boundType, receiverArguments))));
-                } else if (!TypeDef.OBJECT.equals(boundType)) {
-                    // A variable of the class is the type argument the receiver binds it to
-                    bounds.add(TypeOperations.containsVariableOtherThan(bound, Set.of())
-                        ? TypeOperations.unwrap(TypeOperations.substitute(bound, receiverArguments)) : bound);
-                }
-            }
-            if (bounds.isEmpty()) {
-                bounds.add(TypeDef.OBJECT);
-            }
+            List<TypeDef> bounds = boundsOf(declared);
             // A nullable occurrence of the variable - `T?` - is of nullable bounds
             return type.isNullable() ? bounds.stream().map(TypeDef::makeNullable).toList() : bounds;
         }
@@ -102,6 +86,27 @@ public record CalleeBounds(List<TypeDef.TypeVariable> variables,
             return List.of(TypeOperations.substitute(parameterized, firstBounds));
         }
         return List.of(type);
+    }
+
+    private List<TypeDef> boundsOf(TypeDef.TypeVariable declared) {
+        // A bound that is another variable of the method is that variable's bounds, along a chain of any length
+        List<TypeDef> bounds = new ArrayList<>();
+        for (TypeDef bound : TypeOperations.expandBounds(declared, own -> variable(own.name()))) {
+            TypeDef boundType = TypeOperations.unwrap(bound);
+            if (names(boundType)) {
+                // `Comparable<T>` names a variable of the method, out of scope where it is called - and can name
+                // one of the class too, which the receiver binds
+                bounds.add(withoutOwnVariables(TypeOperations.unwrap(TypeOperations.substitute(boundType, receiverArguments))));
+            } else if (!TypeDef.OBJECT.equals(boundType)) {
+                // A variable of the class is the type argument the receiver binds it to
+                bounds.add(TypeOperations.containsVariableOtherThan(bound, Set.of())
+                    ? TypeOperations.unwrap(TypeOperations.substitute(bound, receiverArguments)) : bound);
+            }
+        }
+        if (bounds.isEmpty()) {
+            bounds.add(TypeDef.OBJECT);
+        }
+        return bounds;
     }
 
     private TypeDef withoutOwnVariables(TypeDef bound) {

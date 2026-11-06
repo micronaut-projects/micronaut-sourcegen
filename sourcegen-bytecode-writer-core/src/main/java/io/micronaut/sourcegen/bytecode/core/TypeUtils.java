@@ -154,27 +154,35 @@ public final class TypeUtils {
             return bounds.isEmpty() ? OBJECT_DESCRIPTOR : descriptor(bounds.get(0), objectDef, methodDef, enclosing, visited);
         }
         if (typeDef instanceof TypeDef.TypeVariable variable) {
-            // A name alone: the method's variable, else the class's
-            boolean methodVariable = methodDef != null && methodDef.getTypeVariables().stream()
-                .anyMatch(declared -> declared.name().equals(variable.name()));
-            List<TypeDef> bounds = variable.bounds();
-            if (bounds.isEmpty()) {
-                TypeDef.TypeVariable declaration = methodVariable && methodDef != null ? methodDef.getTypeVariables().stream()
-                    .filter(declared -> declared.name().equals(variable.name())).findFirst().orElse(null)
-                    : findTypeVariable(objectDef, variable.name(), enclosing);
-                bounds = declaration == null ? List.of() : declaration.bounds();
-            }
-            // The erasure of a variable is that of its leftmost bound (JLS 4.6), `Object` for `T extends Object & Runnable`
-            String key = (methodVariable ? "method:" : "class:") + variable.name();
-            if (bounds.isEmpty() || !visited.add(key)) {
-                return OBJECT_DESCRIPTOR;
-            }
-            // A bound of a class variable is in the scope of the class, where a variable of the method is not
-            String erased = descriptor(bounds.get(0), objectDef, methodVariable ? methodDef : null, enclosing, visited);
-            visited.remove(key);
-            return erased;
+            return variableDescriptor(variable, objectDef, methodDef, enclosing, visited);
         }
         throw new IllegalStateException("Unsupported type: " + typeDef);
+    }
+
+    private static String variableDescriptor(TypeDef.TypeVariable variable,
+                                             @Nullable ObjectDef objectDef,
+                                             @Nullable MethodDef methodDef,
+                                             EnclosingScope enclosing,
+                                             Set<String> visited) {
+        // A name alone: the method's variable, else the class's
+        boolean methodVariable = methodDef != null && methodDef.getTypeVariables().stream()
+            .anyMatch(declared -> declared.name().equals(variable.name()));
+        List<TypeDef> bounds = variable.bounds();
+        if (bounds.isEmpty()) {
+            TypeDef.TypeVariable declaration = methodVariable && methodDef != null ? methodDef.getTypeVariables().stream()
+                .filter(declared -> declared.name().equals(variable.name())).findFirst().orElse(null)
+                : findTypeVariable(objectDef, variable.name(), enclosing);
+            bounds = declaration == null ? List.of() : declaration.bounds();
+        }
+        // The erasure of a variable is that of its leftmost bound (JLS 4.6), `Object` for `T extends Object & Runnable`
+        String key = (methodVariable ? "method:" : "class:") + variable.name();
+        if (bounds.isEmpty() || !visited.add(key)) {
+            return OBJECT_DESCRIPTOR;
+        }
+        // A bound of a class variable is in the scope of the class, where a variable of the method is not
+        String erased = descriptor(bounds.get(0), objectDef, methodVariable ? methodDef : null, enclosing, visited);
+        visited.remove(key);
+        return erased;
     }
 
     /**
@@ -439,19 +447,7 @@ public final class TypeUtils {
             return true;
         }
         if (fromDescriptor.charAt(0) == '[') {
-            if (toDescriptor.equals("Ljava/lang/Cloneable;") || toDescriptor.equals("Ljava/io/Serializable;")) {
-                return true;
-            }
-            if (toDescriptor.charAt(0) != '[') {
-                return false;
-            }
-            TypeDef component = from != null && TypeHierarchy.unwrap(from) instanceof TypeDef.Array array
-                ? (array.dimensions() > 1 ? TypeDef.array(array.componentType(), array.dimensions() - 1) : array.componentType())
-                : null;
-            String fromComponent = fromDescriptor.substring(1);
-            String toComponent = toDescriptor.substring(1);
-            return isReference(fromComponent) && isReference(toComponent) ? assignable(component, fromComponent, toComponent)
-                : fromComponent.equals(toComponent);
+            return arrayAssignable(from, fromDescriptor, toDescriptor);
         }
         if (toDescriptor.charAt(0) == '[') {
             return false;
@@ -470,6 +466,22 @@ public final class TypeUtils {
             fromClass = ClassTypeDef.of(loaded);
         }
         return TypeHierarchy.inherits(fromClass, toDescriptor.substring(1, toDescriptor.length() - 1).replace('/', '.'), null);
+    }
+
+    private static boolean arrayAssignable(@Nullable TypeDef from, String fromDescriptor, String toDescriptor) {
+        if (toDescriptor.equals("Ljava/lang/Cloneable;") || toDescriptor.equals("Ljava/io/Serializable;")) {
+            return true;
+        }
+        if (toDescriptor.charAt(0) != '[') {
+            return false;
+        }
+        TypeDef component = from != null && TypeHierarchy.unwrap(from) instanceof TypeDef.Array array
+            ? (array.dimensions() > 1 ? TypeDef.array(array.componentType(), array.dimensions() - 1) : array.componentType())
+            : null;
+        String fromComponent = fromDescriptor.substring(1);
+        String toComponent = toDescriptor.substring(1);
+        return isReference(fromComponent) && isReference(toComponent) ? assignable(component, fromComponent, toComponent)
+            : fromComponent.equals(toComponent);
     }
 
     /**

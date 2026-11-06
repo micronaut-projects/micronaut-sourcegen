@@ -110,6 +110,16 @@ final class JavaGenerics {
             || returned.typeArguments().size() != fixed.typeArguments().size()) {
             return null;
         }
+        Map<String, TypeDef> substitution = fixedVariables(signature, returned, fixed);
+        if (substitution.isEmpty()) {
+            return null;
+        }
+        return conflictsWithArguments(written, signature, substitution, objectDef, methodDef) ? fixed.rawType() : null;
+    }
+
+    private static Map<String, TypeDef> fixedVariables(Signature signature,
+                                                       ClassTypeDef.Parameterized returned,
+                                                       ClassTypeDef.Parameterized fixed) {
         Map<String, TypeDef> substitution = new HashMap<>();
         for (int i = 0; i < returned.typeArguments().size(); i++) {
             if (TypeHierarchy.unwrap(returned.typeArguments().get(i)) instanceof TypeDef.TypeVariable variable
@@ -118,9 +128,14 @@ final class JavaGenerics {
                 substitution.put(variable.name(), argument);
             }
         }
-        if (substitution.isEmpty()) {
-            return null;
-        }
+        return substitution;
+    }
+
+    private boolean conflictsWithArguments(ExpressionDef written,
+                                           Signature signature,
+                                           Map<String, TypeDef> substitution,
+                                           @Nullable ObjectDef objectDef,
+                                           @Nullable MethodDef methodDef) {
         List<? extends ExpressionDef> arguments = argumentsOf(written);
         for (int i = 0; i < arguments.size() && i < signature.parameterTypes().size(); i++) {
             TypeDef declared = signature.parameterTypes().get(i);
@@ -136,10 +151,10 @@ final class JavaGenerics {
             TypeDef source = conversions.sourceTypeOf(argument, methodDef, objectDef);
             TypeDef boxed = source instanceof TypeDef.Primitive primitive ? primitive.wrapperType() : source;
             if (conversions.requiresImplicitInvocationCast(expected, boxed) || conversions.requiresRawCast(expected, boxed)) {
-                return fixed.rawType();
+                return true;
             }
         }
-        return null;
+        return false;
     }
 
     private static List<? extends ExpressionDef> argumentsOf(ExpressionDef invocation) {

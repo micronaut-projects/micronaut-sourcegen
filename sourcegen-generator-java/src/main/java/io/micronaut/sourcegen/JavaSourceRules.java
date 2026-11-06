@@ -210,14 +210,9 @@ final class JavaSourceRules {
         boolean constructed = false;
         for (MethodDef method : objectDef.getMethods()) {
             List<StatementDef> statements = method.getStatements();
-            boolean[] inLambdas = {false};
-            JavaLambdaRules.forEachExpression(statements, expression -> {
-                if (expression instanceof ExpressionDef.Lambda lambda) {
-                    lambda.implementation().getStatements().forEach(statement -> inLambdas[0] |= assignmentOf(statement, assigns).possible());
-                }
-            });
+            boolean inLambdas = assignedInLambdas(statements, assigns);
             Assignment assignment = assignmentOf(new StatementDef.Multi(statements), assigns);
-            if (inLambdas[0]) {
+            if (inLambdas) {
                 return false;
             }
             if (!method.isConstructor()) {
@@ -234,6 +229,16 @@ final class JavaSourceRules {
             }
         }
         return constructed;
+    }
+
+    private static boolean assignedInLambdas(List<StatementDef> statements, Predicate<StatementDef> assigns) {
+        boolean[] inLambdas = {false};
+        JavaLambdaRules.forEachExpression(statements, expression -> {
+            if (expression instanceof ExpressionDef.Lambda lambda) {
+                lambda.implementation().getStatements().forEach(statement -> inLambdas[0] |= assignmentOf(statement, assigns).possible());
+            }
+        });
+        return inLambdas[0];
     }
 
     /**
@@ -277,18 +282,7 @@ final class JavaSourceRules {
             case StatementDef.Throw aThrow -> Assignment.VACUOUS;
             // The value is evaluated first: a block of a switch expression in it can assign the field too
             case StatementDef matched when assigns.test(matched) -> sequence(nestedAssignment(matched, assigns), Assignment.ONCE);
-            case StatementDef.Multi multi -> {
-                boolean definite = false;
-                boolean possible = false;
-                boolean repeatable = false;
-                for (StatementDef child : multi.statements()) {
-                    Assignment assignment = assignmentOf(child, assigns);
-                    repeatable |= assignment.repeatable() || (possible && assignment.possible());
-                    definite |= assignment.definite();
-                    possible |= assignment.possible();
-                }
-                yield new Assignment(definite, possible, repeatable);
-            }
+            case StatementDef.Multi multi -> multiAssignment(multi, assigns);
             case StatementDef.If anIf -> {
                 Assignment assignment = assignmentOf(anIf.statement(), assigns);
                 yield new Assignment(false, assignment.possible(), assignment.repeatable());
@@ -300,46 +294,63 @@ final class JavaSourceRules {
                 yield new Assignment(then.definite() && otherwise.definite(), then.possible() || otherwise.possible(),
                     then.repeatable() || otherwise.repeatable());
             }
-            case StatementDef.Switch aSwitch -> {
-                boolean definite = aSwitch.defaultCase() != null
-                    && assignmentOf(aSwitch.defaultCase(), assigns).definite();
-                boolean possible = assignmentOf(aSwitch.defaultCase(), assigns).possible();
-                boolean repeatable = assignmentOf(aSwitch.defaultCase(), assigns).repeatable();
-                for (StatementDef aCase : aSwitch.cases().values()) {
-                    Assignment assignment = assignmentOf(aCase, assigns);
-                    definite &= assignment.definite();
-                    possible |= assignment.possible();
-                    repeatable |= assignment.repeatable();
-                }
-                yield new Assignment(definite, possible, repeatable);
-            }
+            case StatementDef.Switch aSwitch -> switchAssignment(aSwitch, assigns);
             case StatementDef.While aWhile -> {
                 // An iteration could assign what the one before it did
                 Assignment assignment = assignmentOf(aWhile.statement(), assigns);
                 yield new Assignment(false, assignment.possible(), assignment.possible() || assignment.repeatable());
             }
             case StatementDef.Synchronized aSynchronized -> assignmentOf(aSynchronized.statement(), assigns);
-            case StatementDef.Try aTry -> {
-                Assignment body = assignmentOf(aTry.statement(), assigns);
-                Assignment aFinally = assignmentOf(aTry.finallyStatement(), assigns);
-                boolean catchesPossible = false;
-                boolean catchesDefinite = true;
-                boolean repeatable = body.repeatable() || aFinally.repeatable();
-                for (StatementDef.Try.Catch aCatch : aTry.catches()) {
-                    Assignment assignment = assignmentOf(aCatch.statement(), assigns);
-                    catchesPossible |= assignment.possible();
-                    catchesDefinite &= assignment.definite();
-                    repeatable |= assignment.repeatable();
-                }
-                // A path through the body, or through a catch, may have assigned the field before reaching the
-                // next one, which is what Java reports as possibly already assigned
-                repeatable |= (body.possible() || catchesPossible) && aFinally.possible()
-                    || body.possible() && catchesPossible;
-                boolean definite = aFinally.definite() || (body.definite() && catchesDefinite);
-                yield new Assignment(definite, body.possible() || catchesPossible || aFinally.possible(), repeatable);
-            }
+            case StatementDef.Try aTry -> tryAssignment(aTry, assigns);
             default -> nestedAssignment(statement, assigns);
         };
+    }
+
+    private static Assignment multiAssignment(StatementDef.Multi multi, Predicate<StatementDef> assigns) {
+        boolean definite = false;
+        boolean possible = false;
+        boolean repeatable = false;
+        for (StatementDef child : multi.statements()) {
+            Assignment assignment = assignmentOf(child, assigns);
+            repeatable |= assignment.repeatable() || (possible && assignment.possible());
+            definite |= assignment.definite();
+            possible |= assignment.possible();
+        }
+        return new Assignment(definite, possible, repeatable);
+    }
+
+    private static Assignment switchAssignment(StatementDef.Switch aSwitch, Predicate<StatementDef> assigns) {
+        boolean definite = aSwitch.defaultCase() != null
+            && assignmentOf(aSwitch.defaultCase(), assigns).definite();
+        boolean possible = assignmentOf(aSwitch.defaultCase(), assigns).possible();
+        boolean repeatable = assignmentOf(aSwitch.defaultCase(), assigns).repeatable();
+        for (StatementDef aCase : aSwitch.cases().values()) {
+            Assignment assignment = assignmentOf(aCase, assigns);
+            definite &= assignment.definite();
+            possible |= assignment.possible();
+            repeatable |= assignment.repeatable();
+        }
+        return new Assignment(definite, possible, repeatable);
+    }
+
+    private static Assignment tryAssignment(StatementDef.Try aTry, Predicate<StatementDef> assigns) {
+        Assignment body = assignmentOf(aTry.statement(), assigns);
+        Assignment aFinally = assignmentOf(aTry.finallyStatement(), assigns);
+        boolean catchesPossible = false;
+        boolean catchesDefinite = true;
+        boolean repeatable = body.repeatable() || aFinally.repeatable();
+        for (StatementDef.Try.Catch aCatch : aTry.catches()) {
+            Assignment assignment = assignmentOf(aCatch.statement(), assigns);
+            catchesPossible |= assignment.possible();
+            catchesDefinite &= assignment.definite();
+            repeatable |= assignment.repeatable();
+        }
+        // A path through the body, or through a catch, may have assigned the field before reaching the
+        // next one, which is what Java reports as possibly already assigned
+        repeatable |= (body.possible() || catchesPossible) && aFinally.possible()
+            || body.possible() && catchesPossible;
+        boolean definite = aFinally.definite() || (body.definite() && catchesDefinite);
+        return new Assignment(definite, body.possible() || catchesPossible || aFinally.possible(), repeatable);
     }
 
     /**
@@ -397,39 +408,23 @@ final class JavaSourceRules {
                 || constant.value() instanceof Character || constant.value() instanceof String ? constant.value() : null;
             // As the cast is written: of nested casts only the last one, none that the source drops, and one to a
             // primitive converts a constant expression, where a boxing cast, `(Boolean) true`, makes none
-            case ExpressionDef.Cast cast -> {
-                ExpressionDef operand = JavaCasts.collapseNestedCasts(cast.expressionDef());
-                yield JavaCasts.dropsCast(cast, operand, JavaCasts.CastContext.DEFAULT) ? constantValue(operand)
-                    : cast.type() instanceof TypeDef.Primitive primitive ? converted(constantValue(operand), primitive) : null;
-            }
+            case ExpressionDef.Cast cast -> castValue(cast);
             // An operation of bytes or shorts, and a negated char, is written narrowed to its type
             case ExpressionDef.MathBinaryOperation math -> narrowedConstant(math,
                 computed(math.opType(), constantValue(math.left()), constantValue(math.right())));
             case ExpressionDef.MathUnaryOperation negate -> narrowedConstant(negate, negated(constantValue(negate.expression())));
             // A condition in a cast is written without it
-            case ExpressionDef.IsTrue isTrue -> JavaCasts.unwrapCasts(isTrue.expression()) instanceof ExpressionDef.ConditionExpressionDef condition
-                ? constantValue(condition) : constantValue(isTrue.expression());
-            case ExpressionDef.IsFalse isFalse -> (JavaCasts.unwrapCasts(isFalse.expression()) instanceof ExpressionDef.ConditionExpressionDef condition
-                ? constantValue(condition) : constantValue(isFalse.expression())) instanceof Boolean value ? !value : null;
+            case ExpressionDef.IsTrue isTrue -> conditionValue(isTrue.expression());
+            case ExpressionDef.IsFalse isFalse -> conditionValue(isFalse.expression()) instanceof Boolean value ? !value : null;
             // A conditional of a primitive or a String type, of constants
-            case ExpressionDef.IfElse conditional when conditional.type().isPrimitive() || TypeDef.STRING.equals(conditional.type()) -> {
-                Object then = constantValue(conditional.ifExpression());
-                Object otherwise = constantValue(conditional.elseExpression());
-                yield constantValue(conditional.condition()) instanceof Boolean condition && then != null && otherwise != null
-                    ? (condition ? then : otherwise) : null;
-            }
+            case ExpressionDef.IfElse conditional when conditional.type().isPrimitive() || TypeDef.STRING.equals(conditional.type()) ->
+                conditionalValue(conditional);
             case ExpressionDef.StringConcatenation concat when TypeDef.STRING.equals(concat.left().type())
-                || TypeDef.STRING.equals(concat.right().type()) -> {
-                Object left = constantValue(concat.left());
-                Object right = constantValue(concat.right());
-                yield left != null && right != null ? String.valueOf(left) + right : null;
-            }
+                || TypeDef.STRING.equals(concat.right().type()) -> concatenatedValue(concat);
             // A qualified name of a constant variable
             case VariableDef.StaticField field -> fieldValue(field);
-            case ExpressionDef.And and -> constantValue(and.left()) instanceof Boolean left
-                && constantValue(and.right()) instanceof Boolean right ? left && right : null;
-            case ExpressionDef.Or or -> constantValue(or.left()) instanceof Boolean left
-                && constantValue(or.right()) instanceof Boolean right ? left || right : null;
+            case ExpressionDef.And and -> andValue(and);
+            case ExpressionDef.Or or -> orValue(or);
             case ExpressionDef.ComparisonOperation comparison -> compared(comparison.opType(),
                 comparison.left(), comparison.right());
             case ExpressionDef.EqualsReferentially equals -> referentiallyCompared(ExpressionDef.ComparisonOperation.OpType.EQUAL_TO,
@@ -443,6 +438,46 @@ final class JavaSourceRules {
                 notEquals.instance(), notEquals.other());
             default -> null;
         };
+    }
+
+    @Nullable
+    private Object castValue(ExpressionDef.Cast cast) {
+        ExpressionDef operand = JavaCasts.collapseNestedCasts(cast.expressionDef());
+        return JavaCasts.dropsCast(cast, operand, JavaCasts.CastContext.DEFAULT) ? constantValue(operand)
+            : cast.type() instanceof TypeDef.Primitive primitive ? converted(constantValue(operand), primitive) : null;
+    }
+
+    @Nullable
+    private Object conditionValue(ExpressionDef expression) {
+        return JavaCasts.unwrapCasts(expression) instanceof ExpressionDef.ConditionExpressionDef condition
+            ? constantValue(condition) : constantValue(expression);
+    }
+
+    @Nullable
+    private Object conditionalValue(ExpressionDef.IfElse conditional) {
+        Object then = constantValue(conditional.ifExpression());
+        Object otherwise = constantValue(conditional.elseExpression());
+        return constantValue(conditional.condition()) instanceof Boolean condition && then != null && otherwise != null
+            ? (condition ? then : otherwise) : null;
+    }
+
+    @Nullable
+    private Object concatenatedValue(ExpressionDef.StringConcatenation concat) {
+        Object left = constantValue(concat.left());
+        Object right = constantValue(concat.right());
+        return left != null && right != null ? String.valueOf(left) + right : null;
+    }
+
+    @Nullable
+    private Object andValue(ExpressionDef.And and) {
+        return constantValue(and.left()) instanceof Boolean left
+            && constantValue(and.right()) instanceof Boolean right ? left && right : null;
+    }
+
+    @Nullable
+    private Object orValue(ExpressionDef.Or or) {
+        return constantValue(or.left()) instanceof Boolean left
+            && constantValue(or.right()) instanceof Boolean right ? left || right : null;
     }
 
     @Nullable
@@ -512,18 +547,7 @@ final class JavaSourceRules {
             return null;
         }
         if (left instanceof Double || right instanceof Double || left instanceof Float || right instanceof Float) {
-            boolean single = !(left instanceof Double || right instanceof Double);
-            double l = single ? floatOf(left) : doubleOf(left);
-            double r = single ? floatOf(right) : doubleOf(right);
-            Double result = switch (op) {
-                case ADDITION -> l + r;
-                case SUBTRACTION -> l - r;
-                case MULTIPLICATION -> l * r;
-                case DIVISION -> l / r;
-                case MODULUS -> l % r;
-                default -> null;
-            };
-            return result == null ? null : single ? (Object) (float) (double) result : result;
+            return computedFloating(op, left, right);
         }
         // A shift has the type of its promoted left operand alone
         boolean shift = op == ExpressionDef.MathBinaryOperation.OpType.BITWISE_LEFT_SHIFT
@@ -535,23 +559,42 @@ final class JavaSourceRules {
         if ((op == ExpressionDef.MathBinaryOperation.OpType.DIVISION || op == ExpressionDef.MathBinaryOperation.OpType.MODULUS) && r == 0) {
             return null;
         }
-        if (!wide) {
-            int a = (int) l;
-            int b = (int) r;
-            return switch (op) {
-                case ADDITION -> a + b;
-                case SUBTRACTION -> a - b;
-                case MULTIPLICATION -> a * b;
-                case DIVISION -> a / b;
-                case MODULUS -> a % b;
-                case BITWISE_AND -> a & b;
-                case BITWISE_OR -> a | b;
-                case BITWISE_XOR -> a ^ b;
-                case BITWISE_LEFT_SHIFT -> a << b;
-                case BITWISE_RIGHT_SHIFT -> a >> b;
-                case BITWISE_UNSIGNED_RIGHT_SHIFT -> a >>> b;
-            };
-        }
+        return wide ? computedLong(op, l, r) : computedInt(op, (int) l, (int) r);
+    }
+
+    @Nullable
+    private static Object computedFloating(ExpressionDef.MathBinaryOperation.OpType op, Object left, Object right) {
+        boolean single = !(left instanceof Double || right instanceof Double);
+        double l = single ? floatOf(left) : doubleOf(left);
+        double r = single ? floatOf(right) : doubleOf(right);
+        Double result = switch (op) {
+            case ADDITION -> l + r;
+            case SUBTRACTION -> l - r;
+            case MULTIPLICATION -> l * r;
+            case DIVISION -> l / r;
+            case MODULUS -> l % r;
+            default -> null;
+        };
+        return result == null ? null : single ? (Object) (float) (double) result : result;
+    }
+
+    private static Object computedInt(ExpressionDef.MathBinaryOperation.OpType op, int a, int b) {
+        return switch (op) {
+            case ADDITION -> a + b;
+            case SUBTRACTION -> a - b;
+            case MULTIPLICATION -> a * b;
+            case DIVISION -> a / b;
+            case MODULUS -> a % b;
+            case BITWISE_AND -> a & b;
+            case BITWISE_OR -> a | b;
+            case BITWISE_XOR -> a ^ b;
+            case BITWISE_LEFT_SHIFT -> a << b;
+            case BITWISE_RIGHT_SHIFT -> a >> b;
+            case BITWISE_UNSIGNED_RIGHT_SHIFT -> a >>> b;
+        };
+    }
+
+    private static Object computedLong(ExpressionDef.MathBinaryOperation.OpType op, long l, long r) {
         return switch (op) {
             case ADDITION -> l + r;
             case SUBTRACTION -> l - r;
