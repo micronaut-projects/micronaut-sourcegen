@@ -53,7 +53,7 @@ final class Applicability {
 
     static Tri applicable(ResolutionContext context, Candidate candidate, List<@Nullable TypeDef> arguments, int phase) {
         List<TypeDef> generic = candidate.parameters();
-        if (phase < 3 ? generic.size() != arguments.size() : !candidate.varargs() || arguments.size() < generic.size() - 1) {
+        if (arityMismatch(candidate, arguments, phase)) {
             return Tri.NO;
         }
         boolean loose = phase > 1;
@@ -79,39 +79,7 @@ final class Applicability {
         // `Comparable` of the variable itself
         Map<String, TypeDef> solution = inference.solution();
         for (TypeDef.TypeVariable variable : variables) {
-            TypeDef equal = inference.equalities().get(variable.name());
-            List<TypeDef> lowers = inference.lowerBounds().getOrDefault(variable.name(), List.of());
-            // The value the variable takes: its equality, else each lower bound - a least upper bound satisfies a
-            // bound where each of the values it is the bound of does
-            List<TypeDef> values = equal != null ? List.of(equal) : lowers;
-            for (TypeDef value : values) {
-                Map<String, TypeDef> self = new HashMap<>(solution);
-                self.put(variable.name(), value);
-                for (TypeDef bound : variable.bounds()) {
-                    // A bound naming the method's variables holds for their one solution - `T extends Comparable<T>`
-                    // of a String and an Integer does not - a plain one for each value
-                    TypeDef checked = mentions(bound, variables) ? solution.getOrDefault(variable.name(), value) : value;
-                    Map<String, TypeDef> scope = new HashMap<>(solution);
-                    scope.put(variable.name(), checked);
-                    result = result.and(referenceConvertible(context, checked, TypeHierarchy.substituted(bound, mentions(bound, variables) ? scope : self)));
-                }
-                // `? super T` bounds it from above
-                for (TypeDef upper : inference.upperBounds().getOrDefault(variable.name(), List.of())) {
-                    result = result.and(referenceConvertible(context, value, upper));
-                }
-            }
-            if (equal != null) {
-                for (TypeDef lower : lowers) {
-                    result = result.and(referenceConvertible(context, lower, equal));
-                }
-            }
-            List<TypeDef> uppers = inference.upperBounds().getOrDefault(variable.name(), List.of());
-            if (values.isEmpty() && !uppers.isEmpty()) {
-                // Bounded from above only: some type is below each upper bound and the declared ones
-                List<TypeDef> above = new ArrayList<>(uppers);
-                variable.bounds().stream().filter(bound -> !mentions(bound, variables)).forEach(above::add);
-                result = result.and(satisfiable(above));
-            }
+            result = variableSatisfied(context, inference, solution, variable, variables, result);
             if (result == Tri.NO) {
                 return Tri.NO;
             }
@@ -122,6 +90,63 @@ final class Applicability {
             if (result == Tri.NO) {
                 return Tri.NO;
             }
+        }
+        return result;
+    }
+
+    private static boolean arityMismatch(Candidate candidate, List<@Nullable TypeDef> arguments, int phase) {
+        List<TypeDef> generic = candidate.parameters();
+        if (phase < 3) {
+            return generic.size() != arguments.size();
+        }
+        return !candidate.varargs() || arguments.size() < generic.size() - 1;
+    }
+
+    /**
+     * Folds into the result whether an inferred variable satisfies its bounds.
+     */
+    private static Tri variableSatisfied(ResolutionContext context, Inference inference, Map<String, TypeDef> solution,
+                                         TypeDef.TypeVariable variable, List<TypeDef.TypeVariable> variables, Tri initial) {
+        Tri result = initial;
+        TypeDef equal = inference.equalities().get(variable.name());
+        List<TypeDef> lowers = inference.lowerBounds().getOrDefault(variable.name(), List.of());
+        // The value the variable takes: its equality, else each lower bound - a least upper bound satisfies a
+        // bound where each of the values it is the bound of does
+        List<TypeDef> values = equal != null ? List.of(equal) : lowers;
+        for (TypeDef value : values) {
+            result = valueSatisfied(context, inference, solution, variable, variables, value, result);
+        }
+        if (equal != null) {
+            for (TypeDef lower : lowers) {
+                result = result.and(referenceConvertible(context, lower, equal));
+            }
+        }
+        List<TypeDef> uppers = inference.upperBounds().getOrDefault(variable.name(), List.of());
+        if (values.isEmpty() && !uppers.isEmpty()) {
+            // Bounded from above only: some type is below each upper bound and the declared ones
+            List<TypeDef> above = new ArrayList<>(uppers);
+            variable.bounds().stream().filter(bound -> !mentions(bound, variables)).forEach(above::add);
+            result = result.and(satisfiable(above));
+        }
+        return result;
+    }
+
+    private static Tri valueSatisfied(ResolutionContext context, Inference inference, Map<String, TypeDef> solution,
+                                      TypeDef.TypeVariable variable, List<TypeDef.TypeVariable> variables, TypeDef value, Tri initial) {
+        Tri result = initial;
+        Map<String, TypeDef> self = new HashMap<>(solution);
+        self.put(variable.name(), value);
+        for (TypeDef bound : variable.bounds()) {
+            // A bound naming the method's variables holds for their one solution - `T extends Comparable<T>`
+            // of a String and an Integer does not - a plain one for each value
+            TypeDef checked = mentions(bound, variables) ? solution.getOrDefault(variable.name(), value) : value;
+            Map<String, TypeDef> scope = new HashMap<>(solution);
+            scope.put(variable.name(), checked);
+            result = result.and(referenceConvertible(context, checked, TypeHierarchy.substituted(bound, mentions(bound, variables) ? scope : self)));
+        }
+        // `? super T` bounds it from above
+        for (TypeDef upper : inference.upperBounds().getOrDefault(variable.name(), List.of())) {
+            result = result.and(referenceConvertible(context, value, upper));
         }
         return result;
     }
@@ -138,24 +163,7 @@ final class Applicability {
                 ? convertibleToCapture(context, primitive.wrapperType(), capture) : convertibleToCapture(context, argument, capture);
         }
         if (param instanceof TypeDef.TypeVariable variable) {
-            List<TypeDef> bounds = variables.stream().filter(declared -> declared.name().equals(variable.name()))
-                .findFirst().map(TypeDef.TypeVariable::bounds).orElse(variable.bounds());
-            if (argument == null) {
-                return Tri.YES;
-            }
-            TypeDef value = TypeHierarchy.unwrap(argument);
-            if (value instanceof TypeDef.Primitive primitive) {
-                if (!loose) {
-                    return Tri.NO;
-                }
-                value = primitive.wrapperType();
-            }
-            Tri result = Tri.YES;
-            Map<String, TypeDef> self = Map.of(variable.name(), value);
-            for (TypeDef bound : bounds) {
-                result = result.and(referenceConvertible(context, value, TypeHierarchy.substituted(bound, self)));
-            }
-            return result;
+            return convertibleToVariable(context, argument, variable, loose, variables);
         }
         if (param instanceof TypeDef.Wildcard wildcard) {
             param = wildcard.upperBounds().isEmpty() ? TypeDef.OBJECT : wildcard.upperBounds().getFirst();
@@ -171,13 +179,36 @@ final class Applicability {
             return loose ? referenceConvertible(context, primitive.wrapperType(), param) : Tri.NO;
         }
         if (param instanceof TypeDef.Primitive primitive) {
+            return loose ? Tri.of(unboxesTo(value, primitive)) : Tri.NO;
+        }
+        return referenceConvertible(context, value, param);
+    }
+
+    private static boolean unboxesTo(TypeDef value, TypeDef.Primitive primitive) {
+        Class<?> unboxed = unboxed(value);
+        return unboxed != null && widens(unboxed, primitive.clazz());
+    }
+
+    private static Tri convertibleToVariable(ResolutionContext context, @Nullable TypeDef argument, TypeDef.TypeVariable variable,
+                                             boolean loose, List<TypeDef.TypeVariable> variables) {
+        List<TypeDef> bounds = variables.stream().filter(declared -> declared.name().equals(variable.name()))
+            .findFirst().map(TypeDef.TypeVariable::bounds).orElse(variable.bounds());
+        if (argument == null) {
+            return Tri.YES;
+        }
+        TypeDef value = TypeHierarchy.unwrap(argument);
+        if (value instanceof TypeDef.Primitive primitive) {
             if (!loose) {
                 return Tri.NO;
             }
-            Class<?> unboxed = unboxed(value);
-            return Tri.of(unboxed != null && widens(unboxed, primitive.clazz()));
+            value = primitive.wrapperType();
         }
-        return referenceConvertible(context, value, param);
+        Tri result = Tri.YES;
+        Map<String, TypeDef> self = Map.of(variable.name(), value);
+        for (TypeDef bound : bounds) {
+            result = result.and(referenceConvertible(context, value, TypeHierarchy.substituted(bound, self)));
+        }
+        return result;
     }
 
     /**
@@ -210,18 +241,7 @@ final class Applicability {
         TypeDef param = TypeHierarchy.unwrap(parameter);
         if (value instanceof TypeDef.TypeVariable variable) {
             if (variable.bounds().size() > 1) {
-                // A value of `T extends Object & Shared` is a `Shared` too: any of its bounds converts it
-                Tri result = Tri.NO;
-                for (TypeDef bound : variable.bounds()) {
-                    Tri converted = referenceConvertible(context, bound, parameter);
-                    if (converted == Tri.YES) {
-                        return Tri.YES;
-                    }
-                    if (converted == Tri.UNKNOWN) {
-                        result = Tri.UNKNOWN;
-                    }
-                }
-                return result;
+                return anyBoundConvertible(context, variable, parameter);
             }
             value = variable.bounds().isEmpty() ? TypeDef.OBJECT : TypeHierarchy.unwrap(variable.bounds().getFirst());
         }
@@ -233,21 +253,7 @@ final class Applicability {
             return Tri.of(!value.isPrimitive() || variable.bounds().isEmpty());
         }
         if (value instanceof TypeDef.Array valueArray) {
-            if (param instanceof TypeDef.Array paramArray) {
-                if (valueArray.dimensions() != paramArray.dimensions()) {
-                    // A deeper array is an array of arrays, which are Objects
-                    return Tri.of(valueArray.dimensions() > paramArray.dimensions()
-                        && TypeHierarchy.unwrap(paramArray.componentType()) instanceof ClassTypeDef component
-                        && ARRAY_SUPERTYPES.contains(declaredClass(component).getName()));
-                }
-                TypeDef valueComponent = TypeHierarchy.unwrap(valueArray.componentType());
-                TypeDef paramComponent = TypeHierarchy.unwrap(paramArray.componentType());
-                if (valueComponent.isPrimitive() || paramComponent.isPrimitive()) {
-                    return Tri.of(valueComponent.equals(paramComponent));
-                }
-                return referenceConvertible(context, valueComponent, paramComponent);
-            }
-            return Tri.of(param instanceof ClassTypeDef classTypeDef && ARRAY_SUPERTYPES.contains(declaredClass(classTypeDef).getName()));
+            return arrayConvertible(context, valueArray, param);
         }
         if (param instanceof TypeDef.Array) {
             return Tri.NO;
@@ -255,6 +261,43 @@ final class Applicability {
         if (!(param instanceof ClassTypeDef paramClass) || !(value instanceof ClassTypeDef valueClass)) {
             return Tri.UNKNOWN;
         }
+        return classConvertible(context, valueClass, paramClass);
+    }
+
+    private static Tri anyBoundConvertible(ResolutionContext context, TypeDef.TypeVariable variable, TypeDef parameter) {
+        // A value of `T extends Object & Shared` is a `Shared` too: any of its bounds converts it
+        Tri result = Tri.NO;
+        for (TypeDef bound : variable.bounds()) {
+            Tri converted = referenceConvertible(context, bound, parameter);
+            if (converted == Tri.YES) {
+                return Tri.YES;
+            }
+            if (converted == Tri.UNKNOWN) {
+                result = Tri.UNKNOWN;
+            }
+        }
+        return result;
+    }
+
+    private static Tri arrayConvertible(ResolutionContext context, TypeDef.Array valueArray, TypeDef param) {
+        if (param instanceof TypeDef.Array paramArray) {
+            if (valueArray.dimensions() != paramArray.dimensions()) {
+                // A deeper array is an array of arrays, which are Objects
+                return Tri.of(valueArray.dimensions() > paramArray.dimensions()
+                    && TypeHierarchy.unwrap(paramArray.componentType()) instanceof ClassTypeDef component
+                    && ARRAY_SUPERTYPES.contains(declaredClass(component).getName()));
+            }
+            TypeDef valueComponent = TypeHierarchy.unwrap(valueArray.componentType());
+            TypeDef paramComponent = TypeHierarchy.unwrap(paramArray.componentType());
+            if (valueComponent.isPrimitive() || paramComponent.isPrimitive()) {
+                return Tri.of(valueComponent.equals(paramComponent));
+            }
+            return referenceConvertible(context, valueComponent, paramComponent);
+        }
+        return Tri.of(param instanceof ClassTypeDef classTypeDef && ARRAY_SUPERTYPES.contains(declaredClass(classTypeDef).getName()));
+    }
+
+    private static Tri classConvertible(ResolutionContext context, ClassTypeDef valueClass, ClassTypeDef paramClass) {
         ClassTypeDef paramRaw = declaredClass(paramClass);
         Tri subtype = Object.class.getName().equals(paramRaw.getName()) ? Tri.YES : isSubtype(declaredClass(valueClass), paramRaw.getName());
         Map<String, TypeDef> declaredEnclosing = TypeHierarchy.enclosingArguments(paramClass, null);
@@ -313,44 +356,52 @@ final class Applicability {
             return Tri.YES;
         }
         if (argument instanceof TypeDef.Wildcard wildcard) {
-            if (wildcard.upperBounds().stream().allMatch(ResolutionTypes::isObject) && wildcard.lowerBounds().isEmpty()) {
-                return Tri.YES;
-            }
-            if (value instanceof TypeDef.Wildcard valueWildcard) {
-                // `? extends A` is within `? extends B` where A is a B, `? super A` within `? super B` where B is an A
-                if (!wildcard.lowerBounds().isEmpty()) {
-                    if (valueWildcard.lowerBounds().isEmpty()) {
-                        return Tri.NO;
-                    }
-                    Tri result = Tri.YES;
-                    for (TypeDef lower : wildcard.lowerBounds()) {
-                        result = result.and(isOpenBound(lower) ? Tri.YES : referenceConvertible(context, lower, valueWildcard.lowerBounds().getFirst()));
-                    }
-                    return result;
-                }
-                TypeDef valueUpper = valueWildcard.upperBounds().isEmpty() ? TypeDef.OBJECT : valueWildcard.upperBounds().getFirst();
-                Tri result = Tri.YES;
-                for (TypeDef upper : wildcard.upperBounds()) {
-                    result = result.and(isOpenBound(upper) ? Tri.YES : referenceConvertible(context, valueUpper, upper));
-                }
-                return result;
-            }
-            if (value instanceof TypeDef.TypeVariable) {
-                return Tri.UNKNOWN;
-            }
-            Tri result = Tri.YES;
-            for (TypeDef upper : wildcard.upperBounds()) {
-                result = result.and(isOpenBound(upper) ? Tri.YES : referenceConvertible(context, value, upper));
-            }
-            for (TypeDef lower : wildcard.lowerBounds()) {
-                result = result.and(isOpenBound(lower) ? Tri.YES : referenceConvertible(context, lower, value));
-            }
-            return result;
+            return wildcardContains(context, wildcard, value);
         }
         if (value instanceof TypeDef.Wildcard || value instanceof TypeDef.TypeVariable) {
             return Tri.UNKNOWN;
         }
         return Tri.of(sameType(argument, value));
+    }
+
+    private static Tri wildcardContains(ResolutionContext context, TypeDef.Wildcard wildcard, TypeDef value) {
+        if (wildcard.upperBounds().stream().allMatch(ResolutionTypes::isObject) && wildcard.lowerBounds().isEmpty()) {
+            return Tri.YES;
+        }
+        if (value instanceof TypeDef.Wildcard valueWildcard) {
+            return wildcardContainsWildcard(context, wildcard, valueWildcard);
+        }
+        if (value instanceof TypeDef.TypeVariable) {
+            return Tri.UNKNOWN;
+        }
+        Tri result = Tri.YES;
+        for (TypeDef upper : wildcard.upperBounds()) {
+            result = result.and(isOpenBound(upper) ? Tri.YES : referenceConvertible(context, value, upper));
+        }
+        for (TypeDef lower : wildcard.lowerBounds()) {
+            result = result.and(isOpenBound(lower) ? Tri.YES : referenceConvertible(context, lower, value));
+        }
+        return result;
+    }
+
+    private static Tri wildcardContainsWildcard(ResolutionContext context, TypeDef.Wildcard wildcard, TypeDef.Wildcard valueWildcard) {
+        // `? extends A` is within `? extends B` where A is a B, `? super A` within `? super B` where B is an A
+        if (!wildcard.lowerBounds().isEmpty()) {
+            if (valueWildcard.lowerBounds().isEmpty()) {
+                return Tri.NO;
+            }
+            Tri result = Tri.YES;
+            for (TypeDef lower : wildcard.lowerBounds()) {
+                result = result.and(isOpenBound(lower) ? Tri.YES : referenceConvertible(context, lower, valueWildcard.lowerBounds().getFirst()));
+            }
+            return result;
+        }
+        TypeDef valueUpper = valueWildcard.upperBounds().isEmpty() ? TypeDef.OBJECT : valueWildcard.upperBounds().getFirst();
+        Tri result = Tri.YES;
+        for (TypeDef upper : wildcard.upperBounds()) {
+            result = result.and(isOpenBound(upper) ? Tri.YES : referenceConvertible(context, valueUpper, upper));
+        }
+        return result;
     }
 
     /**
