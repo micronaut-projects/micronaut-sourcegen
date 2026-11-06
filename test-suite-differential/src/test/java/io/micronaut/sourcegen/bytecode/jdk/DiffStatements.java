@@ -56,6 +56,7 @@ final class DiffStatements {
         lambdas(m);
         invocations(m);
         receivers(m);
+        DiffWriterParity.generate(m);
     }
 
     // ------------------------------------------------------------------ switch
