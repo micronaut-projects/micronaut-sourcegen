@@ -20,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -43,6 +44,30 @@ final class ResolutionContext {
      * The number of wildcards captured.
      */
     private int captures;
+    /**
+     * The type arguments a receiver binds, by receiver and declaring class: a receiver is captured once per resolution,
+     * so every candidate sees the same captures (JLS 15.12.2.5 compares them as one type).
+     */
+    private final Map<List<Object>, Map<String, TypeDef>> receiverArguments = new HashMap<>();
+
+    /**
+     * The type arguments a receiver binds the variables of a declaring class with, computed once per resolution.
+     *
+     * @param receiver  The receiver
+     * @param declaring The declaring class
+     * @param compute   Computes them where they are not known yet
+     * @return The arguments, shared
+     */
+    Map<String, TypeDef> receiverArguments(ClassTypeDef receiver, String declaring,
+                                           Supplier<Map<String, TypeDef>> compute) {
+        List<Object> key = List.of(receiver, declaring);
+        Map<String, TypeDef> known = receiverArguments.get(key);
+        if (known == null) {
+            known = compute.get();
+            receiverArguments.put(key, known);
+        }
+        return known;
+    }
 
     /**
      * Captures a wildcard.

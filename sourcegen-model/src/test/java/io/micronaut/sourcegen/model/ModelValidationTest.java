@@ -43,6 +43,8 @@ class ModelValidationTest {
     private static final TypeDef.Primitive INT = TypeDef.Primitive.INT;
     private static final TypeDef.Primitive BOOLEAN = TypeDef.Primitive.BOOLEAN;
 
+    private static final String YIELD_CASE_COMPLETES =
+        "Switch yield case: found a statement that neither returns nor throws, expected a statement that returns the result or throws";
     private static final ExpressionDef ONE = ExpressionDef.constant(1);
     private static final ExpressionDef ONE_LONG = ExpressionDef.constant(1L);
     private static final ExpressionDef ONE_DOUBLE = ExpressionDef.constant(1.0d);
@@ -169,7 +171,13 @@ class ModelValidationTest {
             invalid("switch yield case without statements", () -> new ExpressionDef.SwitchYieldCase(INT, StatementDef.multi()),
                 "Switch yield case: found an empty statement, expected a statement that returns the result or throws"),
             invalid("switch yield case without a result", () -> new ExpressionDef.SwitchYieldCase(INT, STATEMENT),
-                "Switch yield case: found a statement that neither returns nor throws, expected a statement that returns the result or throws"),
+                YIELD_CASE_COMPLETES),
+            invalid("switch yield case returning from one branch only", () -> new ExpressionDef.SwitchYieldCase(INT,
+                    new StatementDef.If(BOXED_BOOLEAN, ONE.returning())),
+                YIELD_CASE_COMPLETES),
+            invalid("switch yield case looping on a condition", () -> new ExpressionDef.SwitchYieldCase(INT,
+                    new StatementDef.While(BOXED_BOOLEAN, ONE.returning())),
+                YIELD_CASE_COMPLETES),
             invalid("switch yield case returning nothing", () -> new ExpressionDef.SwitchYieldCase(INT, new StatementDef.Return(null)),
                 "Switch yield case: found a return without a value, expected every return of the case to return its result"),
             invalid("switch yield case of void", () -> new ExpressionDef.SwitchYieldCase(TypeDef.VOID, ONE.returning()),

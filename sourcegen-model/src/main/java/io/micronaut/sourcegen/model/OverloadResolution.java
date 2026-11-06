@@ -222,11 +222,24 @@ final class OverloadResolution {
         if (maximal.size() == 1) {
             return new Choice(Outcome.RESOLVED, maximal.getFirst(), variableArity, List.of());
         }
+        if (decided && variableArity && distinctSignatures(maximal)) {
+            // Variable arity methods each more specific than the other - `m(String...)` and `m(String, String...)`
+            // for one argument - do not override each other, and javac rejects the call
+            return new Choice(Outcome.AMBIGUOUS, null, true, maximal);
+        }
         if (!maximal.isEmpty() || !decided) {
             // Methods more specific than each other are ones the model tells apart no further
             return Choice.UNKNOWN;
         }
         return new Choice(Outcome.AMBIGUOUS, null, variableArity, undominated(applicable, specific));
+    }
+
+    /**
+     * Whether more than one method is given, no two of which have the same erased parameters.
+     */
+    private static boolean distinctSignatures(List<Candidate> candidates) {
+        return candidates.size() > 1 && candidates.stream().map(candidate -> signature(candidate.parameters()))
+            .distinct().count() == candidates.size();
     }
 
     /**

@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
 import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
@@ -1016,32 +1017,71 @@ public final class TypeHierarchy {
 
         @Override
         public List<InheritedMethod> methods() {
-            return Arrays.stream(type.getDeclaredMethods())
-                .filter(method -> !java.lang.reflect.Modifier.isStatic(method.getModifiers())
-                    && !java.lang.reflect.Modifier.isPrivate(method.getModifiers()) && !method.isSynthetic())
-                .map(method -> {
-                    List<TypeDef> parameters = Arrays.stream(method.getGenericParameterTypes())
-                        .map(ReflectionInfo::convert).toList();
-                    int modifiers = method.getModifiers();
-                    List<TypeDef> erasedParameters = Arrays.stream(method.getParameterTypes()).map(TypeDef::of).toList();
-                    return new InheritedMethod(method.getName(), parameters, erasedParameters,
-                        TypeDef.of(method.getReturnType()), convert(method.getGenericReturnType()),
-                        java.lang.reflect.Modifier.isFinal(modifiers),
-                        !java.lang.reflect.Modifier.isPublic(modifiers)
-                            && !java.lang.reflect.Modifier.isProtected(modifiers),
-                        Arrays.stream(method.getTypeParameters()).map(variable -> TypeDef.variable(variable.getName(),
-                            Arrays.stream(variable.getBounds()).map(ReflectionInfo::convert).toList())).toList());
-                }).toList();
+            Method[] declared;
+            try {
+                declared = type.getDeclaredMethods();
+            } catch (LinkageError | TypeNotPresentException e) {
+                // A library whose dependency is not on the path of the generators: its methods are not known
+                return List.of();
+            }
+            List<InheritedMethod> result = new ArrayList<>();
+            for (Method method : declared) {
+                if (!java.lang.reflect.Modifier.isStatic(method.getModifiers())
+                    && !java.lang.reflect.Modifier.isPrivate(method.getModifiers()) && !method.isSynthetic()) {
+                    InheritedMethod inherited = inheritedMethod(method);
+                    if (inherited != null) {
+                        result.add(inherited);
+                    }
+                }
+            }
+            return result;
+        }
+
+        /**
+         * A method as it is inherited, or {@code null} where a type it names cannot be loaded.
+         */
+        private static @Nullable InheritedMethod inheritedMethod(Method method) {
+            try {
+                List<TypeDef> parameters = Arrays.stream(method.getGenericParameterTypes())
+                    .map(ReflectionInfo::convert).toList();
+                int modifiers = method.getModifiers();
+                List<TypeDef> erasedParameters = Arrays.stream(method.getParameterTypes()).map(TypeDef::of).toList();
+                return new InheritedMethod(method.getName(), parameters, erasedParameters,
+                    TypeDef.of(method.getReturnType()), convert(method.getGenericReturnType()),
+                    java.lang.reflect.Modifier.isFinal(modifiers),
+                    !java.lang.reflect.Modifier.isPublic(modifiers)
+                        && !java.lang.reflect.Modifier.isProtected(modifiers),
+                    Arrays.stream(method.getTypeParameters()).map(variable -> TypeDef.variable(variable.getName(),
+                        Arrays.stream(variable.getBounds()).map(ReflectionInfo::convert).toList())).toList());
+            } catch (LinkageError | TypeNotPresentException e) {
+                return null;
+            }
         }
 
         @Override
         public List<TypeDef> superTypes() {
             List<TypeDef> result = new ArrayList<>();
-            if (type.getGenericSuperclass() != null) {
-                result.add(convert(type.getGenericSuperclass()));
+            Class<?> superclass = type.getSuperclass();
+            if (superclass != null) {
+                result.add(genericOrRaw(type::getGenericSuperclass, superclass));
             }
-            Arrays.stream(type.getGenericInterfaces()).map(ReflectionInfo::convert).forEach(result::add);
+            Class<?>[] interfaces = type.getInterfaces();
+            for (int i = 0; i < interfaces.length; i++) {
+                int index = i;
+                result.add(genericOrRaw(() -> type.getGenericInterfaces()[index], interfaces[i]));
+            }
             return result;
+        }
+
+        /**
+         * A supertype as it is declared, or raw where a type argument of it cannot be loaded.
+         */
+        private static TypeDef genericOrRaw(java.util.function.Supplier<Type> generic, Class<?> raw) {
+            try {
+                return convert(generic.get());
+            } catch (LinkageError | TypeNotPresentException | java.lang.reflect.MalformedParameterizedTypeException e) {
+                return TypeDef.of(raw);
+            }
         }
 
         private static TypeDef convert(Type type) {

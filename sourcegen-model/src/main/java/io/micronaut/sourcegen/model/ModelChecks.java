@@ -57,6 +57,14 @@ final class ModelChecks {
     private static final String MATH = "Math ";
     private static final String SWITCH_YIELD_CASE = "Switch yield case";
 
+    /**
+     * Whether a yield case can complete normally, as the bytecode writers analyze it - a loop over the constant true
+     * never completes.
+     */
+    private static final Completion YIELD_COMPLETION = Completion.javaSource(
+        condition -> condition instanceof ExpressionDef.Constant constant && Boolean.TRUE.equals(constant.value()),
+        StatementDef.Try::catches);
+
     private ModelChecks() {
     }
 
@@ -333,24 +341,18 @@ final class ModelChecks {
         if (statement.flatten().isEmpty()) {
             throw fail(SWITCH_YIELD_CASE, "an empty statement", "a statement that returns the result or throws");
         }
-        // Whether a statement of the case returns or throws, or loops and may not complete, and whether a return has no value
-        boolean[] exits = {false};
+        // Whether a return has no value
         boolean[] returnsNothing = {false};
         forEachNested(statement, nested -> {
-            if (nested instanceof StatementDef.Return aReturn) {
-                exits[0] = true;
-                ExpressionDef value = aReturn.expression();
-                if (value == null || kind(value.type()) == Kind.VOID) {
-                    returnsNothing[0] = true;
-                }
-            } else if (nested instanceof StatementDef.Throw || nested instanceof StatementDef.While) {
-                exits[0] = true;
+            if (nested instanceof StatementDef.Return aReturn
+                && (aReturn.expression() == null || kind(aReturn.expression().type()) == Kind.VOID)) {
+                returnsNothing[0] = true;
             }
         });
         if (returnsNothing[0]) {
             throw fail(SWITCH_YIELD_CASE, "a return without a value", "every return of the case to return its result");
         }
-        if (!exits[0]) {
+        if (YIELD_COMPLETION.canCompleteNormally(statement)) {
             throw fail(SWITCH_YIELD_CASE, "a statement that neither returns nor throws", "a statement that returns the result or throws");
         }
     }

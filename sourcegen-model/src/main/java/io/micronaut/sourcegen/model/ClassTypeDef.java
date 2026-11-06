@@ -1212,7 +1212,7 @@ public sealed interface ClassTypeDef extends TypeDef permits ClassTypeDef.JavaCl
             for (TypeDef superType : TypeHierarchy.superTypesOf(objectDef)) {
                 if (TypeOperations.unwrap(superType) instanceof ClassTypeDef superClass) {
                     ClassTypeDef raw = superClass instanceof Parameterized parameterized ? parameterized.rawType() : superClass;
-                    for (MethodDef inherited : raw.findDeclaredMethods(name, argumentCount)) {
+                    for (MethodDef inherited : inheritedMethods(raw, name, argumentCount)) {
                         if (!inherited.getModifiers().contains(Modifier.PRIVATE) && signatures.add(erasedParameters(inherited))) {
                             result.add(inherited);
                         }
@@ -1220,6 +1220,18 @@ public sealed interface ClassTypeDef extends TypeDef permits ClassTypeDef.JavaCl
                 }
             }
             return result;
+        }
+
+        /**
+         * The methods of a supertype, none where it is a library class whose dependency is not on the path of the
+         * generators: reflecting on its methods links the types they name.
+         */
+        private static List<MethodDef> inheritedMethods(ClassTypeDef superType, String name, int argumentCount) {
+            try {
+                return superType.findDeclaredMethods(name, argumentCount);
+            } catch (LinkageError | TypeNotPresentException e) {
+                return List.of();
+            }
         }
 
         private static String erasedParameters(MethodDef method) {

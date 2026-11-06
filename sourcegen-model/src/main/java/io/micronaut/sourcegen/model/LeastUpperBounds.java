@@ -68,7 +68,9 @@ final class LeastUpperBounds {
      * rank - the longer path to Object - and of those of one rank the first by qualified name. An array is a
      * `Serializable` and a `Cloneable`.
      */
-    static List<ClassTypeDef> commonSupertypes(List<TypeDef> values) {
+    static List<ClassTypeDef> commonSupertypes(List<TypeDef> types) {
+        // A variable is a subtype of its bound: the `N` of `N extends Number` is a Number
+        List<TypeDef> values = types.stream().map(LeastUpperBounds::boundOf).toList();
         TypeDef first = TypeHierarchy.unwrap(values.getFirst());
         List<ClassTypeDef> supertypes = first instanceof TypeDef.Array ? List.of(ClassTypeDef.of(java.io.Serializable.class), ClassTypeDef.of(Cloneable.class))
             : first instanceof ClassTypeDef firstClass ? supertypesOf(TypeOperations.declaredClass(firstClass)) : List.of();
@@ -109,6 +111,20 @@ final class LeastUpperBounds {
         }
         ranks.put(name, rank + 1);
         return rank + 1;
+    }
+
+    /**
+     * A type, or for a variable the erasure of its first bound.
+     */
+    private static TypeDef boundOf(TypeDef type) {
+        TypeDef unwrapped = TypeHierarchy.unwrap(type);
+        if (!(unwrapped instanceof TypeDef.TypeVariable)) {
+            return type;
+        }
+        for (int depth = 0; depth < 16 && unwrapped instanceof TypeDef.TypeVariable variable; depth++) {
+            unwrapped = variable.bounds().isEmpty() ? TypeDef.OBJECT : TypeHierarchy.unwrap(variable.bounds().getFirst());
+        }
+        return unwrapped instanceof TypeDef.TypeVariable ? TypeDef.OBJECT : ResolutionTypes.erasedDeep(unwrapped);
     }
 
     private static String qualifiedName(ClassTypeDef type) {

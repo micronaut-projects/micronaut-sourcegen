@@ -101,8 +101,13 @@ final class OverloadCandidates {
                 return collect(context, memberOf.member(), name, receiver, result, visited, own);
             }
             case ClassTypeDef.JavaClass javaClass -> {
-                collectReflected(context, javaClass.type(), name, receiver, result, constructor);
-                return true;
+                try {
+                    collectReflected(context, javaClass.type(), name, receiver, result, constructor);
+                    return true;
+                } catch (LinkageError | TypeNotPresentException e) {
+                    // A library whose dependency is not on the path of the generators: its methods are not known
+                    return false;
+                }
             }
             case ClassTypeDef.ClassElementType elementType -> {
                 ClassElement element = elementType.classElement();
@@ -368,6 +373,16 @@ final class OverloadCandidates {
      * supertypes it inherits the method from - which the method's own variables of the same name shadow.
      */
     static Map<String, TypeDef> receiverArguments(ResolutionContext context, Candidate candidate) {
+        Map<String, TypeDef> result = new LinkedHashMap<>(context.receiverArguments(candidate.receiver(), candidate.declaring(),
+            () -> capturedReceiverArguments(context, candidate)));
+        candidate.variables().forEach(variable -> result.remove(variable.name()));
+        return result;
+    }
+
+    /**
+     * The type arguments the receiver binds the variables of the declaring class with, its wildcards captured.
+     */
+    private static Map<String, TypeDef> capturedReceiverArguments(ResolutionContext context, Candidate candidate) {
         Map<String, TypeDef> result = new LinkedHashMap<>();
         ClassTypeDef inherited = inherited(candidate);
         if (inherited == null) {
@@ -386,7 +401,6 @@ final class OverloadCandidates {
                     TypeHierarchy.unwrap(argument) instanceof TypeDef.Wildcard wildcard ? context.capture(wildcard, boundAt(declaredBounds, i)) : argument);
             }
         }
-        candidate.variables().forEach(variable -> result.remove(variable.name()));
         return result;
     }
 

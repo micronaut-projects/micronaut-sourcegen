@@ -48,6 +48,8 @@ public final class TypeLookup {
      */
     private static final Map<ClassLoader, Set<String>> MISSING = Collections.synchronizedMap(new WeakHashMap<>());
 
+    private static final String ARRAY_SUFFIX = "[]";
+
     private static final TypeLookup REFLECTIVE = new TypeLookup(null, TypeLookup.class.getClassLoader());
 
     private final @Nullable VisitorContext context;
@@ -122,6 +124,12 @@ public final class TypeLookup {
         Class<?> common = ClassUtils.COMMON_CLASS_MAP.get(name);
         if (common != null) {
             return common;
+        }
+        if (name.endsWith(ARRAY_SUFFIX)) {
+            // An erased name of an array, `java.lang.Number[]`, which Class.forName does not take: its component's
+            // class, never recorded as missing under the array's name
+            Class<?> component = loadClass(name.substring(0, name.length() - ARRAY_SUFFIX.length()));
+            return component == null || component == void.class ? null : component.arrayType();
         }
         Set<String> missing = MISSING.computeIfAbsent(classLoader, loader -> ConcurrentHashMap.newKeySet());
         if (missing.contains(name)) {
