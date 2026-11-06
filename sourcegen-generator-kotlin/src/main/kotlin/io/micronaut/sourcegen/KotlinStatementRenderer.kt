@@ -93,29 +93,11 @@ internal fun KotlinWriteContext.renderStatementCodeBlock(
     tailPosition: Boolean = false
 ): CodeBlock {
     if (statementDef is Multi) {
-        val builder: CodeBlock.Builder =
-            CodeBlock.builder()
-        for ((index, statement) in statementDef.statements.withIndex()) {
-            builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement,
-                tailPosition && index == statementDef.statements.size - 1))
-            if (Completion.KOTLIN.cannotCompleteNormally(statement)) {
-                // The model may append a fallback after an exhaustive statement, such as a return null
-                break
-            }
-        }
-        return builder.build()
+        return renderMultiStatement(objectDef, methodDef, scope, statementDef, tailPosition)
     }
     val returnedVoid = (statementDef as? Return)?.expression?.takeIf { it.type() == TypeDef.VOID }
     if (returnedVoid != null) {
-        // A void invocation cannot be returned in source. Where the statement is not in tail position - a
-        // branch of a conditional, say - the call is followed by the return it stands for, which execution
-        // would otherwise fall through
-        val builder = CodeBlock.builder()
-            .addStatement("%L", renderExpressionCode(objectDef, methodDef, scope, returnedVoid))
-        if (!tailPosition) {
-            builder.addStatement(if (scope.returnLabel == null) "return" else "return@${scope.returnLabel}")
-        }
-        return builder.build()
+        return renderVoidReturn(objectDef, methodDef, scope, returnedVoid, tailPosition)
     }
     if (statementDef is StatementDef.Try) {
         return renderTry(objectDef, methodDef, scope, statementDef, tailPosition)
@@ -179,6 +161,44 @@ internal fun KotlinWriteContext.renderStatementCodeBlock(
     return CodeBlock.builder()
         .addStatement("%L", renderStatement(objectDef, methodDef, scope, statementDef))
         .build()
+}
+
+private fun KotlinWriteContext.renderMultiStatement(
+    objectDef: @Nullable ObjectDef?,
+    methodDef: MethodDef,
+    scope: KotlinRenderScope,
+    statementDef: Multi,
+    tailPosition: Boolean
+): CodeBlock {
+    val builder: CodeBlock.Builder =
+        CodeBlock.builder()
+    for ((index, statement) in statementDef.statements.withIndex()) {
+        builder.add(renderStatementCodeBlock(objectDef, methodDef, scope, statement,
+            tailPosition && index == statementDef.statements.size - 1))
+        if (Completion.KOTLIN.cannotCompleteNormally(statement)) {
+            // The model may append a fallback after an exhaustive statement, such as a return null
+            break
+        }
+    }
+    return builder.build()
+}
+
+private fun KotlinWriteContext.renderVoidReturn(
+    objectDef: @Nullable ObjectDef?,
+    methodDef: MethodDef,
+    scope: KotlinRenderScope,
+    returnedVoid: ExpressionDef,
+    tailPosition: Boolean
+): CodeBlock {
+    // A void invocation cannot be returned in source. Where the statement is not in tail position - a
+    // branch of a conditional, say - the call is followed by the return it stands for, which execution
+    // would otherwise fall through
+    val builder = CodeBlock.builder()
+        .addStatement("%L", renderExpressionCode(objectDef, methodDef, scope, returnedVoid))
+    if (!tailPosition) {
+        builder.addStatement(if (scope.returnLabel == null) "return" else "return@${scope.returnLabel}")
+    }
+    return builder.build()
 }
 
 internal fun isBlockBody(lambda: Lambda): Boolean =
@@ -289,25 +309,7 @@ private fun KotlinWriteContext.renderStatement(
             .build()
     }
     if (statementDef is Return) {
-        var returned: ExpressionDef? = statementDef.expression
-        if (returned == null) {
-            // The early return of a void method, or of a lambda that returns nothing
-            return CodeBlock.of(if (scope.returnLabel == null) "return" else "return@${scope.returnLabel}")
-        }
-        if (returned.type() == TypeDef.VOID) {
-            // Returning a void invocation is a plain call in source
-            return renderExpressionCode(objectDef, methodDef, scope, returned)
-        }
-        // The value of a case of a switch expression is of the type it yields
-        val returnType = scope.returnType ?: methodDef.returnType
-        if (returnType != TypeDef.VOID && requiresImplicitReturnCast(returnType, returned.type())) {
-            returned = returned.cast(returnType)
-        }
-        return CodeBlock.builder()
-            .add(if (scope.returnLabel == null) "return " else "return@${scope.returnLabel} ")
-            .add(renderAssigned(objectDef, methodDef, scope, returned, returnType, scope.returnType == null
-                && enclosingFunctions.any { it === methodDef } && returnsNullable(objectDef, methodDef)))
-            .build()
+        return renderReturn(objectDef, methodDef, scope, statementDef)
     }
     if (statementDef is PutField || statementDef is PutStaticField) {
         val field = if (statementDef is PutField) statementDef.field else (statementDef as PutStaticField).field
@@ -326,26 +328,62 @@ private fun KotlinWriteContext.renderStatement(
             .build()
     }
     if (statementDef is DefineAndAssign) {
-        // A local the model assigns `null`, or of a wrapper, is nullable
-        val nullable = statementDef.variable.name in nullableLocals(methodDef)
-        val definition = CodeBlock.builder()
-            .add("var %N:%T", statementDef.variable.name, asType(statementDef.variable.type, objectDef, methodDef)
-                .let { if (nullable) it.copy(nullable = true) else it })
-            .add(" = ")
-            .add(renderAssigned(objectDef, methodDef, scope, statementDef.expression, statementDef.variable.type, nullable))
-            .build()
-        if (nullable) {
-            scope.markNullableLocal(statementDef.variable.name)
-        }
-        // Declared only after the initializer is rendered - a lambda in it cannot see the variable
-        scope.declare(statementDef.variable.name)
-        return definition
+        return renderDefineAndAssign(objectDef, methodDef, scope, statementDef)
     }
     if (statementDef is ExpressionDef) {
         return renderExpressionCode(objectDef, methodDef, scope, statementDef)
     }
 
     throw IllegalStateException("Unrecognized statement: $statementDef")
+}
+
+private fun KotlinWriteContext.renderReturn(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef,
+    scope: KotlinRenderScope,
+    statementDef: Return
+): CodeBlock {
+    var returned: ExpressionDef? = statementDef.expression
+    if (returned == null) {
+        // The early return of a void method, or of a lambda that returns nothing
+        return CodeBlock.of(if (scope.returnLabel == null) "return" else "return@${scope.returnLabel}")
+    }
+    if (returned.type() == TypeDef.VOID) {
+        // Returning a void invocation is a plain call in source
+        return renderExpressionCode(objectDef, methodDef, scope, returned)
+    }
+    // The value of a case of a switch expression is of the type it yields
+    val returnType = scope.returnType ?: methodDef.returnType
+    if (returnType != TypeDef.VOID && requiresImplicitReturnCast(returnType, returned.type())) {
+        returned = returned.cast(returnType)
+    }
+    return CodeBlock.builder()
+        .add(if (scope.returnLabel == null) "return " else "return@${scope.returnLabel} ")
+        .add(renderAssigned(objectDef, methodDef, scope, returned, returnType, scope.returnType == null
+            && enclosingFunctions.any { it === methodDef } && returnsNullable(objectDef, methodDef)))
+        .build()
+}
+
+private fun KotlinWriteContext.renderDefineAndAssign(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef,
+    scope: KotlinRenderScope,
+    statementDef: DefineAndAssign
+): CodeBlock {
+    // A local the model assigns `null`, or of a wrapper, is nullable
+    val nullable = statementDef.variable.name in nullableLocals(methodDef)
+    val definition = CodeBlock.builder()
+        .add("var %N:%T", statementDef.variable.name, asType(statementDef.variable.type, objectDef, methodDef)
+            .let { if (nullable) it.copy(nullable = true) else it })
+        .add(" = ")
+        .add(renderAssigned(objectDef, methodDef, scope, statementDef.expression, statementDef.variable.type, nullable))
+        .build()
+    if (nullable) {
+        scope.markNullableLocal(statementDef.variable.name)
+    }
+    // Declared only after the initializer is rendered - a lambda in it cannot see the variable
+    scope.declare(statementDef.variable.name)
+    return definition
 }
 
 internal fun KotlinWriteContext.renderYield(
