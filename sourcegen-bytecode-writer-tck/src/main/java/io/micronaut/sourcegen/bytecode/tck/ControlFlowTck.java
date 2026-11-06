@@ -306,63 +306,6 @@ public abstract class ControlFlowTck extends AbstractByteCodeWriterTck {
         }
     }
 
-    /**
-     * The instruction indexes of the monitor exits of a method, and the ranges of its catch-all entries.
-     */
-    private static final class MonitorExits extends MethodVisitor {
-        private final List<int[]> ranges = new ArrayList<>();
-        private final List<Integer> exits = new ArrayList<>();
-        private final Map<Label, Integer> positions = new HashMap<>();
-        private final List<Label[]> catchAll = new ArrayList<>();
-        private int index;
-
-        MonitorExits() {
-            super(Opcodes.ASM9);
-        }
-
-        @Override
-        public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
-            if (type == null) {
-                catchAll.add(new Label[] {start, end});
-            }
-        }
-
-        @Override
-        public void visitLabel(Label label) {
-            positions.put(label, index);
-        }
-
-        @Override
-        public void visitInsn(int opcode) {
-            if (opcode == Opcodes.MONITOREXIT) {
-                exits.add(index);
-            }
-            index++;
-        }
-
-        @Override
-        public void visitVarInsn(int opcode, int varIndex) {
-            index++;
-        }
-
-        @Override
-        public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-            index++;
-        }
-
-        @Override
-        public void visitJumpInsn(int opcode, Label label) {
-            index++;
-        }
-
-        @Override
-        public void visitEnd() {
-            for (Label[] range : catchAll) {
-                ranges.add(new int[] {positions.get(range[0]), positions.get(range[1])});
-            }
-        }
-    }
-
     @Test
     public void finallyReturnOverridesTheReturnOfTheTry() throws Exception {
         // try { return x; } finally { return 42; }
@@ -701,5 +644,62 @@ public abstract class ControlFlowTck extends AbstractByteCodeWriterTck {
     private static ExpressionDef yieldingLocal(String value) {
         return new ExpressionDef.SwitchYieldCase(TypeDef.STRING, ExpressionDef.constant(value)
             .newLocal("y", y -> y.stringConcat(ExpressionDef.constant("!")).returning()));
+    }
+
+    /**
+     * The instruction indexes of the monitor exits of a method, and the ranges of its catch-all entries.
+     */
+    private static final class MonitorExits extends MethodVisitor {
+        private final List<int[]> ranges = new ArrayList<>();
+        private final List<Integer> exits = new ArrayList<>();
+        private final Map<Label, Integer> positions = new HashMap<>();
+        private final List<Label[]> catchAll = new ArrayList<>();
+        private int index;
+
+        MonitorExits() {
+            super(Opcodes.ASM9);
+        }
+
+        @Override
+        public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
+            if (type == null) {
+                catchAll.add(new Label[] {start, end});
+            }
+        }
+
+        @Override
+        public void visitLabel(Label label) {
+            positions.put(label, index);
+        }
+
+        @Override
+        public void visitInsn(int opcode) {
+            if (opcode == Opcodes.MONITOREXIT) {
+                exits.add(index);
+            }
+            index++;
+        }
+
+        @Override
+        public void visitVarInsn(int opcode, int varIndex) {
+            index++;
+        }
+
+        @Override
+        public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+            index++;
+        }
+
+        @Override
+        public void visitJumpInsn(int opcode, Label label) {
+            index++;
+        }
+
+        @Override
+        public void visitEnd() {
+            for (Label[] range : catchAll) {
+                ranges.add(new int[] {positions.get(range[0]), positions.get(range[1])});
+            }
+        }
     }
 }
