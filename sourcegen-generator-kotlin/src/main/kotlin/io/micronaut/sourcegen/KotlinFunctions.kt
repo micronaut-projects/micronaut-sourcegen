@@ -120,7 +120,7 @@ private fun KotlinWriteContext.functionParameters(objectDef: ObjectDef?, method:
             ParameterSpec.builder(
                 param.name,
                 asType(if (nullable) param.type.makeNullable() else param.type, objectDef, method)
-            ).addAnnotations(param.annotations.map { asAnnotationSpec(it) }).build()
+            ).addAnnotations(param.annotations.filter(::appliesToParameter).map { asAnnotationSpec(it) }).build()
         }
     }
 }
@@ -176,4 +176,14 @@ internal fun overridesVarargs(objectDef: ObjectDef?, method: MethodDef): Boolean
                 }
         }
     }
+}
+
+/**
+ * Whether an annotation can annotate a Kotlin parameter: a type-use annotation, `@Nullable` of JSpecify, is expressed
+ * by the parameter's nullable type instead.
+ */
+internal fun appliesToParameter(annotation: io.micronaut.sourcegen.model.AnnotationDef): Boolean {
+    val type = io.micronaut.sourcegen.model.TypeLookup.reflective().loadClass(annotation.type.name) ?: return true
+    val target = type.getAnnotation(java.lang.annotation.Target::class.java) ?: return true
+    return target.value.contains(java.lang.annotation.ElementType.PARAMETER)
 }

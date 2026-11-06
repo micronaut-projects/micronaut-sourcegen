@@ -278,7 +278,7 @@ private fun KotlinWriteContext.addPrimaryConstructor(
                     ParameterSpec.builder(
                         param.name,
                         asType(if (isBoxed(param.type)) param.type.makeNullable() else param.type, classDef)
-                    ).addAnnotations(param.annotations.map { asAnnotationSpec(it) }).build()
+                    ).addAnnotations(param.annotations.filter(::appliesToParameter).map { asAnnotationSpec(it) }).build()
                 }.toList()
         )
     classBuilder.superclassConstructorParameters.add(superArguments)
