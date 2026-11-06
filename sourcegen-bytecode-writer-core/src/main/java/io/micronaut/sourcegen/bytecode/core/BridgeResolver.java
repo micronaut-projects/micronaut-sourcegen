@@ -607,7 +607,59 @@ public final class BridgeResolver {
             && (isPrimitive(returnDescriptor) || isPrimitive(declared.returnDescriptor()))) {
             return null;
         }
-        return new BridgeMethod(inherited.bridgeParameters().stream().map(type::erase).toList(), returnType);
+        List<TypeDef> bridgeParameters = inherited.bridgeParameters().stream().map(type::erase).toList();
+        // javac declares the exceptions of the inherited method on the bridge, not those of the override
+        return new BridgeMethod(bridgeParameters, returnType,
+            inheritedThrows(declared.objectDef(), type.getName(), inherited.name(), bridgeParameters));
+    }
+
+    /**
+     * The erased exceptions the supertype declares the inherited method with, where it is a class a class loader
+     * loads or a generated definition among the supertypes.
+     *
+     * @return The exceptions, or {@code null} where the supertype is not known
+     */
+    @Nullable
+    private static List<TypeDef> inheritedThrows(ObjectDef objectDef, String typeName, String name, List<TypeDef> parameters) {
+        String descriptor = parameters.stream().map(parameter -> TypeUtils.getDescriptor(parameter, null, EnclosingScope.NONE))
+            .collect(Collectors.joining("", "(", ")"));
+        Class<?> loaded = TypeLookup.reflective().loadClass(typeName);
+        if (loaded != null) {
+            java.lang.reflect.Method method = Conversions.declaration(loaded, name, descriptor);
+            return method == null ? null : java.util.Arrays.stream(method.getExceptionTypes()).<TypeDef>map(TypeDef::of).toList();
+        }
+        ObjectDef generated = generatedSupertype(objectDef, typeName, new HashSet<>());
+        if (generated == null) {
+            return null;
+        }
+        return generated.getMethods().stream()
+            .filter(method -> method.getName().equals(name) && descriptor.equals(parametersDescriptor(generated, method)))
+            .findFirst()
+            .map(method -> method.getThrowTypes().stream()
+                .map(thrown -> TypeUtils.erased(thrown, generated, method, EnclosingScope.NONE)).toList())
+            .orElse(null);
+    }
+
+    private static String parametersDescriptor(ObjectDef definition, MethodDef method) {
+        String descriptor = TypeUtils.getMethodDescriptor(definition, method, EnclosingScope.NONE);
+        return descriptor.substring(0, descriptor.indexOf(')') + 1);
+    }
+
+    @Nullable
+    private static ObjectDef generatedSupertype(ObjectDef objectDef, String name, Set<String> visited) {
+        if (!visited.add(objectDef.getName())) {
+            return null;
+        }
+        for (TypeDef superType : TypeHierarchy.superTypesOf(objectDef)) {
+            if (TypeOperations.rawClassOf(superType) instanceof ClassTypeDef.ClassDefType definition) {
+                ObjectDef found = definition.objectDef().getName().equals(name) ? definition.objectDef()
+                    : generatedSupertype(definition.objectDef(), name, visited);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     private static String descriptorOf(BridgeMethod bridge) {

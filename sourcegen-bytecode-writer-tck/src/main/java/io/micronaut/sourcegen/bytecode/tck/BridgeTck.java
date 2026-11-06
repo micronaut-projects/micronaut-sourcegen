@@ -23,6 +23,7 @@ import io.micronaut.sourcegen.model.EnumDef;
 import io.micronaut.sourcegen.model.ExpressionDef;
 import io.micronaut.sourcegen.model.InterfaceDef;
 import io.micronaut.sourcegen.model.MethodDef;
+import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import org.junit.jupiter.api.Test;
 
@@ -77,6 +78,19 @@ public abstract class BridgeTck extends AbstractByteCodeWriterTck {
         Method bridge = java.util.Arrays.stream(declaredMethods(define(parent)))
             .filter(Method::isBridge).findFirst().orElseThrow();
         assertEquals(true, bridge.isDefault());
+    }
+
+    @Test
+    public void bridgeDeclaresTheExceptionsOfTheInheritedMethod() throws Exception {
+        // class C implements Parser<String> { public void parse(String s) throws FileNotFoundException }:
+        // javac declares the bridge parse(Object) throws IOException, as Parser does
+        var definition = ClassDef.builder("test.ThrowingParser").addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(TypeDef.parameterized(Parser.class, TypeDef.STRING))
+            .addMethod(MethodDef.builder("parse").addModifiers(Modifier.PUBLIC).addParameter("value", TypeDef.STRING)
+                .addThrows(TypeDef.of(java.io.FileNotFoundException.class)).returns(TypeDef.VOID).build((self, p) -> new StatementDef.Return(null)))
+            .build();
+        Method bridge = Arrays.stream(declaredMethods(define(definition))).filter(Method::isBridge).findFirst().orElseThrow();
+        assertEquals(List.of(java.io.IOException.class), List.of(bridge.getExceptionTypes()));
     }
 
     @Test
@@ -341,6 +355,22 @@ public abstract class BridgeTck extends AbstractByteCodeWriterTck {
         GenericPick<String> generated = (GenericPick<String>) define(definition).getConstructor().newInstance();
         assertEquals(new StringPick().pick(1, "x"), generated.pick(1, "x"));
         assertEquals(shape(StringPick.class), shape(generated.getClass()));
+    }
+
+    /**
+     * A generic contract whose method declares a checked exception.
+     *
+     * @param <T> The parsed type
+     * @since 2.3
+     */
+    public interface Parser<T> {
+        /**
+         * Parses a value.
+         *
+         * @param value The value
+         * @throws java.io.IOException If it cannot be read
+         */
+        void parse(T value) throws java.io.IOException;
     }
 
     /**

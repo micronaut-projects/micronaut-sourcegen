@@ -28,11 +28,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 
 import javax.lang.model.element.Modifier;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -275,6 +282,85 @@ public abstract class ControlFlowTck extends AbstractByteCodeWriterTck {
                     .doCatch(IllegalStateException.class, e -> ExpressionDef.constant(0).newLocal("ignored")),
                 ClassTypeDef.of(Thread.class).invokeStatic("holdsLock", TypeDef.Primitive.BOOLEAN, self).returning()));
         assertEquals(false, invoke(run));
+    }
+
+    @Test
+    public void everyMonitorExitOfASynchronizedBlockIsProtected() {
+        // javac covers the release on the normal path and the handler's own release with the catch-all entry
+        ClassDef definition = ClassDef.builder("test.hardening.SynchronizedRanges").addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodDef.builder("run").addModifiers(Modifier.PUBLIC).returns(TypeDef.VOID)
+                .build((self, p) -> new StatementDef.Synchronized(self,
+                    ClassTypeDef.of(Thread.class).invokeStatic("holdsLock", TypeDef.Primitive.BOOLEAN, self))))
+            .build();
+        MonitorExits run = new MonitorExits();
+        new ClassReader(write(definition)).accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                return name.equals("run") ? run : null;
+            }
+        }, 0);
+        assertEquals(2, run.exits.size());
+        for (int exit : run.exits) {
+            assertTrue(run.ranges.stream().anyMatch(range -> range[0] <= exit && exit < range[1]),
+                "monitorexit at " + exit + " is not protected");
+        }
+    }
+
+    /**
+     * The instruction indexes of the monitor exits of a method, and the ranges of its catch-all entries.
+     */
+    private static final class MonitorExits extends MethodVisitor {
+        private final List<int[]> ranges = new ArrayList<>();
+        private final List<Integer> exits = new ArrayList<>();
+        private final Map<Label, Integer> positions = new HashMap<>();
+        private final List<Label[]> catchAll = new ArrayList<>();
+        private int index;
+
+        MonitorExits() {
+            super(Opcodes.ASM9);
+        }
+
+        @Override
+        public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
+            if (type == null) {
+                catchAll.add(new Label[] {start, end});
+            }
+        }
+
+        @Override
+        public void visitLabel(Label label) {
+            positions.put(label, index);
+        }
+
+        @Override
+        public void visitInsn(int opcode) {
+            if (opcode == Opcodes.MONITOREXIT) {
+                exits.add(index);
+            }
+            index++;
+        }
+
+        @Override
+        public void visitVarInsn(int opcode, int varIndex) {
+            index++;
+        }
+
+        @Override
+        public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+            index++;
+        }
+
+        @Override
+        public void visitJumpInsn(int opcode, Label label) {
+            index++;
+        }
+
+        @Override
+        public void visitEnd() {
+            for (Label[] range : catchAll) {
+                ranges.add(new int[] {positions.get(range[0]), positions.get(range[1])});
+            }
+        }
     }
 
     @Test

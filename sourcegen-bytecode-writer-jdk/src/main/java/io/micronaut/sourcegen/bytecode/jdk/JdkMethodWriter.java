@@ -520,21 +520,29 @@ final class JdkMethodWriter {
         cleanups.add(release);
         writeStatement(synchronizedStatement.statement());
         cleanups.removeLast();
-        Range body = new Range(start, position(), release.gaps());
-        if (Completion.BYTECODE.canCompleteNormally(synchronizedStatement.statement())) {
+        boolean completes = Completion.BYTECODE.canCompleteNormally(synchronizedStatement.statement());
+        if (completes) {
             exit.run();
+        }
+        // The release on the normal path is protected too, as javac protects it
+        Range body = new Range(start, position(), release.gaps());
+        if (completes) {
             code.goto_(complete);
         }
         code.labelBinding(handler);
+        Position handlerStart = position();
         int exceptionSlot = code.allocateLocal(TypeKind.REFERENCE);
         code.storeLocal(TypeKind.REFERENCE, exceptionSlot);
         exit.run();
+        // So is the handler's own release, which javac covers with an entry of the handler itself
+        Range handling = new Range(handlerStart, position(), List.of());
         code.loadLocal(TypeKind.REFERENCE, exceptionSlot).athrow();
         code.labelBinding(complete);
 
         // The JVM takes the first entry of the exception table that matches, so the entry releasing the
         // monitor follows those of the statements nested in the block
         exceptionCatch(body, handler, null);
+        exceptionCatch(handling, handler, null);
     }
 
     private void writeSwitch(StatementDef.Switch aSwitch) {
