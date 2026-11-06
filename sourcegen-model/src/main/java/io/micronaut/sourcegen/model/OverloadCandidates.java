@@ -101,23 +101,7 @@ final class OverloadCandidates {
                 return collect(context, memberOf.member(), name, receiver, result, visited, own);
             }
             case ClassTypeDef.JavaClass javaClass -> {
-                Class<?> type = javaClass.type();
-                if (constructor) {
-                    for (Constructor<?> declared : type.getDeclaredConstructors()) {
-                        if (!declared.isSynthetic()) {
-                            add(context, result, reflected(declared, MethodDef.builder(declared).build(), receiver), Map.of());
-                        }
-                    }
-                    return true;
-                }
-                // The public methods, then the others each class of the hierarchy declares
-                Arrays.stream(type.getMethods()).filter(method -> method.getName().equals(name) && !method.isSynthetic() && !method.isBridge())
-                    .forEach(method -> add(context, result, reflected(method, MethodDef.of(method), receiver), Map.of()));
-                for (Class<?> current = type; current != null; current = current.getSuperclass()) {
-                    Arrays.stream(current.getDeclaredMethods()).filter(method -> method.getName().equals(name) && !method.isSynthetic() && !method.isBridge())
-                        .forEach(method -> add(context, result, reflected(method, MethodDef.of(method), receiver), Map.of()));
-                }
-                return true;
+                return collectReflected(context, javaClass.type(), name, receiver, result, constructor);
             }
             case ClassTypeDef.ClassElementType elementType -> {
                 ClassElement element = elementType.classElement();
@@ -129,44 +113,68 @@ final class OverloadCandidates {
                 return true;
             }
             case ClassTypeDef.ClassDefType classDefType -> {
-                ObjectDef definition = classDefType.objectDef();
-                List<String> variables = variableNames(definition);
-                // A variable named alone erases to its bound, which tells `choose(T)` of a `T extends Number` apart
-                // from `choose(Object)`
-                Map<String, TypeDef> scope = new HashMap<>();
-                classVariables(definition).forEach(variable -> scope.put(variable.name(), variable));
-                for (MethodDef method : definition.getMethods()) {
-                    if (method.getName().equals(name)) {
-                        Map<String, TypeDef> methodScope = new HashMap<>(scope);
-                        method.getTypeVariables().forEach(variable -> methodScope.put(variable.name(), variable));
-                        expandChains(methodScope);
-                        add(context, result, new Candidate(method, method.getParameters().stream().map(ParameterDef::getType).toList(),
-                            method.getReturnType(), method.getTypeVariables(), false, definition.getName(), variables,
-                            access(method.getModifiers(), definition instanceof InterfaceDef || definition instanceof AnnotationObjectDef),
-                            method.getModifiers().contains(Modifier.STATIC), receiver), methodScope);
-                    }
-                }
-                if (constructor) {
-                    return true;
-                }
-                // The methods it inherits are invoked on it too, as a class file resolves them - of Object where it
-                // extends no other class
-                List<TypeDef> superTypes = new ArrayList<>(TypeHierarchy.superTypesOf(definition));
-                if (definition instanceof ClassDef classDef && classDef.getSuperclass() == null) {
-                    superTypes.add(TypeDef.OBJECT);
-                }
-                for (TypeDef superType : superTypes) {
-                    if (TypeHierarchy.unwrap(superType) instanceof ClassTypeDef superClass
-                        && !collect(context, declaredClass(superClass), name, receiver, result, visited, false)) {
-                        return false;
-                    }
-                }
-                return true;
+                return collectDefined(context, classDefType.objectDef(), name, receiver, result, visited, constructor);
             }
             default -> {
                 return !own;
             }
         }
+    }
+
+    private static boolean collectReflected(ResolutionContext context, Class<?> type, String name, ClassTypeDef receiver,
+                                            Map<String, Candidate> result, boolean constructor) {
+        if (constructor) {
+            for (Constructor<?> declared : type.getDeclaredConstructors()) {
+                if (!declared.isSynthetic()) {
+                    add(context, result, reflected(declared, MethodDef.builder(declared).build(), receiver), Map.of());
+                }
+            }
+            return true;
+        }
+        // The public methods, then the others each class of the hierarchy declares
+        Arrays.stream(type.getMethods()).filter(method -> method.getName().equals(name) && !method.isSynthetic() && !method.isBridge())
+            .forEach(method -> add(context, result, reflected(method, MethodDef.of(method), receiver), Map.of()));
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+            Arrays.stream(current.getDeclaredMethods()).filter(method -> method.getName().equals(name) && !method.isSynthetic() && !method.isBridge())
+                .forEach(method -> add(context, result, reflected(method, MethodDef.of(method), receiver), Map.of()));
+        }
+        return true;
+    }
+
+    private static boolean collectDefined(ResolutionContext context, ObjectDef definition, String name, ClassTypeDef receiver,
+                                          Map<String, Candidate> result, Set<String> visited, boolean constructor) {
+        List<String> variables = variableNames(definition);
+        // A variable named alone erases to its bound, which tells `choose(T)` of a `T extends Number` apart
+        // from `choose(Object)`
+        Map<String, TypeDef> scope = new HashMap<>();
+        classVariables(definition).forEach(variable -> scope.put(variable.name(), variable));
+        for (MethodDef method : definition.getMethods()) {
+            if (method.getName().equals(name)) {
+                Map<String, TypeDef> methodScope = new HashMap<>(scope);
+                method.getTypeVariables().forEach(variable -> methodScope.put(variable.name(), variable));
+                expandChains(methodScope);
+                add(context, result, new Candidate(method, method.getParameters().stream().map(ParameterDef::getType).toList(),
+                    method.getReturnType(), method.getTypeVariables(), false, definition.getName(), variables,
+                    access(method.getModifiers(), definition instanceof InterfaceDef || definition instanceof AnnotationObjectDef),
+                    method.getModifiers().contains(Modifier.STATIC), receiver), methodScope);
+            }
+        }
+        if (constructor) {
+            return true;
+        }
+        // The methods it inherits are invoked on it too, as a class file resolves them - of Object where it
+        // extends no other class
+        List<TypeDef> superTypes = new ArrayList<>(TypeHierarchy.superTypesOf(definition));
+        if (definition instanceof ClassDef classDef && classDef.getSuperclass() == null) {
+            superTypes.add(TypeDef.OBJECT);
+        }
+        for (TypeDef superType : superTypes) {
+            if (TypeHierarchy.unwrap(superType) instanceof ClassTypeDef superClass
+                && !collect(context, declaredClass(superClass), name, receiver, result, visited, false)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void add(ResolutionContext context, Map<String, Candidate> result, Candidate candidate, Map<String, TypeDef> scope) {

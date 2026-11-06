@@ -168,62 +168,84 @@ final class OverloadResolution {
      */
     private static Choice choose(ResolutionContext context, List<Candidate> candidates, List<@Nullable TypeDef> arguments) {
         for (int phase = 1; phase <= 3; phase++) {
-            List<Candidate> applicable = new ArrayList<>();
-            for (Candidate candidate : candidates) {
-                Tri result = applicable(context, candidate, arguments, phase);
-                if (result == Tri.UNKNOWN) {
-                    return Choice.UNKNOWN;
-                }
-                if (result == Tri.YES) {
-                    applicable.add(candidate);
-                }
-            }
-            if (applicable.isEmpty()) {
-                continue;
-            }
-            boolean variableArity = phase == 3;
-            int count = applicable.size();
-            Tri[][] specific = new Tri[count][count];
-            boolean decided = true;
-            List<Candidate> maximal = new ArrayList<>();
-            for (int i = 0; i < count; i++) {
-                Tri most = Tri.YES;
-                for (int j = 0; j < count; j++) {
-                    if (i != j) {
-                        specific[i][j] = moreSpecific(context, applicable.get(i), applicable.get(j), arguments.size(), variableArity);
-                        decided &= specific[i][j] != Tri.UNKNOWN;
-                        most = most.and(specific[i][j]);
-                    }
-                }
-                if (most == Tri.UNKNOWN) {
-                    return Choice.UNKNOWN;
-                }
-                if (most == Tri.YES) {
-                    maximal.add(applicable.get(i));
-                }
-            }
-            if (maximal.size() == 1) {
-                return new Choice(Outcome.RESOLVED, maximal.getFirst(), variableArity, List.of());
-            }
-            if (!maximal.isEmpty() || !decided) {
-                // Methods more specific than each other are ones the model tells apart no further
+            List<Candidate> applicable = applicableIn(context, candidates, arguments, phase);
+            if (applicable == null) {
                 return Choice.UNKNOWN;
             }
-            // No method is more specific than all the others: those no other is strictly more specific than are
-            // maximally specific, and javac rejects the call
-            List<Candidate> ambiguous = new ArrayList<>();
-            for (int i = 0; i < count; i++) {
-                boolean dominated = false;
-                for (int j = 0; j < count; j++) {
-                    dominated |= i != j && specific[j][i] == Tri.YES && specific[i][j] == Tri.NO;
-                }
-                if (!dominated) {
-                    ambiguous.add(applicable.get(i));
-                }
+            if (!applicable.isEmpty()) {
+                return chooseAmong(context, applicable, arguments, phase == 3);
             }
-            return new Choice(Outcome.AMBIGUOUS, null, variableArity, ambiguous);
         }
         return Choice.NOT_APPLICABLE;
+    }
+
+    /**
+     * The candidates applicable in a phase, or null where the model cannot tell for one of them.
+     */
+    private static @Nullable List<Candidate> applicableIn(ResolutionContext context, List<Candidate> candidates,
+                                                          List<@Nullable TypeDef> arguments, int phase) {
+        List<Candidate> applicable = new ArrayList<>();
+        for (Candidate candidate : candidates) {
+            Tri result = applicable(context, candidate, arguments, phase);
+            if (result == Tri.UNKNOWN) {
+                return null;
+            }
+            if (result == Tri.YES) {
+                applicable.add(candidate);
+            }
+        }
+        return applicable;
+    }
+
+    private static Choice chooseAmong(ResolutionContext context, List<Candidate> applicable, List<@Nullable TypeDef> arguments,
+                                      boolean variableArity) {
+        int count = applicable.size();
+        Tri[][] specific = new Tri[count][count];
+        boolean decided = true;
+        List<Candidate> maximal = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            Tri most = Tri.YES;
+            for (int j = 0; j < count; j++) {
+                if (i != j) {
+                    specific[i][j] = moreSpecific(context, applicable.get(i), applicable.get(j), arguments.size(), variableArity);
+                    decided &= specific[i][j] != Tri.UNKNOWN;
+                    most = most.and(specific[i][j]);
+                }
+            }
+            if (most == Tri.UNKNOWN) {
+                return Choice.UNKNOWN;
+            }
+            if (most == Tri.YES) {
+                maximal.add(applicable.get(i));
+            }
+        }
+        if (maximal.size() == 1) {
+            return new Choice(Outcome.RESOLVED, maximal.getFirst(), variableArity, List.of());
+        }
+        if (!maximal.isEmpty() || !decided) {
+            // Methods more specific than each other are ones the model tells apart no further
+            return Choice.UNKNOWN;
+        }
+        return new Choice(Outcome.AMBIGUOUS, null, variableArity, undominated(applicable, specific));
+    }
+
+    /**
+     * No method is more specific than all the others: those no other is strictly more specific than are maximally
+     * specific, and javac rejects the call.
+     */
+    private static List<Candidate> undominated(List<Candidate> applicable, Tri[][] specific) {
+        int count = applicable.size();
+        List<Candidate> ambiguous = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            boolean dominated = false;
+            for (int j = 0; j < count; j++) {
+                dominated |= i != j && specific[j][i] == Tri.YES && specific[i][j] == Tri.NO;
+            }
+            if (!dominated) {
+                ambiguous.add(applicable.get(i));
+            }
+        }
+        return ambiguous;
     }
 
     /**

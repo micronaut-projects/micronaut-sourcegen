@@ -342,13 +342,17 @@ public final class TypeHierarchy {
                 }
                 visited.add(info.typeName());
             }
-            for (TypeDef superType : info.superTypes()) {
-                if (unwrap(superType) instanceof ClassTypeDef superClassType) {
-                    queue.addLast(TypeOperations.declaredClass(superClassType));
-                }
-            }
+            enqueueDeclaredSuperTypes(info, queue);
         }
         return false;
+    }
+
+    private static void enqueueDeclaredSuperTypes(TypeInfo info, Deque<ClassTypeDef> queue) {
+        for (TypeDef superType : info.superTypes()) {
+            if (unwrap(superType) instanceof ClassTypeDef superClassType) {
+                queue.addLast(TypeOperations.declaredClass(superClassType));
+            }
+        }
     }
 
     /**

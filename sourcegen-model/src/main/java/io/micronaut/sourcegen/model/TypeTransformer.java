@@ -84,90 +84,118 @@ public final class TypeTransformer {
         return switch (statement) {
             case ExpressionDef.InvokeInstanceMethod invoke -> invokeInstance(invoke);
             case ExpressionDef.InvokeStaticMethod invoke -> invokeStatic(invoke);
-            case StatementDef.Multi multi -> {
-                // The statements of a block are read flattened, into a list of their own
-                List<StatementDef> flattened = multi.statements();
-                List<StatementDef> statements = statements(flattened);
-                yield statements == flattened ? multi : new StatementDef.Multi(statements);
-            }
-            case StatementDef.Throw aThrow -> {
-                ExpressionDef expression = expression(aThrow.expression());
-                yield expression == aThrow.expression() ? aThrow : new StatementDef.Throw(expression);
-            }
-            case StatementDef.Return aReturn -> {
-                ExpressionDef returned = aReturn.expression();
-                ExpressionDef expression = returned == null ? null : expression(returned);
-                yield expression == aReturn.expression() ? aReturn : new StatementDef.Return(expression);
-            }
-            case StatementDef.Assign assign -> {
-                VariableDef.Local variable = local(assign.variable());
-                ExpressionDef expression = expression(assign.expression());
-                yield variable == assign.variable() && expression == assign.expression() ? assign
-                    : new StatementDef.Assign(variable, expression);
-            }
-            case StatementDef.DefineAndAssign define -> {
-                VariableDef.Local variable = local(define.variable());
-                ExpressionDef expression = expression(define.expression());
-                yield variable == define.variable() && expression == define.expression() ? define
-                    : new StatementDef.DefineAndAssign(variable, expression);
-            }
-            case StatementDef.PutField put -> {
-                VariableDef.Field field = field(put.field());
-                ExpressionDef expression = expression(put.expression());
-                yield field == put.field() && expression == put.expression() ? put : new StatementDef.PutField(field, expression);
-            }
-            case StatementDef.PutStaticField put -> {
-                VariableDef.StaticField field = staticField(put.field());
-                ExpressionDef expression = expression(put.expression());
-                yield field == put.field() && expression == put.expression() ? put : new StatementDef.PutStaticField(field, expression);
-            }
-            case StatementDef.If anIf -> {
-                ExpressionDef condition = expression(anIf.condition());
-                StatementDef body = statement(anIf.statement());
-                yield condition == anIf.condition() && body == anIf.statement() ? anIf : new StatementDef.If(condition, body);
-            }
-            case StatementDef.IfElse ifElse -> {
-                ExpressionDef condition = expression(ifElse.condition());
-                StatementDef body = statement(ifElse.statement());
-                StatementDef elseBody = statement(ifElse.elseStatement());
-                yield condition == ifElse.condition() && body == ifElse.statement() && elseBody == ifElse.elseStatement()
-                    ? ifElse : new StatementDef.IfElse(condition, body, elseBody);
-            }
-            case StatementDef.Switch aSwitch -> {
-                ExpressionDef expression = expression(aSwitch.expression());
-                TypeDef type = type(aSwitch.type());
-                Map<ExpressionDef.Constant, StatementDef> cases = cases(aSwitch.cases(), this::statement);
-                StatementDef declaredDefault = aSwitch.defaultCase();
-                StatementDef defaultCase = declaredDefault == null ? null : statement(declaredDefault);
-                yield expression == aSwitch.expression() && type == aSwitch.type() && cases == aSwitch.cases()
-                    && defaultCase == aSwitch.defaultCase() ? aSwitch : new StatementDef.Switch(expression, type, cases, defaultCase);
-            }
-            case StatementDef.While aWhile -> {
-                ExpressionDef expression = expression(aWhile.expression());
-                StatementDef body = statement(aWhile.statement());
-                yield expression == aWhile.expression() && body == aWhile.statement() ? aWhile : new StatementDef.While(expression, body);
-            }
-            case StatementDef.Try aTry -> {
-                StatementDef body = statement(aTry.statement());
-                List<StatementDef.Try.Catch> catches = list(aTry.catches(), this::aCatch);
-                StatementDef declaredFinally = aTry.finallyStatement();
-                StatementDef finallyStatement = declaredFinally == null ? null : statement(declaredFinally);
-                yield body == aTry.statement() && catches == aTry.catches() && finallyStatement == aTry.finallyStatement()
-                    ? aTry : new StatementDef.Try(body, catches, finallyStatement);
-            }
-            case StatementDef.Synchronized aSynchronized -> {
-                ExpressionDef monitor = expression(aSynchronized.monitor());
-                StatementDef body = statement(aSynchronized.statement());
-                yield monitor == aSynchronized.monitor() && body == aSynchronized.statement() ? aSynchronized
-                    : new StatementDef.Synchronized(monitor, body);
-            }
-            case StatementDef.InvokeSuperConstructor invoke -> {
-                VariableDef.Super superInstance = superVariable(invoke.superInstance());
-                List<ExpressionDef> values = expressions(invoke.values());
-                yield superInstance == invoke.superInstance() && values == invoke.values() ? invoke
-                    : new StatementDef.InvokeSuperConstructor(superInstance, invoke.method(), values);
-            }
+            case StatementDef.Multi multi -> statementMulti(multi);
+            case StatementDef.Throw aThrow -> statementThrow(aThrow);
+            case StatementDef.Return aReturn -> statementReturn(aReturn);
+            case StatementDef.Assign assign -> statementAssign(assign);
+            case StatementDef.DefineAndAssign define -> statementDefineAndAssign(define);
+            case StatementDef.PutField put -> statementPutField(put);
+            case StatementDef.PutStaticField put -> statementPutStaticField(put);
+            case StatementDef.If anIf -> statementIf(anIf);
+            case StatementDef.IfElse ifElse -> statementIfElse(ifElse);
+            case StatementDef.Switch aSwitch -> statementSwitch(aSwitch);
+            case StatementDef.While aWhile -> statementWhile(aWhile);
+            case StatementDef.Try aTry -> statementTry(aTry);
+            case StatementDef.Synchronized aSynchronized -> statementSynchronized(aSynchronized);
+            case StatementDef.InvokeSuperConstructor invoke -> statementInvokeSuperConstructor(invoke);
         };
+    }
+
+    private StatementDef statementMulti(StatementDef.Multi multi) {
+        // The statements of a block are read flattened, into a list of their own
+        List<StatementDef> flattened = multi.statements();
+        List<StatementDef> statements = statements(flattened);
+        return statements == flattened ? multi : new StatementDef.Multi(statements);
+    }
+
+    private StatementDef statementThrow(StatementDef.Throw aThrow) {
+        ExpressionDef expression = expression(aThrow.expression());
+        return expression == aThrow.expression() ? aThrow : new StatementDef.Throw(expression);
+    }
+
+    private StatementDef statementReturn(StatementDef.Return aReturn) {
+        ExpressionDef returned = aReturn.expression();
+        ExpressionDef expression = returned == null ? null : expression(returned);
+        return expression == aReturn.expression() ? aReturn : new StatementDef.Return(expression);
+    }
+
+    private StatementDef statementAssign(StatementDef.Assign assign) {
+        VariableDef.Local variable = local(assign.variable());
+        ExpressionDef expression = expression(assign.expression());
+        return variable == assign.variable() && expression == assign.expression() ? assign
+            : new StatementDef.Assign(variable, expression);
+    }
+
+    private StatementDef statementDefineAndAssign(StatementDef.DefineAndAssign define) {
+        VariableDef.Local variable = local(define.variable());
+        ExpressionDef expression = expression(define.expression());
+        return variable == define.variable() && expression == define.expression() ? define
+            : new StatementDef.DefineAndAssign(variable, expression);
+    }
+
+    private StatementDef statementPutField(StatementDef.PutField put) {
+        VariableDef.Field field = field(put.field());
+        ExpressionDef expression = expression(put.expression());
+        return field == put.field() && expression == put.expression() ? put : new StatementDef.PutField(field, expression);
+    }
+
+    private StatementDef statementPutStaticField(StatementDef.PutStaticField put) {
+        VariableDef.StaticField field = staticField(put.field());
+        ExpressionDef expression = expression(put.expression());
+        return field == put.field() && expression == put.expression() ? put : new StatementDef.PutStaticField(field, expression);
+    }
+
+    private StatementDef statementIf(StatementDef.If anIf) {
+        ExpressionDef condition = expression(anIf.condition());
+        StatementDef body = statement(anIf.statement());
+        return condition == anIf.condition() && body == anIf.statement() ? anIf : new StatementDef.If(condition, body);
+    }
+
+    private StatementDef statementIfElse(StatementDef.IfElse ifElse) {
+        ExpressionDef condition = expression(ifElse.condition());
+        StatementDef body = statement(ifElse.statement());
+        StatementDef elseBody = statement(ifElse.elseStatement());
+        return condition == ifElse.condition() && body == ifElse.statement() && elseBody == ifElse.elseStatement()
+            ? ifElse : new StatementDef.IfElse(condition, body, elseBody);
+    }
+
+    private StatementDef statementSwitch(StatementDef.Switch aSwitch) {
+        ExpressionDef expression = expression(aSwitch.expression());
+        TypeDef type = type(aSwitch.type());
+        Map<ExpressionDef.Constant, StatementDef> cases = cases(aSwitch.cases(), this::statement);
+        StatementDef declaredDefault = aSwitch.defaultCase();
+        StatementDef defaultCase = declaredDefault == null ? null : statement(declaredDefault);
+        return expression == aSwitch.expression() && type == aSwitch.type() && cases == aSwitch.cases()
+            && defaultCase == aSwitch.defaultCase() ? aSwitch : new StatementDef.Switch(expression, type, cases, defaultCase);
+    }
+
+    private StatementDef statementWhile(StatementDef.While aWhile) {
+        ExpressionDef expression = expression(aWhile.expression());
+        StatementDef body = statement(aWhile.statement());
+        return expression == aWhile.expression() && body == aWhile.statement() ? aWhile : new StatementDef.While(expression, body);
+    }
+
+    private StatementDef statementTry(StatementDef.Try aTry) {
+        StatementDef body = statement(aTry.statement());
+        List<StatementDef.Try.Catch> catches = list(aTry.catches(), this::aCatch);
+        StatementDef declaredFinally = aTry.finallyStatement();
+        StatementDef finallyStatement = declaredFinally == null ? null : statement(declaredFinally);
+        return body == aTry.statement() && catches == aTry.catches() && finallyStatement == aTry.finallyStatement()
+            ? aTry : new StatementDef.Try(body, catches, finallyStatement);
+    }
+
+    private StatementDef statementSynchronized(StatementDef.Synchronized aSynchronized) {
+        ExpressionDef monitor = expression(aSynchronized.monitor());
+        StatementDef body = statement(aSynchronized.statement());
+        return monitor == aSynchronized.monitor() && body == aSynchronized.statement() ? aSynchronized
+            : new StatementDef.Synchronized(monitor, body);
+    }
+
+    private StatementDef statementInvokeSuperConstructor(StatementDef.InvokeSuperConstructor invoke) {
+        VariableDef.Super superInstance = superVariable(invoke.superInstance());
+        List<ExpressionDef> values = expressions(invoke.values());
+        return superInstance == invoke.superInstance() && values == invoke.values() ? invoke
+            : new StatementDef.InvokeSuperConstructor(superInstance, invoke.method(), values);
     }
 
     /**
@@ -181,94 +209,124 @@ public final class TypeTransformer {
             case MethodReferenceExpression reference -> methodReference(reference);
             case ExpressionDef.InvokeInstanceMethod invoke -> invokeInstance(invoke);
             case ExpressionDef.InvokeStaticMethod invoke -> invokeStatic(invoke);
-            case ExpressionDef.NewInstance newInstance -> {
-                ClassTypeDef type = classType(newInstance.type());
-                List<TypeDef> parameterTypes = list(newInstance.parameterTypes(), this::type);
-                List<ExpressionDef> values = expressions(newInstance.values());
-                yield type == newInstance.type() && parameterTypes == newInstance.parameterTypes() && values == newInstance.values()
-                    ? newInstance : new ExpressionDef.NewInstance(type, parameterTypes, values);
-            }
-            case ExpressionDef.Cast cast -> {
-                TypeDef type = type(cast.type());
-                ExpressionDef value = expression(cast.expressionDef());
-                yield type == cast.type() && value == cast.expressionDef() ? cast : new ExpressionDef.Cast(type, value);
-            }
+            case ExpressionDef.NewInstance newInstance -> expressionNewInstance(newInstance);
+            case ExpressionDef.Cast cast -> expressionCast(cast);
             case ExpressionDef.Constant constant -> constant(constant);
-            case ExpressionDef.MathBinaryOperation operation -> {
-                ExpressionDef left = expression(operation.left());
-                ExpressionDef right = expression(operation.right());
-                yield left == operation.left() && right == operation.right() ? operation
-                    : new ExpressionDef.MathBinaryOperation(operation.opType(), left, uncast(right));
-            }
-            case ExpressionDef.MathUnaryOperation operation -> {
-                ExpressionDef value = expression(operation.expression());
-                yield value == operation.expression() ? operation : new ExpressionDef.MathUnaryOperation(operation.opType(), value);
-            }
-            case ExpressionDef.StringConcatenation concatenation -> {
-                ExpressionDef left = expression(concatenation.left());
-                ExpressionDef right = expression(concatenation.right());
-                yield left == concatenation.left() && right == concatenation.right() ? concatenation
-                    : new ExpressionDef.StringConcatenation(left, right);
-            }
-            case ExpressionDef.IfElse ifElse -> {
-                ExpressionDef condition = expression(ifElse.condition());
-                ExpressionDef value = expression(ifElse.ifExpression());
-                ExpressionDef elseValue = expression(ifElse.elseExpression());
-                TypeDef type = type(ifElse.type());
-                yield condition == ifElse.condition() && value == ifElse.ifExpression() && elseValue == ifElse.elseExpression()
-                    && type == ifElse.type() ? ifElse : new ExpressionDef.IfElse(condition, value, elseValue, type);
-            }
-            case ExpressionDef.Switch aSwitch -> {
-                ExpressionDef value = expression(aSwitch.expression());
-                TypeDef type = type(aSwitch.type());
-                Map<ExpressionDef.Constant, ExpressionDef> cases = cases(aSwitch.cases(), this::expression);
-                ExpressionDef declaredDefault = aSwitch.defaultCase();
-                ExpressionDef defaultCase = declaredDefault == null ? null : expression(declaredDefault);
-                yield value == aSwitch.expression() && type == aSwitch.type() && cases == aSwitch.cases()
-                    && defaultCase == aSwitch.defaultCase() ? aSwitch : new ExpressionDef.Switch(value, type, cases, defaultCase);
-            }
-            case ExpressionDef.SwitchYieldCase yieldCase -> {
-                TypeDef type = type(yieldCase.type());
-                StatementDef statement = statement(yieldCase.statement());
-                yield type == yieldCase.type() && statement == yieldCase.statement() ? yieldCase
-                    : new ExpressionDef.SwitchYieldCase(type, statement);
-            }
-            case ExpressionDef.NewArrayOfSize newArray -> {
-                TypeDef.Array type = arrayType(newArray.type());
-                yield type == newArray.type() ? newArray : new ExpressionDef.NewArrayOfSize(type, newArray.size());
-            }
-            case ExpressionDef.NewArrayInitialized newArray -> {
-                TypeDef.Array type = arrayType(newArray.type());
-                List<ExpressionDef> values = expressions(newArray.expressions());
-                yield type == newArray.type() && values == newArray.expressions() ? newArray
-                    : new ExpressionDef.NewArrayInitialized(type, values);
-            }
-            case ExpressionDef.GetPropertyValue property -> {
-                ExpressionDef instance = expression(property.instance());
-                yield instance == property.instance() ? property : new ExpressionDef.GetPropertyValue(instance, property.propertyElement());
-            }
-            case ExpressionDef.InvokeGetClassMethod invoke -> {
-                ExpressionDef instance = expression(invoke.instance());
-                yield instance == invoke.instance() ? invoke : new ExpressionDef.InvokeGetClassMethod(instance);
-            }
-            case ExpressionDef.InvokeHashCodeMethod invoke -> {
-                ExpressionDef instance = expression(invoke.instance());
-                yield instance == invoke.instance() ? invoke : new ExpressionDef.InvokeHashCodeMethod(instance);
-            }
-            case ExpressionDef.ArrayElement element -> {
-                ExpressionDef array = expression(element.expression());
-                TypeDef type = type(element.type());
-                ExpressionDef index = expression(element.indexExpression());
-                yield array == element.expression() && type == element.type() && index == element.indexExpression() ? element
-                    : new ExpressionDef.ArrayElement(array, type, index);
-            }
-            case ExpressionDef.Lambda lambda -> {
-                ClassTypeDef type = classType(lambda.type());
-                MethodDef implementation = method(lambda.implementation());
-                yield type == lambda.type() && implementation == lambda.implementation() ? lambda
-                    : new ExpressionDef.Lambda(type, lambda.target(), implementation);
-            }
+            case ExpressionDef.MathBinaryOperation operation -> expressionMathBinaryOperation(operation);
+            case ExpressionDef.MathUnaryOperation operation -> expressionMathUnaryOperation(operation);
+            case ExpressionDef.StringConcatenation concatenation -> expressionStringConcatenation(concatenation);
+            case ExpressionDef.IfElse ifElse -> expressionIfElse(ifElse);
+            case ExpressionDef.Switch aSwitch -> expressionSwitch(aSwitch);
+            case ExpressionDef.SwitchYieldCase yieldCase -> expressionSwitchYieldCase(yieldCase);
+            case ExpressionDef.NewArrayOfSize newArray -> expressionNewArrayOfSize(newArray);
+            case ExpressionDef.NewArrayInitialized newArray -> expressionNewArrayInitialized(newArray);
+            case ExpressionDef.GetPropertyValue property -> expressionGetPropertyValue(property);
+            case ExpressionDef.InvokeGetClassMethod invoke -> expressionInvokeGetClassMethod(invoke);
+            case ExpressionDef.InvokeHashCodeMethod invoke -> expressionInvokeHashCodeMethod(invoke);
+            case ExpressionDef.ArrayElement element -> expressionArrayElement(element);
+            case ExpressionDef.Lambda lambda -> expressionLambda(lambda);
         };
+    }
+
+    private ExpressionDef expressionNewInstance(ExpressionDef.NewInstance newInstance) {
+        ClassTypeDef type = classType(newInstance.type());
+        List<TypeDef> parameterTypes = list(newInstance.parameterTypes(), this::type);
+        List<ExpressionDef> values = expressions(newInstance.values());
+        return type == newInstance.type() && parameterTypes == newInstance.parameterTypes() && values == newInstance.values()
+            ? newInstance : new ExpressionDef.NewInstance(type, parameterTypes, values);
+    }
+
+    private ExpressionDef expressionCast(ExpressionDef.Cast cast) {
+        TypeDef type = type(cast.type());
+        ExpressionDef value = expression(cast.expressionDef());
+        return type == cast.type() && value == cast.expressionDef() ? cast : new ExpressionDef.Cast(type, value);
+    }
+
+    private ExpressionDef expressionMathBinaryOperation(ExpressionDef.MathBinaryOperation operation) {
+        ExpressionDef left = expression(operation.left());
+        ExpressionDef right = expression(operation.right());
+        return left == operation.left() && right == operation.right() ? operation
+            : new ExpressionDef.MathBinaryOperation(operation.opType(), left, uncast(right));
+    }
+
+    private ExpressionDef expressionMathUnaryOperation(ExpressionDef.MathUnaryOperation operation) {
+        ExpressionDef value = expression(operation.expression());
+        return value == operation.expression() ? operation : new ExpressionDef.MathUnaryOperation(operation.opType(), value);
+    }
+
+    private ExpressionDef expressionStringConcatenation(ExpressionDef.StringConcatenation concatenation) {
+        ExpressionDef left = expression(concatenation.left());
+        ExpressionDef right = expression(concatenation.right());
+        return left == concatenation.left() && right == concatenation.right() ? concatenation
+            : new ExpressionDef.StringConcatenation(left, right);
+    }
+
+    private ExpressionDef expressionIfElse(ExpressionDef.IfElse ifElse) {
+        ExpressionDef condition = expression(ifElse.condition());
+        ExpressionDef value = expression(ifElse.ifExpression());
+        ExpressionDef elseValue = expression(ifElse.elseExpression());
+        TypeDef type = type(ifElse.type());
+        return condition == ifElse.condition() && value == ifElse.ifExpression() && elseValue == ifElse.elseExpression()
+            && type == ifElse.type() ? ifElse : new ExpressionDef.IfElse(condition, value, elseValue, type);
+    }
+
+    private ExpressionDef expressionSwitch(ExpressionDef.Switch aSwitch) {
+        ExpressionDef value = expression(aSwitch.expression());
+        TypeDef type = type(aSwitch.type());
+        Map<ExpressionDef.Constant, ExpressionDef> cases = cases(aSwitch.cases(), this::expression);
+        ExpressionDef declaredDefault = aSwitch.defaultCase();
+        ExpressionDef defaultCase = declaredDefault == null ? null : expression(declaredDefault);
+        return value == aSwitch.expression() && type == aSwitch.type() && cases == aSwitch.cases()
+            && defaultCase == aSwitch.defaultCase() ? aSwitch : new ExpressionDef.Switch(value, type, cases, defaultCase);
+    }
+
+    private ExpressionDef expressionSwitchYieldCase(ExpressionDef.SwitchYieldCase yieldCase) {
+        TypeDef type = type(yieldCase.type());
+        StatementDef statement = statement(yieldCase.statement());
+        return type == yieldCase.type() && statement == yieldCase.statement() ? yieldCase
+            : new ExpressionDef.SwitchYieldCase(type, statement);
+    }
+
+    private ExpressionDef expressionNewArrayOfSize(ExpressionDef.NewArrayOfSize newArray) {
+        TypeDef.Array type = arrayType(newArray.type());
+        return type == newArray.type() ? newArray : new ExpressionDef.NewArrayOfSize(type, newArray.size());
+    }
+
+    private ExpressionDef expressionNewArrayInitialized(ExpressionDef.NewArrayInitialized newArray) {
+        TypeDef.Array type = arrayType(newArray.type());
+        List<ExpressionDef> values = expressions(newArray.expressions());
+        return type == newArray.type() && values == newArray.expressions() ? newArray
+            : new ExpressionDef.NewArrayInitialized(type, values);
+    }
+
+    private ExpressionDef expressionGetPropertyValue(ExpressionDef.GetPropertyValue property) {
+        ExpressionDef instance = expression(property.instance());
+        return instance == property.instance() ? property : new ExpressionDef.GetPropertyValue(instance, property.propertyElement());
+    }
+
+    private ExpressionDef expressionInvokeGetClassMethod(ExpressionDef.InvokeGetClassMethod invoke) {
+        ExpressionDef instance = expression(invoke.instance());
+        return instance == invoke.instance() ? invoke : new ExpressionDef.InvokeGetClassMethod(instance);
+    }
+
+    private ExpressionDef expressionInvokeHashCodeMethod(ExpressionDef.InvokeHashCodeMethod invoke) {
+        ExpressionDef instance = expression(invoke.instance());
+        return instance == invoke.instance() ? invoke : new ExpressionDef.InvokeHashCodeMethod(instance);
+    }
+
+    private ExpressionDef expressionArrayElement(ExpressionDef.ArrayElement element) {
+        ExpressionDef array = expression(element.expression());
+        TypeDef type = type(element.type());
+        ExpressionDef index = expression(element.indexExpression());
+        return array == element.expression() && type == element.type() && index == element.indexExpression() ? element
+            : new ExpressionDef.ArrayElement(array, type, index);
+    }
+
+    private ExpressionDef expressionLambda(ExpressionDef.Lambda lambda) {
+        ClassTypeDef type = classType(lambda.type());
+        MethodDef implementation = method(lambda.implementation());
+        return type == lambda.type() && implementation == lambda.implementation() ? lambda
+            : new ExpressionDef.Lambda(type, lambda.target(), implementation);
     }
 
     /**
@@ -363,68 +421,92 @@ public final class TypeTransformer {
 
     private ExpressionDef condition(ExpressionDef.ConditionExpressionDef condition) {
         return switch (condition) {
-            case ExpressionDef.ComparisonOperation comparison -> {
-                ExpressionDef left = expression(comparison.left());
-                ExpressionDef right = expression(comparison.right());
-                yield left == comparison.left() && right == comparison.right() ? comparison
-                    : new ExpressionDef.ComparisonOperation(comparison.opType(), left,
-                    comparison.right() instanceof ExpressionDef.Cast ? uncast(right) : right);
-            }
-            case ExpressionDef.IsNull isNull -> {
-                ExpressionDef value = expression(isNull.expression());
-                yield value == isNull.expression() ? isNull : new ExpressionDef.IsNull(uncast(value));
-            }
-            case ExpressionDef.IsNotNull isNotNull -> {
-                ExpressionDef value = expression(isNotNull.expression());
-                yield value == isNotNull.expression() ? isNotNull : new ExpressionDef.IsNotNull(uncast(value));
-            }
-            case ExpressionDef.IsTrue isTrue -> {
-                ExpressionDef value = expression(isTrue.expression());
-                yield value == isTrue.expression() ? isTrue : new ExpressionDef.IsTrue(value);
-            }
-            case ExpressionDef.IsFalse isFalse -> {
-                ExpressionDef value = expression(isFalse.expression());
-                yield value == isFalse.expression() ? isFalse : new ExpressionDef.IsFalse(value);
-            }
-            case ExpressionDef.And and -> {
-                ExpressionDef.ConditionExpressionDef left = conditionOf(expression(and.left()));
-                ExpressionDef.ConditionExpressionDef right = conditionOf(expression(and.right()));
-                yield left == and.left() && right == and.right() ? and : new ExpressionDef.And(left, right);
-            }
-            case ExpressionDef.Or or -> {
-                ExpressionDef.ConditionExpressionDef left = conditionOf(expression(or.left()));
-                ExpressionDef.ConditionExpressionDef right = conditionOf(expression(or.right()));
-                yield left == or.left() && right == or.right() ? or : new ExpressionDef.Or(left, right);
-            }
-            case ExpressionDef.EqualsStructurally equals -> {
-                ExpressionDef instance = expression(equals.instance());
-                ExpressionDef other = expression(equals.other());
-                yield instance == equals.instance() && other == equals.other() ? equals : new ExpressionDef.EqualsStructurally(instance, other);
-            }
-            case ExpressionDef.NotEqualsStructurally notEquals -> {
-                ExpressionDef instance = expression(notEquals.instance());
-                ExpressionDef other = expression(notEquals.other());
-                yield instance == notEquals.instance() && other == notEquals.other() ? notEquals
-                    : new ExpressionDef.NotEqualsStructurally(instance, other);
-            }
-            case ExpressionDef.EqualsReferentially equals -> {
-                ExpressionDef instance = expression(equals.instance());
-                ExpressionDef other = expression(equals.other());
-                yield instance == equals.instance() && other == equals.other() ? equals : new ExpressionDef.EqualsReferentially(uncast(instance), uncast(other));
-            }
-            case ExpressionDef.NotEqualsReferentially notEquals -> {
-                ExpressionDef instance = expression(notEquals.instance());
-                ExpressionDef other = expression(notEquals.other());
-                yield instance == notEquals.instance() && other == notEquals.other() ? notEquals
-                    : new ExpressionDef.NotEqualsReferentially(instance, other);
-            }
-            case ExpressionDef.InstanceOf instanceOf -> {
-                ExpressionDef value = expression(instanceOf.expression());
-                ClassTypeDef type = classType(instanceOf.instanceType());
-                yield value == instanceOf.expression() && type == instanceOf.instanceType() ? instanceOf
-                    : new ExpressionDef.InstanceOf(value, type);
-            }
+            case ExpressionDef.ComparisonOperation comparison -> conditionComparisonOperation(comparison);
+            case ExpressionDef.IsNull isNull -> conditionIsNull(isNull);
+            case ExpressionDef.IsNotNull isNotNull -> conditionIsNotNull(isNotNull);
+            case ExpressionDef.IsTrue isTrue -> conditionIsTrue(isTrue);
+            case ExpressionDef.IsFalse isFalse -> conditionIsFalse(isFalse);
+            case ExpressionDef.And and -> conditionAnd(and);
+            case ExpressionDef.Or or -> conditionOr(or);
+            case ExpressionDef.EqualsStructurally equals -> conditionEqualsStructurally(equals);
+            case ExpressionDef.NotEqualsStructurally notEquals -> conditionNotEqualsStructurally(notEquals);
+            case ExpressionDef.EqualsReferentially equals -> conditionEqualsReferentially(equals);
+            case ExpressionDef.NotEqualsReferentially notEquals -> conditionNotEqualsReferentially(notEquals);
+            case ExpressionDef.InstanceOf instanceOf -> conditionInstanceOf(instanceOf);
         };
+    }
+
+    private ExpressionDef conditionComparisonOperation(ExpressionDef.ComparisonOperation comparison) {
+        ExpressionDef left = expression(comparison.left());
+        ExpressionDef right = expression(comparison.right());
+        return left == comparison.left() && right == comparison.right() ? comparison
+            : new ExpressionDef.ComparisonOperation(comparison.opType(), left,
+            comparison.right() instanceof ExpressionDef.Cast ? uncast(right) : right);
+    }
+
+    private ExpressionDef conditionIsNull(ExpressionDef.IsNull isNull) {
+        ExpressionDef value = expression(isNull.expression());
+        return value == isNull.expression() ? isNull : new ExpressionDef.IsNull(uncast(value));
+    }
+
+    private ExpressionDef conditionIsNotNull(ExpressionDef.IsNotNull isNotNull) {
+        ExpressionDef value = expression(isNotNull.expression());
+        return value == isNotNull.expression() ? isNotNull : new ExpressionDef.IsNotNull(uncast(value));
+    }
+
+    private ExpressionDef conditionIsTrue(ExpressionDef.IsTrue isTrue) {
+        ExpressionDef value = expression(isTrue.expression());
+        return value == isTrue.expression() ? isTrue : new ExpressionDef.IsTrue(value);
+    }
+
+    private ExpressionDef conditionIsFalse(ExpressionDef.IsFalse isFalse) {
+        ExpressionDef value = expression(isFalse.expression());
+        return value == isFalse.expression() ? isFalse : new ExpressionDef.IsFalse(value);
+    }
+
+    private ExpressionDef conditionAnd(ExpressionDef.And and) {
+        ExpressionDef.ConditionExpressionDef left = conditionOf(expression(and.left()));
+        ExpressionDef.ConditionExpressionDef right = conditionOf(expression(and.right()));
+        return left == and.left() && right == and.right() ? and : new ExpressionDef.And(left, right);
+    }
+
+    private ExpressionDef conditionOr(ExpressionDef.Or or) {
+        ExpressionDef.ConditionExpressionDef left = conditionOf(expression(or.left()));
+        ExpressionDef.ConditionExpressionDef right = conditionOf(expression(or.right()));
+        return left == or.left() && right == or.right() ? or : new ExpressionDef.Or(left, right);
+    }
+
+    private ExpressionDef conditionEqualsStructurally(ExpressionDef.EqualsStructurally equals) {
+        ExpressionDef instance = expression(equals.instance());
+        ExpressionDef other = expression(equals.other());
+        return instance == equals.instance() && other == equals.other() ? equals : new ExpressionDef.EqualsStructurally(instance, other);
+    }
+
+    private ExpressionDef conditionNotEqualsStructurally(ExpressionDef.NotEqualsStructurally notEquals) {
+        ExpressionDef instance = expression(notEquals.instance());
+        ExpressionDef other = expression(notEquals.other());
+        return instance == notEquals.instance() && other == notEquals.other() ? notEquals
+            : new ExpressionDef.NotEqualsStructurally(instance, other);
+    }
+
+    private ExpressionDef conditionEqualsReferentially(ExpressionDef.EqualsReferentially equals) {
+        ExpressionDef instance = expression(equals.instance());
+        ExpressionDef other = expression(equals.other());
+        return instance == equals.instance() && other == equals.other() ? equals : new ExpressionDef.EqualsReferentially(uncast(instance), uncast(other));
+    }
+
+    private ExpressionDef conditionNotEqualsReferentially(ExpressionDef.NotEqualsReferentially notEquals) {
+        ExpressionDef instance = expression(notEquals.instance());
+        ExpressionDef other = expression(notEquals.other());
+        return instance == notEquals.instance() && other == notEquals.other() ? notEquals
+            : new ExpressionDef.NotEqualsReferentially(instance, other);
+    }
+
+    private ExpressionDef conditionInstanceOf(ExpressionDef.InstanceOf instanceOf) {
+        ExpressionDef value = expression(instanceOf.expression());
+        ClassTypeDef type = classType(instanceOf.instanceType());
+        return value == instanceOf.expression() && type == instanceOf.instanceType() ? instanceOf
+            : new ExpressionDef.InstanceOf(value, type);
     }
 
     private ExpressionDef methodReference(MethodReferenceExpression reference) {

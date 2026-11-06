@@ -123,18 +123,22 @@ final class MemberTypes {
             return TypeDef.wildcard();
         }
         if (type instanceof DeclaredType declared && declared.asElement() instanceof TypeElement element) {
-            ClassTypeDef rawType = ClassTypeDef.of(binaryName(element), element.getEnclosingElement() instanceof TypeElement);
-            if (declared.getEnclosingType() instanceof DeclaredType enclosing && hasTypeArguments(enclosing)) {
-                rawType = TypeHierarchy.memberType((ClassTypeDef) of(enclosing), rawType);
-            }
-            if (declared.getTypeArguments().isEmpty()) {
-                return rawType;
-            }
-            List<TypeDef> arguments = new ArrayList<>();
-            declared.getTypeArguments().forEach(argument -> arguments.add(of(argument)));
-            return new ClassTypeDef.Parameterized(rawType, arguments);
+            return ofDeclared(declared, element);
         }
         return type.getKind() == TypeKind.VOID ? TypeDef.VOID : TypeDef.OBJECT;
+    }
+
+    private static TypeDef ofDeclared(DeclaredType declared, TypeElement element) {
+        ClassTypeDef rawType = ClassTypeDef.of(binaryName(element), element.getEnclosingElement() instanceof TypeElement);
+        if (declared.getEnclosingType() instanceof DeclaredType enclosing && hasTypeArguments(enclosing)) {
+            rawType = TypeHierarchy.memberType((ClassTypeDef) of(enclosing), rawType);
+        }
+        if (declared.getTypeArguments().isEmpty()) {
+            return rawType;
+        }
+        List<TypeDef> arguments = new ArrayList<>();
+        declared.getTypeArguments().forEach(argument -> arguments.add(of(argument)));
+        return new ClassTypeDef.Parameterized(rawType, arguments);
     }
 
     private static String binaryName(TypeElement element) {

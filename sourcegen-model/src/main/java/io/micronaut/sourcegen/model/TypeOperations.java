@@ -178,13 +178,7 @@ public final class TypeOperations {
             return thisType;
         }
         if (unwrapped instanceof TypeDef.TypeVariable variable) {
-            if (!visiting.add(variable.name())) {
-                return TypeDef.OBJECT;
-            }
-            TypeDef bound = variable.bounds().isEmpty() ? declared.apply(variable.name()) : variable.bounds().get(0);
-            TypeDef erased = bound == null ? TypeDef.OBJECT : erase(bound, declared, thisType, visiting);
-            visiting.remove(variable.name());
-            return erased;
+            return eraseVariable(variable, declared, thisType, visiting);
         }
         if (unwrapped instanceof ClassTypeDef.Parameterized parameterized) {
             return erase(parameterized.rawType(), declared, thisType, visiting);
@@ -200,6 +194,19 @@ public final class TypeOperations {
             return array.isNullable() ? erased.makeNullable() : erased;
         }
         return unwrapped;
+    }
+
+    private static TypeDef eraseVariable(TypeDef.TypeVariable variable,
+                                         Function<String, @Nullable TypeDef> declared,
+                                         @Nullable ClassTypeDef thisType,
+                                         Set<String> visiting) {
+        if (!visiting.add(variable.name())) {
+            return TypeDef.OBJECT;
+        }
+        TypeDef bound = variable.bounds().isEmpty() ? declared.apply(variable.name()) : variable.bounds().get(0);
+        TypeDef erased = bound == null ? TypeDef.OBJECT : erase(bound, declared, thisType, visiting);
+        visiting.remove(variable.name());
+        return erased;
     }
 
     /**
@@ -288,13 +295,9 @@ public final class TypeOperations {
             return new EnclosedClassType((ClassTypeDef) substitute(enclosed.enclosing(), substitution), enclosed.member());
         }
         if (unwrapped instanceof ClassTypeDef.ClassElementType elementType && !substitution.isEmpty()) {
-            // The element names its enclosing type: the member carries it where the substitution changes it
-            ClassTypeDef enclosing = MemberTypes.enclosingOf(elementType.classElement());
-            if (enclosing != null) {
-                TypeDef substituted = substitute(enclosing, substitution);
-                if (!substituted.equals(enclosing)) {
-                    return new EnclosedClassType((ClassTypeDef) substituted, elementType);
-                }
+            ClassTypeDef member = substitutedEnclosing(elementType, substitution);
+            if (member != null) {
+                return member;
             }
         }
         if (unwrapped instanceof TypeDef.Array array) {
@@ -307,6 +310,22 @@ public final class TypeOperations {
                 .map(bound -> substitute(bound, substitution)).toList());
         }
         return unwrapped;
+    }
+
+    /**
+     * The element names its enclosing type: the member carries it where the substitution changes it.
+     *
+     * @return The member of the substituted enclosing type, or {@code null} where the substitution leaves it be
+     */
+    private static @Nullable ClassTypeDef substitutedEnclosing(ClassTypeDef.ClassElementType elementType, Map<String, TypeDef> substitution) {
+        ClassTypeDef enclosing = MemberTypes.enclosingOf(elementType.classElement());
+        if (enclosing != null) {
+            TypeDef substituted = substitute(enclosing, substitution);
+            if (!substituted.equals(enclosing)) {
+                return new EnclosedClassType((ClassTypeDef) substituted, elementType);
+            }
+        }
+        return null;
     }
 
     /**
@@ -429,25 +448,37 @@ public final class TypeOperations {
             if (!visited.add(name) || info == null) {
                 continue;
             }
-            Map<String, TypeDef> substitution = new HashMap<>(TypeHierarchy.enclosingArguments(current, lookup));
+            Map<String, TypeDef> substitution = supertypeSubstitution(current, info, lookup);
             List<String> variables = info.typeParameters();
-            if (current instanceof ClassTypeDef.Parameterized parameterized) {
-                for (int i = 0; i < variables.size() && i < parameterized.typeArguments().size(); i++) {
-                    substitution.put(variables.get(i), parameterized.typeArguments().get(i));
-                }
-            }
             // The supertypes of a raw type are raw (JLS 4.8): `RawChild` extends a raw `ListParent`, not a `ListParent<String>`
             boolean currentRaw = rawNames.contains(raw.getName())
                 || !variables.isEmpty() && !(current instanceof ClassTypeDef.Parameterized);
-            for (TypeDef superType : info.superTypes()) {
-                if (substitute(superType, substitution) instanceof ClassTypeDef superClassType) {
-                    if (currentRaw) {
-                        rawNames.add(declaredClass(superClassType).getName());
-                    }
-                    queue.addLast(superClassType);
-                }
-            }
+            enqueueSuperTypes(info, substitution, currentRaw, rawNames, queue);
         }
         return TypeDef.OBJECT.getName().equals(supertypeName) ? TypeDef.OBJECT : null;
+    }
+
+    private static Map<String, TypeDef> supertypeSubstitution(ClassTypeDef current, TypeHierarchy.TypeInfo info,
+                                                             TypeHierarchy.@Nullable Lookup lookup) {
+        Map<String, TypeDef> substitution = new HashMap<>(TypeHierarchy.enclosingArguments(current, lookup));
+        List<String> variables = info.typeParameters();
+        if (current instanceof ClassTypeDef.Parameterized parameterized) {
+            for (int i = 0; i < variables.size() && i < parameterized.typeArguments().size(); i++) {
+                substitution.put(variables.get(i), parameterized.typeArguments().get(i));
+            }
+        }
+        return substitution;
+    }
+
+    private static void enqueueSuperTypes(TypeHierarchy.TypeInfo info, Map<String, TypeDef> substitution, boolean currentRaw,
+                                          Set<String> rawNames, Deque<ClassTypeDef> queue) {
+        for (TypeDef superType : info.superTypes()) {
+            if (substitute(superType, substitution) instanceof ClassTypeDef superClassType) {
+                if (currentRaw) {
+                    rawNames.add(declaredClass(superClassType).getName());
+                }
+                queue.addLast(superClassType);
+            }
+        }
     }
 }

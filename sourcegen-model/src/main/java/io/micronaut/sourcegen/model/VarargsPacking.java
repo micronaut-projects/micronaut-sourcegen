@@ -176,13 +176,7 @@ final class VarargsPacking {
             return null;
         }
         Map<String, TypeDef> solution = new HashMap<>(inference.solution());
-        // A variable no value binds is its bound: an empty call of a `Receiver<Integer>` packs `Integer[]`
-        for (TypeDef.TypeVariable variable : variables) {
-            if (!solution.containsKey(variable.name())) {
-                List<TypeDef> declaredBounds = bounds.get(variable.name()) instanceof TypeDef.TypeVariable bounded ? bounded.bounds() : List.of();
-                solution.put(variable.name(), declaredBounds.isEmpty() ? TypeDef.OBJECT : erasedDeep(declaredBounds.getFirst()));
-            }
-        }
+        bindUnsolvedToBounds(variables, bounds, solution);
         TypeDef receiverLast = TypeHierarchy.substituted(last, receiver);
         TypeDef declared = erasedDeep(TypeHierarchy.substituted(receiverLast, bounds));
         TypeDef component = erasedDeep(TypeHierarchy.substituted(receiverLast, solution));
@@ -198,15 +192,36 @@ final class VarargsPacking {
         // that is one - `Zeta` of `T extends Zeta & Alpha` - else the erasure
         TypeDef.TypeVariable variable = componentVariable(last, variables);
         if (variable != null) {
-            List<TypeDef> lowers = inference.lowerBounds().getOrDefault(variable.name(), List.of());
-            for (ClassTypeDef candidate : lowers.isEmpty() ? List.<ClassTypeDef>of() : LeastUpperBounds.commonSupertypes(lowers)) {
-                TypeDef candidateArray = erasedDeep(TypeHierarchy.substituted(receiverLast, Map.of(variable.name(), candidate)));
-                if (candidateArray instanceof TypeDef.Array candidateAsArray && fits(context, candidateAsArray, declaredArray)) {
-                    return candidateAsArray;
-                }
+            TypeDef.Array common = commonSupertypeArray(context, inference, variable, receiverLast, declaredArray);
+            if (common != null) {
+                return common;
             }
         }
         return declaredArray;
+    }
+
+    /**
+     * A variable no value binds is its bound: an empty call of a `Receiver<Integer>` packs `Integer[]`.
+     */
+    private static void bindUnsolvedToBounds(List<TypeDef.TypeVariable> variables, Map<String, TypeDef> bounds, Map<String, TypeDef> solution) {
+        for (TypeDef.TypeVariable variable : variables) {
+            if (!solution.containsKey(variable.name())) {
+                List<TypeDef> declaredBounds = bounds.get(variable.name()) instanceof TypeDef.TypeVariable bounded ? bounded.bounds() : List.of();
+                solution.put(variable.name(), declaredBounds.isEmpty() ? TypeDef.OBJECT : erasedDeep(declaredBounds.getFirst()));
+            }
+        }
+    }
+
+    private static TypeDef.@Nullable Array commonSupertypeArray(ResolutionContext context, Inference inference, TypeDef.TypeVariable variable,
+                                                                TypeDef receiverLast, TypeDef.Array declaredArray) {
+        List<TypeDef> lowers = inference.lowerBounds().getOrDefault(variable.name(), List.of());
+        for (ClassTypeDef candidate : lowers.isEmpty() ? List.<ClassTypeDef>of() : LeastUpperBounds.commonSupertypes(lowers)) {
+            TypeDef candidateArray = erasedDeep(TypeHierarchy.substituted(receiverLast, Map.of(variable.name(), candidate)));
+            if (candidateArray instanceof TypeDef.Array candidateAsArray && fits(context, candidateAsArray, declaredArray)) {
+                return candidateAsArray;
+            }
+        }
+        return null;
     }
 
     private static boolean interfaceComponents(TypeDef.Array array, TypeDef.Array declared) {

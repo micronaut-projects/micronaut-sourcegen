@@ -41,6 +41,22 @@ final class ModelChecks {
         Float.class.getName(), Double.class.getName(), Character.class.getName()
     );
 
+    // Names of the operands and operations the expressions check
+    static final String ARGUMENT = "argument";
+    static final String INSTANCE = "instance";
+    static final String INVOKE = "Invoke ";
+    static final String RIGHT = "right";
+    static final String OPERAND = "operand";
+    static final String OTHER = "other";
+    static final String EQUALS_STRUCTURALLY = "Equals structurally";
+    static final String NOT_EQUALS_STRUCTURALLY = "Not equals structurally";
+    static final String EQUALS_REFERENTIALLY = "Equals referentially";
+    static final String NOT_EQUALS_REFERENTIALLY = "Not equals referentially";
+
+    private static final String A_VALUE_OF = "a value of ";
+    private static final String MATH = "Math ";
+    private static final String SWITCH_YIELD_CASE = "Switch yield case";
+
     private ModelChecks() {
     }
 
@@ -125,7 +141,7 @@ final class ModelChecks {
         }
         if (isNullConstant(value)) {
             if (isPrimitiveValue(target)) {
-                throw fail(operation, "null to " + describe(target), "a value of " + describe(target) + ", not null");
+                throw fail(operation, "null to " + describe(target), A_VALUE_OF + describe(target) + ", not null");
             }
             return;
         }
@@ -170,7 +186,7 @@ final class ModelChecks {
             default -> false;
         };
         if (integral && strip(left.type()) instanceof TypeDef.Primitive primitive && primitive.isFloatNumber()) {
-            throw fail("Math " + opType, operands(left, right), "whole number operands (byte, short, int or long), not float or double");
+            throw fail(MATH + opType, operands(left, right), "whole number operands (byte, short, int or long), not float or double");
         }
     }
 
@@ -183,7 +199,7 @@ final class ModelChecks {
      * @return The message
      */
     static String mathOperandsMessage(ExpressionDef.MathBinaryOperation.OpType opType, ExpressionDef left, ExpressionDef right) {
-        return message("Math " + opType, operands(left, right), "primitive number operands (byte, short, int, long, float or double)");
+        return message(MATH + opType, operands(left, right), "primitive number operands (byte, short, int, long, float or double)");
     }
 
     /**
@@ -195,7 +211,7 @@ final class ModelChecks {
     static void requireNegatable(ExpressionDef.MathUnaryOperation.OpType opType, ExpressionDef operand) {
         Kind kind = kind(operand.type());
         if (kind == Kind.VOID || kind == Kind.BOOLEAN || kind == Kind.STRING || kind == Kind.ARRAY) {
-            throw fail("Math " + opType, "operand " + describe(operand.type()), "a number");
+            throw fail(MATH + opType, "operand " + describe(operand.type()), "a number");
         }
     }
 
@@ -256,7 +272,7 @@ final class ModelChecks {
             return;
         }
         if (value == null) {
-            throw fail("Constant", "null of " + describe(type), "a value of " + describe(type) + ", not null");
+            throw fail("Constant", "null of " + describe(type), A_VALUE_OF + describe(type) + ", not null");
         }
         if (value.getClass().isArray()) {
             // Written as an array of the constants it holds
@@ -312,10 +328,10 @@ final class ModelChecks {
      */
     static void requireYield(TypeDef type, StatementDef statement) {
         if (kind(type) == Kind.VOID) {
-            throw fail("Switch yield case", "result " + describe(type), "a result of a type other than void");
+            throw fail(SWITCH_YIELD_CASE, "result " + describe(type), "a result of a type other than void");
         }
         if (statement.flatten().isEmpty()) {
-            throw fail("Switch yield case", "an empty statement", "a statement that returns the result or throws");
+            throw fail(SWITCH_YIELD_CASE, "an empty statement", "a statement that returns the result or throws");
         }
         // Whether a statement of the case returns or throws, or loops and may not complete, and whether a return has no value
         boolean[] exits = {false};
@@ -332,10 +348,10 @@ final class ModelChecks {
             }
         });
         if (returnsNothing[0]) {
-            throw fail("Switch yield case", "a return without a value", "every return of the case to return its result");
+            throw fail(SWITCH_YIELD_CASE, "a return without a value", "every return of the case to return its result");
         }
         if (!exits[0]) {
-            throw fail("Switch yield case", "a statement that neither returns nor throws", "a statement that returns the result or throws");
+            throw fail(SWITCH_YIELD_CASE, "a statement that neither returns nor throws", "a statement that returns the result or throws");
         }
     }
 
@@ -355,7 +371,7 @@ final class ModelChecks {
                 if (nested instanceof StatementDef.Return aReturn
                     && (aReturn.expression() == null || kind(aReturn.expression().type()) == Kind.VOID)) {
                     throw fail("Return", "no value from the method " + method.getName() + " returning " + describe(returnType),
-                        "a value of " + describe(returnType));
+                        A_VALUE_OF + describe(returnType));
                 }
             });
         }

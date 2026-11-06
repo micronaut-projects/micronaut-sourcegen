@@ -1037,7 +1037,7 @@ public sealed interface ExpressionDef
                 throw new IllegalStateException("Cannot create a new instance of " + type.getName() + " parameters: " + parameterTypes.size() + " doesn't match values provided: " + values.size());
             }
             ModelChecks.requireInstantiable(type);
-            ModelChecks.requireValues("New instance of " + type.getName(), "argument", values);
+            ModelChecks.requireValues("New instance of " + type.getName(), ModelChecks.ARGUMENT, values);
         }
 
         @Override
@@ -1115,8 +1115,8 @@ public sealed interface ExpressionDef
             if (method.getParameters().size() != values.size()) {
                 throw new IllegalStateException("Method " + method.getName() + " parameters: " + method.getParameters().size() + " doesn't match values provided: " + values.size());
             }
-            ModelChecks.requireValue("Invoke " + method.getName(), "instance", instance);
-            ModelChecks.requireValues("Invoke " + method.getName(), "argument", values);
+            ModelChecks.requireValue(ModelChecks.INVOKE + method.getName(), ModelChecks.INSTANCE, instance);
+            ModelChecks.requireValues(ModelChecks.INVOKE + method.getName(), ModelChecks.ARGUMENT, values);
         }
 
         @Override
@@ -1148,7 +1148,7 @@ public sealed interface ExpressionDef
             if (method.getParameters().size() != values.size()) {
                 throw new IllegalStateException("Method " + classDef.getName() + "#" + method.getName() + " parameters: " + method.getParameters().size() + " doesn't match values provided: " + values.size());
             }
-            ModelChecks.requireValues("Invoke " + classDef.getName() + "#" + method.getName(), "argument", values);
+            ModelChecks.requireValues(ModelChecks.INVOKE + classDef.getName() + "#" + method.getName(), ModelChecks.ARGUMENT, values);
         }
 
         @Override
@@ -1177,10 +1177,10 @@ public sealed interface ExpressionDef
 
         public ComparisonOperation(OpType opType, ExpressionDef left, ExpressionDef right) {
             ModelChecks.requireValue("Comparison " + opType, "left", left);
-            ModelChecks.requireValue("Comparison " + opType, "right", right);
+            ModelChecks.requireValue("Comparison " + opType, ModelChecks.RIGHT, right);
             if (opType != OpType.EQUAL_TO && opType != OpType.NOT_EQUAL_TO) {
                 left = toPrimitiveNumber(opType, left, "left");
-                right = toPrimitiveNumber(opType, right, "right");
+                right = toPrimitiveNumber(opType, right, ModelChecks.RIGHT);
             }
             this.opType = opType;
             this.right = isNullConstant(right) ? right : right.cast(left.type());
@@ -1292,7 +1292,7 @@ public sealed interface ExpressionDef
 
         public StringConcatenation {
             ModelChecks.requireValue("String concatenation", "left", left);
-            ModelChecks.requireValue("String concatenation", "right", right);
+            ModelChecks.requireValue("String concatenation", ModelChecks.RIGHT, right);
         }
 
         @Override
@@ -1349,7 +1349,7 @@ public sealed interface ExpressionDef
     record IsNull(ExpressionDef expression) implements ConditionExpressionDef {
 
         public IsNull(ExpressionDef expression) {
-            ModelChecks.requireValue("Is null", "operand", expression);
+            ModelChecks.requireValue("Is null", ModelChecks.OPERAND, expression);
             this.expression = expression.cast(TypeDef.OBJECT);
         }
 
@@ -1369,7 +1369,7 @@ public sealed interface ExpressionDef
     record IsNotNull(ExpressionDef expression) implements ConditionExpressionDef {
 
         public IsNotNull(ExpressionDef expression) {
-            ModelChecks.requireValue("Is not null", "operand", expression);
+            ModelChecks.requireValue("Is not null", ModelChecks.OPERAND, expression);
             this.expression = expression.cast(TypeDef.OBJECT);
         }
 
@@ -1591,7 +1591,7 @@ public sealed interface ExpressionDef
                             PropertyElement propertyElement) implements ExpressionDef {
 
         public GetPropertyValue {
-            ModelChecks.requireValue("Get property " + propertyElement.getName(), "instance", instance);
+            ModelChecks.requireValue("Get property " + propertyElement.getName(), ModelChecks.INSTANCE, instance);
         }
 
         @Override
@@ -1616,7 +1616,7 @@ public sealed interface ExpressionDef
     record InvokeGetClassMethod(ExpressionDef instance) implements ExpressionDef {
 
         public InvokeGetClassMethod {
-            ModelChecks.requireValue("Invoke getClass", "instance", instance);
+            ModelChecks.requireValue("Invoke getClass", ModelChecks.INSTANCE, instance);
         }
 
         @Override
@@ -1641,7 +1641,7 @@ public sealed interface ExpressionDef
     record InvokeHashCodeMethod(ExpressionDef instance) implements ExpressionDef {
 
         public InvokeHashCodeMethod {
-            ModelChecks.requireValue("Invoke hashCode", "instance", instance);
+            ModelChecks.requireValue("Invoke hashCode", ModelChecks.INSTANCE, instance);
         }
 
         @Override
@@ -1668,9 +1668,9 @@ public sealed interface ExpressionDef
                               ExpressionDef other) implements ConditionExpressionDef {
 
         public EqualsStructurally {
-            ModelChecks.requireValue("Equals structurally", "instance", instance);
-            ModelChecks.requireValue("Equals structurally", "other", other);
-            ModelChecks.requireComparable("Equals structurally", instance, other, false);
+            ModelChecks.requireValue(ModelChecks.EQUALS_STRUCTURALLY, ModelChecks.INSTANCE, instance);
+            ModelChecks.requireValue(ModelChecks.EQUALS_STRUCTURALLY, ModelChecks.OTHER, other);
+            ModelChecks.requireComparable(ModelChecks.EQUALS_STRUCTURALLY, instance, other, false);
         }
 
         @Override
@@ -1692,9 +1692,9 @@ public sealed interface ExpressionDef
                                  ExpressionDef other) implements ConditionExpressionDef {
 
         public NotEqualsStructurally {
-            ModelChecks.requireValue("Not equals structurally", "instance", instance);
-            ModelChecks.requireValue("Not equals structurally", "other", other);
-            ModelChecks.requireComparable("Not equals structurally", instance, other, false);
+            ModelChecks.requireValue(ModelChecks.NOT_EQUALS_STRUCTURALLY, ModelChecks.INSTANCE, instance);
+            ModelChecks.requireValue(ModelChecks.NOT_EQUALS_STRUCTURALLY, ModelChecks.OTHER, other);
+            ModelChecks.requireComparable(ModelChecks.NOT_EQUALS_STRUCTURALLY, instance, other, false);
         }
 
         @Override
@@ -1716,9 +1716,9 @@ public sealed interface ExpressionDef
                                ExpressionDef other) implements ConditionExpressionDef {
 
         public EqualsReferentially(ExpressionDef instance, ExpressionDef other) {
-            ModelChecks.requireValue("Equals referentially", "instance", instance);
-            ModelChecks.requireValue("Equals referentially", "other", other);
-            ModelChecks.requireComparable("Equals referentially", instance, other, true);
+            ModelChecks.requireValue(ModelChecks.EQUALS_REFERENTIALLY, ModelChecks.INSTANCE, instance);
+            ModelChecks.requireValue(ModelChecks.EQUALS_REFERENTIALLY, ModelChecks.OTHER, other);
+            ModelChecks.requireComparable(ModelChecks.EQUALS_REFERENTIALLY, instance, other, true);
             this.instance = instance.cast(TypeDef.OBJECT);
             this.other = other.cast(TypeDef.OBJECT);
         }
@@ -1742,9 +1742,9 @@ public sealed interface ExpressionDef
                                  ExpressionDef other) implements ConditionExpressionDef {
 
         public NotEqualsReferentially(ExpressionDef instance, ExpressionDef other) {
-            ModelChecks.requireValue("Not equals referentially", "instance", instance);
-            ModelChecks.requireValue("Not equals referentially", "other", other);
-            ModelChecks.requireComparable("Not equals referentially", instance, other, true);
+            ModelChecks.requireValue(ModelChecks.NOT_EQUALS_REFERENTIALLY, ModelChecks.INSTANCE, instance);
+            ModelChecks.requireValue(ModelChecks.NOT_EQUALS_REFERENTIALLY, ModelChecks.OTHER, other);
+            ModelChecks.requireComparable(ModelChecks.NOT_EQUALS_REFERENTIALLY, instance, other, true);
             // A primitive compared with a reference is boxed, as EqualsReferentially boxes its operands
             boolean mixed = instance.type().isPrimitive() != other.type().isPrimitive();
             this.instance = mixed && instance.type().isPrimitive() ? instance.cast(TypeDef.OBJECT) : instance;
@@ -1770,7 +1770,7 @@ public sealed interface ExpressionDef
                       ClassTypeDef instanceType) implements ConditionExpressionDef, ExpressionDef {
 
         public InstanceOf(ExpressionDef expression, ClassTypeDef instanceType) {
-            ModelChecks.requireValue("Instance of " + instanceType.getName(), "operand", expression);
+            ModelChecks.requireValue("Instance of " + instanceType.getName(), ModelChecks.OPERAND, expression);
             this.expression = expression.type().isPrimitive() ? expression.cast(TypeDef.OBJECT) : expression;
             this.instanceType = instanceType;
         }

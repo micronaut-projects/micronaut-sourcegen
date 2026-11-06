@@ -151,11 +151,7 @@ final class Inference {
         // is the `Comparable<java.util.Date>` a `T extends Comparable<T>` is, which makes T a `java.util.Date`, and a
         // `LocalDate` makes it a `ChronoLocalDate` (JLS 18.3.1)
         for (TypeDef.TypeVariable variable : variables) {
-            List<TypeDef> values = new ArrayList<>(lowerBounds.getOrDefault(variable.name(), List.of()));
-            TypeDef equal = equalities.get(variable.name());
-            if (equal != null) {
-                values.add(equal);
-            }
+            List<TypeDef> values = valuesOf(variable);
             for (TypeDef bound : variable.bounds()) {
                 if (TypeHierarchy.unwrap(bound) instanceof ClassTypeDef.Parameterized && mentions(bound, variables)) {
                     values.forEach(value -> collect(bound, value, false));
@@ -165,17 +161,29 @@ final class Inference {
         // `U extends T`: what U takes, T takes too
         for (int pass = 0; pass < variables.size(); pass++) {
             for (TypeDef.TypeVariable variable : variables) {
-                List<TypeDef> values = new ArrayList<>(lowerBounds.getOrDefault(variable.name(), List.of()));
-                TypeDef equal = equalities.get(variable.name());
-                if (equal != null) {
-                    values.add(equal);
-                }
-                for (TypeDef bound : variable.bounds()) {
-                    if (TypeHierarchy.unwrap(bound) instanceof TypeDef.TypeVariable other && names.contains(other.name())) {
-                        List<TypeDef> lowers = lowerBounds.computeIfAbsent(other.name(), ignore -> new ArrayList<>());
-                        values.stream().filter(value -> lowers.stream().noneMatch(lower -> sameType(lower, value))).forEach(lowers::add);
-                    }
-                }
+                propagateToBoundVariables(variable);
+            }
+        }
+    }
+
+    /**
+     * The values a variable takes so far: its lower bounds and its equality.
+     */
+    private List<TypeDef> valuesOf(TypeDef.TypeVariable variable) {
+        List<TypeDef> values = new ArrayList<>(lowerBounds.getOrDefault(variable.name(), List.of()));
+        TypeDef equal = equalities.get(variable.name());
+        if (equal != null) {
+            values.add(equal);
+        }
+        return values;
+    }
+
+    private void propagateToBoundVariables(TypeDef.TypeVariable variable) {
+        List<TypeDef> values = valuesOf(variable);
+        for (TypeDef bound : variable.bounds()) {
+            if (TypeHierarchy.unwrap(bound) instanceof TypeDef.TypeVariable other && names.contains(other.name())) {
+                List<TypeDef> lowers = lowerBounds.computeIfAbsent(other.name(), ignore -> new ArrayList<>());
+                values.stream().filter(value -> lowers.stream().noneMatch(lower -> sameType(lower, value))).forEach(lowers::add);
             }
         }
     }
@@ -195,23 +203,31 @@ final class Inference {
         }
         if (param instanceof TypeDef.Array paramArray && value instanceof TypeDef.Array valueArray
             && valueArray.dimensions() >= paramArray.dimensions()) {
-            // Arrays are covariant: an element of the value is a lower bound of the component
-            TypeDef component = valueArray.dimensions() == paramArray.dimensions() ? valueArray.componentType()
-                : TypeDef.array(valueArray.componentType(), valueArray.dimensions() - paramArray.dimensions());
-            if (!TypeHierarchy.unwrap(component).isPrimitive()) {
-                collect(paramArray.componentType(), component, loose);
-            }
+            collectArray(paramArray, valueArray, loose);
             return;
         }
         if (param instanceof ClassTypeDef.Parameterized declared && value instanceof ClassTypeDef valueClass) {
-            ClassTypeDef inherited = TypeHierarchy.asSupertype(valueClass, declaredClass(declared).getName(), null);
-            if (!(inherited instanceof ClassTypeDef.Parameterized actual) || actual.typeArguments().size() != declared.typeArguments().size()) {
-                return;
-            }
-            List<List<TypeDef>> declaredBounds = TypeHierarchy.declaredBounds(declared);
-            for (int i = 0; i < declared.typeArguments().size(); i++) {
-                equate(declared.typeArguments().get(i), actual.typeArguments().get(i), boundAt(declaredBounds, i));
-            }
+            collectParameterized(declared, valueClass);
+        }
+    }
+
+    private void collectArray(TypeDef.Array paramArray, TypeDef.Array valueArray, boolean loose) {
+        // Arrays are covariant: an element of the value is a lower bound of the component
+        TypeDef component = valueArray.dimensions() == paramArray.dimensions() ? valueArray.componentType()
+            : TypeDef.array(valueArray.componentType(), valueArray.dimensions() - paramArray.dimensions());
+        if (!TypeHierarchy.unwrap(component).isPrimitive()) {
+            collect(paramArray.componentType(), component, loose);
+        }
+    }
+
+    private void collectParameterized(ClassTypeDef.Parameterized declared, ClassTypeDef valueClass) {
+        ClassTypeDef inherited = TypeHierarchy.asSupertype(valueClass, declaredClass(declared).getName(), null);
+        if (!(inherited instanceof ClassTypeDef.Parameterized actual) || actual.typeArguments().size() != declared.typeArguments().size()) {
+            return;
+        }
+        List<List<TypeDef>> declaredBounds = TypeHierarchy.declaredBounds(declared);
+        for (int i = 0; i < declared.typeArguments().size(); i++) {
+            equate(declared.typeArguments().get(i), actual.typeArguments().get(i), boundAt(declaredBounds, i));
         }
     }
 
@@ -222,36 +238,9 @@ final class Inference {
             if (argument instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
                 // The variable is a fresh capture of the wildcard: a `List<? extends String>` binds no
                 // `T extends Number`, and two captures are distinct
-                TypeDef capture = context.capture(wildcard, declaredBound);
-                TypeDef existing = equalities.putIfAbsent(variable.name(), capture);
-                if (existing != null && !sameType(existing, capture)) {
-                    conflict = true;
-                }
+                bindEquality(variable, context.capture(wildcard, declaredBound));
             } else if (argument instanceof TypeDef.Wildcard formal) {
-                // `? extends A` within `? extends F`: A is a subtype of F; `? super A` within `? super F`: F of A
-                TypeDef actualUpper = wildcard.upperBounds().isEmpty() ? TypeDef.OBJECT : wildcard.upperBounds().getFirst();
-                if (wildcard.lowerBounds().isEmpty()) {
-                    for (TypeDef upper : formal.upperBounds()) {
-                        if (TypeHierarchy.unwrap(upper) instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
-                            lowerBounds.computeIfAbsent(variable.name(), ignore -> new ArrayList<>()).add(actualUpper);
-                        } else {
-                            collect(upper, actualUpper, false);
-                        }
-                    }
-                } else {
-                    // `? super A` has Object for its upper bound: within `? extends T` only where T is an Object
-                    for (TypeDef upper : formal.upperBounds()) {
-                        if (TypeHierarchy.unwrap(upper) instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
-                            lowerBounds.computeIfAbsent(variable.name(), ignore -> new ArrayList<>()).add(actualUpper);
-                        }
-                    }
-                    for (TypeDef lower : formal.lowerBounds()) {
-                        if (TypeHierarchy.unwrap(lower) instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
-                            upperBounds.computeIfAbsent(variable.name(), ignore -> new ArrayList<>())
-                                .add(wildcard.lowerBounds().getFirst());
-                        }
-                    }
-                }
+                equateWildcards(formal, wildcard);
             }
             return;
         }
@@ -263,27 +252,14 @@ final class Inference {
             return;
         }
         if (argument instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
-            TypeDef existing = equalities.putIfAbsent(variable.name(), value);
-            if (existing != null && !sameType(existing, value)) {
-                conflict = true;
-            }
+            bindEquality(variable, value);
             return;
         }
         if (argument instanceof TypeDef.Wildcard wildcard) {
             // `? extends T` takes a subtype of T - and `? extends List<T>` a subtype of a list of T - `? super T` a
             // supertype
-            for (TypeDef upper : wildcard.upperBounds()) {
-                if (TypeHierarchy.unwrap(upper) instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
-                    lowerBounds.computeIfAbsent(variable.name(), ignore -> new ArrayList<>()).add(value);
-                } else {
-                    collect(upper, value, false);
-                }
-            }
-            for (TypeDef lower : wildcard.lowerBounds()) {
-                if (TypeHierarchy.unwrap(lower) instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
-                    upperBounds.computeIfAbsent(variable.name(), ignore -> new ArrayList<>()).add(value);
-                }
-            }
+            collectUpperBounds(wildcard, value, true);
+            collectLowerBounds(wildcard, value);
             return;
         }
         if (argument instanceof ClassTypeDef.Parameterized nested && value instanceof ClassTypeDef.Parameterized nestedValue
@@ -291,6 +267,50 @@ final class Inference {
             List<List<TypeDef>> declaredBounds = TypeHierarchy.declaredBounds(nested);
             for (int i = 0; i < nested.typeArguments().size(); i++) {
                 equate(nested.typeArguments().get(i), nestedValue.typeArguments().get(i), boundAt(declaredBounds, i));
+            }
+        }
+    }
+
+    private void bindEquality(TypeDef.TypeVariable variable, TypeDef value) {
+        TypeDef existing = equalities.putIfAbsent(variable.name(), value);
+        if (existing != null && !sameType(existing, value)) {
+            conflict = true;
+        }
+    }
+
+    private void equateWildcards(TypeDef.Wildcard formal, TypeDef.Wildcard wildcard) {
+        // `? extends A` within `? extends F`: A is a subtype of F; `? super A` within `? super F`: F of A
+        TypeDef actualUpper = wildcard.upperBounds().isEmpty() ? TypeDef.OBJECT : wildcard.upperBounds().getFirst();
+        if (wildcard.lowerBounds().isEmpty()) {
+            collectUpperBounds(formal, actualUpper, true);
+        } else {
+            // `? super A` has Object for its upper bound: within `? extends T` only where T is an Object
+            collectUpperBounds(formal, actualUpper, false);
+            collectLowerBounds(formal, wildcard.lowerBounds().getFirst());
+        }
+    }
+
+    /**
+     * Each upper bound of a wildcard that is a variable of the method takes the value as a lower bound; the others
+     * collect from it, when asked to.
+     */
+    private void collectUpperBounds(TypeDef.Wildcard wildcard, TypeDef value, boolean collectOthers) {
+        for (TypeDef upper : wildcard.upperBounds()) {
+            if (TypeHierarchy.unwrap(upper) instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
+                lowerBounds.computeIfAbsent(variable.name(), ignore -> new ArrayList<>()).add(value);
+            } else if (collectOthers) {
+                collect(upper, value, false);
+            }
+        }
+    }
+
+    /**
+     * Each lower bound of a wildcard that is a variable of the method takes the value as an upper bound.
+     */
+    private void collectLowerBounds(TypeDef.Wildcard wildcard, TypeDef value) {
+        for (TypeDef lower : wildcard.lowerBounds()) {
+            if (TypeHierarchy.unwrap(lower) instanceof TypeDef.TypeVariable variable && names.contains(variable.name())) {
+                upperBounds.computeIfAbsent(variable.name(), ignore -> new ArrayList<>()).add(value);
             }
         }
     }

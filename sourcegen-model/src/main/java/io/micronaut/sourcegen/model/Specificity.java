@@ -57,26 +57,37 @@ final class Specificity {
         for (int i = 0; i < count; i++) {
             TypeDef declared = expanded(method.parameters(), i, variableArity);
             TypeDef otherDeclared = expanded(other.parameters(), i, variableArity);
-            TypeDef parameter = specificType(declared, method, receiver);
-            TypeDef otherParameter = specificType(otherDeclared, other, otherReceiver);
-            if (parameter instanceof TypeDef.Primitive primitive && otherParameter instanceof TypeDef.Primitive otherPrimitive) {
-                result = result.and(Tri.of(widens(primitive.clazz(), otherPrimitive.clazz())));
-            } else if (parameter.isPrimitive() || otherParameter.isPrimitive()) {
-                result = Tri.NO;
-            } else if (otherParameter instanceof TypeDef.TypeVariable variable && !isCapture(variable)) {
-                // A variable of several bounds, `T extends First & Second`, takes a type that is each of them
-                for (TypeDef bound : variable.bounds()) {
-                    result = result.and(referenceConvertible(context, specificForm(parameter), erasedDeep(bound)));
-                }
-            } else {
-                result = result.and(referenceConvertible(context, specificForm(parameter), specificForm(otherParameter)));
-                if (result != Tri.NO && other.variables().isEmpty() && !method.variables().isEmpty()) {
-                    result = result.and(argumentsFit(TypeHierarchy.substituted(declared, receiver),
-                        TypeHierarchy.substituted(otherDeclared, otherReceiver), method.variables()));
-                }
-            }
+            result = parameterMoreSpecific(context, method, other, declared, otherDeclared, receiver, otherReceiver, result);
             if (result == Tri.NO) {
                 return Tri.NO;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Folds into the result whether a parameter of the method is more specific than the other's at its position.
+     */
+    private static Tri parameterMoreSpecific(ResolutionContext context, Candidate method, Candidate other, TypeDef declared,
+                                             TypeDef otherDeclared, Map<String, TypeDef> receiver, Map<String, TypeDef> otherReceiver,
+                                             Tri initial) {
+        Tri result = initial;
+        TypeDef parameter = specificType(declared, method, receiver);
+        TypeDef otherParameter = specificType(otherDeclared, other, otherReceiver);
+        if (parameter instanceof TypeDef.Primitive primitive && otherParameter instanceof TypeDef.Primitive otherPrimitive) {
+            result = result.and(Tri.of(widens(primitive.clazz(), otherPrimitive.clazz())));
+        } else if (parameter.isPrimitive() || otherParameter.isPrimitive()) {
+            result = Tri.NO;
+        } else if (otherParameter instanceof TypeDef.TypeVariable variable && !isCapture(variable)) {
+            // A variable of several bounds, `T extends First & Second`, takes a type that is each of them
+            for (TypeDef bound : variable.bounds()) {
+                result = result.and(referenceConvertible(context, specificForm(parameter), erasedDeep(bound)));
+            }
+        } else {
+            result = result.and(referenceConvertible(context, specificForm(parameter), specificForm(otherParameter)));
+            if (result != Tri.NO && other.variables().isEmpty() && !method.variables().isEmpty()) {
+                result = result.and(argumentsFit(TypeHierarchy.substituted(declared, receiver),
+                    TypeHierarchy.substituted(otherDeclared, otherReceiver), method.variables()));
             }
         }
         return result;

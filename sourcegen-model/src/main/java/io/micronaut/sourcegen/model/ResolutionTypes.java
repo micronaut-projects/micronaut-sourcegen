@@ -114,17 +114,21 @@ final class ResolutionTypes {
                 && leftArray.dimensions() == rightArray.dimensions() && sameType(leftArray.componentType(), rightArray.componentType());
         }
         if (l instanceof ClassTypeDef.Parameterized lp && r instanceof ClassTypeDef.Parameterized rp) {
-            if (!sameErasure(lp, rp) || lp.typeArguments().size() != rp.typeArguments().size()) {
-                return false;
-            }
-            for (int i = 0; i < lp.typeArguments().size(); i++) {
-                if (!sameType(lp.typeArguments().get(i), rp.typeArguments().get(i))) {
-                    return false;
-                }
-            }
-            return true;
+            return sameParameterized(lp, rp);
         }
         return !(l instanceof ClassTypeDef.Parameterized) && !(r instanceof ClassTypeDef.Parameterized) && sameErasure(l, r);
+    }
+
+    private static boolean sameParameterized(ClassTypeDef.Parameterized lp, ClassTypeDef.Parameterized rp) {
+        if (!sameErasure(lp, rp) || lp.typeArguments().size() != rp.typeArguments().size()) {
+            return false;
+        }
+        for (int i = 0; i < lp.typeArguments().size(); i++) {
+            if (!sameType(lp.typeArguments().get(i), rp.typeArguments().get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
