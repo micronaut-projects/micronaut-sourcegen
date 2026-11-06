@@ -29,6 +29,8 @@ import io.micronaut.sourcegen.model.MethodDef
 import io.micronaut.sourcegen.model.StatementDef.*
 import io.micronaut.sourcegen.model.TypeDef
 
+private const val KOTLIN_COLLECTIONS_PACKAGE = "kotlin.collections"
+
 /**
  * The members of the Java types that Kotlin maps onto its own, which it names differently or hides: `charAt` is
  * `get`, `intValue()` is `toInt()`, `getClass()` is `javaClass`, and a method of `java.lang.String`, `java.lang.Object`
@@ -244,7 +246,7 @@ internal object KotlinJavaMappings {
         return when (type) {
             is ParameterizedTypeName -> {
                 val raw = type.rawType
-                val mapped = if (mutable) READ_ONLY_TO_MUTABLE[raw.canonicalName]?.let { ClassName("kotlin.collections", it) } else null
+                val mapped = if (mutable) READ_ONLY_TO_MUTABLE[raw.canonicalName]?.let { ClassName(KOTLIN_COLLECTIONS_PACKAGE, it) } else null
                 (mapped ?: entryType(raw, mutable) ?: raw)
                     .parameterizedBy(type.typeArguments.map { mappedPropertyType(it, mutable) }).copy(nullable = nullable)
             }
@@ -256,7 +258,7 @@ internal object KotlinJavaMappings {
 
     private fun entryType(raw: ClassName, mutable: Boolean): ClassName? =
         if (raw.canonicalName == "java.util.Map.Entry") {
-            if (mutable) ClassName("kotlin.collections", "MutableMap", "MutableEntry") else ClassName("kotlin.collections", "Map", "Entry")
+            if (mutable) ClassName(KOTLIN_COLLECTIONS_PACKAGE, "MutableMap", "MutableEntry") else ClassName(KOTLIN_COLLECTIONS_PACKAGE, "Map", "Entry")
         } else {
             null
         }

@@ -221,26 +221,7 @@ private fun KotlinWriteContext.getClassBuilder(classDef: ClassDef): TypeSpec.Bui
                 .getter(FunSpec.getterBuilder().addCode(function.body).build())
                 .build())
         } else if (method.isConstructor) {
-            val superCallStatement = method.statements.firstOrNull {
-                it is InvokeInstanceMethod && it.instance is VariableDef.Super && it.method.isConstructor
-            } as? InvokeInstanceMethod
-            val superCallStatement2 = method.statements.firstOrNull {
-                it is InvokeSuperConstructor
-            } as? InvokeSuperConstructor
-            // Only a lone constructor that does nothing but call super is the primary one: another constructor,
-            // or a body, needs secondary constructors that delegate
-            val primary = classDef.methods.count { it.isConstructor } == 1 && method.statements.size == 1
-            val superMethod = superCallStatement2?.method ?: superCallStatement?.method
-            val superValues = superCallStatement2?.values ?: superCallStatement?.values
-            if (primary && superMethod != null && superValues != null) {
-                addPrimaryConstructor(classBuilder, classDef, method, modifiers, renderArguments(classDef, method,
-                    KotlinRenderScope.root(method), classDef.superclass, MethodDef.CONSTRUCTOR, superMethod,
-                    superMethod.parameters.map { it.type }, superValues))
-            } else {
-                classBuilder.addFunction(
-                    buildFunction(classDef, method, modifiers)
-                )
-            }
+            addConstructor(classBuilder, classDef, method, modifiers)
         } else {
             classBuilder.addFunction(
                 buildFunction(classDef, method, modifiers)
@@ -250,6 +231,34 @@ private fun KotlinWriteContext.getClassBuilder(classDef: ClassDef): TypeSpec.Bui
     companion.addTo(classBuilder)
     addInnerTypes(classDef.innerTypes, classBuilder)
     return classBuilder
+}
+
+private fun KotlinWriteContext.addConstructor(
+    classBuilder: TypeSpec.Builder,
+    classDef: ClassDef,
+    method: MethodDef,
+    modifiers: Set<Modifier>
+) {
+    val superCallStatement = method.statements.firstOrNull {
+        it is InvokeInstanceMethod && it.instance is VariableDef.Super && it.method.isConstructor
+    } as? InvokeInstanceMethod
+    val superCallStatement2 = method.statements.firstOrNull {
+        it is InvokeSuperConstructor
+    } as? InvokeSuperConstructor
+    // Only a lone constructor that does nothing but call super is the primary one: another constructor,
+    // or a body, needs secondary constructors that delegate
+    val primary = classDef.methods.count { it.isConstructor } == 1 && method.statements.size == 1
+    val superMethod = superCallStatement2?.method ?: superCallStatement?.method
+    val superValues = superCallStatement2?.values ?: superCallStatement?.values
+    if (primary && superMethod != null && superValues != null) {
+        addPrimaryConstructor(classBuilder, classDef, method, modifiers, renderArguments(classDef, method,
+            KotlinRenderScope.root(method), classDef.superclass, MethodDef.CONSTRUCTOR, superMethod,
+            superMethod.parameters.map { it.type }, superValues))
+    } else {
+        classBuilder.addFunction(
+            buildFunction(classDef, method, modifiers)
+        )
+    }
 }
 
 private fun KotlinWriteContext.addPrimaryConstructor(
@@ -311,6 +320,27 @@ private fun KotlinWriteContext.getRecordBuilder(recordDef: RecordDef): TypeSpec.
     recordDef.annotations.stream().map { annotationDef: AnnotationDef -> asAnnotationSpec(annotationDef) }
         .forEach { annotationSpec: AnnotationSpec -> classBuilder.addAnnotation(annotationSpec) }
 
+    addRecordComponents(recordDef, classBuilder)
+
+    val companion = CompanionMembers()
+    addMethods(recordDef, classBuilder, companion) { method ->
+        if (canonical != null && method.isConstructor && sameParameters(recordDef, method, canonical)) {
+            // The primary constructor is the canonical one: what else its body does is the init block, whose
+            // parameters are the components
+            if (initializer!!.isNotEmpty()) {
+                classBuilder.addInitializerBlock(renderRecordInitializer(recordDef, canonical, initializer))
+            }
+        } else {
+            classBuilder.addFunction(buildFunction(recordDef, method, method.modifiers))
+        }
+    }
+    companion.addTo(classBuilder)
+    addInnerTypes(recordDef.innerTypes, classBuilder)
+    return classBuilder
+}
+
+/** The components of a record: the properties of the primary constructor. */
+private fun KotlinWriteContext.addRecordComponents(recordDef: RecordDef, classBuilder: TypeSpec.Builder) {
     val constructorProperties: MutableList<PropertyDef> = ArrayList()
     for (property in recordDef.properties) {
         constructorProperties.add(property)
@@ -338,31 +368,24 @@ private fun KotlinWriteContext.getRecordBuilder(recordDef: RecordDef): TypeSpec.
             ).build()
         )
     }
+}
 
-    val companion = CompanionMembers()
-    addMethods(recordDef, classBuilder, companion) { method ->
-        if (canonical != null && method.isConstructor && sameParameters(recordDef, method, canonical)) {
-            // The primary constructor is the canonical one: what else its body does is the init block, whose
-            // parameters are the components
-            if (initializer!!.isNotEmpty()) {
-                val scope = KotlinRenderScope.root(canonical)
-                canonical.parameters.forEachIndexed { index, parameter -> scope.rename(parameter.name, recordDef.properties[index].name) }
-                val block = CodeBlock.builder()
-                for (statement in initializer) {
-                    block.add(renderStatementCodeBlock(recordDef, canonical, scope, statement))
-                    if (Completion.KOTLIN.cannotCompleteNormally(statement)) {
-                        break
-                    }
-                }
-                classBuilder.addInitializerBlock(block.build())
-            }
-        } else {
-            classBuilder.addFunction(buildFunction(recordDef, method, method.modifiers))
+/** The init block of a data class: what the canonical constructor does besides assigning the components. */
+private fun KotlinWriteContext.renderRecordInitializer(
+    recordDef: RecordDef,
+    canonical: MethodDef,
+    initializer: List<StatementDef>
+): CodeBlock {
+    val scope = KotlinRenderScope.root(canonical)
+    canonical.parameters.forEachIndexed { index, parameter -> scope.rename(parameter.name, recordDef.properties[index].name) }
+    val block = CodeBlock.builder()
+    for (statement in initializer) {
+        block.add(renderStatementCodeBlock(recordDef, canonical, scope, statement))
+        if (Completion.KOTLIN.cannotCompleteNormally(statement)) {
+            break
         }
     }
-    companion.addTo(classBuilder)
-    addInnerTypes(recordDef.innerTypes, classBuilder)
-    return classBuilder
+    return block.build()
 }
 
 private fun KotlinWriteContext.getEnumBuilder(enumDef: EnumDef): TypeSpec.Builder {

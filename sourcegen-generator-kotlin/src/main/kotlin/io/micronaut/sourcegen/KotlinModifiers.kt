@@ -23,6 +23,8 @@ import io.micronaut.sourcegen.model.ExpressionDef.Switch
 import io.micronaut.sourcegen.model.StatementDef.*
 import javax.lang.model.element.Modifier
 
+private const val KOTLIN_JVM_PACKAGE = "kotlin.jvm"
+
 /*
  * The Kotlin modifiers of the Java ones, and the annotations the JVM ones are spelled with.
  */
@@ -93,10 +95,10 @@ internal fun asKModifiers(modifier: Collection<Modifier>): List<KModifier> {
  */
 internal fun modifierAnnotations(modifiers: Collection<Modifier>): List<AnnotationSpec> = modifiers.mapNotNull { modifier ->
     when (modifier) {
-        Modifier.VOLATILE -> ClassName("kotlin.jvm", "Volatile")
-        Modifier.TRANSIENT -> ClassName("kotlin.jvm", "Transient")
-        Modifier.SYNCHRONIZED -> ClassName("kotlin.jvm", "Synchronized")
-        Modifier.STRICTFP -> ClassName("kotlin.jvm", "Strictfp")
+        Modifier.VOLATILE -> ClassName(KOTLIN_JVM_PACKAGE, "Volatile")
+        Modifier.TRANSIENT -> ClassName(KOTLIN_JVM_PACKAGE, "Transient")
+        Modifier.SYNCHRONIZED -> ClassName(KOTLIN_JVM_PACKAGE, "Synchronized")
+        Modifier.STRICTFP -> ClassName(KOTLIN_JVM_PACKAGE, "Strictfp")
         else -> null
     }?.let { AnnotationSpec.builder(it).build() }
 }

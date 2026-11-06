@@ -27,6 +27,9 @@ import io.micronaut.sourcegen.model.ExpressionDef.IfElse
 import io.micronaut.sourcegen.model.ExpressionDef.Switch
 import io.micronaut.sourcegen.model.StatementDef.*
 
+/** The format of an explicit `as` cast of a rendered operand. */
+internal const val CAST_FORMAT = "(%L as %T)"
+
 /*
  * The arguments of a call, cast where Kotlin would pick another overload or infer another type than the
  * bytecode does.
@@ -303,7 +306,7 @@ private fun KotlinWriteContext.smartCastComposedArgument(argument: Argument): Co
         || composedOf(value).none { result -> stableName(result)?.let { scope.isSmartCast(it) } == true }) {
         return null
     }
-    CodeBlock.of("(%L as %T)", renderExpressionCode(objectDef, methodDef, scope, value), asType(parameterType, objectDef, methodDef))
+    CodeBlock.of(CAST_FORMAT, renderExpressionCode(objectDef, methodDef, scope, value), asType(parameterType, objectDef, methodDef))
 }
 
 /** A value inferred as a variable of the invoked method has to satisfy every bound. */
@@ -334,7 +337,7 @@ private fun KotlinWriteContext.invariantArgument(argument: Argument): CodeBlock?
         || valueType.typeArguments.any { TypeHierarchy.unwrap(it) is TypeDef.Wildcard || TypeHierarchy.unwrap(it) is TypeDef.TypeVariable }) {
         return null
     }
-    CodeBlock.of("(%L as %T)", renderExpressionCode(objectDef, methodDef, scope, value), asType(parameterType, objectDef, methodDef))
+    CodeBlock.of(CAST_FORMAT, renderExpressionCode(objectDef, methodDef, scope, value), asType(parameterType, objectDef, methodDef))
 }
 
 /** An array passed as the varargs is spread, or it would be their single element. */
@@ -352,23 +355,33 @@ private fun KotlinWriteContext.spreadArgument(argument: Argument): CodeBlock? = 
  */
 private fun KotlinWriteContext.pinnedOverloadArgument(argument: Argument): CodeBlock? = with(argument) {
     if (passed !== value || !call.overloaded || parameterType == null || vararg
-        || !OverloadRules.pinsOverload(parameterType, if (isNullLiteral(value)
-            || smartCastKey(value)?.let { scope.isSmartCast(it) } == true) null
-            // A variable named alone selects by the bound declared where the call is written
-            else OverloadRules.lexicalErasure(sourceType, objectDef, methodDef),
-            call.callMethod?.typeVariables.orEmpty())) {
+        || !pinsOverload(argument, parameterType)) {
         return null
     }
     val conversion = if (isNullLiteral(value)) null else primitiveConversion(parameterType, sourceType)
     if (conversion != null) {
-        var operand = renderExpressionCode(objectDef, methodDef, scope, value)
-        if (requiresConversionTargetParentheses(unwrapCasts(value))) {
-            operand = addParentheses(operand)
-        }
-        return operand.toBuilder().add(conversion).build()
+        return convertedPrimitiveArgument(argument, conversion)
     }
-    CodeBlock.of("(%L as %T)", if (isNullLiteral(value)) CodeBlock.of("null") else renderExpressionCode(objectDef, methodDef, scope, value),
+    CodeBlock.of(CAST_FORMAT, if (isNullLiteral(value)) CodeBlock.of("null") else renderExpressionCode(objectDef, methodDef, scope, value),
         asType(if (isNullLiteral(value)) parameterType.makeNullable() else parameterType, objectDef))
+}
+
+/** Whether the parameter pins the overload the argument selects. */
+private fun pinsOverload(argument: Argument, parameterType: TypeDef): Boolean = with(argument) {
+    OverloadRules.pinsOverload(parameterType, if (isNullLiteral(value)
+        || smartCastKey(value)?.let { scope.isSmartCast(it) } == true) null
+        // A variable named alone selects by the bound declared where the call is written
+        else OverloadRules.lexicalErasure(sourceType, objectDef, methodDef),
+        call.callMethod?.typeVariables.orEmpty())
+}
+
+/** The argument converted to the primitive of the overload: `value.toLong()`. */
+private fun KotlinWriteContext.convertedPrimitiveArgument(argument: Argument, conversion: String): CodeBlock = with(argument) {
+    var operand = renderExpressionCode(objectDef, methodDef, scope, value)
+    if (requiresConversionTargetParentheses(unwrapCasts(value))) {
+        operand = addParentheses(operand)
+    }
+    operand.toBuilder().add(conversion).build()
 }
 
 /** A primitive is converted to the parameter, which Kotlin does not widen it to. */
@@ -504,21 +517,31 @@ private fun KotlinWriteContext.satisfiesBound(bound: TypeDef, value: TypeDef, ob
             .any { satisfiesBound(bound, it, objectDef, methodDef) }
     }
     if (bound is ClassTypeDef.Parameterized) {
-        val inherited = OverrideResolver.inheritedAs(boxed, bound, generationScope) as? ClassTypeDef.Parameterized
-            ?: return false
-        return bound.typeArguments.size == inherited.typeArguments.size
-            && bound.typeArguments.zip(inherited.typeArguments).all { (expected, actual) ->
-                expected == actual || expected is TypeDef.Wildcard && expected.lowerBounds.isEmpty()
-                    && (expected.upperBounds.isEmpty() || expected.upperBounds[0] == TypeDef.OBJECT)
-            }
+        return satisfiesParameterizedBound(bound, boxed)
     }
     if (bound is ClassTypeDef && boxed is ClassTypeDef) {
-        val boundClass = generationScope.typeLookup().loadClass(bound.name)
-        val valueClass = generationScope.typeLookup().loadClass(boxed.name)
-        if (boundClass != null && valueClass != null) {
-            return boundClass.isAssignableFrom(valueClass)
-        }
-        return TypeHierarchy.inherits(boxed, bound.name, generationScope.elementLookup())
+        return satisfiesClassBound(bound, boxed)
     }
     return true
+}
+
+/** Whether a value inherits the parameterization of a class with the same, or unbounded, type arguments. */
+private fun KotlinWriteContext.satisfiesParameterizedBound(bound: ClassTypeDef.Parameterized, boxed: TypeDef): Boolean {
+    val inherited = OverrideResolver.inheritedAs(boxed, bound, generationScope) as? ClassTypeDef.Parameterized
+        ?: return false
+    return bound.typeArguments.size == inherited.typeArguments.size
+        && bound.typeArguments.zip(inherited.typeArguments).all { (expected, actual) ->
+            expected == actual || expected is TypeDef.Wildcard && expected.lowerBounds.isEmpty()
+                && (expected.upperBounds.isEmpty() || expected.upperBounds[0] == TypeDef.OBJECT)
+        }
+}
+
+/** Whether a value of a class is a subclass of the bound. */
+private fun KotlinWriteContext.satisfiesClassBound(bound: ClassTypeDef, boxed: ClassTypeDef): Boolean {
+    val boundClass = generationScope.typeLookup().loadClass(bound.name)
+    val valueClass = generationScope.typeLookup().loadClass(boxed.name)
+    if (boundClass != null && valueClass != null) {
+        return boundClass.isAssignableFrom(valueClass)
+    }
+    return TypeHierarchy.inherits(boxed, bound.name, generationScope.elementLookup())
 }

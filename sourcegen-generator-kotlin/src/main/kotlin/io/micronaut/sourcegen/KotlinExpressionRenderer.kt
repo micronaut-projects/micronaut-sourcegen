@@ -159,68 +159,21 @@ private fun KotlinWriteContext.renderInvokeInstanceMethod(
     expressionDef: InvokeInstanceMethod,
     acceptsNull: Boolean
 ): CodeBlock {
-    var instanceExp = renderExpressionCode(objectDef, methodDef, scope, expressionDef.instance)
+    val instanceExp = renderExpressionCode(objectDef, methodDef, scope, expressionDef.instance)
     val codeBuilder = CodeBlock.builder()
     if (expressionDef.method.isConstructor) {
         codeBuilder.add(instanceExp)
         codeBuilder.add("(")
     } else {
-        if (requiresMethodCallTargetParentheses(expressionDef.instance)) {
-            instanceExp = addParentheses(instanceExp)
+        val target = renderCallTarget(objectDef, methodDef, expressionDef, instanceExp, acceptsNull)
+        if (target.complete) {
+            return target.instance
         }
-        val receiverType = sourceTypeOf(expressionDef.instance, methodDef, objectDef)
-        val receiverClass = if (expressionDef.instance is VariableDef.This || expressionDef.instance is VariableDef.Super) null
-            else loadedClass(receiverType, generationScope.typeLookup())
-        // A generated receiver, `this` and `super` inherit the property from the types they extend
-        val receiverDefinition = when (expressionDef.instance) {
-            is VariableDef.This, is VariableDef.Super -> objectDef
-            else -> generationScope.definitionOf(receiverType as? ClassTypeDef, objectDef)
-        }
-        val property = KotlinJavaMappings.mappedProperty(receiverClass, expressionDef.method)
-            ?: receiverDefinition?.let { KotlinJavaMappings.inheritedProperty(generationScope, it, expressionDef.method, HashSet()) }
-        if (property != null) {
-            // Kotlin sees the method as a property of the type it maps the Java one to: `text.length`, a
-            // nullable one where Java's result can be null: `e.message`
-            return CodeBlock.of(if (!acceptsNull && isNullableJavaResult(expressionDef, objectDef, methodDef)) "%L.%N!!" else "%L.%N",
-                instanceExp, property)
-        }
-        if (receiverDefinition is RecordDef && expressionDef.method.parameters.isEmpty()
-            && receiverDefinition.properties.any { it.name == expressionDef.method.name }) {
-            // The accessor of a record component is the property of the data class
-            return CodeBlock.of("%L.%N", instanceExp, expressionDef.method.name)
-        }
-        var methodName = expressionDef.method.name
-        val supertypes = if (receiverClass != null) listOf(receiverClass) else receiverDefinition?.let { KotlinJavaMappings.compiledSupertypes(generationScope, it) }.orEmpty()
-        when (val mapped = KotlinJavaMappings.mappedCall(receiverClass, supertypes, receiverType, expressionDef.method)) {
-            null -> Unit
-            is KotlinJavaMappings.MappedCall.Renamed -> methodName = mapped.name
-            // A super call is of the member itself
-            else -> if (expressionDef.instance !is VariableDef.Super) when (mapped) {
-                is KotlinJavaMappings.MappedCall.Conversion -> return CodeBlock.of("%L%L", instanceExp, mapped.call)
-                is KotlinJavaMappings.MappedCall.Identity -> return instanceExp
-                is KotlinJavaMappings.MappedCall.Property -> return if (mapped.boxed) {
-                    CodeBlock.of("(%L as %T).%N", instanceExp, ANY, mapped.name)
-                } else {
-                    CodeBlock.of("%L.%N", instanceExp, mapped.name)
-                }
-                is KotlinJavaMappings.MappedCall.ThroughJavaType -> instanceExp = CodeBlock.of("(%L as %L)", instanceExp, mapped.type)
-            }
-        }
-        val mutable = ((receiverType as? ClassTypeDef.Parameterized)?.rawType ?: receiverType as? ClassTypeDef)
-            ?.let { KotlinJavaMappings.mutableCollectionFor(it.name, expressionDef.method.name) }
-        if (mutable != null) {
-            // The read-only type Kotlin maps the Java one to does not declare its mutators
-            val arguments = (receiverType as? ClassTypeDef.Parameterized)?.typeArguments.orEmpty()
-            val mutableType = ClassName("kotlin.collections", mutable).let { raw ->
-                if (arguments.isEmpty()) raw else raw.parameterizedBy(arguments.map { asType(it, objectDef, methodDef) })
-            }
-            instanceExp = CodeBlock.of("(%L as %T)", instanceExp, mutableType)
-        }
-        codeBuilder.add(instanceExp)
+        codeBuilder.add(target.instance)
         if (expressionDef.instance is InvokeInstanceMethod) {
             codeBuilder.add("\n")
         }
-        codeBuilder.add(".%N(", methodName)
+        codeBuilder.add(".%N(", target.methodName)
     }
     codeBuilder.add(renderArguments(
         objectDef, methodDef, scope, ownerOf(objectDef, expressionDef.instance.type()),
@@ -234,6 +187,110 @@ private fun KotlinWriteContext.renderInvokeInstanceMethod(
         codeBuilder.add("!!")
     }
     return codeBuilder.build()
+}
+
+/**
+ * The receiver of an instance call and the name of the method called on it, or, where [complete], the whole call:
+ * a Java method Kotlin maps to a property or a conversion.
+ */
+private class CallTarget(val instance: CodeBlock, val methodName: String, val complete: Boolean = false)
+
+private fun KotlinWriteContext.renderCallTarget(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef,
+    expressionDef: InvokeInstanceMethod,
+    renderedInstance: CodeBlock,
+    acceptsNull: Boolean
+): CallTarget {
+    val instanceExp = if (requiresMethodCallTargetParentheses(expressionDef.instance)) addParentheses(renderedInstance) else renderedInstance
+    val receiverType = sourceTypeOf(expressionDef.instance, methodDef, objectDef)
+    val receiverClass = if (expressionDef.instance is VariableDef.This || expressionDef.instance is VariableDef.Super) null
+        else loadedClass(receiverType, generationScope.typeLookup())
+    // A generated receiver, `this` and `super` inherit the property from the types they extend
+    val receiverDefinition = when (expressionDef.instance) {
+        is VariableDef.This, is VariableDef.Super -> objectDef
+        else -> generationScope.definitionOf(receiverType as? ClassTypeDef, objectDef)
+    }
+    renderPropertyAccess(objectDef, methodDef, expressionDef, instanceExp, receiverClass, receiverDefinition, acceptsNull)
+        ?.let { return CallTarget(it, expressionDef.method.name, true) }
+    val supertypes = if (receiverClass != null) listOf(receiverClass) else receiverDefinition?.let { KotlinJavaMappings.compiledSupertypes(generationScope, it) }.orEmpty()
+    val mapped = mapJavaCall(expressionDef, instanceExp,
+        KotlinJavaMappings.mappedCall(receiverClass, supertypes, receiverType, expressionDef.method))
+    if (mapped.complete) {
+        return mapped
+    }
+    return CallTarget(castToMutableCollection(objectDef, methodDef, expressionDef, receiverType, mapped.instance), mapped.methodName)
+}
+
+/**
+ * The method read as a property: of the type Kotlin maps the Java one to, or the accessor of a record component.
+ */
+private fun KotlinWriteContext.renderPropertyAccess(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef,
+    expressionDef: InvokeInstanceMethod,
+    instanceExp: CodeBlock,
+    receiverClass: Class<*>?,
+    receiverDefinition: ObjectDef?,
+    acceptsNull: Boolean
+): CodeBlock? {
+    val property = KotlinJavaMappings.mappedProperty(receiverClass, expressionDef.method)
+        ?: receiverDefinition?.let { KotlinJavaMappings.inheritedProperty(generationScope, it, expressionDef.method, HashSet()) }
+    if (property != null) {
+        // Kotlin sees the method as a property of the type it maps the Java one to: `text.length`, a
+        // nullable one where Java's result can be null: `e.message`
+        return CodeBlock.of(if (!acceptsNull && isNullableJavaResult(expressionDef, objectDef, methodDef)) "%L.%N!!" else "%L.%N",
+            instanceExp, property)
+    }
+    if (receiverDefinition is RecordDef && expressionDef.method.parameters.isEmpty()
+        && receiverDefinition.properties.any { it.name == expressionDef.method.name }) {
+        // The accessor of a record component is the property of the data class
+        return CodeBlock.of("%L.%N", instanceExp, expressionDef.method.name)
+    }
+    return null
+}
+
+/** A Java method Kotlin maps: renamed, or written as a conversion, a property or a call through the Java type. */
+private fun mapJavaCall(
+    expressionDef: InvokeInstanceMethod,
+    instanceExp: CodeBlock,
+    mapped: KotlinJavaMappings.MappedCall?
+): CallTarget {
+    val methodName = expressionDef.method.name
+    return when (mapped) {
+        null -> CallTarget(instanceExp, methodName)
+        is KotlinJavaMappings.MappedCall.Renamed -> CallTarget(instanceExp, mapped.name)
+        // A super call is of the member itself
+        else -> if (expressionDef.instance is VariableDef.Super) CallTarget(instanceExp, methodName) else when (mapped) {
+            is KotlinJavaMappings.MappedCall.Conversion -> CallTarget(CodeBlock.of("%L%L", instanceExp, mapped.call), methodName, true)
+            is KotlinJavaMappings.MappedCall.Identity -> CallTarget(instanceExp, methodName, true)
+            is KotlinJavaMappings.MappedCall.Property -> CallTarget(if (mapped.boxed) {
+                CodeBlock.of("(%L as %T).%N", instanceExp, ANY, mapped.name)
+            } else {
+                CodeBlock.of("%L.%N", instanceExp, mapped.name)
+            }, methodName, true)
+            is KotlinJavaMappings.MappedCall.ThroughJavaType -> CallTarget(CodeBlock.of("(%L as %L)", instanceExp, mapped.type), methodName)
+            else -> CallTarget(instanceExp, methodName)
+        }
+    }
+}
+
+/** The read-only type Kotlin maps the Java one to does not declare its mutators: the receiver is cast to the mutable one. */
+private fun KotlinWriteContext.castToMutableCollection(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef,
+    expressionDef: InvokeInstanceMethod,
+    receiverType: TypeDef,
+    instanceExp: CodeBlock
+): CodeBlock {
+    val mutable = ((receiverType as? ClassTypeDef.Parameterized)?.rawType ?: receiverType as? ClassTypeDef)
+        ?.let { KotlinJavaMappings.mutableCollectionFor(it.name, expressionDef.method.name) }
+        ?: return instanceExp
+    val arguments = (receiverType as? ClassTypeDef.Parameterized)?.typeArguments.orEmpty()
+    val mutableType = ClassName("kotlin.collections", mutable).let { raw ->
+        if (arguments.isEmpty()) raw else raw.parameterizedBy(arguments.map { asType(it, objectDef, methodDef) })
+    }
+    return CodeBlock.of(CAST_FORMAT, instanceExp, mutableType)
 }
 
 private fun KotlinWriteContext.renderGetPropertyValue(
@@ -324,35 +381,20 @@ private fun KotlinWriteContext.renderCast(
     val boxConversion = boxedNumericConversion(expressionDef.type, exp)
     if (boxConversion != null) {
         // A number or a char converted to the box of another is unboxed, converted and boxed: `p0.toFloat()`
-        var operand = renderExpressionCode(objectDef, methodDef, scope, exp, boxConversion.first)
-        if (requiresConversionTargetParentheses(unwrapCasts(exp))) {
-            operand = addParentheses(operand)
-        }
-        return operand.toBuilder().add(boxConversion.second).build()
+        return appendConversion(renderExpressionCode(objectDef, methodDef, scope, exp, boxConversion.first), exp, boxConversion.second)
     }
     if (expressionDef.type == exp.type() || isRef) {
         return renderExpressionCode(objectDef, methodDef, scope, exp, acceptsNull = acceptsNull)
     }
     val castType = expressionDef.type
-    if (acceptsNull && !castType.isPrimitive && unwrapCasts(exp) is VariableDef && !exp.type().isPrimitive) {
-        // A variable Kotlin holds null in, where the model types it not null, cast where null is taken: the null
-        // passes the cast, as it does in Java
-        val raw = renderExpressionCode(objectDef, methodDef, scope, exp, acceptsNull = true)
-        if (raw.toString() != renderExpressionCode(objectDef, methodDef, scope, exp, castType).toString()) {
-            val operand = if (requiresCastOperandParentheses(unwrapCasts(exp))) addParentheses(raw) else raw
-            smartCastKey(exp)?.let { scope.markSmartCast(it) }
-            return CodeBlock.of("%L as %T", operand, asType(castType, objectDef, methodDef).copy(nullable = true))
-        }
+    if (acceptsNull) {
+        renderNullPassingCast(objectDef, methodDef, scope, exp, castType)?.let { return it }
     }
     val rendered = renderExpressionCode(objectDef, methodDef, scope, exp, castType)
     val conversion = primitiveConversion(castType, exp.type())
     if (conversion != null) {
         // Kotlin has no primitive casts, a numeric conversion is a member function
-        var operand = rendered
-        if (requiresConversionTargetParentheses(unwrapCasts(exp))) {
-            operand = addParentheses(operand)
-        }
-        return operand.toBuilder().add(conversion).build()
+        return appendConversion(rendered, exp, conversion)
     }
     if (isNullLiteral(exp) && (TypeHierarchy.unwrap(castType) is ClassTypeDef || TypeHierarchy.unwrap(castType) is TypeDef.Array)) {
         // `null as String` always throws: the cast only names the type, as for an overload
@@ -374,6 +416,38 @@ private fun KotlinWriteContext.renderCast(
     }
     codeBuilder.add(" as %T", asType(castType, objectDef, methodDef))
     return codeBuilder.build()
+}
+
+/** The numeric conversion of an operand, a member function: `p0.toFloat()`. */
+private fun appendConversion(rendered: CodeBlock, exp: ExpressionDef, conversion: String): CodeBlock {
+    var operand = rendered
+    if (requiresConversionTargetParentheses(unwrapCasts(exp))) {
+        operand = addParentheses(operand)
+    }
+    return operand.toBuilder().add(conversion).build()
+}
+
+/**
+ * A variable Kotlin holds null in, where the model types it not null, cast where null is taken: the null passes the
+ * cast, as it does in Java.
+ */
+private fun KotlinWriteContext.renderNullPassingCast(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef,
+    scope: KotlinRenderScope,
+    exp: ExpressionDef,
+    castType: TypeDef
+): CodeBlock? {
+    if (castType.isPrimitive || unwrapCasts(exp) !is VariableDef || exp.type().isPrimitive) {
+        return null
+    }
+    val raw = renderExpressionCode(objectDef, methodDef, scope, exp, acceptsNull = true)
+    if (raw.toString() == renderExpressionCode(objectDef, methodDef, scope, exp, castType).toString()) {
+        return null
+    }
+    val operand = if (requiresCastOperandParentheses(unwrapCasts(exp))) addParentheses(raw) else raw
+    smartCastKey(exp)?.let { scope.markSmartCast(it) }
+    return CodeBlock.of("%L as %T", operand, asType(castType, objectDef, methodDef).copy(nullable = true))
 }
 
 private fun KotlinWriteContext.renderAnd(
@@ -459,20 +533,35 @@ private fun KotlinWriteContext.renderConditionalBranch(
         // through Number, or checked as the box of a char or a boolean
         return renderExpressionCode(objectDef, methodDef, scope, branch.cast(type))
     }
-    if (branchType is TypeDef.Primitive && KotlinConversions.unboxed(targetType) == TypeDef.Primitive.INT
-        && (branchType == TypeDef.Primitive.BYTE || branchType == TypeDef.Primitive.SHORT || branchType == TypeDef.Primitive.CHAR)
-        && TypeHierarchy.unwrap(otherBranch.type()) != branchType) {
+    if (promotedToInt(branchType, targetType, otherBranch)) {
         return renderExpressionCode(objectDef, methodDef, scope, KotlinConversions.coerce(branch, TypeDef.Primitive.INT))
     }
     if (targetType !is TypeDef.Primitive && !isNullLiteral(branch)
         && (unrelatedTypes(targetType, branchType) || castCanFail(branch.cast(targetType)))) {
-        // A value Kotlin types as nullable stays nullable: the null passes the cast, as it does in Java
-        val nullable = branchType !is TypeDef.Primitive && (branchType.isNullable || KotlinConversions.unboxed(branchType) != null)
-        val rendered = renderExpressionCode(objectDef, methodDef, scope, branch, acceptsNull = nullable)
-        val operand = if (requiresCastOperandParentheses(unwrapCasts(branch))) addParentheses(rendered) else rendered
-        return CodeBlock.of("%L as %T", operand, asType(type, objectDef, methodDef).let { if (nullable) it.copy(nullable = true) else it })
+        return renderBranchCast(objectDef, methodDef, scope, branch, branchType, type)
     }
     return renderExpressionCode(objectDef, methodDef, scope, KotlinConversions.coerce(branch, type), type, acceptsNull)
+}
+
+/** Whether Java's numeric promotion converts a byte, a short or a char branch to the int of an `Integer` conditional. */
+private fun promotedToInt(branchType: TypeDef, targetType: TypeDef, otherBranch: ExpressionDef): Boolean =
+    branchType is TypeDef.Primitive && KotlinConversions.unboxed(targetType) == TypeDef.Primitive.INT
+        && (branchType == TypeDef.Primitive.BYTE || branchType == TypeDef.Primitive.SHORT || branchType == TypeDef.Primitive.CHAR)
+        && TypeHierarchy.unwrap(otherBranch.type()) != branchType
+
+/** A branch cast to the conditional's type: a value Kotlin types as nullable stays nullable, the null passes the cast, as it does in Java. */
+private fun KotlinWriteContext.renderBranchCast(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef,
+    scope: KotlinRenderScope,
+    branch: ExpressionDef,
+    branchType: TypeDef,
+    type: TypeDef
+): CodeBlock {
+    val nullable = branchType !is TypeDef.Primitive && (branchType.isNullable || KotlinConversions.unboxed(branchType) != null)
+    val rendered = renderExpressionCode(objectDef, methodDef, scope, branch, acceptsNull = nullable)
+    val operand = if (requiresCastOperandParentheses(unwrapCasts(branch))) addParentheses(rendered) else rendered
+    return CodeBlock.of("%L as %T", operand, asType(type, objectDef, methodDef).let { if (nullable) it.copy(nullable = true) else it })
 }
 
 private fun KotlinWriteContext.renderSwitchExpression(
@@ -599,7 +688,7 @@ private fun KotlinWriteContext.renderInstanceOf(
     }
     if (unrelatedTypes(referencedType(expressionDef.expression), expressionDef.instanceType)) {
         // Kotlin rejects a check that is always false, which Java makes of the value as an Object
-        operand = CodeBlock.of("(%L as %T)", operand, ANY.copy(nullable = true))
+        operand = CodeBlock.of(CAST_FORMAT, operand, ANY.copy(nullable = true))
     }
     return CodeBlock.builder()
         .add(operand)
@@ -790,37 +879,18 @@ private fun KotlinWriteContext.renderLambda(
     val builder = CodeBlock.builder()
         .add("%T ", asSamType(expressionDef.type, objectDef, methodDef))
         .add("{")
-    val parameter: Iterator<ParameterDef> = implementation.parameters.iterator()
-    val parameterless = !parameter.hasNext()
-    while (parameter.hasNext()) {
-        val param = parameter.next()
-        val emittedName = if (scope.isTaken(param.name)) lambdaScope.allocate(param.name) else param.name
-        lambdaScope.rename(param.name, emittedName)
-        builder.add("%N: %T", emittedName, asType(param.type, objectDef, methodDef))
-        if (parameter.hasNext()) {
-            builder.add(", ")
-        }
-    }
+    val parameterless = implementation.parameters.isEmpty()
+    addLambdaParameters(objectDef, methodDef, scope, lambdaScope, implementation, builder)
     // A lambda without parameters has no arrow: `{ () -> value }` is not Kotlin
     builder.add(if (parameterless) " " else " -> ")
     val statements: List<StatementDef> = implementation.statements
     if (!isBlockBody(expressionDef)) {
-        val returnStatement = statements[0] as Return
-        // The result is converted to what the lambda returns, as a return statement's is
-        var returned = returnStatement.expression
-        if (returned != null && implementation.returnType != TypeDef.VOID && returned.type() != TypeDef.VOID) {
-            returned = if (requiresImplicitReturnCast(implementation.returnType, returned.type())) {
-                returned.cast(implementation.returnType)
-            } else {
-                KotlinConversions.coerce(returned, implementation.returnType)
-            }
-        }
         builder.add(
             renderExpressionCode(
                 objectDef,
                 implementation,
                 lambdaScope,
-                returned
+                lambdaResult(implementation, statements[0] as Return)
             )
         )
     } else {
@@ -838,6 +908,40 @@ private fun KotlinWriteContext.renderLambda(
         builder.unindent()
     }
     return builder.add("}").build()
+}
+
+/** The parameters of a lambda, renamed where the enclosing scope takes their names. */
+private fun KotlinWriteContext.addLambdaParameters(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef,
+    scope: KotlinRenderScope,
+    lambdaScope: KotlinRenderScope,
+    implementation: MethodDef,
+    builder: CodeBlock.Builder
+) {
+    val parameter: Iterator<ParameterDef> = implementation.parameters.iterator()
+    while (parameter.hasNext()) {
+        val param = parameter.next()
+        val emittedName = if (scope.isTaken(param.name)) lambdaScope.allocate(param.name) else param.name
+        lambdaScope.rename(param.name, emittedName)
+        builder.add("%N: %T", emittedName, asType(param.type, objectDef, methodDef))
+        if (parameter.hasNext()) {
+            builder.add(", ")
+        }
+    }
+}
+
+/** The result of an expression lambda, converted to what the lambda returns, as a return statement's is. */
+private fun lambdaResult(implementation: MethodDef, returnStatement: Return): ExpressionDef? {
+    val returned = returnStatement.expression
+    if (returned != null && implementation.returnType != TypeDef.VOID && returned.type() != TypeDef.VOID) {
+        return if (requiresImplicitReturnCast(implementation.returnType, returned.type())) {
+            returned.cast(implementation.returnType)
+        } else {
+            KotlinConversions.coerce(returned, implementation.returnType)
+        }
+    }
+    return returned
 }
 
 /** A method reference, wrapped in the SAM constructor of the interface it implements. */
@@ -1044,17 +1148,27 @@ private fun KotlinWriteContext.renderIdentityOperand(
     }
     if (operand is Cast && isBoxedNumericCast(operand)) {
         val converted = addParentheses(renderExpressionCode(objectDef, methodDef, scope, operand))
-        return if (asAny) CodeBlock.of("(%L as %T)", converted, ANY.copy(nullable = true)) else converted
+        return if (asAny) CodeBlock.of(CAST_FORMAT, converted, ANY.copy(nullable = true)) else converted
     }
     if (operand is Cast && castCanFail(operand)) {
         // The null a reference holds passes the cast, as it does in Java
-        val cast = CodeBlock.of("(%L as %T)", renderCastOperand(objectDef, methodDef, scope, operand.expressionDef),
+        val cast = CodeBlock.of(CAST_FORMAT, renderCastOperand(objectDef, methodDef, scope, operand.expressionDef),
             asType(operand.type, objectDef, methodDef).copy(nullable = true))
-        return if (asAny) CodeBlock.of("(%L as %T)", cast, ANY.copy(nullable = true)) else cast
+        return if (asAny) CodeBlock.of(CAST_FORMAT, cast, ANY.copy(nullable = true)) else cast
     }
     if (!asAny) {
         return renderExpressionWithParentheses(objectDef, methodDef, scope, operand, true, true)
     }
+    return renderAsAny(objectDef, methodDef, scope, operand)
+}
+
+/** An operand compared by reference as an `Any?`, the box of a primitive. */
+private fun KotlinWriteContext.renderAsAny(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef,
+    scope: KotlinRenderScope,
+    operand: ExpressionDef
+): CodeBlock {
     // The cast that boxes a primitive is the one to Any
     val boxed = if (operand is Cast && operand.expressionDef.type().isPrimitive || operand is Cast && !operand.type.isPrimitive) {
         collapseNestedCasts(operand)
@@ -1065,7 +1179,7 @@ private fun KotlinWriteContext.renderIdentityOperand(
     if (requiresCastOperandParentheses(unwrapCasts(boxed)) || boxed is Cast) {
         rendered = addParentheses(rendered)
     }
-    return CodeBlock.of("(%L as %T)", rendered, ANY.copy(nullable = true))
+    return CodeBlock.of(CAST_FORMAT, rendered, ANY.copy(nullable = true))
 }
 
 /** The operand of a cast, read as it is: a `null` it holds is the cast's. */
@@ -1176,17 +1290,7 @@ internal fun KotlinWriteContext.renderVariable(
     raw: Boolean = false
 ): CodeBlock {
     if (!raw && (variableDef is VariableDef.Field || variableDef is VariableDef.StaticField)) {
-        // The definition declaring the field, which tells whether it holds `null`, whichever is written first
-        val owner = when (variableDef) {
-            is VariableDef.Field -> if (variableDef.declaringType == TypeDef.THIS) objectDef
-                else generationScope.definitionOf(TypeHierarchy.unwrap(variableDef.declaringType) as? ClassTypeDef, objectDef)
-            is VariableDef.StaticField -> generationScope.definitionOf(variableDef.ownerType, objectDef)
-        }
-        val name = if (variableDef is VariableDef.Field) variableDef.name else (variableDef as VariableDef.StaticField).name
-        if (owner != null && name in nullifiedFields(owner)) {
-            // A property holding `null` until it is assigned, which the model reads as not null
-            return CodeBlock.of("%L!!", renderVariable(objectDef, methodDef, scope, variableDef, true))
-        }
+        renderNullifiedField(objectDef, methodDef, scope, variableDef)?.let { return it }
     }
     if (variableDef is VariableDef.ExceptionVar) {
         val name = scope.resolveRename(EXCEPTION_NAME)
@@ -1194,64 +1298,13 @@ internal fun KotlinWriteContext.renderVariable(
         return CodeBlock.of("%L", name)
     }
     if (variableDef is VariableDef.MethodParameter) {
-        checkNotNull(methodDef) { "Accessing method parameters is not available" }
-        // The parameter can belong to an enclosing method - a lambda body can capture one
-        val name = scope.resolveParameter(variableDef.name)
-        checkNotNull(name) {
-            "Method: " + methodDef.name + " doesn't have parameter: " + variableDef.name
-        }
-        // A wrapper parameter is nullable, as the one of the JVM: asserted where Kotlin needs a value
-        return CodeBlock.of(if (!raw && isBoxedParameter(methodDef, variableDef.name, scope)) "%N!!" else "%N", name)
+        return renderMethodParameter(methodDef, scope, variableDef, raw)
     }
     if (variableDef is VariableDef.Field) {
-        // Only a field declared by the type being written can be checked against its definition - which a
-        // static method is rendered without
-        if (objectDef != null && (variableDef.declaringType as? ClassTypeDef)?.name == objectDef.asTypeDef().name) {
-            if (objectDef is ClassDef) {
-                objectDef.getField(variableDef.name) // Check if exists
-            } else if (objectDef is EnumDef) {
-                objectDef.getField(variableDef.name) // Check if exists
-            } else {
-                throw IllegalStateException("Field access not supported on the object definition: $objectDef")
-            }
-        }
-        checkNotNull(methodDef) { "Accessing field is not available" }
-        val declaring = variableDef.declaringType
-        val instance = if (variableDef.instance.type() != declaring && variableDef.instance !is VariableDef.This
-            && variableDef.instance !is VariableDef.Super && declaring is ClassTypeDef
-            && declaring != TypeDef.THIS && declaring != TypeDef.SUPER) {
-            variableDef.instance.cast(declaring)
-        } else {
-            variableDef.instance
-        }
-        var codeBlock = renderExpressionCode(objectDef, methodDef, scope, instance)
-        if (requiresMethodCallTargetParentheses(instance)) {
-            codeBlock = addParentheses(codeBlock)
-        }
-        val builder = codeBlock.toBuilder()
-        if (variableDef.instance.type().isNullable) {
-            builder.add("!!")
-        }
-        builder.add(".%N", variableDef.name)
-        val declaringClass = (TypeHierarchy.unwrap(declaring) as? ClassTypeDef)?.takeIf { it != TypeDef.THIS && it != TypeDef.SUPER }
-        if (!raw && variableDef.instance !is VariableDef.This && variableDef.instance !is VariableDef.Super && declaringClass != null
-            && variableDef.type.isPrimitive.not() && !variableDef.type.isNullable
-            && generationScope.definitionOf(declaringClass, objectDef) == null && loadedClass(declaringClass, generationScope.typeLookup()) == null) {
-            // A field of a type generated elsewhere, known by name only, holds null until it is assigned where no
-            // constructor assigns it
-            builder.add("!!")
-        }
-        return builder.build()
+        return renderField(objectDef, methodDef, scope, variableDef, raw)
     }
     if (variableDef is VariableDef.StaticField) {
-        val owner = variableDef.ownerType
-        return CodeBlock.of(
-            "%T.%N",
-            // A static field of a Java type Kotlin maps, `Boolean.TRUE`, is one of the Java type
-            if (owner is ClassTypeDef.Parameterized || owner.isInner || TypeHierarchy.enclosingOf(owner) != null) asType(owner, objectDef)
-            else asStaticOwnerName(owner),
-            variableDef.name
-        )
+        return renderStaticField(objectDef, variableDef)
     }
     if (variableDef is VariableDef.This) {
         checkNotNull(objectDef) { "Accessing 'this' is not available" }
@@ -1262,15 +1315,125 @@ internal fun KotlinWriteContext.renderVariable(
         return CodeBlock.of(if (!raw && scope.isNullableLocal(variableDef.name)) "%N!!" else "%N", variableDef.name)
     }
     if (variableDef is VariableDef.Super) {
-        checkNotNull(objectDef) { "Accessing 'super' is not available" }
-        // The bytecode model names Object to pick the invokespecial owner, but Any is never an
-        // immediate supertype that `super<Any>` could name
-        if (variableDef.type() !== TypeDef.SUPER && variableDef.type != TypeDef.OBJECT) {
-            return CodeBlock.of("super<%T>", asSamType(variableDef.type, objectDef, null))
-        }
-        return CodeBlock.of("super");
+        return renderSuper(objectDef, variableDef)
     }
     throw IllegalStateException("Unrecognized variable: $variableDef")
+}
+
+/**
+ * A property holding `null` until it is assigned, which the model reads as not null, asserted: `null` for another
+ * field. The definition declaring the field tells whether it holds `null`, whichever is written first.
+ */
+private fun KotlinWriteContext.renderNullifiedField(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef?,
+    scope: KotlinRenderScope,
+    variableDef: VariableDef
+): CodeBlock? {
+    val owner = when (variableDef) {
+        is VariableDef.Field -> if (variableDef.declaringType == TypeDef.THIS) objectDef
+            else generationScope.definitionOf(TypeHierarchy.unwrap(variableDef.declaringType) as? ClassTypeDef, objectDef)
+        is VariableDef.StaticField -> generationScope.definitionOf(variableDef.ownerType, objectDef)
+        else -> null
+    }
+    val name = if (variableDef is VariableDef.Field) variableDef.name else (variableDef as VariableDef.StaticField).name
+    if (owner != null && name in nullifiedFields(owner)) {
+        return CodeBlock.of("%L!!", renderVariable(objectDef, methodDef, scope, variableDef, true))
+    }
+    return null
+}
+
+private fun KotlinWriteContext.renderMethodParameter(
+    methodDef: MethodDef?,
+    scope: KotlinRenderScope,
+    variableDef: VariableDef.MethodParameter,
+    raw: Boolean
+): CodeBlock {
+    checkNotNull(methodDef) { "Accessing method parameters is not available" }
+    // The parameter can belong to an enclosing method - a lambda body can capture one
+    val name = scope.resolveParameter(variableDef.name)
+    checkNotNull(name) {
+        "Method: " + methodDef.name + " doesn't have parameter: " + variableDef.name
+    }
+    // A wrapper parameter is nullable, as the one of the JVM: asserted where Kotlin needs a value
+    return CodeBlock.of(if (!raw && isBoxedParameter(methodDef, variableDef.name, scope)) "%N!!" else "%N", name)
+}
+
+private fun KotlinWriteContext.renderField(
+    objectDef: ObjectDef?,
+    methodDef: MethodDef?,
+    scope: KotlinRenderScope,
+    variableDef: VariableDef.Field,
+    raw: Boolean
+): CodeBlock {
+    // Only a field declared by the type being written can be checked against its definition - which a
+    // static method is rendered without
+    if (objectDef != null && (variableDef.declaringType as? ClassTypeDef)?.name == objectDef.asTypeDef().name) {
+        checkFieldExists(objectDef, variableDef)
+    }
+    checkNotNull(methodDef) { "Accessing field is not available" }
+    val declaring = variableDef.declaringType
+    val instance = if (variableDef.instance.type() != declaring && variableDef.instance !is VariableDef.This
+        && variableDef.instance !is VariableDef.Super && declaring is ClassTypeDef
+        && declaring != TypeDef.THIS && declaring != TypeDef.SUPER) {
+        variableDef.instance.cast(declaring)
+    } else {
+        variableDef.instance
+    }
+    var codeBlock = renderExpressionCode(objectDef, methodDef, scope, instance)
+    if (requiresMethodCallTargetParentheses(instance)) {
+        codeBlock = addParentheses(codeBlock)
+    }
+    val builder = codeBlock.toBuilder()
+    if (variableDef.instance.type().isNullable) {
+        builder.add("!!")
+    }
+    builder.add(".%N", variableDef.name)
+    if (!raw && holdsNullUntilAssigned(objectDef, variableDef, declaring)) {
+        // A field of a type generated elsewhere, known by name only, holds null until it is assigned where no
+        // constructor assigns it
+        builder.add("!!")
+    }
+    return builder.build()
+}
+
+private fun checkFieldExists(objectDef: ObjectDef, variableDef: VariableDef.Field) {
+    if (objectDef is ClassDef) {
+        objectDef.getField(variableDef.name) // Check if exists
+    } else if (objectDef is EnumDef) {
+        objectDef.getField(variableDef.name) // Check if exists
+    } else {
+        throw IllegalStateException("Field access not supported on the object definition: $objectDef")
+    }
+}
+
+/** Whether a field of an object is of a type generated elsewhere, known by name only, and not nullable. */
+private fun KotlinWriteContext.holdsNullUntilAssigned(objectDef: ObjectDef?, variableDef: VariableDef.Field, declaring: TypeDef): Boolean {
+    val declaringClass = (TypeHierarchy.unwrap(declaring) as? ClassTypeDef)?.takeIf { it != TypeDef.THIS && it != TypeDef.SUPER }
+    return variableDef.instance !is VariableDef.This && variableDef.instance !is VariableDef.Super && declaringClass != null
+        && variableDef.type.isPrimitive.not() && !variableDef.type.isNullable
+        && generationScope.definitionOf(declaringClass, objectDef) == null && loadedClass(declaringClass, generationScope.typeLookup()) == null
+}
+
+private fun KotlinWriteContext.renderStaticField(objectDef: ObjectDef?, variableDef: VariableDef.StaticField): CodeBlock {
+    val owner = variableDef.ownerType
+    return CodeBlock.of(
+        "%T.%N",
+        // A static field of a Java type Kotlin maps, `Boolean.TRUE`, is one of the Java type
+        if (owner is ClassTypeDef.Parameterized || owner.isInner || TypeHierarchy.enclosingOf(owner) != null) asType(owner, objectDef)
+        else asStaticOwnerName(owner),
+        variableDef.name
+    )
+}
+
+private fun KotlinWriteContext.renderSuper(objectDef: ObjectDef?, variableDef: VariableDef.Super): CodeBlock {
+    checkNotNull(objectDef) { "Accessing 'super' is not available" }
+    // The bytecode model names Object to pick the invokespecial owner, but Any is never an
+    // immediate supertype that `super<Any>` could name
+    if (variableDef.type() !== TypeDef.SUPER && variableDef.type != TypeDef.OBJECT) {
+        return CodeBlock.of("super<%T>", asSamType(variableDef.type, objectDef, null))
+    }
+    return CodeBlock.of("super");
 }
 
 /**
@@ -1315,7 +1478,7 @@ private fun KotlinWriteContext.renderAdaptedReference(
         reference.method().name,
         arguments.joinToCode(", ")
     )
-    adaptation.resultType()?.let { call = CodeBlock.of("(%L as %T)", call, asType(it, objectDef, methodDef)) }
+    adaptation.resultType()?.let { call = CodeBlock.of(CAST_FORMAT, call, asType(it, objectDef, methodDef)) }
     val lambda = CodeBlock.of(
         "%T { %L -> %L }", asSamType(reference.type(), objectDef, null), names.joinToString(", "), call
     )
