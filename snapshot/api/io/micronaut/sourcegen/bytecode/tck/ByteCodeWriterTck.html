@@ -65,49 +65,31 @@ loadScripts(document, 'script');</script>
 <ol class="toc-list">
 <li><a href="#marksEveryGeneratedTypeWithAClassRetainedAnnotation()" tabindex="0">marksEveryGeneratedTypeWithAClassRetainedAnnotation()</a></li>
 <li><a href="#doesNotDuplicateAnExplicitGeneratedMarker()" tabindex="0">doesNotDuplicateAnExplicitGeneratedMarker()</a></li>
-<li><a href="#write(io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">write(ObjectDef)</a></li>
-<li><a href="#define(io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">define(ObjectDef)</a></li>
 <li><a href="#callsAVariableArityMethodWithMoreArgumentsThanItsFixedArityOverloadsTake()" tabindex="0">callsAVariableArityMethodWithMoreArgumentsThanItsFixedArityOverloadsTake()</a></li>
 <li><a href="#writesEveryIntegerMathOperationAndWidePrimitiveOperations()" tabindex="0">writesEveryIntegerMathOperationAndWidePrimitiveOperations()</a></li>
 <li><a href="#writesAllComparisonsForIntegralAndFloatingPointValues()" tabindex="0">writesAllComparisonsForIntegralAndFloatingPointValues()</a></li>
 <li><a href="#writesCastsBoxingNullChecksEqualityInstanceOfAndArrays()" tabindex="0">writesCastsBoxingNullChecksEqualityInstanceOfAndArrays()</a></li>
-<li><a href="#writesWhileLoopsAndFinallyOnReturnAndThrow()" tabindex="0">writesWhileLoopsAndFinallyOnReturnAndThrow()</a></li>
 <li><a href="#writesReflectedGenericBridgeAndGenericSignatures()" tabindex="0">writesReflectedGenericBridgeAndGenericSignatures()</a></li>
-<li><a href="#invokesMethodsThroughInterfaceBoundTypeVariables()" tabindex="0">invokesMethodsThroughInterfaceBoundTypeVariables()</a></li>
 <li><a href="#verifiesHierarchyFromGeneratedModelDefinitions()" tabindex="0">verifiesHierarchyFromGeneratedModelDefinitions()</a></li>
-<li><a href="#writesReferencesToAMemberTypeByItsBinaryName()" tabindex="0">writesReferencesToAMemberTypeByItsBinaryName()</a></li>
 <li><a href="#writesEmptyWideGenericAndBridgedRecords()" tabindex="0">writesEmptyWideGenericAndBridgedRecords()</a></li>
 <li><a href="#writesExplicitSuperConstructorsAndObjectCreation()" tabindex="0">writesExplicitSuperConstructorsAndObjectCreation()</a></li>
 <li><a href="#writesBooleanCompositionConditionalExpressionsAndArraySizes()" tabindex="0">writesBooleanCompositionConditionalExpressionsAndArraySizes()</a></li>
 <li><a href="#writesCatchVariablesThrowsAndDeclarationMetadata()" tabindex="0">writesCatchVariablesThrowsAndDeclarationMetadata()</a></li>
 <li><a href="#writesGenericRecordSignaturesAndRecordsWithAnAdditionalConstructor()" tabindex="0">writesGenericRecordSignaturesAndRecordsWithAnAdditionalConstructor()</a></li>
 <li><a href="#writesSuperCallsAndSuperConstructorDelegation()" tabindex="0">writesSuperCallsAndSuperConstructorDelegation()</a></li>
-<li><a href="#writesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface()" tabindex="0">writesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface()</a></li>
 <li><a href="#writesArrayConstantsAndMultiDimensionalArrays()" tabindex="0">writesArrayConstantsAndMultiDimensionalArrays()</a></li>
 <li><a href="#writesVoidMethodsThatReturnAnExpression()" tabindex="0">writesVoidMethodsThatReturnAnExpression()</a></li>
-<li><a href="#writesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes()" tabindex="0">writesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes()</a></li>
 <li><a href="#writesConstructorsWhoseSuperCallUsesAnEarlierLocal()" tabindex="0">writesConstructorsWhoseSuperCallUsesAnEarlierLocal()</a></li>
-<li><a href="#writesSwitchesSharingOneBodyAcrossManyKeys()" tabindex="0">writesSwitchesSharingOneBodyAcrossManyKeys()</a></li>
-<li><a href="#writesNestedCastsWithoutUnboxingAndReboxingAReference()" tabindex="0">writesNestedCastsWithoutUnboxingAndReboxingAReference()</a></li>
 <li><a href="#writesBoxedConstantsSmallPrimitivesAndPrimitiveHashCodes()" tabindex="0">writesBoxedConstantsSmallPrimitivesAndPrimitiveHashCodes()</a></li>
 <li><a href="#writesInterfacesWithAbstractDefaultAndStaticMethods()" tabindex="0">writesInterfacesWithAbstractDefaultAndStaticMethods()</a></li>
 <li><a href="#writesEnums()" tabindex="0">writesEnums()</a></li>
-<li><a href="#writesTryWhoseCatchCompletesInsideAnIfBranch()" tabindex="0">writesTryWhoseCatchCompletesInsideAnIfBranch()</a></li>
-<li><a href="#innerHandlerWinsOverAnOuterHandlerOfTheSameType()" tabindex="0">innerHandlerWinsOverAnOuterHandlerOfTheSameType()</a></li>
-<li><a href="#innerFinallyRunsBeforeTheOuterCatch()" tabindex="0">innerFinallyRunsBeforeTheOuterCatch()</a></li>
-<li><a href="#synchronizedBlockReleasesItsMonitorWhenAnOuterCatchHandlesTheException()" tabindex="0">synchronizedBlockReleasesItsMonitorWhenAnOuterCatchHandlesTheException()</a></li>
-<li><a href="#finallyReturnOverridesTheReturnOfTheTry()" tabindex="0">finallyReturnOverridesTheReturnOfTheTry()</a></li>
-<li><a href="#finallyThatReturnsRunsOnceAfterACatchCompletes()" tabindex="0">finallyThatReturnsRunsOnceAfterACatchCompletes()</a></li>
-<li><a href="#finallyThatThrowsAfterAReturnRunsOnce()" tabindex="0">finallyThatThrowsAfterAReturnRunsOnce()</a></li>
-<li><a href="#finallyThatThrowsAfterAReturnInACatchRunsOnce()" tabindex="0">finallyThatThrowsAfterAReturnInACatchRunsOnce()</a></li>
-<li><a href="#returnInAnInnerTryRunsTheInnerAndTheOuterFinally()" tabindex="0">returnInAnInnerTryRunsTheInnerAndTheOuterFinally()</a></li>
-<li><a href="#returnInATryWithoutFinallyRunsTheOuterFinally()" tabindex="0">returnInATryWithoutFinallyRunsTheOuterFinally()</a></li>
-<li><a href="#innerFinallyThatThrowsAfterAReturnRunsOnceAndThenTheOuterFinally()" tabindex="0">innerFinallyThatThrowsAfterAReturnRunsOnceAndThenTheOuterFinally()</a></li>
-<li><a href="#outerFinallyThatThrowsAfterAReturnInAnInnerTryRunsOnce()" tabindex="0">outerFinallyThatThrowsAfterAReturnInAnInnerTryRunsOnce()</a></li>
-<li><a href="#returnInATryInsideASynchronizedBlockReleasesTheMonitor()" tabindex="0">returnInATryInsideASynchronizedBlockReleasesTheMonitor()</a></li>
-<li><a href="#synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows()" tabindex="0">synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows()</a></li>
-<li><a href="#finallyThatThrowsAfterAYieldRunsOnce()" tabindex="0">finallyThatThrowsAfterAYieldRunsOnce()</a></li>
 <li><a href="#writesConstructorDelegationWithoutRepeatingFieldInitializers()" tabindex="0">writesConstructorDelegationWithoutRepeatingFieldInitializers()</a></li>
+<li><a href="#writesSuperConstructorCallsThatNameTheSuperType()" tabindex="0">writesSuperConstructorCallsThatNameTheSuperType()</a></li>
+<li><a href="#writesSuperCallsToASuperclassMethodAndAnInterfaceDefaultMethod()" tabindex="0">writesSuperCallsToASuperclassMethodAndAnInterfaceDefaultMethod()</a></li>
+<li><a href="#writesNamesContainingDollarSigns()" tabindex="0">writesNamesContainingDollarSigns()</a></li>
+<li><a href="#writesInstanceOfANestedType()" tabindex="0">writesInstanceOfANestedType()</a></li>
+<li><a href="#writesAccessToAFieldOfAnotherType()" tabindex="0">writesAccessToAFieldOfAnotherType()</a></li>
+<li><a href="#writesArrayAnnotationMembersAndNestedArrayInitializers()" tabindex="0">writesArrayAnnotationMembersAndNestedArrayInitializers()</a></li>
 <li><a href="#writesLambdasDeclaredInsideNestedBlocks()" tabindex="0">writesLambdasDeclaredInsideNestedBlocks()</a></li>
 <li><a href="#writesThisInsideANestedBlockOfALambdaBody()" tabindex="0">writesThisInsideANestedBlockOfALambdaBody()</a></li>
 </ol>
@@ -120,17 +102,19 @@ loadScripts(document, 'script');</script>
 <h1 title="Class ByteCodeWriterTck" class="title">Class ByteCodeWriterTck</h1>
 </div>
 <div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">java.lang.Object</a>
+<div class="inheritance"><a href="AbstractByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">io.micronaut.sourcegen.bytecode.tck.AbstractByteCodeWriterTck</a>
 <div class="inheritance">io.micronaut.sourcegen.bytecode.tck.ByteCodeWriterTck</div>
+</div>
 </div>
 <section class="class-description" id="class-description">
 <hr>
 <div class="horizontal-scroll">
 <div class="type-signature"><span class="modifiers">public abstract class </span><span class="element-name type-name-label">ByteCodeWriterTck</span>
-<span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
+<span class="extends-implements">extends <a href="AbstractByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">AbstractByteCodeWriterTck</a></span></div>
 <div class="block">The behaviour every bytecode backend must provide, asserted through the classes a backend writes
 rather than through the bytecode it emits, so that the same tests hold for any backend.
 
-<p>A backend runs the TCK by extending this class and implementing <a href="#write(io.micronaut.sourcegen.model.ObjectDef)"><code>write(ObjectDef)</code></a>.
+<p>A backend runs the TCK by extending this class and implementing <a href="AbstractByteCodeWriterTck.html#write(io.micronaut.sourcegen.model.ObjectDef)"><code>AbstractByteCodeWriterTck.write(ObjectDef)</code></a>.
 Assertions about a particular backend's encoding, such as the exact instructions it selects or
 the fallbacks it offers, belong in that backend's own tests.</div>
 <dl class="notes">
@@ -159,7 +143,7 @@ the fallbacks it offers, belong in that backend's own tests.</div>
 <section class="method-summary" id="method-summary">
 <h2>Method Summary</h2>
 <div id="method-summary-table">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab3" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab3', 3)" class="table-tab">Abstract Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button></div>
 <div id="method-summary-table.tabpanel" role="tabpanel" aria-labelledby="method-summary-table-tab0">
 <div class="summary-table three-column-summary">
 <div class="table-header col-first">Modifier and Type</div>
@@ -168,96 +152,44 @@ the fallbacks it offers, belong in that backend's own tests.</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#callsAVariableArityMethodWithMoreArgumentsThanItsFixedArityOverloadsTake()" class="member-name-link">callsAVariableArityMethodWithMoreArgumentsThanItsFixedArityOverloadsTake</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected final <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a><wbr>&lt;?&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#define(io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">define</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;definition)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Loads a definition written by <a href="#write(io.micronaut.sourcegen.model.ObjectDef)"><code>write(ObjectDef)</code></a>.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#doesNotDuplicateAnExplicitGeneratedMarker()" class="member-name-link">doesNotDuplicateAnExplicitGeneratedMarker</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#finallyReturnOverridesTheReturnOfTheTry()" class="member-name-link">finallyReturnOverridesTheReturnOfTheTry</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#finallyThatReturnsRunsOnceAfterACatchCompletes()" class="member-name-link">finallyThatReturnsRunsOnceAfterACatchCompletes</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#finallyThatThrowsAfterAReturnInACatchRunsOnce()" class="member-name-link">finallyThatThrowsAfterAReturnInACatchRunsOnce</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#finallyThatThrowsAfterAReturnRunsOnce()" class="member-name-link">finallyThatThrowsAfterAReturnRunsOnce</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#finallyThatThrowsAfterAYieldRunsOnce()" class="member-name-link">finallyThatThrowsAfterAYieldRunsOnce</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#innerFinallyRunsBeforeTheOuterCatch()" class="member-name-link">innerFinallyRunsBeforeTheOuterCatch</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#innerFinallyThatThrowsAfterAReturnRunsOnceAndThenTheOuterFinally()" class="member-name-link">innerFinallyThatThrowsAfterAReturnRunsOnceAndThenTheOuterFinally</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#innerHandlerWinsOverAnOuterHandlerOfTheSameType()" class="member-name-link">innerHandlerWinsOverAnOuterHandlerOfTheSameType</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#invokesMethodsThroughInterfaceBoundTypeVariables()" class="member-name-link">invokesMethodsThroughInterfaceBoundTypeVariables</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#doesNotDuplicateAnExplicitGeneratedMarker()" class="member-name-link">doesNotDuplicateAnExplicitGeneratedMarker</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#marksEveryGeneratedTypeWithAClassRetainedAnnotation()" class="member-name-link">marksEveryGeneratedTypeWithAClassRetainedAnnotation</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#outerFinallyThatThrowsAfterAReturnInAnInnerTryRunsOnce()" class="member-name-link">outerFinallyThatThrowsAfterAReturnInAnInnerTryRunsOnce</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#returnInAnInnerTryRunsTheInnerAndTheOuterFinally()" class="member-name-link">returnInAnInnerTryRunsTheInnerAndTheOuterFinally</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#returnInATryInsideASynchronizedBlockReleasesTheMonitor()" class="member-name-link">returnInATryInsideASynchronizedBlockReleasesTheMonitor</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#returnInATryWithoutFinallyRunsTheOuterFinally()" class="member-name-link">returnInATryWithoutFinallyRunsTheOuterFinally</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows()" class="member-name-link">synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#synchronizedBlockReleasesItsMonitorWhenAnOuterCatchHandlesTheException()" class="member-name-link">synchronizedBlockReleasesItsMonitorWhenAnOuterCatchHandlesTheException</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#verifiesHierarchyFromGeneratedModelDefinitions()" class="member-name-link">verifiesHierarchyFromGeneratedModelDefinitions</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>protected abstract byte[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#write(io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">write</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;definition)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Writes one definition to class file bytes with the backend under test.</div>
-</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesAccessToAFieldOfAnotherType()" class="member-name-link">writesAccessToAFieldOfAnotherType</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesAllComparisonsForIntegralAndFloatingPointValues()" class="member-name-link">writesAllComparisonsForIntegralAndFloatingPointValues</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesArrayConstantsAndMultiDimensionalArrays()" class="member-name-link">writesArrayConstantsAndMultiDimensionalArrays</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesArrayAnnotationMembersAndNestedArrayInitializers()" class="member-name-link">writesArrayAnnotationMembersAndNestedArrayInitializers</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesBooleanCompositionConditionalExpressionsAndArraySizes()" class="member-name-link">writesBooleanCompositionConditionalExpressionsAndArraySizes</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesArrayConstantsAndMultiDimensionalArrays()" class="member-name-link">writesArrayConstantsAndMultiDimensionalArrays</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesBoxedConstantsSmallPrimitivesAndPrimitiveHashCodes()" class="member-name-link">writesBoxedConstantsSmallPrimitivesAndPrimitiveHashCodes</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesBooleanCompositionConditionalExpressionsAndArraySizes()" class="member-name-link">writesBooleanCompositionConditionalExpressionsAndArraySizes</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesCastsBoxingNullChecksEqualityInstanceOfAndArrays()" class="member-name-link">writesCastsBoxingNullChecksEqualityInstanceOfAndArrays</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesBoxedConstantsSmallPrimitivesAndPrimitiveHashCodes()" class="member-name-link">writesBoxedConstantsSmallPrimitivesAndPrimitiveHashCodes</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesCatchVariablesThrowsAndDeclarationMetadata()" class="member-name-link">writesCatchVariablesThrowsAndDeclarationMetadata</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesCastsBoxingNullChecksEqualityInstanceOfAndArrays()" class="member-name-link">writesCastsBoxingNullChecksEqualityInstanceOfAndArrays</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesConstructorDelegationWithoutRepeatingFieldInitializers()" class="member-name-link">writesConstructorDelegationWithoutRepeatingFieldInitializers</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesCatchVariablesThrowsAndDeclarationMetadata()" class="member-name-link">writesCatchVariablesThrowsAndDeclarationMetadata</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesConstructorsWhoseSuperCallUsesAnEarlierLocal()" class="member-name-link">writesConstructorsWhoseSuperCallUsesAnEarlierLocal</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesConstructorDelegationWithoutRepeatingFieldInitializers()" class="member-name-link">writesConstructorDelegationWithoutRepeatingFieldInitializers</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface()" class="member-name-link">writesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesConstructorsWhoseSuperCallUsesAnEarlierLocal()" class="member-name-link">writesConstructorsWhoseSuperCallUsesAnEarlierLocal</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesEmptyWideGenericAndBridgedRecords()" class="member-name-link">writesEmptyWideGenericAndBridgedRecords</a>()</code></div>
@@ -275,16 +207,16 @@ the fallbacks it offers, belong in that backend's own tests.</div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesGenericRecordSignaturesAndRecordsWithAnAdditionalConstructor()" class="member-name-link">writesGenericRecordSignaturesAndRecordsWithAnAdditionalConstructor</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesInterfacesWithAbstractDefaultAndStaticMethods()" class="member-name-link">writesInterfacesWithAbstractDefaultAndStaticMethods</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesInstanceOfANestedType()" class="member-name-link">writesInstanceOfANestedType</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesLambdasDeclaredInsideNestedBlocks()" class="member-name-link">writesLambdasDeclaredInsideNestedBlocks</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesInterfacesWithAbstractDefaultAndStaticMethods()" class="member-name-link">writesInterfacesWithAbstractDefaultAndStaticMethods</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesNestedCastsWithoutUnboxingAndReboxingAReference()" class="member-name-link">writesNestedCastsWithoutUnboxingAndReboxingAReference</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesLambdasDeclaredInsideNestedBlocks()" class="member-name-link">writesLambdasDeclaredInsideNestedBlocks</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesReferencesToAMemberTypeByItsBinaryName()" class="member-name-link">writesReferencesToAMemberTypeByItsBinaryName</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesNamesContainingDollarSigns()" class="member-name-link">writesNamesContainingDollarSigns</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesReflectedGenericBridgeAndGenericSignatures()" class="member-name-link">writesReflectedGenericBridgeAndGenericSignatures</a>()</code></div>
@@ -293,26 +225,23 @@ the fallbacks it offers, belong in that backend's own tests.</div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesSuperCallsAndSuperConstructorDelegation()" class="member-name-link">writesSuperCallsAndSuperConstructorDelegation</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesSwitchesSharingOneBodyAcrossManyKeys()" class="member-name-link">writesSwitchesSharingOneBodyAcrossManyKeys</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesSuperCallsToASuperclassMethodAndAnInterfaceDefaultMethod()" class="member-name-link">writesSuperCallsToASuperclassMethodAndAnInterfaceDefaultMethod</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesThisInsideANestedBlockOfALambdaBody()" class="member-name-link">writesThisInsideANestedBlockOfALambdaBody</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesSuperConstructorCallsThatNameTheSuperType()" class="member-name-link">writesSuperConstructorCallsThatNameTheSuperType</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesTryWhoseCatchCompletesInsideAnIfBranch()" class="member-name-link">writesTryWhoseCatchCompletesInsideAnIfBranch</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesThisInsideANestedBlockOfALambdaBody()" class="member-name-link">writesThisInsideANestedBlockOfALambdaBody</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes()" class="member-name-link">writesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesVoidMethodsThatReturnAnExpression()" class="member-name-link">writesVoidMethodsThatReturnAnExpression</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesWhileLoopsAndFinallyOnReturnAndThrow()" class="member-name-link">writesWhileLoopsAndFinallyOnReturnAndThrow</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writesVoidMethodsThatReturnAnExpression()" class="member-name-link">writesVoidMethodsThatReturnAnExpression</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
 </div>
+<div class="inherited-list">
+<h3 id="methods-inherited-from-class-io.micronaut.sourcegen.bytecode.tck.AbstractByteCodeWriterTck">Methods inherited from class&nbsp;<a href="AbstractByteCodeWriterTck.html#method-summary" title="class in io.micronaut.sourcegen.bytecode.tck">AbstractByteCodeWriterTck</a></h3>
+<code><a href="AbstractByteCodeWriterTck.html#assertCall(java.lang.Object,java.util.List,java.util.List,java.util.function.Function)" title="assertCall(Object, List, List, Function)">assertCall</a>, <a href="AbstractByteCodeWriterTck.html#caller(io.micronaut.sourcegen.model.ExpressionDef)" title="caller(ExpressionDef)">caller</a>, <a href="AbstractByteCodeWriterTck.html#callWithParameter(io.micronaut.sourcegen.model.TypeDef,java.util.function.Function)" title="callWithParameter(TypeDef, Function)">callWithParameter</a>, <a href="AbstractByteCodeWriterTck.html#classShape(java.lang.Class)" title="classShape(Class)">classShape</a>, <a href="AbstractByteCodeWriterTck.html#declaredFields(java.lang.Class)" title="declaredFields(Class)">declaredFields</a>, <a href="AbstractByteCodeWriterTck.html#declaredMethods(java.lang.Class)" title="declaredMethods(Class)">declaredMethods</a>, <a href="AbstractByteCodeWriterTck.html#define(io.micronaut.sourcegen.model.ObjectDef)" title="define(ObjectDef)">define</a>, <a href="AbstractByteCodeWriterTck.html#defineInPackage(io.micronaut.sourcegen.model.ObjectDef)" title="defineInPackage(ObjectDef)">defineInPackage</a>, <a href="AbstractByteCodeWriterTck.html#genericShape(java.lang.Class)" title="genericShape(Class)">genericShape</a>, <a href="AbstractByteCodeWriterTck.html#invoke(java.lang.reflect.Method,java.lang.Object...)" title="invoke(Method, Object...)">invoke</a>, <a href="AbstractByteCodeWriterTck.html#list(io.micronaut.sourcegen.model.TypeDef)" title="list(TypeDef)">list</a>, <a href="AbstractByteCodeWriterTck.html#load(io.micronaut.sourcegen.model.ObjectDef...)" title="load(ObjectDef...)">load</a>, <a href="AbstractByteCodeWriterTck.html#outcome(java.util.concurrent.Callable)" title="outcome(Callable)">outcome</a>, <a href="AbstractByteCodeWriterTck.html#run(io.micronaut.sourcegen.model.ClassDef,io.micronaut.sourcegen.model.ObjectDef...)" title="run(ClassDef, ObjectDef...)">run</a>, <a href="AbstractByteCodeWriterTck.html#run(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.ObjectDef...)" title="run(ExpressionDef, ObjectDef...)">run</a>, <a href="AbstractByteCodeWriterTck.html#run(java.lang.String,io.micronaut.sourcegen.model.TypeDef,java.util.List,java.util.function.BiFunction)" title="run(String, TypeDef, List, BiFunction)">run</a>, <a href="AbstractByteCodeWriterTck.html#selection(java.lang.String,io.micronaut.sourcegen.model.TypeDef,java.lang.String)" title="selection(String, TypeDef, String)">selection</a>, <a href="AbstractByteCodeWriterTck.html#selection(java.lang.String,io.micronaut.sourcegen.model.TypeDef,java.lang.String,javax.lang.model.element.Modifier)" title="selection(String, TypeDef, String, Modifier)">selection</a>, <a href="AbstractByteCodeWriterTck.html#shape(java.lang.Class)" title="shape(Class)">shape</a>, <a href="AbstractByteCodeWriterTck.html#write(io.micronaut.sourcegen.model.ObjectDef)" title="write(ObjectDef)">write</a></code></div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-java.lang.Object">Methods inherited from class&nbsp;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#method-summary" title="class or interface in java.lang" class="external-link">Object</a></h3>
 <code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#clone()" title="class or interface in java.lang" class="external-link">clone</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#equals(java.lang.Object)" title="class or interface in java.lang" class="external-link">equals</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#finalize()" title="class or interface in java.lang" class="external-link">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#toString()" title="class or interface in java.lang" class="external-link">toString</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
@@ -358,43 +287,6 @@ the fallbacks it offers, belong in that backend's own tests.</div>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="annotations">@Test
 </span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">doesNotDuplicateAnExplicitGeneratedMarker</span>()</div>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="write(io.micronaut.sourcegen.model.ObjectDef)">
-<h3>write</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">protected abstract</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">write</span><wbr><span class="parameters">(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;definition)</span></div>
-<div class="block">Writes one definition to class file bytes with the backend under test.
-
-<p>An implementation should assert whatever its backend guarantees about how the bytes were
-produced, such as verifying them or refusing a fallback path, so that a backend cannot pass
-the TCK by quietly declining to write the definition itself.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>definition</code> - The definition to write</dd>
-<dt>Returns:</dt>
-<dd>The class file bytes</dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="define(io.micronaut.sourcegen.model.ObjectDef)">
-<h3>define</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;?&gt;</span>&nbsp;<span class="element-name">define</span><wbr><span class="parameters">(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;definition)</span>
-                         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassNotFoundException.html" title="class or interface in java.lang" class="external-link">ClassNotFoundException</a></span></div>
-<div class="block">Loads a definition written by <a href="#write(io.micronaut.sourcegen.model.ObjectDef)"><code>write(ObjectDef)</code></a>.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>definition</code> - The definition to write and load</dd>
-<dt>Returns:</dt>
-<dd>The loaded class</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/ClassNotFoundException.html" title="class or interface in java.lang" class="external-link">ClassNotFoundException</a></code> - If the class cannot be loaded</dd>
-</dl>
 </div>
 </section>
 </li>
@@ -455,39 +347,11 @@ the TCK by quietly declining to write the definition itself.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="writesWhileLoopsAndFinallyOnReturnAndThrow()">
-<h3>writesWhileLoopsAndFinallyOnReturnAndThrow</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesWhileLoopsAndFinallyOnReturnAndThrow</span>()
-                                                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
 <section class="detail" id="writesReflectedGenericBridgeAndGenericSignatures()">
 <h3>writesReflectedGenericBridgeAndGenericSignatures</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="annotations">@Test
 </span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesReflectedGenericBridgeAndGenericSignatures</span>()
-                                                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="invokesMethodsThroughInterfaceBoundTypeVariables()">
-<h3>invokesMethodsThroughInterfaceBoundTypeVariables</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">invokesMethodsThroughInterfaceBoundTypeVariables</span>()
                                                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
@@ -503,20 +367,6 @@ the TCK by quietly declining to write the definition itself.</div>
 <div class="member-signature"><span class="annotations">@Test
 </span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">verifiesHierarchyFromGeneratedModelDefinitions</span>()
                                                     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="writesReferencesToAMemberTypeByItsBinaryName()">
-<h3>writesReferencesToAMemberTypeByItsBinaryName</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesReferencesToAMemberTypeByItsBinaryName</span>()
-                                                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
@@ -609,20 +459,6 @@ the TCK by quietly declining to write the definition itself.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="writesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface()">
-<h3>writesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesDefaultMethodCallsOnAnInterfaceReceiverWithInvokeInterface</span>()
-                                                                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
 <section class="detail" id="writesArrayConstantsAndMultiDimensionalArrays()">
 <h3>writesArrayConstantsAndMultiDimensionalArrays</h3>
 <div class="horizontal-scroll">
@@ -651,54 +487,12 @@ the TCK by quietly declining to write the definition itself.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="writesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes()">
-<h3>writesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesUnboxingOfAnyNumberAndCastsThroughUnrelatedTypes</span>()
-                                                            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
 <section class="detail" id="writesConstructorsWhoseSuperCallUsesAnEarlierLocal()">
 <h3>writesConstructorsWhoseSuperCallUsesAnEarlierLocal</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="annotations">@Test
 </span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesConstructorsWhoseSuperCallUsesAnEarlierLocal</span>()
                                                         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="writesSwitchesSharingOneBodyAcrossManyKeys()">
-<h3>writesSwitchesSharingOneBodyAcrossManyKeys</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesSwitchesSharingOneBodyAcrossManyKeys</span>()
-                                                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="writesNestedCastsWithoutUnboxingAndReboxingAReference()">
-<h3>writesNestedCastsWithoutUnboxingAndReboxingAReference</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesNestedCastsWithoutUnboxingAndReboxingAReference</span>()
-                                                           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
@@ -749,12 +543,12 @@ the TCK by quietly declining to write the definition itself.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="writesTryWhoseCatchCompletesInsideAnIfBranch()">
-<h3>writesTryWhoseCatchCompletesInsideAnIfBranch</h3>
+<section class="detail" id="writesConstructorDelegationWithoutRepeatingFieldInitializers()">
+<h3>writesConstructorDelegationWithoutRepeatingFieldInitializers</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesTryWhoseCatchCompletesInsideAnIfBranch</span>()
-                                                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesConstructorDelegationWithoutRepeatingFieldInitializers</span>()
+                                                                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
@@ -763,11 +557,11 @@ the TCK by quietly declining to write the definition itself.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="innerHandlerWinsOverAnOuterHandlerOfTheSameType()">
-<h3>innerHandlerWinsOverAnOuterHandlerOfTheSameType</h3>
+<section class="detail" id="writesSuperConstructorCallsThatNameTheSuperType()">
+<h3>writesSuperConstructorCallsThatNameTheSuperType</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">innerHandlerWinsOverAnOuterHandlerOfTheSameType</span>()
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesSuperConstructorCallsThatNameTheSuperType</span>()
                                                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
@@ -777,12 +571,12 @@ the TCK by quietly declining to write the definition itself.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="innerFinallyRunsBeforeTheOuterCatch()">
-<h3>innerFinallyRunsBeforeTheOuterCatch</h3>
+<section class="detail" id="writesSuperCallsToASuperclassMethodAndAnInterfaceDefaultMethod()">
+<h3>writesSuperCallsToASuperclassMethodAndAnInterfaceDefaultMethod</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">innerFinallyRunsBeforeTheOuterCatch</span>()
-                                         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesSuperCallsToASuperclassMethodAndAnInterfaceDefaultMethod</span>()
+                                                                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
@@ -791,12 +585,12 @@ the TCK by quietly declining to write the definition itself.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="synchronizedBlockReleasesItsMonitorWhenAnOuterCatchHandlesTheException()">
-<h3>synchronizedBlockReleasesItsMonitorWhenAnOuterCatchHandlesTheException</h3>
+<section class="detail" id="writesNamesContainingDollarSigns()">
+<h3>writesNamesContainingDollarSigns</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">synchronizedBlockReleasesItsMonitorWhenAnOuterCatchHandlesTheException</span>()
-                                                                            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesNamesContainingDollarSigns</span>()
+                                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
@@ -805,12 +599,12 @@ the TCK by quietly declining to write the definition itself.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="finallyReturnOverridesTheReturnOfTheTry()">
-<h3>finallyReturnOverridesTheReturnOfTheTry</h3>
+<section class="detail" id="writesInstanceOfANestedType()">
+<h3>writesInstanceOfANestedType</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">finallyReturnOverridesTheReturnOfTheTry</span>()
-                                             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesInstanceOfANestedType</span>()
+                                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
@@ -819,12 +613,12 @@ the TCK by quietly declining to write the definition itself.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="finallyThatReturnsRunsOnceAfterACatchCompletes()">
-<h3>finallyThatReturnsRunsOnceAfterACatchCompletes</h3>
+<section class="detail" id="writesAccessToAFieldOfAnotherType()">
+<h3>writesAccessToAFieldOfAnotherType</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">finallyThatReturnsRunsOnceAfterACatchCompletes</span>()
-                                                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesAccessToAFieldOfAnotherType</span>()
+                                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
@@ -833,138 +627,12 @@ the TCK by quietly declining to write the definition itself.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="finallyThatThrowsAfterAReturnRunsOnce()">
-<h3>finallyThatThrowsAfterAReturnRunsOnce</h3>
+<section class="detail" id="writesArrayAnnotationMembersAndNestedArrayInitializers()">
+<h3>writesArrayAnnotationMembersAndNestedArrayInitializers</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">finallyThatThrowsAfterAReturnRunsOnce</span>()
-                                           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="finallyThatThrowsAfterAReturnInACatchRunsOnce()">
-<h3>finallyThatThrowsAfterAReturnInACatchRunsOnce</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">finallyThatThrowsAfterAReturnInACatchRunsOnce</span>()
-                                                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="returnInAnInnerTryRunsTheInnerAndTheOuterFinally()">
-<h3>returnInAnInnerTryRunsTheInnerAndTheOuterFinally</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">returnInAnInnerTryRunsTheInnerAndTheOuterFinally</span>()
-                                                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="returnInATryWithoutFinallyRunsTheOuterFinally()">
-<h3>returnInATryWithoutFinallyRunsTheOuterFinally</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">returnInATryWithoutFinallyRunsTheOuterFinally</span>()
-                                                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="innerFinallyThatThrowsAfterAReturnRunsOnceAndThenTheOuterFinally()">
-<h3>innerFinallyThatThrowsAfterAReturnRunsOnceAndThenTheOuterFinally</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">innerFinallyThatThrowsAfterAReturnRunsOnceAndThenTheOuterFinally</span>()
-                                                                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="outerFinallyThatThrowsAfterAReturnInAnInnerTryRunsOnce()">
-<h3>outerFinallyThatThrowsAfterAReturnInAnInnerTryRunsOnce</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">outerFinallyThatThrowsAfterAReturnInAnInnerTryRunsOnce</span>()
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesArrayAnnotationMembersAndNestedArrayInitializers</span>()
                                                             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="returnInATryInsideASynchronizedBlockReleasesTheMonitor()">
-<h3>returnInATryInsideASynchronizedBlockReleasesTheMonitor</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">returnInATryInsideASynchronizedBlockReleasesTheMonitor</span>()
-                                                            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows()">
-<h3>synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">synchronizedBlockReleasesItsMonitorOnceWhenTheFinallyAfterAReturnThrows</span>()
-                                                                             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="finallyThatThrowsAfterAYieldRunsOnce()">
-<h3>finallyThatThrowsAfterAYieldRunsOnce</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">finallyThatThrowsAfterAYieldRunsOnce</span>()
-                                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="writesConstructorDelegationWithoutRepeatingFieldInitializers()">
-<h3>writesConstructorDelegationWithoutRepeatingFieldInitializers</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="annotations">@Test
-</span><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writesConstructorDelegationWithoutRepeatingFieldInitializers</span>()
-                                                                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>

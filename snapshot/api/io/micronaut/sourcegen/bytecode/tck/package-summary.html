@@ -82,36 +82,977 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><a href="../package-summary.html">io.micronaut.sourcegen.bytecode</a></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><a href="../core/package-summary.html">io.micronaut.sourcegen.bytecode.core</a></div>
+<div class="col-first odd-row-color"><a href="visibility/package-summary.html">io.micronaut.sourcegen.bytecode.tck.visibility</a></div>
 <div class="col-last odd-row-color">
+<div class="block">Compiled fixtures for access checks from a different package.</div>
+</div>
+<div class="col-first even-row-color"><a href="../core/package-summary.html">io.micronaut.sourcegen.bytecode.core</a></div>
+<div class="col-last even-row-color">
 <div class="block">Backend-neutral bytecode metadata utilities.</div>
 </div>
-<div class="col-first even-row-color"><a href="../expression/package-summary.html">io.micronaut.sourcegen.bytecode.expression</a></div>
-<div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><a href="../jdk/package-summary.html">io.micronaut.sourcegen.bytecode.jdk</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first odd-row-color"><a href="../expression/package-summary.html">io.micronaut.sourcegen.bytecode.expression</a></div>
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><a href="../jdk/package-summary.html">io.micronaut.sourcegen.bytecode.jdk</a></div>
+<div class="col-last even-row-color">
 <div class="block">JDK ClassFile API bytecode writing.</div>
 </div>
-<div class="col-first even-row-color"><a href="../statement/package-summary.html">io.micronaut.sourcegen.bytecode.statement</a></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><a href="../statement/package-summary.html">io.micronaut.sourcegen.bytecode.statement</a></div>
+<div class="col-last odd-row-color">&nbsp;</div>
 </div>
 </div>
 </li>
 <li>
 <div id="class-summary">
-<div class="caption"><span>Classes</span></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="class-summary-tab0" role="tab" aria-selected="true" aria-controls="class-summary.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary', 2)" class="active-table-tab">All Classes and Interfaces</button><button id="class-summary-tab1" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab1', 2)" class="table-tab">Interfaces</button><button id="class-summary-tab2" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab2', 2)" class="table-tab">Classes</button><button id="class-summary-tab3" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab3', 2)" class="table-tab">Enum Classes</button><button id="class-summary-tab4" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab4', 2)" class="table-tab">Record Classes</button><button id="class-summary-tab6" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab6', 2)" class="table-tab">Annotation Interfaces</button></div>
+<div id="class-summary.tabpanel" role="tabpanel" aria-labelledby="class-summary-tab0">
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Class</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="AbstractByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">AbstractByteCodeWriterTck</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">The support shared by every topic of the bytecode writer TCK: writing definitions with the backend
+under test, loading them, and calling them next to javac's own call of a compiled fixture.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ApplicabilityFixtures.html" title="class in io.micronaut.sourcegen.bytecode.tck">ApplicabilityFixtures</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Compiled fixtures, shared by several TCK topics, for the applicability of generic overloads:
+wildcard, recursive and dependent bounds, and generic variable arity calls.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ApplicabilityFixtures.NumericIdentity.html" title="class in io.micronaut.sourcegen.bytecode.tck">ApplicabilityFixtures.NumericIdentity</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Generic inherited implementation.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ApplicabilityFixtures.Overloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">ApplicabilityFixtures.Overloads</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Compiled overload oracle.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BoundedBoxFixtures.html" title="class in io.micronaut.sourcegen.bytecode.tck">BoundedBoxFixtures</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Compiled fixtures for a generic class that declares the bound of its type parameter.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BoundedBoxFixtures.Calls.html" title="class in io.micronaut.sourcegen.bytecode.tck">BoundedBoxFixtures.Calls</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">The overloads the generated calls choose between, called from javac to tell the expected result.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BoundedBoxFixtures.NumberBox.html" title="class in io.micronaut.sourcegen.bytecode.tck">BoundedBoxFixtures.NumberBox</a>&lt;E extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A generic class that declares the bound of its parameter.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Bridge methods: which bridges a generated class needs, their flags and descriptors, and the dispatch through
+them, compared with the bridges javac writes.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="BridgeTck.ArrayContract.html" title="interface in io.micronaut.sourcegen.bytecode.tck">BridgeTck.ArrayContract</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">A contract requiring a multidimensional generic array bridge.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.CloneFixture.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.CloneFixture</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's covariant clone.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="BridgeTck.DefaultSupplier.html" title="interface in io.micronaut.sourcegen.bytecode.tck">BridgeTck.DefaultSupplier</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">javac's bridge of a default method.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.ExplicitCloneFixture.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.ExplicitCloneFixture</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's covariant clone below an explicit superclass.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BridgeTck.FinalBridge.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.FinalBridge</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">javac's bridge of a final synchronized method.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="BridgeTck.GenericContract.html" title="interface in io.micronaut.sourcegen.bytecode.tck">BridgeTck.GenericContract</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">A generic contract whose method declares a separate bounded variable.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BridgeTck.GenericParent.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.GenericParent</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A generic superclass used raw by a generated subclass.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.GenericPick.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.GenericPick</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A generic method of a generic class.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="BridgeTck.Getter.html" title="interface in io.micronaut.sourcegen.bytecode.tck">BridgeTck.Getter</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">A second generic getter.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.IntegerGetter.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.IntegerGetter</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's narrowing override.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BridgeTck.MethodBoundChild.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.MethodBoundChild</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">javac verifies the inherited generic method implements the contract.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="BridgeTck.MethodBoundFunction.html" title="interface in io.micronaut.sourcegen.bytecode.tck">BridgeTck.MethodBoundFunction</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">A contract whose generic method erases to Object.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BridgeTck.MethodBoundParent.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.MethodBoundParent</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A method bound depends on the class variable.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.NumberGetter.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.NumberGetter</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A plain covariant return.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="BridgeTck.NumberSource.html" title="interface in io.micronaut.sourcegen.bytecode.tck">BridgeTck.NumberSource</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">A covariant source.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="BridgeTck.Parser.html" title="interface in io.micronaut.sourcegen.bytecode.tck">BridgeTck.Parser</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">A generic contract whose method declares a checked exception.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BridgeTck.PlainBase.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.PlainBase</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A superclass declaring nothing.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.PrivateBridgeChild.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.PrivateBridgeChild</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac emits a public accept(Object) bridge despite the private superclass method.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BridgeTck.PrivateBridgeParent.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.PrivateBridgeParent</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Private erased overload cannot satisfy an inherited public interface contract.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.ProtectedBridge.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.ProtectedBridge</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's protected bridge.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BridgeTck.ProtectedGeneric.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.ProtectedGeneric</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A protected generic method.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.SameBridge.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.SameBridge</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's one bridge for two interfaces.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="BridgeTck.SequenceSupplier.html" title="interface in io.micronaut.sourcegen.bytecode.tck">BridgeTck.SequenceSupplier</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Another erased return contract.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.StringPick.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.StringPick</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's override in a parameterized subclass.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BridgeTck.StringSupplier.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.StringSupplier</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">An inherited implementation that predates a subclass implementing Supplier.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="BridgeTck.TwoBridges.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.TwoBridges</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's two bridges.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="BridgeTck.VisibleChild.html" title="class in io.micronaut.sourcegen.bytecode.tck">BridgeTck.VisibleChild</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">javac's visibility bridge.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ByteCodeWriterTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ByteCodeWriterTck</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
 <div class="block">The behaviour every bytecode backend must provide, asserted through the classes a backend writes
 rather than through the bytecode it emits, so that the same tests hold for any backend.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="IfElseCompletionTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">IfElseCompletionTck</a></div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="CaptureFixtures.html" title="class in io.micronaut.sourcegen.bytecode.tck">CaptureFixtures</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Compiled fixtures, shared by several TCK topics, whose overloads javac chooses by capturing wildcards
+and solving bounds; a generated call must choose the same overload.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="CaptureFixtures.Alpha.html" title="interface in io.micronaut.sourcegen.bytecode.tck">CaptureFixtures.Alpha</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">Second intersection bound.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="CaptureFixtures.Calls.html" title="class in io.micronaut.sourcegen.bytecode.tck">CaptureFixtures.Calls</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">javac overload oracle.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="CaptureFixtures.First.html" title="class in io.micronaut.sourcegen.bytecode.tck">CaptureFixtures.First</a></div>
 <div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Common interfaces deliberately declared in the opposite order to the method bounds.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="CaptureFixtures.Second.html" title="class in io.micronaut.sourcegen.bytecode.tck">CaptureFixtures.Second</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Other common-interface implementation.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="CaptureFixtures.Zeta.html" title="interface in io.micronaut.sourcegen.bytecode.tck">CaptureFixtures.Zeta</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">First intersection bound.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ControlFlowTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ControlFlowTck</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Loops, switches, try, catch and finally, and the statements that complete them, compared with what javac
+writes for the same source.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ConversionTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ConversionTck</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Conversions: casts, boxing and unboxing, primitive widening of arguments and of requested return types,
+and values discarded after they are converted.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="EnclosingTypeFixtures.html" title="class in io.micronaut.sourcegen.bytecode.tck">EnclosingTypeFixtures</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Compiled fixtures, shared by several TCK topics, whose member types and overloads depend on the
+type arguments of an enclosing type.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="EnclosingTypeFixtures.Calls.html" title="class in io.micronaut.sourcegen.bytecode.tck">EnclosingTypeFixtures.Calls</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Independent overload and varargs oracles.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="EnclosingTypeFixtures.NumericParent.html" title="class in io.micronaut.sourcegen.bytecode.tck">EnclosingTypeFixtures.NumericParent</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Inherited generic parameter overloads.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="EnclosingTypeFixtures.Outer.html" title="class in io.micronaut.sourcegen.bytecode.tck">EnclosingTypeFixtures.Outer</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Enclosing class for member scope tests.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ExpressionTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ExpressionTck</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Operators and array expressions: numeric promotion of arithmetic and shifts, structural and referential
+equality, and array creation and access, compared with what javac writes for the same source.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="GeneratedClassLoader.html" title="class in io.micronaut.sourcegen.bytecode.tck">GeneratedClassLoader</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Loads classes a backend wrote, by binary name, so that they can refer to each other and to the
+classes of the tests that wrote them.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="IfElseCompletionTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">IfElseCompletionTck</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
 <div class="block">An if/else statement whose then branch completes normally continues after the whole statement, not into the else
 branch.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="InferenceFixtures.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceFixtures</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Compiled fixtures, shared by several TCK topics, for inference constraints: wildcard containment,
+lower bounds, least upper bounds and generic variable arity calls.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceFixtures.Calls.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceFixtures.Calls</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">javac overload oracle.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="InferenceFixtures.Left.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceFixtures.Left</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">First unrelated implementation.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceFixtures.RawBoundedReceiver.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceFixtures.RawBoundedReceiver</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Raw bounded class oracle.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="InferenceFixtures.Shared.html" title="interface in io.micronaut.sourcegen.bytecode.tck">InferenceFixtures.Shared</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">Common interface for unrelated classes.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Inference of method type arguments: wildcard capture and containment, bound checks, least upper bounds,
+generic variable arity calls and the requested return type.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="InferenceTck.AlphaMidOne.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.AlphaMidOne</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Implements the markers in declaration order.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.AlphaMidTwo.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.AlphaMidTwo</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Implements the markers in declaration order.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="InferenceTck.Base.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.Base</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A common varargs superclass.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.ClassVarargs.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.ClassVarargs</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Varargs whose component belongs to the class.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="InferenceTck.ConstructorChoice.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.ConstructorChoice</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Constructor overload oracle.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.ConsumerBox.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.ConsumerBox</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Capture conversion oracle.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="InferenceTck.First.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.First</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A varargs input.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.GenericGetter.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.GenericGetter</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Generic receiver whose erased result differs from its parameterized result.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="InferenceTck.GenericMethodReceiver.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.GenericMethodReceiver</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Generic receiver with a method variable bounded by its class variable.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.InferredVarargs.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.InferredVarargs</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Generic variable arity inference.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="InferenceTck.Mid.html" title="interface in io.micronaut.sourcegen.bytecode.tck">InferenceTck.Mid</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">Marker of a higher rank.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.Receiver.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.Receiver</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Wildcard receiver oracle.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="InferenceTck.ReceiverMethodVarargs.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.ReceiverMethodVarargs</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A varargs method whose variable is bounded by its generic receiver.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.Right.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.Right</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Second unrelated implementation.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="InferenceTck.Second.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.Second</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Another varargs input.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.StringVarargs.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.StringVarargs</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Inherited specialization of class varargs.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="InferenceTck.Top.html" title="interface in io.micronaut.sourcegen.bytecode.tck">InferenceTck.Top</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">Marker.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.WildcardConstructor.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.WildcardConstructor</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Constructor inference oracle.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="InferenceTck.WrongComparable.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.WrongComparable</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A class with a distinct Comparable argument.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="InferenceTck.ZetaAlphaTwo.html" title="class in io.micronaut.sourcegen.bytecode.tck">InferenceTck.ZetaAlphaTwo</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Implements the markers in declaration order.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="LambdaAndReferenceTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">LambdaAndReferenceTck</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Lambdas and method references: the functional interface method they implement, the receiver
+they capture and the scope of the type variables they use.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="LambdaAndReferenceTck.NamedParent.html" title="class in io.micronaut.sourcegen.bytecode.tck">LambdaAndReferenceTck.NamedParent</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A superclass with a method to refer to through `super`.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="LambdaAndReferenceTck.ReferenceParent.html" title="class in io.micronaut.sourcegen.bytecode.tck">LambdaAndReferenceTck.ReferenceParent</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Generic superclass for a void-adapted reference.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="MemberTypeTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">MemberTypeTck</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Member types: references to a member type by its binary name, enclosing type arguments of inner classes,
+and the signatures and overloads of their members.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab6"><a href="MemberTypeTck.Mark.html" title="annotation interface in io.micronaut.sourcegen.bytecode.tck">MemberTypeTck.Mark</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab6">
+<div class="block">Runtime type annotation used as an independent path oracle.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="MemberTypeTck.MemberSignatures.html" title="class in io.micronaut.sourcegen.bytecode.tck">MemberTypeTck.MemberSignatures</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">javac member-type signature oracle.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="MemberTypeTck.OuterBridge.html" title="class in io.micronaut.sourcegen.bytecode.tck">MemberTypeTck.OuterBridge</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac bridge oracle.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="MemberTypeTck.Owner.html" title="class in io.micronaut.sourcegen.bytecode.tck">MemberTypeTck.Owner</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Enclosing generic type for member signatures.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="MemberTypeTck.Signatures.html" title="class in io.micronaut.sourcegen.bytecode.tck">MemberTypeTck.Signatures</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Member signatures compiled independently by javac.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="MemberTypeTck.TypedMembers.html" title="class in io.micronaut.sourcegen.bytecode.tck">MemberTypeTck.TypedMembers</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>, U extends T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Combined owner, class, method, exception and array signatures compiled by javac.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OperatorFixtures.html" title="class in io.micronaut.sourcegen.bytecode.tck">OperatorFixtures</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Compiled fixtures: javac's <code>==</code> and <code>!=</code> of two primitives, which promotes both operands to a common type
+(binary numeric promotion) - a <code>long</code> compared with a <code>float</code> is compared as a <code>float</code>.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadFixtures.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Compiled fixtures, shared by several TCK topics, for overload selection by primitive widening, boxing,
+variable arity and least upper bounds, and for calls on interface and intersection receivers.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="OverloadFixtures.Alpha.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.Alpha</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">Marker.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadFixtures.Calls.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.Calls</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Overloads the calls choose between.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab3"><a href="OverloadFixtures.EnumSupplier.html" title="enum class in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.EnumSupplier</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab3">
+<div class="block">javac's enum bridge.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="OverloadFixtures.IntegerTaker.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.IntegerTaker</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">An overload the argument does not apply to.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadFixtures.NumberBox.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.NumberBox</a>&lt;E extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A class whose variable is bounded.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="OverloadFixtures.ObjectChooser.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.ObjectChooser</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">An overload of one bound.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadFixtures.Receivers.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.Receivers</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's calls on receivers.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="OverloadFixtures.StringChooser.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.StringChooser</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">A more specific overload of another bound.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="OverloadFixtures.StringTaker.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.StringTaker</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">The overload the argument applies to.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="OverloadFixtures.Zeta.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.Zeta</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Marker.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadFixtures.ZetaAlphaOne.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadFixtures.ZetaAlphaOne</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Implements the markers in declaration order.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Overload selection: the phases of strict, loose and variable arity invocation, the most specific
+method, accessibility of candidates and explicit descriptors.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.AccessConstructors.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.AccessConstructors</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Constructors with different access levels.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.AccessOverloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.AccessOverloads</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Public alternatives to inaccessible overloads.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.ArrayOverload.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.ArrayOverload</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A fixed arity array declaration.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.ArraySpecificity.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.ArraySpecificity</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Array covariance control.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.Both.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.Both</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Class satisfying both intersection bounds.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.BothBounds.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.BothBounds</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Implements both intersection bounds.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.BothChoosers.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.BothChoosers</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Both bounds.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.BothResults.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.BothResults</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Implements both return descriptors.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.BothTakers.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.BothTakers</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Both bounds.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.CompiledOverloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.CompiledOverloads</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Reflected generic overloads.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="OverloadSelectionTck.Diamond.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.Diamond</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">Inherited covariant declarations.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.DiamondImplementation.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.DiamondImplementation</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Implementation used by the independent oracle.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="OverloadSelectionTck.FirstBound.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.FirstBound</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">First overloaded intersection bound.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.GenericConstructor.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.GenericConstructor</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Generic class with a class-variable overload and an Object fallback.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="OverloadSelectionTck.IntegerResult.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.IntegerResult</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">Covariant receiver bound.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="OverloadSelectionTck.Narrow.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.Narrow</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Narrow covariant declaration.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="OverloadSelectionTck.NumberResult.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.NumberResult</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">Covariant receiver bound.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.ObjectPicker.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.ObjectPicker</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">An overload of a superclass.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.Overloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.Overloads</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Reflected overloads with observably different results.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.PackageOverloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.PackageOverloads</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A public and a package-private overload.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.ProtectedOverloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.ProtectedOverloads</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A public and a protected overload.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.ProtectedOverloadsChild.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.ProtectedOverloadsChild</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">The javac-compiled subclass calling the overloads.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.ReceiverOverloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.ReceiverOverloads</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Overloads whose specificity changes when the receiver is parameterized.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="OverloadSelectionTck.SecondBound.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.SecondBound</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Second overloaded intersection bound.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.SpecializedChild.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.SpecializedChild</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Receiver specialized through inheritance.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.SpecializedReceiver.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.SpecializedReceiver</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Generic receiver with a concrete overload.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="OverloadSelectionTck.StringPicker.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.StringPicker</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">An overload of an interface.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.SuperAndInterface.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.SuperAndInterface</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Both.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.VarargsOverloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.VarargsOverloads</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Varargs overload controls.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="OverloadSelectionTck.Wide.html" title="interface in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.Wide</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Wide covariant declaration.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.WiderProtectedOverloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.WiderProtectedOverloads</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A public and a protected overload taking a supertype of the argument.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadSelectionTck.WiderProtectedOverloadsChild.html" title="class in io.micronaut.sourcegen.bytecode.tck">OverloadSelectionTck.WiderProtectedOverloadsChild</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">The javac-compiled subclass calling the overloads through a receiver of its own type.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ReceiverTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Calls through a receiver: type variable, raw, parameterized, intersection and interface receivers, and
+the class scope in which a callee's type variables and inherited members are resolved.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ReceiverTck.BothDefaults.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.BothDefaults</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">javac's class of both.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ReceiverTck.ConstructorChoice.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.ConstructorChoice</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Constructor overload oracle.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ReceiverTck.Describer.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.Describer</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Overloads inherited by a generated class.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ReceiverTck.DescriberChild.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.DescriberChild</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's calls on this and super.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ReceiverTck.InstanceCalls.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.InstanceCalls</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Instance overload oracle.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="ReceiverTck.Left.html" title="interface in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.Left</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">A default method.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ReceiverTck.ListParent.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.ListParent</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Raw inheritance oracle.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="ReceiverTck.Marker.html" title="interface in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.Marker</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">A generated interface stand-in.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ReceiverTck.MethodBounds.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.MethodBounds</a>&lt;X extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A method bound refers to the receiver's type argument.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ReceiverTck.RawChild.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.RawChild</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A raw use erases this type's entire superclass.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ReceiverTck.RawMethodReceiver.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.RawMethodReceiver</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Own method variables of a raw class.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ReceiverTck.RawReceiver.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.RawReceiver</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Raw receivers erase instance member types.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ReceiverTck.Receiver.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.Receiver</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Inherited generic overloads.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ReceiverTck.ReceiverBound.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.ReceiverBound</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Method bound depends on the receiver.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="ReceiverTck.Right.html" title="interface in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.Right</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">A default method of the same name.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ReceiverTck.ShadowedReceiver.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.ShadowedReceiver</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A method variable shadows a receiver variable.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ReceiverTck.StaticParent.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.StaticParent</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A superclass declaring a static method, called through <code>super</code>.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ReceiverTck.StringReceiver.html" title="class in io.micronaut.sourcegen.bytecode.tck">ReceiverTck.StringReceiver</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A specialized receiver.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ResolutionFixtures.html" title="class in io.micronaut.sourcegen.bytecode.tck">ResolutionFixtures</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Compiled fixtures, shared by several TCK topics, for overload resolution that depends on the bounds of
+the caller's type variables and on upper-only inference constraints.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ResolutionFixtures.Calls.html" title="class in io.micronaut.sourcegen.bytecode.tck">ResolutionFixtures.Calls</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Independent inference and overload oracles.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="ResolutionFixtures.First.html" title="interface in io.micronaut.sourcegen.bytecode.tck">ResolutionFixtures.First</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Intersection markers for specificity.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ResolutionFixtures.Receiver.html" title="class in io.micronaut.sourcegen.bytecode.tck">ResolutionFixtures.Receiver</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Type-variable bound with overloads.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="ResolutionFixtures.Second.html" title="interface in io.micronaut.sourcegen.bytecode.tck">ResolutionFixtures.Second</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Second intersection marker.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureFixtures.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureFixtures</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Compiled fixtures shared by the signature TCK and the TCK topics that reuse its annotations and bridges.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureFixtures.InheritedSpecializedBridge.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureFixtures.InheritedSpecializedBridge</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Bridge for a substituted inherited implementation.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab6"><a href="SignatureFixtures.Marker.html" title="annotation interface in io.micronaut.sourcegen.bytecode.tck">SignatureFixtures.Marker</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab6">
+<div class="block">Runtime marker for generic bound type annotations.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Erasure and generic signatures: descriptors, Signature attributes, type annotations and member flags of
+generated classes, compared with the classes javac writes from the same declarations.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedClassBound.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedClassBound</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Annotation on a class variable's bound.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedDependentBound.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedDependentBound</a>&lt;T extends U, U extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Annotated type-variable bound occupies the class-bound slot.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedGenericArrays.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedGenericArrays</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Annotations at multiple array levels.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedInterfaces.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedInterfaces</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a> &amp; <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Annotated interface bounds keep their distinct bound indexes.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedMethodBound.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedMethodBound</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Annotation on a method variable's bound.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedMethodThrowsOnly.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedMethodThrowsOnly</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">An annotated generic exception without other generic uses.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedNestedBounds.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedNestedBounds</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;? extends T&gt;&gt;&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Nested type argument in a bound.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedObjectIntersection.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedObjectIntersection</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a> &amp; <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Explicit annotated Object intersection bounds remain class bounds.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedObjectWildcard.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedObjectWildcard</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Explicit Object wildcard bounds retain their type annotations.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedSuperclass.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedSuperclass</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Annotated generic superclass.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedSuperinterface.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedSuperinterface</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Annotated generic superinterface.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedThrows.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedThrows</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Annotated generic and concrete throws.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedVariableUses.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedVariableUses</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Annotations on class and method variable uses.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.AnnotatedWildcardTypes.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.AnnotatedWildcardTypes</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Annotations on both wildcard directions.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.ArrayOverloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.ArrayOverloads</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Array rank distinguishes generic overloads.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="SignatureTck.BoundedRecord.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.BoundedRecord</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>, U extends T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">Record with dependent bounded components.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.ClassBound.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.ClassBound</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Name-only bounded class references and arrays.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.CrossScope.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.CrossScope</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Method bounds reference class variables.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.DescriptorCollision.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.DescriptorCollision</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Wrong erasure must not collapse two legal overloads into one descriptor.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.ForwardBounds.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.ForwardBounds</a>&lt;A extends B, B extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A bound can refer to a later declaration.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.GenericArrayBridge.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.GenericArrayBridge</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Generic array bridge parameters.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.GenericBoundBridge.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.GenericBoundBridge</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Generic scalar bridge parameters.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.GenericBridgeThrows.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.GenericBridgeThrows</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A covariant generic method with a method exception variable.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.GenericConstructor.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.GenericConstructor</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Generic constructors have method-scoped bounds.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="SignatureTck.GenericInterface.html" title="interface in io.micronaut.sourcegen.bytecode.tck">SignatureTck.GenericInterface</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a> &amp; <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">An interface with dependent variables and generic exceptions.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.GenericOverloads.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.GenericOverloads</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Different bounds distinguish class-variable and method-variable overloads.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.GenericThrows.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.GenericThrows</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Method-scoped generic exception.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.Inheritance.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.Inheritance</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Parameterized superclass and superinterface signatures.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="SignatureTck.InheritedGenericThrowingContract.html" title="interface in io.micronaut.sourcegen.bytecode.tck">SignatureTck.InheritedGenericThrowingContract</a>&lt;T&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">Generic throwing contract for inherited method-scoped exception checks.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.InheritedGenericThrowingParent.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.InheritedGenericThrowingParent</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Inherited method-scoped checked exception.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.InheritedGenericThrowsBridge.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.InheritedGenericThrowsBridge</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A bridge inherited from a method declaring its own exception variable.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="SignatureTck.InheritedThrowingContract.html" title="interface in io.micronaut.sourcegen.bytecode.tck">SignatureTck.InheritedThrowingContract</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Generic throwing contract for inherited bridge checks.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.InheritedThrowingParent.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.InheritedThrowingParent</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Inherited concrete implementation with a checked exception.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.InheritedThrowsBridge.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.InheritedThrowsBridge</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">An inherited bridge retains checked exception metadata.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.InterfaceIntersection.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.InterfaceIntersection</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a> &amp; <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Interface-only intersection bounds.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="SignatureTck.InterfaceMethodShadow.html" title="interface in io.micronaut.sourcegen.bytecode.tck">SignatureTck.InterfaceMethodShadow</a>&lt;A extends B, B extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">An interface method can shadow a class bound's name.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.Intersection.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.Intersection</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a> &amp; <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Intersection with a class as its first bound.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.LongClassChain.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.LongClassChain</a>&lt;A extends B, B extends C, C extends D, D extends E, E extends F, F extends G, G extends H, H extends I, I extends J, J extends K, K extends L, L extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Long class bound chains.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.LongMethodChain.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.LongMethodChain</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Long method bound chains.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="SignatureTck.MethodArrayContract.html" title="interface in io.micronaut.sourcegen.bytecode.tck">SignatureTck.MethodArrayContract</a>&lt;R&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Method variables belong to the inherited method.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.MethodBound.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.MethodBound</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Bounded method references.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="SignatureTck.MethodBoundContract.html" title="interface in io.micronaut.sourcegen.bytecode.tck">SignatureTck.MethodBoundContract</a>&lt;R&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Scalar method variables belong to the inherited method.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.MethodBoundToClass.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.MethodBoundToClass</a>&lt;A extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A method variable may use a class variable as its bound.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.MethodChain.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.MethodChain</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Method variables reference other method variables.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.MethodIntersection.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.MethodIntersection</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Intersection bounds of a generic method.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.MixedThrows.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.MixedThrows</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Ordinary and generic exceptions coexist in a method signature.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.Mutual.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.Mutual</a>&lt;A extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;B&gt;, B extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;A&gt;&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Mutually recursive bounds terminate at parameterized erasure.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="SignatureTck.NestedRecord.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.NestedRecord</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;? super T&gt;&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">Record with recursive bounds and nested arrays.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.NestedWildcards.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.NestedWildcards</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Deeply nested wildcards and arrays.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.ObjectFirstBridge.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.ObjectFirstBridge</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Bridge descriptors retain the explicit Object bound.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="SignatureTck.ObjectFirstContract.html" title="interface in io.micronaut.sourcegen.bytecode.tck">SignatureTck.ObjectFirstContract</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a> &amp; <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">Explicit Object remains the leftmost erasure.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.ObjectIntersection.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.ObjectIntersection</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a> &amp; <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">An explicit Object bound determines erasure.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.Plain.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.Plain</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Plain signature fixture.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.Recursive.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.Recursive</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;? super T&gt;&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A recursively bounded variable with a lower wildcard.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.RecursiveMethod.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.RecursiveMethod</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Recursive method bounds erase to their raw interface.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.SelfType.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.SelfType</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Self references and covariant bridge metadata.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.Shadowed.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.Shadowed</a>&lt;T extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Method variables shadow their class namesakes.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.ShadowedClassBoundChain.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.ShadowedClassBoundChain</a>&lt;A extends B, B extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a>&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Class bounds retain their declaration scope when a method shadows a bound's name.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.ShadowedExceptionBound.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.ShadowedExceptionBound</a>&lt;E extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a>, T extends E&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Exception erasure retains the class declaration scope.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.SignatureStress.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.SignatureStress</a>&lt;A extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Number.html" title="class or interface in java.lang" class="external-link">Number</a> &amp; <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a>, B extends A&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Combines dependent class bounds, nested wildcard arrays, method bounds and a generic exception.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="SignatureTck.SpecializedInterface.html" title="interface in io.micronaut.sourcegen.bytecode.tck">SignatureTck.SpecializedInterface</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">A covariant redeclaration requires a concrete bridge.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.SpecializedSupplier.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.SpecializedSupplier</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A bridge has an erased signature and no method variables.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.SynchronizedMethod.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.SynchronizedMethod</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's synchronized method.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="SignatureTck.ThrowingContract.html" title="interface in io.micronaut.sourcegen.bytecode.tck">SignatureTck.ThrowingContract</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Contract whose bridge must retain the erased method exception.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.ThrowsOnly.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.ThrowsOnly</a>&lt;E extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a>&gt;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Class-scoped generic exception used only in throws.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.Unbounded.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.Unbounded</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Unbounded class and method variables.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.UnusedConstructorVariable.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.UnusedConstructorVariable</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">A constructor variable need not appear in its parameters.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.UnusedVariable.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.UnusedVariable</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">A method variable need not appear in its parameters or result.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureTck.VolatileFields.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.VolatileFields</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">javac's volatile and transient fields, public for reflection to read them.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureTck.Wildcards.html" title="class in io.micronaut.sourcegen.bytecode.tck">SignatureTck.Wildcards</a>&lt;T&gt;</div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Nested wildcards, member types and generic arrays.</div>
+</div>
 </div>
 </div>
 </div>

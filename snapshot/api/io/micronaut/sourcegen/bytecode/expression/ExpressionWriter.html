@@ -60,6 +60,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#of(io.micronaut.sourcegen.model.ExpressionDef)" tabindex="0">of(ExpressionDef)</a></li>
 <li><a href="#writeExpression(org.objectweb.asm.commons.GeneratorAdapter,io.micronaut.sourcegen.bytecode.MethodContext,io.micronaut.sourcegen.model.ExpressionDef)" tabindex="0">writeExpression(GeneratorAdapter, MethodContext, ExpressionDef)</a></li>
 <li><a href="#writeExpressionCheckCast(org.objectweb.asm.commons.GeneratorAdapter,io.micronaut.sourcegen.bytecode.MethodContext,io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.TypeDef)" tabindex="0">writeExpressionCheckCast(GeneratorAdapter, MethodContext, ExpressionDef, TypeDef)</a></li>
+<li><a href="#writeInvocation(org.objectweb.asm.commons.GeneratorAdapter,io.micronaut.sourcegen.bytecode.MethodContext,io.micronaut.sourcegen.bytecode.core.InvocationPlan)" tabindex="0">writeInvocation(GeneratorAdapter, MethodContext, InvocationPlan)</a></li>
 <li><a href="#write(org.objectweb.asm.commons.GeneratorAdapter,io.micronaut.sourcegen.bytecode.MethodContext)" tabindex="0">write(GeneratorAdapter, MethodContext)</a></li>
 </ol>
 </li>
@@ -123,6 +124,14 @@ loadScripts(document, 'script');</script>
  <a href="../../model/ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;expressionDef,
  <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;expectedType)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#writeInvocation(org.objectweb.asm.commons.GeneratorAdapter,io.micronaut.sourcegen.bytecode.MethodContext,io.micronaut.sourcegen.bytecode.core.InvocationPlan)" class="member-name-link">writeInvocation</a><wbr>(org.objectweb.asm.commons.GeneratorAdapter&nbsp;generatorAdapter,
+ <a href="../MethodContext.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext</a>&nbsp;context,
+ <a href="../core/InvocationPlan.html" title="class in io.micronaut.sourcegen.bytecode.core">InvocationPlan</a>&nbsp;plan)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1">
+<div class="block">Writes the arguments of an invocation, converted to the parameters it plans, and emits it and the conversion
+of its result.</div>
+</div>
 </div>
 </div>
 </div>
@@ -170,6 +179,26 @@ loadScripts(document, 'script');</script>
  <a href="../MethodContext.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext</a>&nbsp;context,
  <a href="../../model/ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;expressionDef,
  <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;expectedType)</span></div>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="writeInvocation(org.objectweb.asm.commons.GeneratorAdapter,io.micronaut.sourcegen.bytecode.MethodContext,io.micronaut.sourcegen.bytecode.core.InvocationPlan)">
+<h3>writeInvocation</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writeInvocation</span><wbr><span class="parameters">(org.objectweb.asm.commons.GeneratorAdapter&nbsp;generatorAdapter,
+ <a href="../MethodContext.html" title="class in io.micronaut.sourcegen.bytecode">MethodContext</a>&nbsp;context,
+ <a href="../core/InvocationPlan.html" title="class in io.micronaut.sourcegen.bytecode.core">InvocationPlan</a>&nbsp;plan)</span></div>
+<div class="block">Writes the arguments of an invocation, converted to the parameters it plans, and emits it and the conversion
+of its result. The receiver, if any, is written first by the caller as the plan says.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>generatorAdapter</code> - The adapter</dd>
+<dd><code>context</code> - The method context</dd>
+<dd><code>plan</code> - The invocation</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
 </div>
 </section>
 </li>

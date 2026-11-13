@@ -84,6 +84,11 @@ loadScripts(document, 'script');</script>
 <li><a href="#objectFlags(io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">objectFlags(ObjectDef)</a></li>
 <li><a href="#classFlags(java.util.Set,io.micronaut.sourcegen.model.ClassTypeDef)" tabindex="0">classFlags(Set, ClassTypeDef)</a></li>
 <li><a href="#innerClassFlags(io.micronaut.sourcegen.model.ObjectDef,boolean)" tabindex="0">innerClassFlags(ObjectDef, boolean)</a></li>
+<li><a href="#accessFlags(java.util.Set)" tabindex="0">accessFlags(Set)</a></li>
+<li><a href="#methodFlags(io.micronaut.sourcegen.model.MethodDef)" tabindex="0">methodFlags(MethodDef)</a></li>
+<li><a href="#fieldFlags(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef)" tabindex="0">fieldFlags(ObjectDef, FieldDef)</a></li>
+<li><a href="#parameterFlags(io.micronaut.sourcegen.model.ParameterDef)" tabindex="0">parameterFlags(ParameterDef)</a></li>
+<li><a href="#classFileFlags(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)" tabindex="0">classFileFlags(ObjectDef, ClassTypeDef)</a></li>
 </ol>
 </li>
 </ol>
@@ -192,26 +197,56 @@ the ASM and JDK ClassFile backends.</p></div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#accessFlags(java.util.Set)" class="member-name-link">accessFlags</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.compiler/javax/lang/model/element/Modifier.html" title="class or interface in javax.lang.model.element" class="external-link">Modifier</a>&gt;&nbsp;modifiers)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Maps the access modifiers alone - <code>public</code>, <code>protected</code> and <code>private</code> - as a member that
+takes the access of its definition, the implicit canonical constructor of a record, is written.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#classFileFlags(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">classFileFlags</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Maps the flags of the class file of a definition: the kind of type it is, its <a href="#classFlags(java.util.Set,io.micronaut.sourcegen.model.ClassTypeDef)"><code>class flags</code></a>,
+<code>ACC_SYNTHETIC</code> for a synthetic one and <code>ACC_ENUM</code> for the lowered class form of an enum.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#classFlags(java.util.Set,io.micronaut.sourcegen.model.ClassTypeDef)" class="member-name-link">classFlags</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.compiler/javax/lang/model/element/Modifier.html" title="class or interface in javax.lang.model.element" class="external-link">Modifier</a>&gt;&nbsp;modifiers,
  @Nullable <a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Maps the class-file flags of a class being emitted.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#innerClassFlags(io.micronaut.sourcegen.model.ObjectDef,boolean)" class="member-name-link">innerClassFlags</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
- boolean&nbsp;declaredInterface)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#fieldFlags(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef)" class="member-name-link">fieldFlags</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/FieldDef.html" title="class in io.micronaut.sourcegen.model">FieldDef</a>&nbsp;field)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
-<div class="block">Maps the flags carried by an <code>InnerClasses</code> entry.</div>
+<div class="block">Maps the flags of a field: its modifiers, <code>ACC_SYNTHETIC</code> for a synthetic one and <code>ACC_ENUM</code> for
+the constant of an enum.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#memberFlags(java.util.Set)" class="member-name-link">memberFlags</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.compiler/javax/lang/model/element/Modifier.html" title="class or interface in javax.lang.model.element" class="external-link">Modifier</a>&gt;&nbsp;modifiers)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#innerClassFlags(io.micronaut.sourcegen.model.ObjectDef,boolean)" class="member-name-link">innerClassFlags</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ boolean&nbsp;declaredInterface)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Maps the flags carried by an <code>InnerClasses</code> entry.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#memberFlags(java.util.Set)" class="member-name-link">memberFlags</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.compiler/javax/lang/model/element/Modifier.html" title="class or interface in javax.lang.model.element" class="external-link">Modifier</a>&gt;&nbsp;modifiers)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Maps member modifiers.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#methodFlags(io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">methodFlags</a><wbr>(<a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Maps the flags of a method: its modifiers, and <code>ACC_SYNTHETIC</code> for a synthetic one.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#objectFlags(io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">objectFlags</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Maps an object definition to its class-file flags.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#parameterFlags(io.micronaut.sourcegen.model.ParameterDef)" class="member-name-link">parameterFlags</a><wbr>(<a href="../../model/ParameterDef.html" title="class in io.micronaut.sourcegen.model">ParameterDef</a>&nbsp;parameter)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Maps the flags of a method parameter, as the <code>MethodParameters</code> attribute carries them.</div>
 </div>
 </div>
 </div>
@@ -587,6 +622,99 @@ the enclosing <code>InnerClasses</code> entry instead of the class-file access f
 <dd><code>declaredInterface</code> - Whether the enclosing type is an interface</dd>
 <dt>Returns:</dt>
 <dd>JVMS flags</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="accessFlags(java.util.Set)">
+<h3>accessFlags</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">accessFlags</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.compiler/javax/lang/model/element/Modifier.html" title="class or interface in javax.lang.model.element" class="external-link">Modifier</a>&gt;&nbsp;modifiers)</span></div>
+<div class="block">Maps the access modifiers alone - <code>public</code>, <code>protected</code> and <code>private</code> - as a member that
+takes the access of its definition, the implicit canonical constructor of a record, is written.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>modifiers</code> - Java modifiers</dd>
+<dt>Returns:</dt>
+<dd>JVMS access flags</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="methodFlags(io.micronaut.sourcegen.model.MethodDef)">
+<h3>methodFlags</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">methodFlags</span><wbr><span class="parameters">(<a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method)</span></div>
+<div class="block">Maps the flags of a method: its modifiers, and <code>ACC_SYNTHETIC</code> for a synthetic one.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>method</code> - The method</dd>
+<dt>Returns:</dt>
+<dd>JVMS flags</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="fieldFlags(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef)">
+<h3>fieldFlags</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">fieldFlags</span><wbr><span class="parameters">(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/FieldDef.html" title="class in io.micronaut.sourcegen.model">FieldDef</a>&nbsp;field)</span></div>
+<div class="block">Maps the flags of a field: its modifiers, <code>ACC_SYNTHETIC</code> for a synthetic one and <code>ACC_ENUM</code> for
+the constant of an enum.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The definition declaring the field, in its lowered class form for an enum</dd>
+<dd><code>field</code> - The field</dd>
+<dt>Returns:</dt>
+<dd>JVMS flags</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="parameterFlags(io.micronaut.sourcegen.model.ParameterDef)">
+<h3>parameterFlags</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">parameterFlags</span><wbr><span class="parameters">(<a href="../../model/ParameterDef.html" title="class in io.micronaut.sourcegen.model">ParameterDef</a>&nbsp;parameter)</span></div>
+<div class="block">Maps the flags of a method parameter, as the <code>MethodParameters</code> attribute carries them.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>parameter</code> - The parameter</dd>
+<dt>Returns:</dt>
+<dd>JVMS flags</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="classFileFlags(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ClassTypeDef)">
+<h3>classFileFlags</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">classFileFlags</span><wbr><span class="parameters">(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;outerType)</span></div>
+<div class="block">Maps the flags of the class file of a definition: the kind of type it is, its <a href="#classFlags(java.util.Set,io.micronaut.sourcegen.model.ClassTypeDef)"><code>class flags</code></a>,
+<code>ACC_SYNTHETIC</code> for a synthetic one and <code>ACC_ENUM</code> for the lowered class form of an enum. A record
+is final; the <code>Record</code> attribute, not a flag, marks it as a record.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The definition, in its lowered class form for an enum</dd>
+<dd><code>outerType</code> - The enclosing type, or <code>null</code></dd>
+<dt>Returns:</dt>
+<dd>JVMS class flags</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
 </dl>
 </div>
 </section>

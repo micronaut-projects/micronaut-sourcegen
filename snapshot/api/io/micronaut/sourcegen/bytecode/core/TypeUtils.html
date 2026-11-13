@@ -54,12 +54,30 @@ loadScripts(document, 'script');</script>
 <div class="toc-header">Contents&nbsp;<input type="text" class="filter-input" disabled placeholder="Filter contents (type .)" aria-label="Filter table of contents" autocomplete="off" spellcheck="false"><input type="reset" class="reset-filter" disabled tabindex="-1" value="Reset"></div>
 <ol class="toc-list" tabindex="-1">
 <li><a href="#" tabindex="0">Description</a></li>
+<li><a href="#nested-class-summary" tabindex="0">Nested Class Summary</a></li>
 <li><a href="#method-summary" tabindex="0">Method Summary</a></li>
 <li><a href="#method-detail" tabindex="0">Method Details</a>
 <ol class="toc-list">
 <li><a href="#getMethodDescriptor(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">getMethodDescriptor(ObjectDef, MethodDef)</a></li>
+<li><a href="#getMethodDescriptor(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">getMethodDescriptor(ObjectDef, MethodDef, EnclosingScope)</a></li>
 <li><a href="#getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">getDescriptor(TypeDef, ObjectDef)</a></li>
+<li><a href="#getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">getDescriptor(TypeDef, ObjectDef, EnclosingScope)</a></li>
+<li><a href="#getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">getDescriptor(TypeDef, ObjectDef, MethodDef, EnclosingScope)</a></li>
+<li><a href="#receiverOf(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">receiverOf(TypeDef, MethodDef, ObjectDef, MethodDef)</a></li>
+<li><a href="#receiverOf(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">receiverOf(TypeDef, MethodDef, ObjectDef, MethodDef, EnclosingScope)</a></li>
+<li><a href="#declaresMethod(io.micronaut.sourcegen.model.ObjectDef,java.lang.String,java.util.List,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">declaresMethod(ObjectDef, String, List, EnclosingScope)</a></li>
+<li><a href="#inDeclaringScope(io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">inDeclaringScope(MethodDef, ObjectDef, ObjectDef)</a></li>
+<li><a href="#variableScope(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">variableScope(ObjectDef, MethodDef)</a></li>
+<li><a href="#packedInterfaceArray(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.TypeDef)" tabindex="0">packedInterfaceArray(ExpressionDef, TypeDef)</a></li>
+<li><a href="#checksReference(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">checksReference(TypeDef, TypeDef, ObjectDef, MethodDef, EnclosingScope)</a></li>
+<li><a href="#interfaceArrays(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.TypeDef)" tabindex="0">interfaceArrays(TypeDef, TypeDef)</a></li>
+<li><a href="#withEnclosingVariables(io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">withEnclosingVariables(MethodDef, MethodDef)</a></li>
+<li><a href="#erased(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">erased(TypeDef, ObjectDef, MethodDef, EnclosingScope)</a></li>
+<li><a href="#declaringScope(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">declaringScope(TypeDef, ObjectDef)</a></li>
+<li><a href="#declaringScope(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">declaringScope(TypeDef, ObjectDef, MethodDef, EnclosingScope)</a></li>
+<li><a href="#fieldScope(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,java.lang.String)" tabindex="0">fieldScope(TypeDef, ObjectDef, String)</a></li>
 <li><a href="#getBinaryName(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">getBinaryName(ClassTypeDef, ObjectDef)</a></li>
+<li><a href="#memberDepth(io.micronaut.sourcegen.model.TypeDef)" tabindex="0">memberDepth(TypeDef)</a></li>
 <li><a href="#getDescriptor(java.lang.String)" tabindex="0">getDescriptor(String)</a></li>
 <li><a href="#getInternalName(java.lang.String)" tabindex="0">getInternalName(String)</a></li>
 </ol>
@@ -92,6 +110,23 @@ descriptors into the representation their emitter needs.</p></div>
 </section>
 <section class="summary">
 <ul class="summary-list">
+<!-- ======== NESTED CLASS SUMMARY ======== -->
+<li>
+<section class="nested-class-summary" id="nested-class-summary">
+<h2>Nested Class Summary</h2>
+<div class="caption"><span>Nested Classes</span></div>
+<div class="summary-table three-column-summary">
+<div class="table-header col-first">Modifier and Type</div>
+<div class="table-header col-second">Class</div>
+<div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="TypeUtils.Receiver.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">TypeUtils.Receiver</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">The type a call's receiver is written as.</div>
+</div>
+</div>
+</section>
+</li>
 <!-- ========== METHOD SUMMARY =========== -->
 <li>
 <section class="method-summary" id="method-summary">
@@ -103,6 +138,58 @@ descriptors into the representation their emitter needs.</p></div>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#checksReference(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">checksReference</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;from,
+ <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;to,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Whether a cast between two references checks the value, as a narrowing reference conversion does (JLS 5.1.6):
+the type of the value is not known to be the target or a subtype of it.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#declaresMethod(io.micronaut.sourcegen.model.ObjectDef,java.lang.String,java.util.List,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">declaresMethod</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Whether a definition declares a method of a name and erased parameters itself - a record member it declares
+replaces the one a writer would generate.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#declaringScope(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">declaringScope</a><wbr>(@Nullable <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;owner,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The definition whose variables a member of a type is declared with: the generated definition the type names,
+or the one being written, where no other is known.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#declaringScope(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">declaringScope</a><wbr>(@Nullable <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;owner,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The definition declaring a method invoked on a type: the generated type, or the generated supertype it inherits
+the method from, whose variables the method is declared with.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#erased(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">erased</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The erasure of a type as a class type, in the scope of a method: what a member that declares no variables -
+a bridge - writes for the type its delegate declares.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#fieldScope(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,java.lang.String)" class="member-name-link">fieldScope</a><wbr>(@Nullable <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;owner,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The definition declaring a field read on a type: the generated type, or the generated supertype it inherits
+the field from.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getBinaryName(io.micronaut.sourcegen.model.ClassTypeDef,io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">getBinaryName</a><wbr>(<a href="../../model/ClassTypeDef.html" title="interface in io.micronaut.sourcegen.model">ClassTypeDef</a>&nbsp;classTypeDef,
  @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</code></div>
@@ -113,7 +200,23 @@ descriptors into the representation their emitter needs.</p></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">getDescriptor</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
  @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Returns the erased JVM descriptor of a Sourcegen type, outside the write of an inner class: no variables of an enclosing class are in scope.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">getDescriptor</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Returns the erased JVM descriptor of a Sourcegen type.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">getDescriptor</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Returns the erased JVM descriptor of a Sourcegen type in the scope of a method: a variable the method
+declares shadows one of the class of the same name.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getDescriptor(java.lang.String)" class="member-name-link">getDescriptor</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;className)</code></div>
@@ -129,7 +232,73 @@ descriptors into the representation their emitter needs.</p></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getMethodDescriptor(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">getMethodDescriptor</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Returns the descriptor of a method, outside the write of an inner class: no variables of an enclosing class are in scope.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getMethodDescriptor(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">getMethodDescriptor</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Returns the descriptor of a method.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#inDeclaringScope(io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">inDeclaringScope</a><wbr>(<a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;declaring,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;current)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">An invoked method as the class declaring it sees it: a variable of that class, which a caller's own of the
+same name would shadow, carries the bounds it is declared with - so that the values passed, the descriptor
+and the result all erase as the declaring class erases them.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#interfaceArrays(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.TypeDef)" class="member-name-link">interfaceArrays</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;from,
+ <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;to)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Whether both types are arrays of the same rank whose components are interfaces.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#memberDepth(io.micronaut.sourcegen.model.TypeDef)" class="member-name-link">memberDepth</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;type)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">How deep a type is nested in the enclosing types it names: 0 for <code>Outer&lt;String&gt;</code>, 1 for its member
+<code>Outer&lt;String&gt;.Inner</code>, 2 for <code>Outer&lt;String&gt;.Inner&lt;Integer&gt;.Deep</code>.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#packedInterfaceArray(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.TypeDef)" class="member-name-link">packedInterfaceArray</a><wbr>(<a href="../../model/ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;value,
+ <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;parameter)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Whether an argument is passed without a cast, as javac passes it: the array a variable arity tail is packed into,
+of interfaces, for a parameter that is an array of other interfaces of the same rank, which the verifier takes as
+Objects - the `Alpha[]` javac packs for the `Zeta[]` of a `T extends Zeta <span class="invalid-tag">invalid input: '&amp;'</span> Alpha`.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="TypeUtils.Receiver.html" title="class in io.micronaut.sourcegen.bytecode.core">TypeUtils.Receiver</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#receiverOf(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">receiverOf</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;instanceType,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;enclosing)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The type a call's receiver is written as, outside the write of an inner class: no variables of an enclosing class are in scope.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="TypeUtils.Receiver.html" title="class in io.micronaut.sourcegen.bytecode.core">TypeUtils.Receiver</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#receiverOf(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">receiverOf</a><wbr>(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;instanceType,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;enclosing,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;scope)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The type a call's receiver is written as.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#variableScope(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">variableScope</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The variables in scope where a call is written, with their bounds: the class's, and the method's shadowing them.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#withEnclosingVariables(io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">withEnclosingVariables</a><wbr>(<a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;enclosing)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">A method as it reads in the body of another: the variables the enclosing method declares are in scope, unless
+the method shadows them - the instantiated signature of a lambda, which names the enclosing method's variables.</div>
 </div>
 </div>
 </div>
@@ -154,11 +323,30 @@ descriptors into the representation their emitter needs.</p></div>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getMethodDescriptor</span><wbr><span class="parameters">(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</span></div>
+<div class="block">Returns the descriptor of a method, outside the write of an inner class: no variables of an enclosing class are in scope.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The contextual object, if any</dd>
+<dd><code>methodDef</code> - The method</dd>
+<dt>Returns:</dt>
+<dd>The JVM method descriptor</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="getMethodDescriptor(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>getMethodDescriptor</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getMethodDescriptor</span><wbr><span class="parameters">(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
 <div class="block">Returns the descriptor of a method.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>objectDef</code> - The contextual object, if any</dd>
 <dd><code>methodDef</code> - The method</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
 <dt>Returns:</dt>
 <dd>The JVM method descriptor</dd>
 </dl>
@@ -171,13 +359,348 @@ descriptors into the representation their emitter needs.</p></div>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getDescriptor</span><wbr><span class="parameters">(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
  @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</span></div>
-<div class="block">Returns the erased JVM descriptor of a Sourcegen type.</div>
+<div class="block">Returns the erased JVM descriptor of a Sourcegen type, outside the write of an inner class: no variables of an enclosing class are in scope.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>typeDef</code> - The type</dd>
 <dd><code>objectDef</code> - The contextual object, if any</dd>
 <dt>Returns:</dt>
 <dd>The JVM descriptor</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>getDescriptor</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getDescriptor</span><wbr><span class="parameters">(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<div class="block">Returns the erased JVM descriptor of a Sourcegen type.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>typeDef</code> - The type</dd>
+<dd><code>objectDef</code> - The contextual object, if any</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The JVM descriptor</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="getDescriptor(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>getDescriptor</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getDescriptor</span><wbr><span class="parameters">(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<div class="block">Returns the erased JVM descriptor of a Sourcegen type in the scope of a method: a variable the method
+declares shadows one of the class of the same name.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>typeDef</code> - The type</dd>
+<dd><code>objectDef</code> - The contextual object, if any</dd>
+<dd><code>methodDef</code> - The method whose variables are in scope, if any</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The JVM descriptor</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="receiverOf(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)">
+<h3>receiverOf</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="TypeUtils.Receiver.html" title="class in io.micronaut.sourcegen.bytecode.core">TypeUtils.Receiver</a></span>&nbsp;<span class="element-name">receiverOf</span><wbr><span class="parameters">(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;instanceType,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;enclosing)</span></div>
+<div class="block">The type a call's receiver is written as, outside the write of an inner class: no variables of an enclosing class are in scope.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>instanceType</code> - The type of the receiver</dd>
+<dd><code>method</code> - The invoked method</dd>
+<dd><code>objectDef</code> - The definition being written, if any</dd>
+<dd><code>enclosing</code> - The method being written, if any</dd>
+<dt>Returns:</dt>
+<dd>The receiver type, and whether the receiver is cast to it</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="receiverOf(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>receiverOf</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="TypeUtils.Receiver.html" title="class in io.micronaut.sourcegen.bytecode.core">TypeUtils.Receiver</a></span>&nbsp;<span class="element-name">receiverOf</span><wbr><span class="parameters">(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;instanceType,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;enclosing,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;scope)</span></div>
+<div class="block">The type a call's receiver is written as.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>instanceType</code> - The type of the receiver</dd>
+<dd><code>method</code> - The invoked method</dd>
+<dd><code>objectDef</code> - The definition being written, if any</dd>
+<dd><code>enclosing</code> - The method being written, if any</dd>
+<dd><code>scope</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The receiver type, and whether the receiver is cast to it</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="declaresMethod(io.micronaut.sourcegen.model.ObjectDef,java.lang.String,java.util.List,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>declaresMethod</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">declaresMethod</span><wbr><span class="parameters">(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<div class="block">Whether a definition declares a method of a name and erased parameters itself - a record member it declares
+replaces the one a writer would generate.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The definition</dd>
+<dd><code>name</code> - The name of the method</dd>
+<dd><code>parameterTypes</code> - The types of its parameters</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>true where the definition declares it</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="inDeclaringScope(io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.ObjectDef)">
+<h3>inDeclaringScope</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></span>&nbsp;<span class="element-name">inDeclaringScope</span><wbr><span class="parameters">(<a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;declaring,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;current)</span></div>
+<div class="block">An invoked method as the class declaring it sees it: a variable of that class, which a caller's own of the
+same name would shadow, carries the bounds it is declared with - so that the values passed, the descriptor
+and the result all erase as the declaring class erases them.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>method</code> - The invoked method</dd>
+<dd><code>declaring</code> - The definition declaring it, if generated</dd>
+<dd><code>current</code> - The definition being written, if any</dd>
+<dt>Returns:</dt>
+<dd>The method, with the declaring class's variables bounded inline</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="variableScope(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)">
+<h3>variableScope</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;</span>&nbsp;<span class="element-name">variableScope</span><wbr><span class="parameters">(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</span></div>
+<div class="block">The variables in scope where a call is written, with their bounds: the class's, and the method's shadowing them.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The definition being written, if any</dd>
+<dd><code>methodDef</code> - The method being written, if any</dd>
+<dt>Returns:</dt>
+<dd>The variables by name</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="packedInterfaceArray(io.micronaut.sourcegen.model.ExpressionDef,io.micronaut.sourcegen.model.TypeDef)">
+<h3>packedInterfaceArray</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">packedInterfaceArray</span><wbr><span class="parameters">(<a href="../../model/ExpressionDef.html" title="interface in io.micronaut.sourcegen.model">ExpressionDef</a>&nbsp;value,
+ <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;parameter)</span></div>
+<div class="block">Whether an argument is passed without a cast, as javac passes it: the array a variable arity tail is packed into,
+of interfaces, for a parameter that is an array of other interfaces of the same rank, which the verifier takes as
+Objects - the `Alpha[]` javac packs for the `Zeta[]` of a `T extends Zeta <span class="invalid-tag">invalid input: '&amp;'</span> Alpha`. A cast between such arrays
+that the model asks for is checked, as javac checks `(Zeta[]) alphas`.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>value</code> - The argument</dd>
+<dd><code>parameter</code> - The type of the parameter</dd>
+<dt>Returns:</dt>
+<dd>true where no cast is written</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="checksReference(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>checksReference</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">checksReference</span><wbr><span class="parameters">(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;from,
+ <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;to,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<div class="block">Whether a cast between two references checks the value, as a narrowing reference conversion does (JLS 5.1.6):
+the type of the value is not known to be the target or a subtype of it. A writer leaves a cast of a chain of casts
+out only where it checks nothing, and writes <code>(Object) (Zeta[]) alphas</code> with the checkcast javac writes.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>from</code> - The type of the value</dd>
+<dd><code>to</code> - The type it is cast to</dd>
+<dd><code>objectDef</code> - The definition being written, if any</dd>
+<dd><code>methodDef</code> - The method being written, if any</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>true where the cast checks the value</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="interfaceArrays(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.TypeDef)">
+<h3>interfaceArrays</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">interfaceArrays</span><wbr><span class="parameters">(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;from,
+ <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;to)</span></div>
+<div class="block">Whether both types are arrays of the same rank whose components are interfaces.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>from</code> - The type of the value</dd>
+<dd><code>to</code> - The type it is converted to</dd>
+<dt>Returns:</dt>
+<dd>true for arrays of interfaces</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="withEnclosingVariables(io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.model.MethodDef)">
+<h3>withEnclosingVariables</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a></span>&nbsp;<span class="element-name">withEnclosingVariables</span><wbr><span class="parameters">(<a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;enclosing)</span></div>
+<div class="block">A method as it reads in the body of another: the variables the enclosing method declares are in scope, unless
+the method shadows them - the instantiated signature of a lambda, which names the enclosing method's variables.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>method</code> - The method</dd>
+<dd><code>enclosing</code> - The method it is written in, if any</dd>
+<dt>Returns:</dt>
+<dd>The method, declaring the enclosing method's variables too</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="erased(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>erased</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a></span>&nbsp;<span class="element-name">erased</span><wbr><span class="parameters">(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;typeDef,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ @Nullable <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<div class="block">The erasure of a type as a class type, in the scope of a method: what a member that declares no variables -
+a bridge - writes for the type its delegate declares.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>typeDef</code> - The type</dd>
+<dd><code>objectDef</code> - The definition, if any</dd>
+<dd><code>methodDef</code> - The method whose variables are in scope, if any</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The erased type</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="declaringScope(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef)">
+<h3>declaringScope</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a></span>&nbsp;<span class="element-name">declaringScope</span><wbr><span class="parameters">(@Nullable <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;owner,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</span></div>
+<div class="block">The definition whose variables a member of a type is declared with: the generated definition the type names,
+or the one being written, where no other is known.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>owner</code> - The type declaring the member</dd>
+<dd><code>objectDef</code> - The definition being written, if any</dd>
+<dt>Returns:</dt>
+<dd>The definition to erase the member's types in</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="declaringScope(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>declaringScope</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a></span>&nbsp;<span class="element-name">declaringScope</span><wbr><span class="parameters">(@Nullable <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;owner,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;method,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<div class="block">The definition declaring a method invoked on a type: the generated type, or the generated supertype it inherits
+the method from, whose variables the method is declared with.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>owner</code> - The type the method is invoked on</dd>
+<dd><code>objectDef</code> - The definition being written, if any</dd>
+<dd><code>method</code> - The invoked method</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The definition to erase the method in</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="fieldScope(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,java.lang.String)">
+<h3>fieldScope</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a></span>&nbsp;<span class="element-name">fieldScope</span><wbr><span class="parameters">(@Nullable <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;owner,
+ @Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</span></div>
+<div class="block">The definition declaring a field read on a type: the generated type, or the generated supertype it inherits
+the field from.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>owner</code> - The type the field is read on</dd>
+<dd><code>objectDef</code> - The definition being written, if any</dd>
+<dd><code>fieldName</code> - The field name</dd>
+<dt>Returns:</dt>
+<dd>The definition to erase the field in</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
 </dl>
 </div>
 </section>
@@ -207,6 +730,25 @@ nothing in scope, is left as it is.</p></div>
 <dd><code>objectDef</code> - The contextual object, if any</dd>
 <dt>Returns:</dt>
 <dd>The binary name to write</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="memberDepth(io.micronaut.sourcegen.model.TypeDef)">
+<h3>memberDepth</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">memberDepth</span><wbr><span class="parameters">(<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;type)</span></div>
+<div class="block">How deep a type is nested in the enclosing types it names: 0 for <code>Outer&lt;String&gt;</code>, 1 for its member
+<code>Outer&lt;String&gt;.Inner</code>, 2 for <code>Outer&lt;String&gt;.Inner&lt;Integer&gt;.Deep</code>. A type annotation of the member,
+or of its type arguments, is reached through as many nested type steps.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>type</code> - The type</dd>
+<dt>Returns:</dt>
+<dd>The depth</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
 </dl>
 </div>
 </section>

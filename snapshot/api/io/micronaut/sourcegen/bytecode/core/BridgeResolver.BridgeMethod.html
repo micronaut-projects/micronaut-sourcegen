@@ -60,6 +60,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#constructor-detail" tabindex="0">Constructor Details</a>
 <ol class="toc-list">
 <li><a href="#%3Cinit%3E(java.util.List,io.micronaut.sourcegen.model.TypeDef)" tabindex="0">BridgeMethod(List, TypeDef)</a></li>
+<li><a href="#%3Cinit%3E(java.util.List,io.micronaut.sourcegen.model.TypeDef,java.util.List)" tabindex="0">BridgeMethod(List, TypeDef, List)</a></li>
 </ol>
 </li>
 <li><a href="#method-detail" tabindex="0">Method Details</a>
@@ -69,6 +70,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#equals(java.lang.Object)" tabindex="0">equals(Object)</a></li>
 <li><a href="#parameterTypes()" tabindex="0">parameterTypes()</a></li>
 <li><a href="#returnType()" tabindex="0">returnType()</a></li>
+<li><a href="#throwTypes()" tabindex="0">throwTypes()</a></li>
 </ol>
 </li>
 </ol>
@@ -88,6 +90,7 @@ loadScripts(document, 'script');</script>
 <dt>Record Components:</dt>
 <dd><code><span id="param-parameterTypes">parameterTypes</span></code> - Erased parameter types</dd>
 <dd><code><span id="param-returnType">returnType</span></code> - Erased return type</dd>
+<dd><code><span id="param-throwTypes">throwTypes</span></code> - The exceptions the bridge declares, or <code>null</code> for those of the method it delegates to</dd>
 </dl>
 <dl class="notes">
 <dt>Enclosing class:</dt>
@@ -95,7 +98,7 @@ loadScripts(document, 'script');</script>
 </dl>
 <hr>
 <div class="horizontal-scroll">
-<div class="type-signature"><span class="modifiers">public static record </span><span class="element-name type-name-label">BridgeResolver.BridgeMethod</span>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes, <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returnType)
+<div class="type-signature"><span class="modifiers">public static record </span><span class="element-name type-name-label">BridgeResolver.BridgeMethod</span>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes, <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returnType, @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;throwTypes)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a></span></div>
 <div class="block">The erased method shape used by a bridge.</div>
 <dl class="notes">
@@ -117,6 +120,12 @@ loadScripts(document, 'script');</script>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(java.util.List,io.micronaut.sourcegen.model.TypeDef)" class="member-name-link">BridgeMethod</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
  <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returnType)</code></div>
 <div class="col-last even-row-color">
+<div class="block">A bridge declaring the exceptions of the method it delegates to.</div>
+</div>
+<div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(java.util.List,io.micronaut.sourcegen.model.TypeDef,java.util.List)" class="member-name-link">BridgeMethod</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
+ <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returnType,
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;throwTypes)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Creates an instance of a <code>BridgeMethod</code> record class.</div>
 </div>
 </div>
@@ -153,9 +162,14 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-returnType"><code>returnType</code></a> record component.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>@Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#throwTypes()" class="member-name-link">throwTypes</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns the value of the <a href="#param-throwTypes"><code>throwTypes</code></a> record component.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a string representation of this record class.</div>
 </div>
 </div>
@@ -181,11 +195,28 @@ loadScripts(document, 'script');</script>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">BridgeMethod</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
  <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returnType)</span></div>
+<div class="block">A bridge declaring the exceptions of the method it delegates to.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>parameterTypes</code> - Erased parameter types</dd>
+<dd><code>returnType</code> - Erased return type</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="&lt;init&gt;(java.util.List,io.micronaut.sourcegen.model.TypeDef,java.util.List)">
+<h3>BridgeMethod</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">BridgeMethod</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;parameterTypes,
+ <a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&nbsp;returnType,
+ @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;throwTypes)</span></div>
 <div class="block">Creates an instance of a <code>BridgeMethod</code> record class.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>parameterTypes</code> - the value for the <a href="#param-parameterTypes"><code>parameterTypes</code></a> record component</dd>
 <dd><code>returnType</code> - the value for the <a href="#param-returnType"><code>returnType</code></a> record component</dd>
+<dd><code>throwTypes</code> - the value for the <a href="#param-throwTypes"><code>throwTypes</code></a> record component</dd>
 </dl>
 </div>
 </section>
@@ -267,6 +298,19 @@ loadScripts(document, 'script');</script>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>the value of the <a href="#param-returnType"><code>returnType</code></a> record component</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="throwTypes()">
+<h3>throwTypes</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">@Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;</span>&nbsp;<span class="element-name">throwTypes</span>()</div>
+<div class="block">Returns the value of the <a href="#param-throwTypes"><code>throwTypes</code></a> record component.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>the value of the <a href="#param-throwTypes"><code>throwTypes</code></a> record component</dd>
 </dl>
 </div>
 </section>

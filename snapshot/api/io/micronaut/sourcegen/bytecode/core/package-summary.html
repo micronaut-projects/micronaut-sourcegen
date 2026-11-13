@@ -96,7 +96,7 @@ loadScripts(document, 'script');</script>
 </li>
 <li>
 <div id="class-summary">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="class-summary-tab0" role="tab" aria-selected="true" aria-controls="class-summary.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary', 2)" class="active-table-tab">All Classes and Interfaces</button><button id="class-summary-tab2" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab2', 2)" class="table-tab">Classes</button><button id="class-summary-tab4" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab4', 2)" class="table-tab">Record Classes</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="class-summary-tab0" role="tab" aria-selected="true" aria-controls="class-summary.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary', 2)" class="active-table-tab">All Classes and Interfaces</button><button id="class-summary-tab1" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab1', 2)" class="table-tab">Interfaces</button><button id="class-summary-tab2" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab2', 2)" class="table-tab">Classes</button><button id="class-summary-tab3" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab3', 2)" class="table-tab">Enum Classes</button><button id="class-summary-tab4" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab4', 2)" class="table-tab">Record Classes</button></div>
 <div id="class-summary.tabpanel" role="tabpanel" aria-labelledby="class-summary-tab0">
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Class</div>
@@ -109,25 +109,133 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color class-summary class-summary-tab2">
 <div class="block">Resolves generic bridges from Sourcegen model, reflection, and annotation-processing types.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab4"><a href="BridgeResolver.BridgeMethod.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.BridgeMethod</a></div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="BridgeResolver.Bridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.Bridge</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">A finished bridge method.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab4"><a href="BridgeResolver.BridgeMethod.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.BridgeMethod</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
 <div class="block">The erased method shape used by a bridge.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="BridgeResolver.InheritedBridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.InheritedBridge</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">A bridge a class declares for a method it inherits.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab4"><a href="BridgeResolver.VisibilityBridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.VisibilityBridge</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
+<div class="block">A visibility bridge: a public method a public class inherits from a superclass that is not public, which javac
+declares again in the class, delegating to the superclass's, so that reflection can invoke it through the class.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="ConstructorBody.html" title="class in io.micronaut.sourcegen.bytecode.core">ConstructorBody</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">The body of a constructor as both bytecode writers write it: the constructor call first, then the initializers of
+the instance fields, then the rest of the statements.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab3"><a href="ConstructorBody.InitializersAfterThis.html" title="enum class in io.micronaut.sourcegen.bytecode.core">ConstructorBody.InitializersAfterThis</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab3">
+<div class="block">Whether the field initializers run after a delegation to <code>this(...)</code>.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="Conversions.html" title="class in io.micronaut.sourcegen.bytecode.core">Conversions</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">The conversions both bytecode writers emit, planned once as the <a href="Conversions.Step.html" title="interface in io.micronaut.sourcegen.bytecode.core"><code>steps</code></a> each writer only emits: a
+checkcast, an unboxing with the source's wrapper, a primitive conversion and a boxing - <a href="Conversions.html#plan(io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.TypeDef,io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.Conversions.Checkcasts)"><code>Conversions.plan(TypeDef, TypeDef, ObjectDef, MethodDef, Conversions.Checkcasts)</code></a>.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab4"><a href="Conversions.Box.html" title="class in io.micronaut.sourcegen.bytecode.core">Conversions.Box</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
+<div class="block">A boxing of a primitive: the <code>valueOf</code> of its wrapper.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="Conversions.CheckCast.html" title="class in io.micronaut.sourcegen.bytecode.core">Conversions.CheckCast</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">A <code>checkcast</code> of a reference.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab3"><a href="Conversions.Checkcasts.html" title="enum class in io.micronaut.sourcegen.bytecode.core">Conversions.Checkcasts</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab3">
+<div class="block">Which checkcasts of a conversion are left out as redundant.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="Conversions.PrimitiveConversion.html" title="class in io.micronaut.sourcegen.bytecode.core">Conversions.PrimitiveConversion</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">A conversion of a primitive to another: <code>i2l</code>, <code>l2i</code> followed by <code>i2b</code>, and so on.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="Conversions.Step.html" title="interface in io.micronaut.sourcegen.bytecode.core">Conversions.Step</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="block">A step of a conversion, which a writer emits as its instructions.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="Conversions.Unboxing.html" title="class in io.micronaut.sourcegen.bytecode.core">Conversions.Unboxing</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">An unboxing: a checkcast of the reference to the owner, which the method is invoked on, returning the primitive
+the owner holds, and a conversion of that primitive to the target, where it is another.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="DeclaredReturns.html" title="class in io.micronaut.sourcegen.bytecode.core">DeclaredReturns</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">The return type a class file declares for an invoked method, where the call names another: a
+<code>T get()</code> of a <code>Getter&lt;String&gt;</code> invoked for a <code>String</code> is written, as javac writes it, with the
+descriptor of its declaration, <code>()Ljava/lang/Object;</code>, and a checkcast of the result.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">The variables of the enclosing class in scope of the inner class a writer writes - a member class that is not
+static - of the generated class the outer type names: <code>Supplier&lt;T&gt;</code> of an inner class of an <code>Outer&lt;T&gt;</code>
+names the <code>T</code> of <code>Outer</code>.</div>
 </div>
 <div class="col-first odd-row-color class-summary class-summary-tab2"><a href="EnumGenUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">EnumGenUtils</a></div>
 <div class="col-last odd-row-color class-summary class-summary-tab2">
 <div class="block">Model-level enum member synthesis shared by bytecode backends.</div>
 </div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="InvocationPlan.html" title="class in io.micronaut.sourcegen.bytecode.core">InvocationPlan</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">An invocation as both bytecode writers emit it, planned once: the instruction and what it names - the owner, the
+descriptor with the return type the method declares, whether the owner is an interface - what happens to the
+receiver, the parameters the arguments are converted to, and the conversion of the result to the type the call
+requests.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab3"><a href="InvocationPlan.Kind.html" title="enum class in io.micronaut.sourcegen.bytecode.core">InvocationPlan.Kind</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab3">
+<div class="block">An invocation instruction.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab3"><a href="InvocationPlan.Receiver.html" title="enum class in io.micronaut.sourcegen.bytecode.core">InvocationPlan.Receiver</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab3">
+<div class="block">What happens to the receiver of an invocation once it is written.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab4"><a href="InvocationPlan.ResultConversion.html" title="class in io.micronaut.sourcegen.bytecode.core">InvocationPlan.ResultConversion</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
+<div class="block">The conversion of what a declaration returns to the type the call requests.</div>
+</div>
 <div class="col-first even-row-color class-summary class-summary-tab2"><a href="ModifierUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">ModifierUtils</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab2">
 <div class="block">Maps Java model modifiers to JVMS access flags without depending on a bytecode library.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SignatureUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">SignatureUtils</a></div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="ReferenceAdapters.html" title="class in io.micronaut.sourcegen.bytecode.core">ReferenceAdapters</a></div>
 <div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">The method references a metafactory cannot link to their method directly, which are written as a lambda calling it.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="ReferenceComparisons.html" title="class in io.micronaut.sourcegen.bytecode.core">ReferenceComparisons</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">The referential comparisons (<code>==</code> and <code>!=</code>) of two primitives, which both bytecode writers compare as
+javac compares them: the values, promoted to a common type (JLS 5.6, binary numeric promotion) - a <code>long</code>
+compared with a <code>float</code> is compared as a <code>float</code>, and a <code>char</code> with a <code>byte</code> as an
+<code>int</code>.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab4"><a href="ReferenceComparisons.PrimitiveComparison.html" title="class in io.micronaut.sourcegen.bytecode.core">ReferenceComparisons.PrimitiveComparison</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
+<div class="block">Two primitive operands compared as their values: each one is written, then converted to the common type.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SignatureUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">SignatureUtils</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
 <div class="block">JVM generic-signature operations shared by bytecode writers.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SwitchKeys.html" title="class in io.micronaut.sourcegen.bytecode.core">SwitchKeys</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">The switches both bytecode writers write as a switch on an <code>int</code>, as javac writes them: a selector of type
+<code>int</code>, <code>char</code>, <code>short</code> or <code>byte</code> is widened to an <code>int</code>, and one of their wrappers is
+unboxed first, which throws <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link"><code>NullPointerException</code></a> for <code>null</code>.</div>
 </div>
 <div class="col-first even-row-color class-summary class-summary-tab2"><a href="TypeUtils.html" title="class in io.micronaut.sourcegen.bytecode.core">TypeUtils</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab2">
 <div class="block">JVM descriptor operations shared by bytecode writers.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab4"><a href="TypeUtils.Receiver.html" title="class in io.micronaut.sourcegen.bytecode.core">TypeUtils.Receiver</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
+<div class="block">The type a call's receiver is written as.</div>
 </div>
 </div>
 </div>

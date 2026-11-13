@@ -98,7 +98,7 @@ loadScripts(document, 'script');</script>
 </li>
 <li>
 <div id="class-summary">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="class-summary-tab0" role="tab" aria-selected="true" aria-controls="class-summary.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary', 2)" class="active-table-tab">All Classes and Interfaces</button><button id="class-summary-tab1" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab1', 2)" class="table-tab">Interfaces</button><button id="class-summary-tab2" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab2', 2)" class="table-tab">Classes</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="class-summary-tab0" role="tab" aria-selected="true" aria-controls="class-summary.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary', 2)" class="active-table-tab">All Classes and Interfaces</button><button id="class-summary-tab1" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab1', 2)" class="table-tab">Interfaces</button><button id="class-summary-tab2" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab2', 2)" class="table-tab">Classes</button><button id="class-summary-tab4" role="tab" aria-selected="false" aria-controls="class-summary.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('class-summary', 'class-summary-tab4', 2)" class="table-tab">Record Classes</button></div>
 <div id="class-summary.tabpanel" role="tabpanel" aria-labelledby="class-summary-tab0">
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Class</div>
@@ -107,12 +107,45 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color class-summary class-summary-tab2">
 <div class="block">Common class-output and member-type traversal for bytecode generators.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="SourceGenerator.html" title="interface in io.micronaut.sourcegen.generator">SourceGenerator</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="col-first odd-row-color class-summary class-summary-tab4"><a href="CalleeBounds.html" title="class in io.micronaut.sourcegen.generator">CalleeBounds</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
+<div class="block">The bounds of the type variables an invoked method declares, as they read where the method is called: a
+variable of the caller can have the same name as one of the method, which is out of scope there.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="GenerationScope.html" title="class in io.micronaut.sourcegen.generator">GenerationScope</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">What the generation of one file resolves against: the outermost definition being written, whose inner types name it
+and each other, and the visitor context the file is written with, which knows the types only known by name.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab4"><a href="InvokedSignature.html" title="class in io.micronaut.sourcegen.generator">InvokedSignature</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
+<div class="block">The signature an invoked method declares, which the erased model of the call does not carry: its generic
+parameter types, and whether it takes varargs.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab2"><a href="OverloadRules.html" title="class in io.micronaut.sourcegen.generator">OverloadRules</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="block">Which method an invocation names.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="OverrideResolver.html" title="class in io.micronaut.sourcegen.generator">OverrideResolver</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Resolves the signature a declared method takes as source when it overrides a generic inherited method with that
+method's erased signature: the inherited parameter and return types with the type arguments of the supertype
+substituted.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="OverrideResolver.OverriddenMethod.html" title="class in io.micronaut.sourcegen.generator">OverrideResolver.OverriddenMethod</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab4">
+<div class="block">The signature of an overridden generic method with the type arguments of the supertype substituted.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab4"><a href="OverrideResolver.ReferenceAdaptation.html" title="class in io.micronaut.sourcegen.generator">OverrideResolver.ReferenceAdaptation</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
+<div class="block">The conversions a method reference to a narrowed method is written with.</div>
+</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="SourceGenerator.html" title="interface in io.micronaut.sourcegen.generator">SourceGenerator</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
 <div class="block">Source code generator.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab2"><a href="SourceGenerators.html" title="class in io.micronaut.sourcegen.generator">SourceGenerators</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab2">
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="SourceGenerators.html" title="class in io.micronaut.sourcegen.generator">SourceGenerators</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
 <div class="block">The source generators.</div>
 </div>
 </div>

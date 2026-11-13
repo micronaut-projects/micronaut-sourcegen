@@ -58,7 +58,15 @@ loadScripts(document, 'script');</script>
 <li><a href="#method-summary" tabindex="0">Method Summary</a></li>
 <li><a href="#method-detail" tabindex="0">Method Details</a>
 <ol class="toc-list">
+<li><a href="#bridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">bridgesOf(ObjectDef, MethodDef)</a></li>
+<li><a href="#bridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">bridgesOf(ObjectDef, MethodDef, EnclosingScope)</a></li>
+<li><a href="#inheritedBridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">inheritedBridgesOf(ObjectDef, EnclosingScope)</a></li>
+<li><a href="#visibilityBridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">visibilityBridgesOf(ObjectDef, EnclosingScope)</a></li>
 <li><a href="#resolve(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">resolve(ObjectDef, MethodDef)</a></li>
+<li><a href="#resolve(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">resolve(ObjectDef, MethodDef, EnclosingScope)</a></li>
+<li><a href="#resolveInherited(io.micronaut.sourcegen.model.ObjectDef)" tabindex="0">resolveInherited(ObjectDef)</a></li>
+<li><a href="#resolveInherited(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">resolveInherited(ObjectDef, EnclosingScope)</a></li>
+<li><a href="#resolveVisibility(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">resolveVisibility(ObjectDef, EnclosingScope)</a></li>
 </ol>
 </li>
 </ol>
@@ -100,9 +108,25 @@ supertype represented only by a name because that form does not contain enough m
 <div class="table-header col-second">Class</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="BridgeResolver.BridgeMethod.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.BridgeMethod</a></code></div>
+<div class="col-second even-row-color"><code><a href="BridgeResolver.Bridge.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.Bridge</a></code></div>
 <div class="col-last even-row-color">
+<div class="block">A finished bridge method.</div>
+</div>
+<div class="col-first odd-row-color"><code>static final record&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="BridgeResolver.BridgeMethod.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.BridgeMethod</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">The erased method shape used by a bridge.</div>
+</div>
+<div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="BridgeResolver.InheritedBridge.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.InheritedBridge</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">A bridge a class declares for a method it inherits.</div>
+</div>
+<div class="col-first odd-row-color"><code>static final record&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="BridgeResolver.VisibilityBridge.html" class="type-name-link" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.VisibilityBridge</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">A visibility bridge: a public method a public class inherits from a superclass that is not public, which javac
+declares again in the class, delegating to the superclass's, so that reflection can invoke it through the class.</div>
 </div>
 </div>
 </section>
@@ -118,11 +142,74 @@ supertype represented only by a name because that form does not contain enough m
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="BridgeResolver.BridgeMethod.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.BridgeMethod</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#resolve(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">resolve</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="BridgeResolver.Bridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.Bridge</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#bridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">bridgesOf</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The bridges a declared method requires, as the finished methods a writer writes with <a href="BridgeResolver.Bridge.html#flags()"><code>BridgeResolver.Bridge.flags()</code></a>: one
+per inherited method that the method overrides with a different erasure, named as the method, with its access,
+annotations and parameter names, erased as the inherited method, declaring the exceptions the inherited method
+does or else the erasure of the method's, and delegating to the method, casting every parameter to its type.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="BridgeResolver.Bridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.Bridge</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#bridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">bridgesOf</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The bridges a declared method requires, as <a href="#bridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)"><code>bridgesOf(ObjectDef, MethodDef)</code></a> finds them, in the enclosing
+scope of the class being written.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="BridgeResolver.Bridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.Bridge</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#inheritedBridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">inheritedBridgesOf</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The bridges a class declares for the methods it inherits, as the finished methods a writer writes with
+<a href="BridgeResolver.Bridge.html#flags()"><code>BridgeResolver.Bridge.flags()</code></a>: an implementation inherited from a superclass satisfies an added interface through a
+bridge of the class, delegating to the inherited method as <a href="#bridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)"><code>bridgesOf(ObjectDef, MethodDef)</code></a> bridges delegate to a declared one.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="BridgeResolver.BridgeMethod.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.BridgeMethod</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#resolve(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">resolve</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Resolves the bridges required by a declared method.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="BridgeResolver.BridgeMethod.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.BridgeMethod</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#resolve(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">resolve</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Resolves the bridges required by a declared method in the enclosing scope of the class being written.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="BridgeResolver.InheritedBridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.InheritedBridge</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#resolveInherited(io.micronaut.sourcegen.model.ObjectDef)" class="member-name-link">resolveInherited</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The bridges a class needs for methods it inherits rather than declares: an implementation inherited from a
+superclass satisfies an interface the class adds - <code>String get()</code> of a superclass for a
+<code>Supplier&lt;String&gt;</code> - through a bridge the class declares, as javac writes it.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="BridgeResolver.InheritedBridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.InheritedBridge</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#resolveInherited(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">resolveInherited</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The bridges a class needs for methods it inherits, as <a href="#resolveInherited(io.micronaut.sourcegen.model.ObjectDef)"><code>resolveInherited(ObjectDef)</code></a> finds them, in the
+enclosing scope of the class being written.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="BridgeResolver.VisibilityBridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.VisibilityBridge</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#resolveVisibility(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">resolveVisibility</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The visibility bridges of a public class, as javac writes them: each public, concrete, non-final method it
+inherits from a superclass that is not public - <code>public String value()</code> of a package-private base - and
+overrides nowhere is declared again, public, synthetic and a bridge, delegating to the superclass's.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="BridgeResolver.Bridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.Bridge</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#visibilityBridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">visibilityBridgesOf</a><wbr>(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The <a href="#resolveVisibility(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)"><code>visibility bridges</code></a> of a class, as the finished methods a writer writes with
+<a href="BridgeResolver.Bridge.html#flags()"><code>BridgeResolver.Bridge.flags()</code></a>: a public method a public class inherits from a superclass that is not public is declared
+again, as javac does, with the inherited method's modifiers and signature, invoking the superclass's method - a
+virtual call would dispatch back to the bridge.</div>
 </div>
 </div>
 </div>
@@ -142,6 +229,95 @@ supertype represented only by a name because that form does not contain enough m
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
+<section class="detail" id="bridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)">
+<h3>bridgesOf</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="BridgeResolver.Bridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.Bridge</a>&gt;</span>&nbsp;<span class="element-name">bridgesOf</span><wbr><span class="parameters">(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</span></div>
+<div class="block">The bridges a declared method requires, as the finished methods a writer writes with <a href="BridgeResolver.Bridge.html#flags()"><code>BridgeResolver.Bridge.flags()</code></a>: one
+per inherited method that the method overrides with a different erasure, named as the method, with its access,
+annotations and parameter names, erased as the inherited method, declaring the exceptions the inherited method
+does or else the erasure of the method's, and delegating to the method, casting every parameter to its type. A
+bridge is always concrete - a default method of an interface - delegating to the method even when it is abstract,
+as the Java compiler emits: dispatch reaches the implementation through it.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The declaring definition</dd>
+<dd><code>methodDef</code> - The declared method</dd>
+<dt>Returns:</dt>
+<dd>The bridges</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="bridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>bridgesOf</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="BridgeResolver.Bridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.Bridge</a>&gt;</span>&nbsp;<span class="element-name">bridgesOf</span><wbr><span class="parameters">(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</span></div>
+<div class="block">The bridges a declared method requires, as <a href="#bridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)"><code>bridgesOf(ObjectDef, MethodDef)</code></a> finds them, in the enclosing
+scope of the class being written.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The declaring definition</dd>
+<dd><code>methodDef</code> - The declared method</dd>
+<dd><code>enclosingScope</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The bridges</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="inheritedBridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>inheritedBridgesOf</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="BridgeResolver.Bridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.Bridge</a>&gt;</span>&nbsp;<span class="element-name">inheritedBridgesOf</span><wbr><span class="parameters">(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</span></div>
+<div class="block">The bridges a class declares for the methods it inherits, as the finished methods a writer writes with
+<a href="BridgeResolver.Bridge.html#flags()"><code>BridgeResolver.Bridge.flags()</code></a>: an implementation inherited from a superclass satisfies an added interface through a
+bridge of the class, delegating to the inherited method as <a href="#bridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)"><code>bridgesOf(ObjectDef, MethodDef)</code></a> bridges delegate to a declared one.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The definition</dd>
+<dd><code>enclosingScope</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The bridges</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="visibilityBridgesOf(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>visibilityBridgesOf</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="BridgeResolver.Bridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.Bridge</a>&gt;</span>&nbsp;<span class="element-name">visibilityBridgesOf</span><wbr><span class="parameters">(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</span></div>
+<div class="block">The <a href="#resolveVisibility(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)"><code>visibility bridges</code></a> of a class, as the finished methods a writer writes with
+<a href="BridgeResolver.Bridge.html#flags()"><code>BridgeResolver.Bridge.flags()</code></a>: a public method a public class inherits from a superclass that is not public is declared
+again, as javac does, with the inherited method's modifiers and signature, invoking the superclass's method - a
+virtual call would dispatch back to the bridge.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The definition</dd>
+<dd><code>enclosingScope</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The bridges</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
 <section class="detail" id="resolve(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)">
 <h3>resolve</h3>
 <div class="horizontal-scroll">
@@ -154,6 +330,90 @@ supertype represented only by a name because that form does not contain enough m
 <dd><code>methodDef</code> - The declared method</dd>
 <dt>Returns:</dt>
 <dd>Erased inherited method shapes requiring a bridge</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="resolve(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>resolve</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="BridgeResolver.BridgeMethod.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.BridgeMethod</a>&gt;</span>&nbsp;<span class="element-name">resolve</span><wbr><span class="parameters">(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</span></div>
+<div class="block">Resolves the bridges required by a declared method in the enclosing scope of the class being written.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The declaring definition</dd>
+<dd><code>methodDef</code> - The declared method</dd>
+<dd><code>enclosingScope</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>Erased inherited method shapes requiring a bridge</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="resolveInherited(io.micronaut.sourcegen.model.ObjectDef)">
+<h3>resolveInherited</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="BridgeResolver.InheritedBridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.InheritedBridge</a>&gt;</span>&nbsp;<span class="element-name">resolveInherited</span><wbr><span class="parameters">(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef)</span></div>
+<div class="block">The bridges a class needs for methods it inherits rather than declares: an implementation inherited from a
+superclass satisfies an interface the class adds - <code>String get()</code> of a superclass for a
+<code>Supplier&lt;String&gt;</code> - through a bridge the class declares, as javac writes it. A bridge that the
+superclasses already declare is not repeated.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The class</dd>
+<dt>Returns:</dt>
+<dd>The inherited methods, each with a bridge delegating to it</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="resolveInherited(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>resolveInherited</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="BridgeResolver.InheritedBridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.InheritedBridge</a>&gt;</span>&nbsp;<span class="element-name">resolveInherited</span><wbr><span class="parameters">(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</span></div>
+<div class="block">The bridges a class needs for methods it inherits, as <a href="#resolveInherited(io.micronaut.sourcegen.model.ObjectDef)"><code>resolveInherited(ObjectDef)</code></a> finds them, in the
+enclosing scope of the class being written.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The class</dd>
+<dd><code>enclosingScope</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The inherited methods, each with a bridge delegating to it</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="resolveVisibility(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>resolveVisibility</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="BridgeResolver.VisibilityBridge.html" title="class in io.micronaut.sourcegen.bytecode.core">BridgeResolver.VisibilityBridge</a>&gt;</span>&nbsp;<span class="element-name">resolveVisibility</span><wbr><span class="parameters">(<a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosingScope)</span></div>
+<div class="block">The visibility bridges of a public class, as javac writes them: each public, concrete, non-final method it
+inherits from a superclass that is not public - <code>public String value()</code> of a package-private base - and
+overrides nowhere is declared again, public, synthetic and a bridge, delegating to the superclass's. Otherwise
+reflection could not invoke the method through the public class. A public superclass declares those of its own
+superclasses already.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The class</dd>
+<dd><code>enclosingScope</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The inherited methods to bridge</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
 </dl>
 </div>
 </section>

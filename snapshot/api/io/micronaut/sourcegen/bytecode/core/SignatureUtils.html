@@ -58,10 +58,16 @@ loadScripts(document, 'script');</script>
 <li><a href="#method-detail" tabindex="0">Method Details</a>
 <ol class="toc-list">
 <li><a href="#getFieldSignature(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef)" tabindex="0">getFieldSignature(ObjectDef, FieldDef)</a></li>
+<li><a href="#getFieldSignature(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">getFieldSignature(ObjectDef, FieldDef, EnclosingScope)</a></li>
 <li><a href="#getClassSignature(io.micronaut.sourcegen.model.ClassDef)" tabindex="0">getClassSignature(ClassDef)</a></li>
+<li><a href="#getClassSignature(io.micronaut.sourcegen.model.ClassDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">getClassSignature(ClassDef, EnclosingScope)</a></li>
 <li><a href="#getRecordSignature(io.micronaut.sourcegen.model.RecordDef)" tabindex="0">getRecordSignature(RecordDef)</a></li>
+<li><a href="#getRecordSignature(io.micronaut.sourcegen.model.RecordDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">getRecordSignature(RecordDef, EnclosingScope)</a></li>
 <li><a href="#getInterfaceSignature(io.micronaut.sourcegen.model.InterfaceDef)" tabindex="0">getInterfaceSignature(InterfaceDef)</a></li>
+<li><a href="#getInterfaceSignature(io.micronaut.sourcegen.model.InterfaceDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">getInterfaceSignature(InterfaceDef, EnclosingScope)</a></li>
 <li><a href="#getMethodSignature(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" tabindex="0">getMethodSignature(ObjectDef, MethodDef)</a></li>
+<li><a href="#getMethodSignature(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" tabindex="0">getMethodSignature(ObjectDef, MethodDef, EnclosingScope)</a></li>
+<li><a href="#boundIndex(java.util.List,int)" tabindex="0">boundIndex(List, int)</a></li>
 </ol>
 </li>
 </ol>
@@ -103,22 +109,61 @@ bytecode library lets the ASM and JDK ClassFile backends use exactly the same ge
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#boundIndex(java.util.List,int)" class="member-name-link">boundIndex</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;bounds,
+ int&nbsp;index)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The index a bound of a type parameter has in a type annotation's target: 0 is the class bound, which is
+absent where the first bound is an interface, whose bounds then count from 1.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getClassSignature(io.micronaut.sourcegen.model.ClassDef)" class="member-name-link">getClassSignature</a><wbr>(<a href="../../model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a>&nbsp;classDef)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The signature outside the write of an inner class: no variables of an enclosing class are in scope.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getClassSignature(io.micronaut.sourcegen.model.ClassDef)" class="member-name-link">getClassSignature</a><wbr>(<a href="../../model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a>&nbsp;classDef)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getClassSignature(io.micronaut.sourcegen.model.ClassDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">getClassSignature</a><wbr>(<a href="../../model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a>&nbsp;classDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getFieldSignature(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef)" class="member-name-link">getFieldSignature</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../../model/FieldDef.html" title="class in io.micronaut.sourcegen.model">FieldDef</a>&nbsp;fieldDef)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The signature outside the write of an inner class: no variables of an enclosing class are in scope.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getInterfaceSignature(io.micronaut.sourcegen.model.InterfaceDef)" class="member-name-link">getInterfaceSignature</a><wbr>(<a href="../../model/InterfaceDef.html" title="class in io.micronaut.sourcegen.model">InterfaceDef</a>&nbsp;interfaceDef)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getFieldSignature(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">getFieldSignature</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/FieldDef.html" title="class in io.micronaut.sourcegen.model">FieldDef</a>&nbsp;fieldDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getInterfaceSignature(io.micronaut.sourcegen.model.InterfaceDef)" class="member-name-link">getInterfaceSignature</a><wbr>(<a href="../../model/InterfaceDef.html" title="class in io.micronaut.sourcegen.model">InterfaceDef</a>&nbsp;interfaceDef)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The signature outside the write of an inner class: no variables of an enclosing class are in scope.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getInterfaceSignature(io.micronaut.sourcegen.model.InterfaceDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">getInterfaceSignature</a><wbr>(<a href="../../model/InterfaceDef.html" title="class in io.micronaut.sourcegen.model">InterfaceDef</a>&nbsp;interfaceDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getMethodSignature(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef)" class="member-name-link">getMethodSignature</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The signature outside the write of an inner class: no variables of an enclosing class are in scope.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static @Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getMethodSignature(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">getMethodSignature</a><wbr>(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getRecordSignature(io.micronaut.sourcegen.model.RecordDef)" class="member-name-link">getRecordSignature</a><wbr>(<a href="../../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">The signature outside the write of an inner class: no variables of an enclosing class are in scope.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getRecordSignature(io.micronaut.sourcegen.model.RecordDef)" class="member-name-link">getRecordSignature</a><wbr>(<a href="../../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#getRecordSignature(io.micronaut.sourcegen.model.RecordDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)" class="member-name-link">getRecordSignature</a><wbr>(<a href="../../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
@@ -143,6 +188,7 @@ bytecode library lets the ASM and JDK ClassFile backends use exactly the same ge
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">@Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getFieldSignature</span><wbr><span class="parameters">(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../../model/FieldDef.html" title="class in io.micronaut.sourcegen.model">FieldDef</a>&nbsp;fieldDef)</span></div>
+<div class="block">The signature outside the write of an inner class: no variables of an enclosing class are in scope.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>objectDef</code> - The contextual object, if any</dd>
@@ -154,13 +200,48 @@ bytecode library lets the ASM and JDK ClassFile backends use exactly the same ge
 </section>
 </li>
 <li>
+<section class="detail" id="getFieldSignature(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.FieldDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>getFieldSignature</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">@Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getFieldSignature</span><wbr><span class="parameters">(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/FieldDef.html" title="class in io.micronaut.sourcegen.model">FieldDef</a>&nbsp;fieldDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The contextual object, if any</dd>
+<dd><code>fieldDef</code> - The field</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The field signature, or <code>null</code> when its descriptor is sufficient</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
 <section class="detail" id="getClassSignature(io.micronaut.sourcegen.model.ClassDef)">
 <h3>getClassSignature</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getClassSignature</span><wbr><span class="parameters">(<a href="../../model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a>&nbsp;classDef)</span></div>
+<div class="block">The signature outside the write of an inner class: no variables of an enclosing class are in scope.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>classDef</code> - The class</dd>
+<dt>Returns:</dt>
+<dd>The class signature</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="getClassSignature(io.micronaut.sourcegen.model.ClassDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>getClassSignature</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getClassSignature</span><wbr><span class="parameters">(<a href="../../model/ClassDef.html" title="class in io.micronaut.sourcegen.model">ClassDef</a>&nbsp;classDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>classDef</code> - The class</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
 <dt>Returns:</dt>
 <dd>The class signature</dd>
 </dl>
@@ -172,9 +253,26 @@ bytecode library lets the ASM and JDK ClassFile backends use exactly the same ge
 <h3>getRecordSignature</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getRecordSignature</span><wbr><span class="parameters">(<a href="../../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef)</span></div>
+<div class="block">The signature outside the write of an inner class: no variables of an enclosing class are in scope.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>recordDef</code> - The record</dd>
+<dt>Returns:</dt>
+<dd>The record signature</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="getRecordSignature(io.micronaut.sourcegen.model.RecordDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>getRecordSignature</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getRecordSignature</span><wbr><span class="parameters">(<a href="../../model/RecordDef.html" title="class in io.micronaut.sourcegen.model">RecordDef</a>&nbsp;recordDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>recordDef</code> - The record</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
 <dt>Returns:</dt>
 <dd>The record signature</dd>
 </dl>
@@ -186,9 +284,26 @@ bytecode library lets the ASM and JDK ClassFile backends use exactly the same ge
 <h3>getInterfaceSignature</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">@Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getInterfaceSignature</span><wbr><span class="parameters">(<a href="../../model/InterfaceDef.html" title="class in io.micronaut.sourcegen.model">InterfaceDef</a>&nbsp;interfaceDef)</span></div>
+<div class="block">The signature outside the write of an inner class: no variables of an enclosing class are in scope.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>interfaceDef</code> - The interface</dd>
+<dt>Returns:</dt>
+<dd>The interface signature, or <code>null</code> when no generic metadata is needed</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="getInterfaceSignature(io.micronaut.sourcegen.model.InterfaceDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>getInterfaceSignature</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">@Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getInterfaceSignature</span><wbr><span class="parameters">(<a href="../../model/InterfaceDef.html" title="class in io.micronaut.sourcegen.model">InterfaceDef</a>&nbsp;interfaceDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>interfaceDef</code> - The interface</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
 <dt>Returns:</dt>
 <dd>The interface signature, or <code>null</code> when no generic metadata is needed</dd>
 </dl>
@@ -201,12 +316,51 @@ bytecode library lets the ASM and JDK ClassFile backends use exactly the same ge
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">@Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getMethodSignature</span><wbr><span class="parameters">(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
  <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef)</span></div>
+<div class="block">The signature outside the write of an inner class: no variables of an enclosing class are in scope.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>objectDef</code> - The contextual object, if any</dd>
 <dd><code>methodDef</code> - The method</dd>
 <dt>Returns:</dt>
 <dd>The method signature, or <code>null</code> when its descriptor is sufficient</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="getMethodSignature(io.micronaut.sourcegen.model.ObjectDef,io.micronaut.sourcegen.model.MethodDef,io.micronaut.sourcegen.bytecode.core.EnclosingScope)">
+<h3>getMethodSignature</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">@Nullable <a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getMethodSignature</span><wbr><span class="parameters">(@Nullable <a href="../../model/ObjectDef.html" title="class in io.micronaut.sourcegen.model">ObjectDef</a>&nbsp;objectDef,
+ <a href="../../model/MethodDef.html" title="class in io.micronaut.sourcegen.model">MethodDef</a>&nbsp;methodDef,
+ <a href="EnclosingScope.html" title="class in io.micronaut.sourcegen.bytecode.core">EnclosingScope</a>&nbsp;enclosing)</span></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>objectDef</code> - The contextual object, if any</dd>
+<dd><code>methodDef</code> - The method</dd>
+<dd><code>enclosing</code> - The enclosing scope of the class being written</dd>
+<dt>Returns:</dt>
+<dd>The method signature, or <code>null</code> when its descriptor is sufficient</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="boundIndex(java.util.List,int)">
+<h3>boundIndex</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">boundIndex</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../../model/TypeDef.html" title="interface in io.micronaut.sourcegen.model">TypeDef</a>&gt;&nbsp;bounds,
+ int&nbsp;index)</span></div>
+<div class="block">The index a bound of a type parameter has in a type annotation's target: 0 is the class bound, which is
+absent where the first bound is an interface, whose bounds then count from 1.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>bounds</code> - The bounds of the type parameter</dd>
+<dd><code>index</code> - The position of the bound among them</dd>
+<dt>Returns:</dt>
+<dd>The bound index</dd>
+<dt>Since:</dt>
+<dd>2.3</dd>
 </dl>
 </div>
 </section>
