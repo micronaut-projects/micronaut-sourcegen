@@ -1,0 +1,12 @@
+package test
+
+import io.micronaut.sourcegen.GeneratedProgramTest
+import kotlin.Any
+import kotlin.Array
+import kotlin.CharSequence
+
+public open class Rank1 {
+  public open fun call(`value`: Array<Any>): Any {
+    return GeneratedProgramTest.Calls.array1(`value` as Array<CharSequence>)
+  }
+}

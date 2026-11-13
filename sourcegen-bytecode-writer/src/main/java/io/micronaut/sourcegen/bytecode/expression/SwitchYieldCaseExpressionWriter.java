@@ -34,12 +34,13 @@ final class SwitchYieldCaseExpressionWriter implements ExpressionWriter {
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
         // The case is a statement block that yields its value with a return statement, so the returns
         // it contains hold the value in a local and jump here instead of returning from the method
-        Type type = TypeUtils.getType(switchYieldCase.type(), context.objectDef());
+        Type type = TypeUtils.getScopedType(switchYieldCase.type(), context);
         Label end = new Label();
         int slot = generatorAdapter.newLocal(type);
         context.yieldTargets().push(new MethodContext.YieldTarget(switchYieldCase.type(), slot, end));
         try {
-            StatementWriter.of(switchYieldCase.statement()).write(generatorAdapter, context, null);
+            // A case is a block of its own: the locals it declares are not those of another case
+            StatementWriter.of(switchYieldCase.statement()).writeScoped(generatorAdapter, context, null);
         } finally {
             context.yieldTargets().pop();
         }

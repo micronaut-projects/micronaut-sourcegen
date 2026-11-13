@@ -25,6 +25,9 @@ import io.micronaut.sourcegen.model.ObjectDef;
 import io.micronaut.sourcegen.model.ParameterDef;
 import io.micronaut.sourcegen.model.RecordDef;
 import io.micronaut.sourcegen.model.TypeDef;
+import io.micronaut.sourcegen.model.TypeHierarchy;
+import io.micronaut.sourcegen.model.TypeLookup;
+import io.micronaut.sourcegen.model.TypeOperations;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
@@ -48,97 +51,172 @@ public final class SignatureUtils {
     private static final java.util.Map<String, Boolean> NAMED_BOUND_IS_INTERFACE =
         new java.util.concurrent.ConcurrentHashMap<>();
 
-    private SignatureUtils() {
+    private final EnclosingScope enclosing;
+
+    private SignatureUtils(EnclosingScope enclosing) {
+        this.enclosing = enclosing;
     }
 
     /**
+     * The signature outside the write of an inner class: no variables of an enclosing class are in scope.
+     *
      * @param objectDef The contextual object, if any
      * @param fieldDef The field
      * @return The field signature, or {@code null} when its descriptor is sufficient
      */
     @Nullable
     public static String getFieldSignature(@Nullable ObjectDef objectDef, FieldDef fieldDef) {
+        return getFieldSignature(objectDef, fieldDef, EnclosingScope.NONE);
+    }
+
+    /**
+     * @param objectDef The contextual object, if any
+     * @param fieldDef The field
+     * @param enclosing The enclosing scope of the class being written
+     * @return The field signature, or {@code null} when its descriptor is sufficient
+     */
+    @Nullable
+    public static String getFieldSignature(@Nullable ObjectDef objectDef, FieldDef fieldDef, EnclosingScope enclosing) {
+        SignatureUtils signatures = new SignatureUtils(enclosing);
         if (!needsSignature(fieldDef.getType())) {
             return null;
         }
         StringBuilder signature = new StringBuilder();
-        writeSignature(signature, objectDef, null, fieldDef.getType(), false);
+        signatures.writeSignature(signature, objectDef, null, fieldDef.getType(), false);
         return signature.toString();
     }
 
     /**
+     * The signature outside the write of an inner class: no variables of an enclosing class are in scope.
+     *
      * @param classDef The class
      * @return The class signature
      */
     public static String getClassSignature(ClassDef classDef) {
+        return getClassSignature(classDef, EnclosingScope.NONE);
+    }
+
+    /**
+     * @param classDef The class
+     * @param enclosing The enclosing scope of the class being written
+     * @return The class signature
+     */
+    public static String getClassSignature(ClassDef classDef, EnclosingScope enclosing) {
+        SignatureUtils signatures = new SignatureUtils(enclosing);
         StringBuilder signature = new StringBuilder();
-        writeTypeVariables(signature, classDef, null, classDef.getTypeVariables());
+        signatures.writeTypeVariables(signature, classDef, null, classDef.getTypeVariables());
         closeTypeVariables(signature, classDef.getTypeVariables());
-        writeSignature(signature, classDef, null,
+        signatures.writeSignature(signature, classDef, null,
             Objects.requireNonNullElse(classDef.getSuperclass(), TypeDef.OBJECT), false);
         for (TypeDef superinterface : classDef.getSuperinterfaces()) {
-            writeSignature(signature, classDef, null, superinterface, false);
+            signatures.writeSignature(signature, classDef, null, superinterface, false);
         }
         return signature.toString();
     }
 
     /**
+     * The signature outside the write of an inner class: no variables of an enclosing class are in scope.
+     *
      * @param recordDef The record
      * @return The record signature
      */
     public static String getRecordSignature(RecordDef recordDef) {
+        return getRecordSignature(recordDef, EnclosingScope.NONE);
+    }
+
+    /**
+     * @param recordDef The record
+     * @param enclosing The enclosing scope of the class being written
+     * @return The record signature
+     */
+    public static String getRecordSignature(RecordDef recordDef, EnclosingScope enclosing) {
+        SignatureUtils signatures = new SignatureUtils(enclosing);
         StringBuilder signature = new StringBuilder();
-        writeTypeVariables(signature, recordDef, null, recordDef.getTypeVariables());
+        signatures.writeTypeVariables(signature, recordDef, null, recordDef.getTypeVariables());
         closeTypeVariables(signature, recordDef.getTypeVariables());
-        writeSignature(signature, recordDef, null, TypeDef.of(Record.class), false);
+        signatures.writeSignature(signature, recordDef, null, TypeDef.of(Record.class), false);
         for (TypeDef superinterface : recordDef.getSuperinterfaces()) {
-            writeSignature(signature, recordDef, null, superinterface, false);
+            signatures.writeSignature(signature, recordDef, null, superinterface, false);
         }
         return signature.toString();
     }
 
     /**
+     * The signature outside the write of an inner class: no variables of an enclosing class are in scope.
+     *
      * @param interfaceDef The interface
      * @return The interface signature, or {@code null} when no generic metadata is needed
      */
     @Nullable
     public static String getInterfaceSignature(InterfaceDef interfaceDef) {
+        return getInterfaceSignature(interfaceDef, EnclosingScope.NONE);
+    }
+
+    /**
+     * @param interfaceDef The interface
+     * @param enclosing The enclosing scope of the class being written
+     * @return The interface signature, or {@code null} when no generic metadata is needed
+     */
+    @Nullable
+    public static String getInterfaceSignature(InterfaceDef interfaceDef, EnclosingScope enclosing) {
+        SignatureUtils signatures = new SignatureUtils(enclosing);
         if (interfaceDef.getTypeVariables().isEmpty() && interfaceDef.getSuperinterfaces().isEmpty()) {
             return null;
         }
         StringBuilder signature = new StringBuilder();
-        writeTypeVariables(signature, interfaceDef, null, interfaceDef.getTypeVariables());
+        signatures.writeTypeVariables(signature, interfaceDef, null, interfaceDef.getTypeVariables());
         closeTypeVariables(signature, interfaceDef.getTypeVariables());
         appendClass(signature, Object.class.getName());
         for (TypeDef superinterface : interfaceDef.getSuperinterfaces()) {
-            writeSignature(signature, interfaceDef, null, superinterface, false);
+            signatures.writeSignature(signature, interfaceDef, null, superinterface, false);
         }
         return signature.toString();
     }
 
     /**
+     * The signature outside the write of an inner class: no variables of an enclosing class are in scope.
+     *
      * @param objectDef The contextual object, if any
      * @param methodDef The method
      * @return The method signature, or {@code null} when its descriptor is sufficient
      */
     @Nullable
     public static String getMethodSignature(@Nullable ObjectDef objectDef, MethodDef methodDef) {
+        return getMethodSignature(objectDef, methodDef, EnclosingScope.NONE);
+    }
+
+    /**
+     * @param objectDef The contextual object, if any
+     * @param methodDef The method
+     * @param enclosing The enclosing scope of the class being written
+     * @return The method signature, or {@code null} when its descriptor is sufficient
+     */
+    @Nullable
+    public static String getMethodSignature(@Nullable ObjectDef objectDef, MethodDef methodDef, EnclosingScope enclosing) {
+        SignatureUtils signatures = new SignatureUtils(enclosing);
         if (!needsSignature(methodDef)) {
             return null;
         }
         StringBuilder signature = new StringBuilder();
-        writeTypeVariables(signature, objectDef, methodDef, methodDef.getTypeVariables());
+        signatures.writeTypeVariables(signature, objectDef, methodDef, methodDef.getTypeVariables());
         closeTypeVariables(signature, methodDef.getTypeVariables());
         signature.append('(');
         for (ParameterDef parameter : methodDef.getParameters()) {
-            writeSignature(signature, objectDef, methodDef, parameter.getType(), false);
+            signatures.writeSignature(signature, objectDef, methodDef, parameter.getType(), false);
         }
         signature.append(')');
-        writeSignature(signature, objectDef, methodDef, methodDef.getReturnType(), false);
+        signatures.writeSignature(signature, objectDef, methodDef, methodDef.getReturnType(), false);
+        if (methodDef.getThrowTypes().stream().anyMatch(SignatureUtils::needsSignature)) {
+            // Where one thrown type is a variable, the signature lists all of them
+            for (TypeDef thrown : methodDef.getThrowTypes()) {
+                signature.append('^');
+                signatures.writeSignature(signature, objectDef, methodDef, thrown, false);
+            }
+        }
         return signature.toString();
     }
 
-    private static void writeTypeVariables(StringBuilder signature,
+    private void writeTypeVariables(StringBuilder signature,
                                            @Nullable ObjectDef objectDef,
                                            @Nullable MethodDef methodDef,
                                            List<TypeDef.TypeVariable> variables) {
@@ -157,6 +235,10 @@ public final class SignatureUtils {
     }
 
     private static boolean needsSignature(MethodDef methodDef) {
+        // A method declaring variables keeps them, even where no parameter uses them, and so does a thrown variable
+        if (!methodDef.getTypeVariables().isEmpty() || methodDef.getThrowTypes().stream().anyMatch(SignatureUtils::needsSignature)) {
+            return true;
+        }
         for (ParameterDef parameter : methodDef.getParameters()) {
             if (needsSignature(parameter.getType())) {
                 return true;
@@ -171,11 +253,12 @@ public final class SignatureUtils {
             return needsSignature(array.componentType());
         }
         return typeDef instanceof ClassTypeDef.Parameterized
+            || typeDef instanceof ClassTypeDef classType && TypeHierarchy.enclosingOf(classType) != null
             || typeDef instanceof TypeDef.TypeVariable
             || typeDef instanceof TypeDef.Wildcard;
     }
 
-    private static void writeSignature(StringBuilder signature,
+    private void writeSignature(StringBuilder signature,
                                        @Nullable ObjectDef objectDef,
                                        @Nullable MethodDef methodDef,
                                        TypeDef typeDef,
@@ -183,18 +266,12 @@ public final class SignatureUtils {
         typeDef = ObjectDef.getContextualType(objectDef, typeDef);
         typeDef = unwrapAnnotated(typeDef);
         if (typeDef instanceof TypeDef.Primitive primitive) {
-            signature.append(TypeUtils.getDescriptor(primitive, objectDef));
+            signature.append(TypeUtils.getDescriptor(primitive, objectDef, enclosing));
         } else if (typeDef instanceof TypeDef.TypeVariable variable) {
             writeTypeVariable(signature, objectDef, methodDef, variable, definition);
-        } else if (typeDef instanceof ClassTypeDef.Parameterized parameterized) {
-            appendClassStart(signature, TypeUtils.getBinaryName(parameterized.rawType(), objectDef));
-            if (!parameterized.typeArguments().isEmpty()) {
-                signature.append('<');
-                for (TypeDef argument : parameterized.typeArguments()) {
-                    writeTypeArgument(signature, objectDef, methodDef, argument);
-                }
-                signature.append('>');
-            }
+        } else if (typeDef instanceof ClassTypeDef.Parameterized || typeDef instanceof ClassTypeDef classType && TypeHierarchy.enclosingOf(classType) != null) {
+            signature.append('L');
+            writeClassType(signature, objectDef, methodDef, (ClassTypeDef) typeDef);
             signature.append(';');
         } else if (typeDef instanceof ClassTypeDef classDef) {
             appendClass(signature, TypeUtils.getBinaryName(classDef, objectDef));
@@ -208,7 +285,39 @@ public final class SignatureUtils {
         }
     }
 
-    private static void writeTypeVariable(StringBuilder signature,
+    /**
+     * Writes a class type without its {@code L} and {@code ;}: a member of a parameterized enclosing type is the
+     * enclosing type, then {@code .} and the member's simple name - {@code Outer<Ljava/lang/String;>.Member}.
+     */
+    private void writeClassType(StringBuilder signature,
+                                       @Nullable ObjectDef objectDef,
+                                       @Nullable MethodDef methodDef,
+                                       ClassTypeDef type) {
+        List<TypeDef> arguments = List.of();
+        if (type instanceof ClassTypeDef.Parameterized parameterized) {
+            arguments = parameterized.typeArguments();
+            type = parameterized.rawType();
+        }
+        ClassTypeDef enclosingType = TypeHierarchy.enclosingOf(type);
+        if (enclosingType != null) {
+            writeClassType(signature, objectDef, methodDef, enclosingType);
+            // The member's name follows its enclosing class's and a `$`: a `$` of the simple name itself stays
+            String name = TypeUtils.getBinaryName(TypeHierarchy.memberClass(type), objectDef);
+            String enclosing = TypeUtils.getBinaryName(TypeOperations.declaredClass(enclosingType), objectDef) + '$';
+            signature.append('.').append(name.startsWith(enclosing) ? name.substring(enclosing.length()) : name.substring(name.lastIndexOf('$') + 1));
+        } else {
+            signature.append(TypeUtils.getInternalName(TypeUtils.getBinaryName(type, objectDef)));
+        }
+        if (!arguments.isEmpty()) {
+            signature.append('<');
+            for (TypeDef argument : arguments) {
+                writeTypeArgument(signature, objectDef, methodDef, argument);
+            }
+            signature.append('>');
+        }
+    }
+
+    private void writeTypeVariable(StringBuilder signature,
                                            @Nullable ObjectDef objectDef,
                                            @Nullable MethodDef methodDef,
                                            TypeDef.TypeVariable variable,
@@ -218,13 +327,13 @@ public final class SignatureUtils {
             writeTypeVariableDeclaration(signature, objectDef, methodDef, variable);
             return;
         }
-        if (isVariablePartOfDefinition(name, objectDef, methodDef)) {
+        if (isVariableInScope(name, objectDef, methodDef)) {
             signature.append('T').append(name).append(';');
         } else if (variable.bounds().isEmpty()) {
             appendClass(signature, Object.class.getName());
         } else {
             // Outside its own declaration a variable stands for the erasure of its first bound
-            signature.append(TypeUtils.getDescriptor(variable.bounds().get(0), objectDef));
+            signature.append(TypeUtils.getDescriptor(variable.bounds().get(0), objectDef, enclosing));
         }
     }
 
@@ -234,7 +343,7 @@ public final class SignatureUtils {
      * has an empty class bound, which is why the first bound decides whether {@code :} appears once
      * or twice.
      */
-    private static void writeTypeVariableDeclaration(StringBuilder signature,
+    private void writeTypeVariableDeclaration(StringBuilder signature,
                                                      @Nullable ObjectDef objectDef,
                                                      @Nullable MethodDef methodDef,
                                                      TypeDef.TypeVariable variable) {
@@ -259,7 +368,7 @@ public final class SignatureUtils {
      * Writes one type argument. A wildcard is an argument in its own right rather than a type:
      * {@code *} unbounded, {@code +} for an upper bound and {@code -} for a lower one.
      */
-    private static void writeTypeArgument(StringBuilder signature,
+    private void writeTypeArgument(StringBuilder signature,
                                           @Nullable ObjectDef objectDef,
                                           @Nullable MethodDef methodDef,
                                           TypeDef argument) {
@@ -298,6 +407,19 @@ public final class SignatureUtils {
     }
 
     /**
+     * The index a bound of a type parameter has in a type annotation's target: 0 is the class bound, which is
+     * absent where the first bound is an interface, whose bounds then count from 1.
+     *
+     * @param bounds The bounds of the type parameter
+     * @param index  The position of the bound among them
+     * @return The bound index
+     * @since 2.3
+     */
+    public static int boundIndex(List<TypeDef> bounds, int index) {
+        return !bounds.isEmpty() && isInterface(bounds.get(0)) ? index + 1 : index;
+    }
+
+    /**
      * Whether the type a bound names is an interface, which decides where it belongs in a type
      * parameter declaration. A named type has to be loaded to find out, so the answer is kept.
      */
@@ -319,11 +441,8 @@ public final class SignatureUtils {
     }
 
     private static boolean loadIsInterface(String name) {
-        try {
-            return Class.forName(name, false, SignatureUtils.class.getClassLoader()).isInterface();
-        } catch (ClassNotFoundException | LinkageError e) {
-            return false;
-        }
+        Class<?> type = TypeLookup.reflective().loadClass(name);
+        return type != null && type.isInterface();
     }
 
     private static void appendClassStart(StringBuilder signature, String name) {
@@ -351,6 +470,13 @@ public final class SignatureUtils {
             return recordDef.getTypeVariables().stream().anyMatch(v -> v.name().equals(name));
         }
         return false;
+    }
+
+    private boolean isVariableInScope(String name,
+                                             @Nullable ObjectDef objectDef,
+                                             @Nullable MethodDef methodDef) {
+        // An inner class has the variables of its enclosing class in scope
+        return isVariablePartOfDefinition(name, objectDef, methodDef) || enclosing.variable(objectDef, name) != null;
     }
 
     private static TypeDef unwrapAnnotated(TypeDef typeDef) {

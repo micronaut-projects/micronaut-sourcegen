@@ -1,0 +1,15 @@
+package test;
+
+import java.lang.CharSequence;
+import java.lang.Object;
+
+public class Chain8 {
+  public <T0 extends T1, T1 extends T2, T2 extends T3, T3 extends T4, T4 extends T5, T5 extends T6, T6 extends T7, T7 extends CharSequence> T0 identity(
+      T0 value) {
+    return value;
+  }
+
+  public Object call(Object value) {
+    return this.identity((CharSequence) value);
+  }
+}

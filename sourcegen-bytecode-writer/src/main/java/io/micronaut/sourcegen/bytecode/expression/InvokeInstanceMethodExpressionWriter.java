@@ -15,27 +15,11 @@
  */
 package io.micronaut.sourcegen.bytecode.expression;
 
-import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.sourcegen.bytecode.MethodContext;
-import io.micronaut.sourcegen.bytecode.TypeUtils;
-import io.micronaut.sourcegen.model.ClassDef;
-import io.micronaut.sourcegen.model.ClassTypeDef;
-import io.micronaut.sourcegen.model.EnumDef;
+import io.micronaut.sourcegen.bytecode.core.InvocationPlan;
 import io.micronaut.sourcegen.model.ExpressionDef;
-import io.micronaut.sourcegen.model.MethodDef;
-import io.micronaut.sourcegen.model.ObjectDef;
-import io.micronaut.sourcegen.model.ParameterDef;
-import io.micronaut.sourcegen.model.RecordDef;
-import io.micronaut.sourcegen.model.TypeDef;
-import io.micronaut.sourcegen.model.VariableDef;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
-import org.objectweb.asm.commons.Method;
-
-import java.util.Iterator;
-import java.util.Objects;
-
-import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 
 final class InvokeInstanceMethodExpressionWriter extends AbstractStatementAwareExpressionWriter implements ExpressionWriter {
     private final ExpressionDef.InvokeInstanceMethod invokeInstanceMethod;
@@ -47,71 +31,15 @@ final class InvokeInstanceMethodExpressionWriter extends AbstractStatementAwareE
     @Override
     public void write(GeneratorAdapter generatorAdapter, MethodContext context) {
         ExpressionDef instance = invokeInstanceMethod.instance();
+        InvocationPlan plan = InvocationPlan.ofInstance(instance, invokeInstanceMethod.method(), invokeInstanceMethod.values(),
+            context.objectDef(), context.methodDef(), context.enclosingScope());
         ExpressionWriter.writeExpression(generatorAdapter, context, instance);
-        Iterator<ParameterDef> iterator = invokeInstanceMethod.method().getParameters().iterator();
-        for (ExpressionDef parameter : invokeInstanceMethod.values()) {
-            ExpressionWriter.writeExpressionCheckCast(generatorAdapter, context, parameter, iterator.next().getType());
+        if (plan.receiver() == InvocationPlan.Receiver.DISCARD) {
+            generatorAdapter.pop();
+        } else if (plan.receiver() == InvocationPlan.Receiver.CAST) {
+            generatorAdapter.checkCast(Type.getType(plan.receiverCast()));
         }
-        // Resolve `this` to the current type, so an invocation on it inside an interface default
-        // method is dispatched with invokeinterface
-        TypeDef instanceType = ObjectDef.getContextualType(context.objectDef(), instance.type());
-        Type methodOwnerType = TypeUtils.getType(instanceType, context.objectDef());
-        MethodDef methodDef = invokeInstanceMethod.method();
-        Method method = new Method(methodDef.getName(), TypeUtils.getMethodDescriptor(context.objectDef(), methodDef));
-        instanceType = eraseTypeVariable(instanceType);
-        if (instanceType instanceof ClassTypeDef classTypeDef) {
-            if (instance instanceof VariableDef.Super aSuper) {
-                ClassTypeDef superType = getSuperType(context, aSuper);
-                methodOwnerType = TypeUtils.getType(superType, context.objectDef());
-                generatorAdapter.visitMethodInsn(
-                    INVOKESPECIAL,
-                    methodOwnerType.getSort() == Type.ARRAY ? methodOwnerType.getDescriptor() : methodOwnerType.getInternalName(),
-                    method.getName(),
-                    method.getDescriptor(),
-                    superType.isInterface() && invokeInstanceMethod.isDefault()
-                );
-            } else if (invokeInstanceMethod.method().isConstructor()) {
-                generatorAdapter.invokeConstructor(methodOwnerType, method);
-            } else if (classTypeDef.isInterface()) {
-                generatorAdapter.invokeInterface(methodOwnerType, method);
-            } else {
-                generatorAdapter.invokeVirtual(methodOwnerType, method);
-            }
-        } else if (instanceType instanceof TypeDef.Array) {
-            generatorAdapter.invokeVirtual(methodOwnerType, method);
-        } else {
-            throw new IllegalStateException("Unsupported instance type: " + instanceType);
-        }
+        ExpressionWriter.writeInvocation(generatorAdapter, context, plan);
         popValueIfNeeded(generatorAdapter, invokeInstanceMethod.method().getReturnType());
     }
-
-    private static TypeDef eraseTypeVariable(TypeDef type) {
-        while (type instanceof TypeDef.TypeVariable typeVariable) {
-            if (CollectionUtils.isEmpty(typeVariable.bounds())) {
-                type = TypeDef.OBJECT;
-            } else {
-                type = typeVariable.bounds().get(0);
-            }
-        }
-        return type;
-    }
-
-    private ClassTypeDef getSuperType(MethodContext context, VariableDef.Super aSuper) {
-        ClassTypeDef superClass;
-        if (aSuper.type() == TypeDef.SUPER) {
-            if (context.objectDef() instanceof EnumDef) {
-                superClass = ClassTypeDef.of(Enum.class);
-            } else if (context.objectDef() instanceof RecordDef) {
-                superClass = ClassTypeDef.of(Record.class);
-            } else if (context.objectDef() instanceof ClassDef classDef) {
-                superClass = Objects.requireNonNullElse(classDef.getSuperclass(), TypeDef.OBJECT);
-            } else {
-                superClass = TypeDef.OBJECT;
-            }
-        } else {
-            superClass = aSuper.type();
-        }
-        return superClass;
-    }
-
 }

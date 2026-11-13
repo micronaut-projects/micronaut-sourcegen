@@ -1,0 +1,23 @@
+package test;
+
+import io.micronaut.sourcegen.javapoet.write.UncoveredShapeProgramTest;
+import java.lang.Object;
+import java.lang.String;
+
+public class NarrowedElement implements UncoveredShapeProgramTest.First<String> {
+  public String choose(Object value) {
+    return "object";
+  }
+
+  public String choose(String value) {
+    return "string";
+  }
+
+  public String first(String[] values) {
+    return (String) values[0];
+  }
+
+  public String chosen(String[] values) {
+    return this.choose((Object) values[0]);
+  }
+}

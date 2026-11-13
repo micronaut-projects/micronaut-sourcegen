@@ -1,0 +1,13 @@
+package test
+
+import io.micronaut.sourcegen.ConversionProgramRegressionTest
+import java.io.Serializable
+import kotlin.Any
+import kotlin.CharSequence
+
+public open class SuccessiveCastsscalar {
+  public open fun call(`value`: Any): Any {
+    ConversionProgramRegressionTest.Calls.serializable(`value` as Serializable)
+    return ConversionProgramRegressionTest.Calls.intersection(run { `value` as CharSequence; `value` as Serializable; `value` })
+  }
+}

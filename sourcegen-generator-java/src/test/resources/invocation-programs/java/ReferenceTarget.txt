@@ -1,0 +1,10 @@
+package test;
+
+import java.lang.String;
+import java.util.function.Function;
+
+public class ReferenceTarget implements Function<String, String> {
+  public String apply(String value) {
+    return (String) value;
+  }
+}

@@ -87,7 +87,7 @@ final class ConstantExpressionWriter implements ExpressionWriter {
                 Type enumType = Type.getType(enumConstant.getDeclaringClass());
                 generatorAdapter.getStatic(enumType, enumConstant.name(), enumType);
             }
-            case TypeDef typeDef -> generatorAdapter.push(TypeUtils.getType(typeDef, context.objectDef()));
+            case TypeDef typeDef -> generatorAdapter.push(TypeUtils.getScopedType(typeDef, context));
             case Class<?> aClass -> generatorAdapter.push(Type.getType(aClass));
             case Integer integer -> {
                 generatorAdapter.push(integer);
