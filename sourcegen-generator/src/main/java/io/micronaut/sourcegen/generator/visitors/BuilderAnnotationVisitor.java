@@ -35,6 +35,7 @@ import io.micronaut.sourcegen.annotations.Builder;
 import io.micronaut.sourcegen.annotations.Singular;
 import io.micronaut.sourcegen.generator.SourceGenerator;
 import io.micronaut.sourcegen.generator.SourceGenerators;
+import io.micronaut.sourcegen.model.AnnotationDef;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassDef.ClassDefBuilder;
 import io.micronaut.sourcegen.model.ClassTypeDef;
@@ -255,7 +256,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         int index = 0;
         for (PropertyElement parameter : properties) {
             int parameterIndex = index++;
-            builder.addParameter(ParameterDef.of(builderFieldName(parameter), TypeDef.of(parameter.getType())));
+            builder.addParameter(propertyParameter(builderFieldName(parameter), TypeDef.of(parameter.getType()), parameter));
             builder.addStatement((aThis, methodParameters) -> {
                 VariableDef.MethodParameter methodParameter = methodParameters.get(parameterIndex);
                 VariableDef.Field propertyField = aThis.field(methodParameter.name(), builderFieldType(parameter));
@@ -386,7 +387,7 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
         MethodDef.MethodDefBuilder methodDef = MethodDef.builder(propertyName)
             .addModifiers(Modifier.PUBLIC)
             .overrides(overrides)
-            .addParameter(propertyName, propertyTypeDef);
+            .addParameter(propertyParameter(propertyName, propertyTypeDef, beanProperty));
         if (returnType != null) {
             methodDef.returns(returnType);
         } else if (builderType instanceof ClassTypeDef.Parameterized) {
@@ -397,6 +398,27 @@ public final class BuilderAnnotationVisitor implements TypeElementVisitor<Builde
                 self.field(field).assign(parameterDefs.get(0)),
                 returningExpressionProvider.apply(new BuilderGenerator.BuildContext(self, field))
             ));
+    }
+
+    /**
+     * The parameter a generated method takes the value of a property through. A nullable property keeps
+     * its contract: the parameter is annotated {@link Nullable}, so that a null checker such as NullAway
+     * sees the same contract on the generated method as on the property it assigns, instead of a
+     * parameter it has to assume is non-null. The annotation the property was declared with cannot be
+     * written back as it was: every {@code Nullable} annotation, JSpecify's, Jakarta's or Micronaut's, is
+     * mapped onto the same stereotype before a visitor sees it. JSpecify's is written instead, being the
+     * one Micronaut itself depends on and so on the classpath of every application.
+     *
+     * @param name         The name of the parameter
+     * @param type         The type of the parameter
+     * @param beanProperty The property the parameter assigns
+     * @return The parameter
+     */
+    static ParameterDef propertyParameter(String name, TypeDef type, PropertyElement beanProperty) {
+        if (beanProperty.isNullable() && !type.isPrimitive()) {
+            return ParameterDef.of(name, type.annotated(AnnotationDef.builder(Nullable.class).build()));
+        }
+        return ParameterDef.of(name, type);
     }
 
     /**
