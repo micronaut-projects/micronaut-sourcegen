@@ -340,7 +340,7 @@ public final class WitherAnnotationVisitor implements TypeElementVisitor<Object,
         }
         return methodBuilder
             .returns(recordType)
-            .addParameter(beanProperty.getSimpleName(), TypeDef.of(beanProperty.getType()))
+            .addParameter(BuilderAnnotationVisitor.propertyParameter(beanProperty.getSimpleName(), TypeDef.of(beanProperty.getType()), beanProperty))
             .build((self, parameterDefs) -> {
                 List<ExpressionDef> values = new ArrayList<>();
                 for (ParameterElement parameter : parameters) {
